@@ -1,0 +1,29 @@
+{
+  "name": "@austec/backend",
+  "version": "1.0.0",
+  "description": "Austec IoT Ecosystem - Core Backend API, MQTT Gateway & Blackbox Service",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "test:phase2": "tsx tests/phase2-gateway-tests.ts"
+  },
+  "dependencies": {
+    "@austec/database": "file:../database",
+    "express": "^4.21.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.23.8",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.7.5",
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/ws": "^8.5.12"
+  }
+}

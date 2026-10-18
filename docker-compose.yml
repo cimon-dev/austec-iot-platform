@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # 1. EMQX Enterprise MQTT Broker (Port 1883, 8883 MQTTS TLS 1.3, 18083 Dashboard)
+  emqx-broker:
+    image: emqx/emqx:5.4.1
+    container_name: austec-emqx-broker
+    restart: always
+    environment:
+      - "EMQX_NODE_NAME=emqx@node1.austec.local"
+      - "EMQX_CLUSTER__DISCOVERY_STRATEGY=manual"
+      - "EMQX_LISTENERS__SSL__DEFAULT__BIND=8883"
+      - "EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY=verify_peer"
+      - "EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__FAIL_IF_NO_PEER_CERT=true"
+    ports:
+      - "1883:1883"
+      - "8883:8883"
+      - "18083:18083"
+    volumes:
+      - emqx-data:/opt/emqx/data
+      - emqx-log:/opt/emqx/log
+    networks:
+      - austec-mesh
+
+  # 2. Redis In-Memory Hot Cache (< 1ms Telemetry State)
+  redis-hot-cache:
+    image: redis:7.2-alpine
+    container_name: austec-redis-hot-cache
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - austec-mesh
+
+  # 3. PostgreSQL Relational Core Database (TimeScaleDB enabled)
+  postgres-db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: austec-postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: austec_admin
+      POSTGRES_PASSWORD: AustecSecure2026Password!
+      POSTGRES_DB: austec_iot_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - austec-mesh
+
+  # 4. Austec IoT Gateway Backend
+  iot-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: austec-iot-backend
+    restart: always
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://austec_admin:AustecSecure2026Password!@postgres-db:5432/austec_iot_db"
+      REDIS_HOST: redis-hot-cache
+      REDIS_PORT: 6379
+      MQTT_BROKER_URL: "mqtts://emqx-broker:8883"
+      JWT_SECRET: "austec-jwt-secret-key-super-secure-2026"
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres-db
+      - redis-hot-cache
+      - emqx-broker
+    networks:
+      - austec-mesh
+
+  # 5. Austec Web CMS Admin & CSKH Hub (Next.js 16)
+  web-admin:
+    build:
+      context: ./web-admin
+      dockerfile: Dockerfile
+    container_name: austec-web-admin
+    restart: always
+    environment:
+      PORT: 3030
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: "http://iot-backend:4000/api"
+      NEXT_PUBLIC_WS_URL: "ws://iot-backend:4000/realtime"
+    ports:
+      - "3030:3030"
+    depends_on:
+      - iot-backend
+    networks:
+      - austec-mesh
+
+  # 6. Prometheus Realtime Metrics
+  prometheus:
+    image: prom/prometheus:v2.49.1
+    container_name: austec-prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - austec-mesh
+
+  # 7. Grafana 24/7 Monitoring Dashboard
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: austec-grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=austec_grafana_2026
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - austec-mesh
+
+networks:
+  austec-mesh:
+    driver: bridge
+
+volumes:
+  emqx-data:
+  emqx-log:
+  redis-data:
+  pg-data:
+  prometheus-data:
+  grafana-data:

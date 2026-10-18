@@ -1,0 +1,23 @@
+{
+  "name": "@austec/database",
+  "version": "1.0.0",
+  "description": "Austec IoT Ecosystem - Core Database Schemas, Dynamic Engine & Migration",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test:migration": "tsx tests/test1-migration-integrity.ts",
+    "test:schema": "tsx tests/test2-dynamic-schema.ts",
+    "test:benchmark": "tsx tests/test3-query-benchmark.ts",
+    "test:all": "tsx tests/test1-migration-integrity.ts && tsx tests/test2-dynamic-schema.ts && tsx tests/test3-query-benchmark.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "@types/node": "^22.7.5"
+  }
+}
