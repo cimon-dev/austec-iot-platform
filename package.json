@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "build:backend": "cd database && npm install && npm run build && cd ../backend && npm install && npm run build",
+    "build:backend": "cd database && npm install --include=dev && npm run build && cd ../backend && npm install --include=dev && npm run build",
     "start:backend": "node backend/dist/server.js"
   }
 }
