@@ -380,11 +380,11 @@ export default function CustomersManagementPage() {
       </div>
 
       {/* Main Split Content: Table on Left, Docked Details on Right (if selected) */}
-      <div className="flex-1 min-h-0 flex gap-2.5 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2.5 overflow-hidden">
         {/* Table Area */}
-        <div className="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col overflow-hidden">
+        <div className={`${viewCustomer ? "hidden lg:flex" : "flex"} flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col overflow-hidden`}>
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[680px]">
               <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
                 <tr>
                   <th className="p-2.5">{language === "vi" ? "Khách hàng" : "Customer"}</th>
@@ -485,12 +485,22 @@ export default function CustomersManagementPage() {
 
         {/* Docked Right Inspector Pane (No backdrop, No dimming) */}
         {viewCustomer && (
-          <div className="w-80 md:w-96 lg:w-[410px] shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-right-4 duration-150">
+          <div className="w-full lg:w-96 lg:shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-right-4 duration-150">
             {/* Inspector Top */}
             <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-800/50">
-              <div>
-                <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">{viewCustomer.id}</span>
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{viewCustomer.fullName}</h2>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewCustomer(null)}
+                  className="lg:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-md bg-slate-200/60 dark:bg-slate-800 flex items-center gap-1 text-xs font-semibold cursor-pointer"
+                  title="Quay lại danh sách"
+                >
+                  ← <span className="text-[11px] font-normal">Quay lại</span>
+                </button>
+                <div>
+                  <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">{viewCustomer.id}</span>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{viewCustomer.fullName}</h2>
+                </div>
               </div>
               <button 
                 onClick={() => setViewCustomer(null)}

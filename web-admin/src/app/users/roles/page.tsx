@@ -110,6 +110,7 @@ export default function RolesManagementPage() {
   const [roles, setRoles] = useState<RoleItem[]>(INITIAL_ROLES);
   const [selectedRoleId, setSelectedRoleId] = useState<number>(1);
   const [searchRole, setSearchRole] = useState("");
+  const [mobileTab, setMobileTab] = useState<"roles" | "matrix">("roles");
   
   const [isEditingName, setIsEditingName] = useState(false);
   const [editNameText, setEditNameText] = useState("");
@@ -314,10 +315,40 @@ export default function RolesManagementPage() {
         </div>
       </div>
 
+      {/* Mobile Segmented Switcher (< lg only) */}
+      <div className="flex lg:hidden items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-lg shrink-0 gap-1 text-xs font-semibold">
+        <button 
+          type="button"
+          onClick={() => setMobileTab("roles")}
+          className={`flex-1 py-1.5 px-3 rounded-md transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === "roles" 
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs" 
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <Shield className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+          <span>Danh sách vai trò ({filteredRoles.length})</span>
+        </button>
+        <button 
+          type="button"
+          onClick={() => setMobileTab("matrix")}
+          className={`flex-1 py-1.5 px-3 rounded-md transition-all text-center flex items-center justify-center gap-1.5 cursor-pointer ${
+            mobileTab === "matrix" 
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs" 
+              : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+          }`}
+        >
+          <span>Ma trận quyền:</span>
+          <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 truncate max-w-[90px]">
+            {selectedRole.name}
+          </span>
+        </button>
+      </div>
+
       {/* Master - Detail Split Layout */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 overflow-hidden">
         {/* Left Pane: Roles List (4 cols) */}
-        <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col overflow-hidden">
+        <div className={`${mobileTab === "matrix" ? "hidden lg:flex" : "flex"} lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col overflow-hidden`}>
           <div className="p-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -340,6 +371,7 @@ export default function RolesManagementPage() {
                   onClick={() => {
                     setSelectedRoleId(r.id);
                     setIsEditingName(false);
+                    setMobileTab("matrix");
                   }}
                   className={`w-full text-left p-2.5 flex items-center justify-between transition-colors cursor-pointer ${
                     isSelected 
@@ -366,12 +398,20 @@ export default function RolesManagementPage() {
         </div>
 
         {/* Right Pane: Role Details & Matrix (8 cols) */}
-        <div className="lg:col-span-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col overflow-hidden">
+        <div className={`${mobileTab === "roles" ? "hidden lg:flex" : "flex"} lg:col-span-8 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col overflow-hidden`}>
           {/* Role Header */}
           <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Tên vai trò:</span>
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("roles")}
+                  className="lg:hidden p-1 px-2 rounded-md bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium flex items-center gap-1 cursor-pointer"
+                  title="Quay lại danh sách vai trò"
+                >
+                  ← <span className="text-[11px]">Vai trò</span>
+                </button>
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Tên:</span>
                 {isEditingName ? (
                   <div className="flex items-center gap-1.5">
                     <input
@@ -476,7 +516,7 @@ export default function RolesManagementPage() {
             </div>
 
             <div className="flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-slate-800 overflow-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full text-left text-xs min-w-[520px]">
                 <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 text-[11px] sticky top-0 z-10">
                   <tr>
                     <th className="p-2 w-10 text-center">STT</th>

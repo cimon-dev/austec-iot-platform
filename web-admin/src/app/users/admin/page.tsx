@@ -448,7 +448,7 @@ export default function AdminManagementPage() {
       {/* Main Table Container */}
       <div className="flex-1 min-h-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col overflow-hidden">
         <div className="flex-1 min-h-0 overflow-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[840px]">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider text-[11px] sticky top-0 z-10">
               <tr>
                 <th className="p-2.5 w-12 text-center">ID</th>

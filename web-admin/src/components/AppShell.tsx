@@ -48,12 +48,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
 
       {/* Main Viewport */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-950">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50 dark:bg-slate-950">
         {/* Top Header */}
         <AdminHeader />
 
-        {/* Strict 100vh Viewport Content Area */}
-        <main className="flex-1 overflow-hidden p-3 md:p-3.5 flex flex-col min-h-0 bg-slate-100/70 dark:bg-slate-950">
+        {/* Viewport Content Area */}
+        <main className="flex-1 overflow-hidden p-2 sm:p-3 md:p-3.5 flex flex-col min-h-0 min-w-0 bg-slate-100/70 dark:bg-slate-950">
           {children}
         </main>
       </div>

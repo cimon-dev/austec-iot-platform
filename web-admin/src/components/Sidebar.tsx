@@ -26,17 +26,20 @@ import {
   Bell,
   Settings,
   UserCheck,
-  KeyRound
+  KeyRound,
+  X
 } from "lucide-react";
 
 import { usePermissions } from "../context/PermissionContext";
 
 function SidebarNavigation({ 
   isCollapsed, 
-  pathname 
+  pathname,
+  onNavigate
 }: { 
   isCollapsed: boolean; 
   pathname: string;
+  onNavigate?: () => void;
 }) {
   const { t, language } = useLanguage();
   const { canView } = usePermissions();
@@ -68,6 +71,7 @@ function SidebarNavigation({
         <div>
           <Link
             href="/dashboard"
+            onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group relative ${
               pathname === "/dashboard" 
                 ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs" 
@@ -106,6 +110,7 @@ function SidebarNavigation({
                       <Link
                         key={sub.id}
                         href={sub.href}
+                        onClick={onNavigate}
                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
                             ? "bg-indigo-600 text-white font-semibold shadow-xs"
@@ -123,6 +128,7 @@ function SidebarNavigation({
           ) : (
             <Link
               href="/devices?tab=list"
+              onClick={onNavigate}
               title="Quản lý thiết bị"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                 pathname.startsWith("/devices")
@@ -162,6 +168,7 @@ function SidebarNavigation({
                       <Link
                         key={sub.href}
                         href={sub.href}
+                        onClick={onNavigate}
                         className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
                             ? "bg-purple-600 text-white font-semibold shadow-xs"
@@ -179,6 +186,7 @@ function SidebarNavigation({
           ) : (
             <Link
               href="/users/admin"
+              onClick={onNavigate}
               title="Quản lý người dùng"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                 pathname.startsWith("/users") || pathname === "/customers"
@@ -197,6 +205,7 @@ function SidebarNavigation({
         <div>
           <Link
             href="/notifications"
+            onClick={onNavigate}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
               pathname === "/notifications"
                 ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
@@ -229,6 +238,7 @@ function SidebarNavigation({
             {canView("mod_cskh") && (
               <Link
                 href="/cskh"
+                onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/cskh")
                     ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
@@ -250,6 +260,7 @@ function SidebarNavigation({
             {canView("mod_audit") && (
               <Link
                 href="/blackbox"
+                onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/blackbox")
                     ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
@@ -276,6 +287,7 @@ function SidebarNavigation({
         <div className="pt-0.5">
           <Link
             href="/settings"
+            onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               pathname === "/settings"
                 ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
@@ -292,110 +304,149 @@ function SidebarNavigation({
 }
 
 export function Sidebar() {
-  const { isCollapsed, toggleSidebar } = useSidebar();
+  const { isCollapsed, toggleSidebar, isMobileOpen, closeMobileSidebar } = useSidebar();
   const { t, language } = useLanguage();
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
-  return (
-    <aside
-      className={`relative z-30 flex flex-col justify-between transition-[width] duration-300 ease-in-out border-r
-        bg-white/95 dark:bg-slate-950/95 backdrop-blur-md
-        border-slate-200/80 dark:border-slate-800/70 shadow-sm
-        ${isCollapsed ? "w-20" : "w-64"}`}
-    >
-      {/* Top Header & Brand */}
-      <div>
-        <div className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-slate-200/80 dark:border-slate-800/70">
-          <Link href="/" className="flex items-center gap-2.5 overflow-hidden group">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800 text-white border border-slate-700/60 dark:border-slate-700/80 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
-              <span className="bg-gradient-to-tr from-cyan-400 to-indigo-400 bg-clip-text text-transparent">A</span>
-            </div>
-            {!isCollapsed && (
-              <div className="animate-in fade-in duration-200">
-                <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                  AUSTEC
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/20">
-                    CLOUD
-                  </span>
-                </span>
-                <span className="text-[10px] block text-slate-500 dark:text-slate-400 font-mono tracking-wider">
-                  IOT ENTERPRISE
-                </span>
-              </div>
-            )}
-          </Link>
+  // Auto-close mobile sidebar when navigating to a new route
+  React.useEffect(() => {
+    closeMobileSidebar();
+  }, [pathname]);
 
-          {/* Toggle Sidebar Collapse Button */}
-          <button
-            onClick={toggleSidebar}
-            title={isCollapsed ? t("expandSidebar", "Mở rộng sidebar") : t("collapseSidebar", "Thu gọn sidebar")}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700/60 cursor-pointer"
-          >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
+  return (
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+          onClick={closeMobileSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Responsive Sidebar / Mobile Drawer */}
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-50 flex flex-col justify-between transition-all duration-300 ease-in-out border-r
+          bg-white/95 dark:bg-slate-950/95 backdrop-blur-md
+          border-slate-200/80 dark:border-slate-800/70 shadow-2xl md:shadow-sm
+          ${isMobileOpen ? "translate-x-0 w-72" : "-translate-x-full md:translate-x-0"}
+          ${isCollapsed ? "md:w-20" : "md:w-64"}`}
+      >
+        {/* Top Header & Brand */}
+        <div>
+          <div className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-slate-200/80 dark:border-slate-800/70">
+            <Link
+              href="/"
+              onClick={closeMobileSidebar}
+              className="flex items-center gap-2.5 overflow-hidden group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800 text-white border border-slate-700/60 dark:border-slate-700/80 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
+                <span className="bg-gradient-to-tr from-cyan-400 to-indigo-400 bg-clip-text text-transparent">A</span>
+              </div>
+              {(!isCollapsed || isMobileOpen) && (
+                <div className="animate-in fade-in duration-200">
+                  <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                    AUSTEC
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/20">
+                      CLOUD
+                    </span>
+                  </span>
+                  <span className="text-[10px] block text-slate-500 dark:text-slate-400 font-mono tracking-wider">
+                    IOT ENTERPRISE
+                  </span>
+                </div>
+              )}
+            </Link>
+
+            <div className="flex items-center gap-1">
+              {/* Close Button on Mobile Drawer */}
+              <button
+                type="button"
+                onClick={closeMobileSidebar}
+                title="Đóng thanh điều hướng"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors md:hidden cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Toggle Sidebar Collapse Button (Desktop only) */}
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                title={isCollapsed ? t("expandSidebar", "Mở rộng sidebar") : t("collapseSidebar", "Thu gọn sidebar")}
+                className="hidden md:flex p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700/60 cursor-pointer"
+              >
+                {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Navigation Items wrapped in Suspense for searchParams safe usage */}
+          <Suspense fallback={<div className="p-4 text-xs text-slate-400">Loading nav...</div>}>
+            <SidebarNavigation
+              isCollapsed={isMobileOpen ? false : isCollapsed}
+              pathname={pathname}
+              onNavigate={closeMobileSidebar}
+            />
+          </Suspense>
         </div>
 
-        {/* Navigation Items wrapped in Suspense for searchParams safe usage */}
-        <Suspense fallback={<div className="p-4 text-xs text-slate-400">Loading nav...</div>}>
-          <SidebarNavigation isCollapsed={isCollapsed} pathname={pathname} />
-        </Suspense>
-      </div>
-
-      {/* Bottom Infrastructure & User Identity */}
-      <div className="p-2.5 border-t border-slate-200/80 dark:border-slate-800/70 bg-slate-50/80 dark:bg-slate-900/50 space-y-1.5">
-        {!isCollapsed ? (
-          <>
-            <div className="flex items-center justify-between px-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>MQTT: 8883 TLS</span>
-              </span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-bold">&lt; 0.3ms</span>
-            </div>
-
-            <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
-                  {user?.fullName?.charAt(0) || "A"}
-                </div>
-                <div className="truncate">
-                  <span className="text-xs font-semibold block text-slate-900 dark:text-slate-100 truncate">
-                    {user?.fullName || "AUSTEC Admin"}
-                  </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-mono uppercase">
-                    {user?.role || "Administrator"}
-                  </span>
-                </div>
+        {/* Bottom Infrastructure & User Identity */}
+        <div className="p-2.5 border-t border-slate-200/80 dark:border-slate-800/70 bg-slate-50/80 dark:bg-slate-900/50 space-y-1.5">
+          {!isCollapsed || isMobileOpen ? (
+            <>
+              <div className="flex items-center justify-between px-1 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>MQTT: 8883 TLS</span>
+                </span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">&lt; 0.3ms</span>
               </div>
 
+              <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                    {user?.fullName?.charAt(0) || "A"}
+                  </div>
+                  <div className="truncate">
+                    <span className="text-xs font-semibold block text-slate-900 dark:text-slate-100 truncate">
+                      {user?.fullName || "AUSTEC Admin"}
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block font-mono uppercase">
+                      {user?.role || "Administrator"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={logout}
+                  title="Đăng xuất"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2">
+              <div 
+                title={user?.fullName || "Admin"}
+                className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs"
+              >
+                {user?.fullName?.charAt(0) || "A"}
+              </div>
               <button
                 onClick={logout}
                 title="Đăng xuất"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors shrink-0 cursor-pointer"
+                className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
-          </>
-        ) : (
-          <div className="flex flex-col items-center gap-2">
-            <div 
-              title={user?.fullName || "Admin"}
-              className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs"
-            >
-              {user?.fullName?.charAt(0) || "A"}
-            </div>
-            <button
-              onClick={logout}
-              title="Đăng xuất"
-              className="p-2 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-    </aside>
+          )}
+        </div>
+      </aside>
+    </>
   );
 }

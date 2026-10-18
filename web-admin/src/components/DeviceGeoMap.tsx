@@ -308,6 +308,7 @@ export function DeviceGeoMap() {
   const [selectedDevice, setSelectedDevice] = useState<DeviceGeoLocation | null>(SAMPLE_GEO_DEVICES[0]);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileMapTab, setMobileMapTab] = useState<"map" | "inspector">("map");
 
   // Re-fit Leaflet map bounds when toggling fullscreen dialog mode
   useEffect(() => {
@@ -586,7 +587,7 @@ export function DeviceGeoMap() {
             </select>
 
             {/* Quick Jump Province Buttons */}
-            <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800/80 p-0.5 rounded-md">
+            <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800/80 p-0.5 rounded-md overflow-x-auto max-w-full">
               {[
                 { id: "ALL", label: "Toàn quốc" },
                 { id: "Hà Nội", label: "Hà Nội" },
@@ -599,7 +600,7 @@ export function DeviceGeoMap() {
                   key={p.id}
                   type="button"
                   onClick={() => handleFlyToProvince(p.id)}
-                  className={`text-[10px] font-medium px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  className={`text-[10px] font-medium px-2 py-0.5 rounded transition-colors cursor-pointer shrink-0 ${
                     selectedProvince === p.id
                       ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -614,7 +615,7 @@ export function DeviceGeoMap() {
             <button
               type="button"
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer ml-0.5"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer ml-0.5 shrink-0"
               title={isFullscreen ? "Thu nhỏ (Esc)" : "Phóng to bản đồ (Fullscreen Dialog)"}
             >
               {isFullscreen ? (
@@ -632,10 +633,41 @@ export function DeviceGeoMap() {
           </div>
         </div>
 
+        {/* Mobile View Switcher Tab Bar (< lg) */}
+        <div className="flex lg:hidden items-center p-1 bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMapTab("map");
+              setTimeout(() => mapInstanceRef.current?.invalidateSize(), 150);
+            }}
+            className={`flex-1 py-1 px-3 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+              mobileMapTab === "map"
+                ? "bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-xs"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>1. Bản Đồ Trực Quan</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileMapTab("inspector")}
+            className={`flex-1 py-1 px-3 rounded-md text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+              mobileMapTab === "inspector"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Radio className="w-3.5 h-3.5" />
+            <span>2. Điểm Lắp Đặt ({filteredDevices.length})</span>
+          </button>
+        </div>
+
         {/* Main Map Body + Side Inspector Split Pane */}
         <div className={`grid grid-cols-1 lg:grid-cols-12 relative overflow-hidden ${isFullscreen ? "flex-1 min-h-0" : "h-[420px]"}`}>
         {/* Leaflet Map Canvas (8.5 cols) */}
-        <div className="lg:col-span-8 relative h-full w-full bg-slate-100 dark:bg-slate-950">
+        <div className={`${mobileMapTab === "map" ? "block" : "hidden lg:block"} lg:col-span-8 relative h-full w-full bg-slate-100 dark:bg-slate-950`}>
           <div ref={mapContainerRef} className="h-full w-full z-0" />
 
           {/* Floating Map Style Switcher (Top Left) */}
@@ -682,21 +714,32 @@ export function DeviceGeoMap() {
           <div className="absolute bottom-2 left-2 z-10 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-md p-1.5 shadow-sm text-[10px] space-y-1 font-mono">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span className="text-slate-700 dark:text-slate-300">Trực tuyến (Online)</span>
+              <span className="text-slate-700 dark:text-slate-300">Trực tuyến</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-              <span className="text-slate-700 dark:text-slate-300">Ngoại tuyến (Offline)</span>
+              <span className="text-slate-700 dark:text-slate-300">Ngoại tuyến</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
-              <span className="text-slate-700 dark:text-slate-300">Tồn kho (In Stock)</span>
+              <span className="text-slate-700 dark:text-slate-300">Tồn kho</span>
             </div>
+          </div>
+
+          {/* Mobile floating button to view selected point */}
+          <div className="lg:hidden absolute bottom-2 right-2 z-10">
+            <button
+              type="button"
+              onClick={() => setMobileMapTab("inspector")}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-slate-900 dark:bg-slate-800 text-white text-[10px] font-bold shadow-md border border-slate-700 cursor-pointer"
+            >
+              <span>Xem chi tiết điểm ➔</span>
+            </button>
           </div>
         </div>
 
         {/* Selected Device / Location Detail Inspector (3.5 cols) */}
-        <div className="lg:col-span-4 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col justify-between overflow-hidden">
+        <div className={`${mobileMapTab === "inspector" ? "flex" : "hidden lg:flex"} lg:col-span-4 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-col justify-between overflow-hidden h-full`}>
           {/* Header of Inspector */}
           <div className="p-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
             <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider">

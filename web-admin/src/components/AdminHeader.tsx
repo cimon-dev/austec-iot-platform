@@ -28,7 +28,7 @@ export function AdminHeader() {
   const { t, language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user, logout, quickSwitchRole } = useAuth();
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, toggleMobileSidebar } = useSidebar();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
@@ -89,24 +89,26 @@ export function AdminHeader() {
   }, []);
 
   return (
-    <header className="h-12 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 md:px-5 flex items-center justify-between z-20 shrink-0 transition-colors">
+    <header className="h-12 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-3 sm:px-4 md:px-5 flex items-center justify-between z-20 shrink-0 transition-colors gap-2">
       {/* Left: Mobile Sidebar trigger & Search Input */}
-      <div className="flex items-center gap-3 flex-1 max-w-lg">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0 max-w-lg">
         <button
-          onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors md:hidden"
+          type="button"
+          onClick={toggleMobileSidebar}
+          aria-label="Mở danh mục điều hướng"
+          className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors md:hidden shrink-0 cursor-pointer"
         >
-          <Menu className="w-4 h-4" />
+          <Menu className="w-5 h-5" />
         </button>
 
-        <form onSubmit={handleSearchSubmit} className="relative w-full">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 dark:text-slate-500" />
+        <form onSubmit={handleSearchSubmit} className="relative w-full min-w-0">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 sm:left-3 top-2.5 text-slate-400 dark:text-slate-500" />
           <input
             type="text"
-            placeholder={t("searchPlaceholder", "Tìm thiết bị, IMEI, khách hàng (⌘K)...")}
+            placeholder={language === "vi" ? "Tìm thiết bị, IMEI, khách hàng..." : "Search devices, IMEI, customer..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800/90 rounded-lg pl-9 pr-10 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all shadow-inner"
+            className="w-full bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800/90 rounded-lg pl-8 sm:pl-9 pr-3 sm:pr-10 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-all shadow-inner truncate"
           />
           <kbd className="hidden sm:inline-block absolute right-2.5 top-2 px-1.5 py-0.5 text-[9px] font-mono text-slate-400 bg-slate-200 dark:bg-slate-800 rounded border border-slate-300 dark:border-slate-700">
             ⌘K
@@ -175,7 +177,7 @@ export function AdminHeader() {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-1.5 w-80 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-1.5 w-80 max-w-[calc(100vw-24px)] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between px-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <span className="font-bold text-slate-900 dark:text-white">
                   {t("notifications", "Thông báo thời gian thực")}
@@ -233,7 +235,7 @@ export function AdminHeader() {
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 mt-1.5 w-68 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
+            <div className="absolute right-0 mt-1.5 w-68 max-w-[calc(100vw-24px)] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
               <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg mb-2">
                 <div className="font-bold text-slate-900 dark:text-white">{user?.fullName}</div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</div>

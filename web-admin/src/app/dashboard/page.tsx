@@ -69,29 +69,29 @@ export default function DashboardPage() {
     <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
-        <div className="flex items-center gap-2">
-          <h1 className="text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
             {language === "vi" ? "Bảng Điều Khiển Giám Sát Thiết Bị Tập Trung" : "Real-Time Telemetry Dashboard"}
           </h1>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             MQTT Live Sync &lt; 0.5s
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button 
             type="button"
             onClick={handleRefresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-cyan-500" : "text-slate-400"}`} />
-            <span>{isRefreshing ? (language === "vi" ? "Đang đồng bộ..." : "Syncing...") : (language === "vi" ? "Làm mới dữ liệu" : "Refresh Data")}</span>
+            <span>{isRefreshing ? (language === "vi" ? "Đang đồng bộ..." : "Syncing...") : (language === "vi" ? "Làm mới" : "Refresh")}</span>
           </button>
 
           <Link
             href="/devices?tab=import"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition-all shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition-all shadow-sm"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>{language === "vi" ? "Nhập kho Excel" : "Import Batch"}</span>
@@ -374,37 +374,37 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-1.5 text-xs">
-              <div className="p-2 rounded-md border border-rose-500/20 bg-rose-50/40 dark:bg-rose-950/20 flex items-center justify-between">
+              <div className="p-2 rounded-md border border-rose-500/20 bg-rose-50/40 dark:bg-rose-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                     <span className="font-mono text-rose-600 dark:text-rose-400">AT-DOOR-33019F</span>
                     <span>• Cửa Cuốn Gara Đức Mạnh (Hà Nội)</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
                     Dòng điện động cơ tăng vọt 4.8A (Ngưỡng an toàn &lt; 4.0A). Nghi vấn kẹt ray trượt.
                   </span>
                 </div>
                 <Link
                   href="/cskh"
-                  className="px-2 py-1 rounded text-[10px] font-bold bg-rose-600 text-white shrink-0"
+                  className="px-2.5 py-1 rounded text-[10px] font-bold bg-rose-600 text-white shrink-0 self-end sm:self-auto"
                 >
                   Xử lý CSKH ➔
                 </Link>
               </div>
 
-              <div className="p-2 rounded-md border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20 flex items-center justify-between">
+              <div className="p-2 rounded-md border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                 <div>
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                     <span className="font-mono text-amber-600 dark:text-amber-400">UPS-220V-99411E</span>
                     <span>• Bộ Lưu Điện Chợ Lớn (TP.HCM)</span>
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
                     Ắc quy báo dung lượng pin dưới 15%. Cần kiểm tra chu kỳ sạc xả tự động.
                   </span>
                 </div>
                 <Link
                   href="/devices?tab=list&search=UPS-220V-99411E"
-                  className="px-2 py-1 rounded text-[10px] font-bold bg-amber-600 text-white shrink-0"
+                  className="px-2.5 py-1 rounded text-[10px] font-bold bg-amber-600 text-white shrink-0 self-end sm:self-auto"
                 >
                   Soi viễn thám ➔
                 </Link>

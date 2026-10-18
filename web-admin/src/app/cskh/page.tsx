@@ -106,6 +106,7 @@ export default function CSKHHubPage() {
   const [replyText, setReplyText] = useState("");
   const [isRebooting, setIsRebooting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<"tickets" | "chat" | "telemetry">("chat");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -233,10 +234,50 @@ export default function CSKHHubPage() {
         </div>
       </div>
 
+      {/* Mobile Workspace Segmented Tabs (< lg) */}
+      <div className="flex lg:hidden items-center p-1 bg-slate-200/60 dark:bg-slate-800/80 rounded-lg shrink-0 gap-1">
+        <button
+          type="button"
+          onClick={() => setMobileTab("tickets")}
+          className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+            mobileTab === "tickets"
+              ? "bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-xs font-bold"
+              : "text-slate-600 dark:text-slate-400"
+          }`}
+        >
+          <Headphones className="w-3.5 h-3.5" />
+          <span>Tickets ({filteredTickets.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("chat")}
+          className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+            mobileTab === "chat"
+              ? "bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-xs font-bold"
+              : "text-slate-600 dark:text-slate-400"
+          }`}
+        >
+          <User className="w-3.5 h-3.5" />
+          <span className="truncate">Chat: {currentTicket.customerName.split(" ").slice(-1)[0]}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("telemetry")}
+          className={`flex-1 py-1.5 px-2 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+            mobileTab === "telemetry"
+              ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs font-bold"
+              : "text-slate-600 dark:text-slate-400"
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>Viễn Thám</span>
+        </button>
+      </div>
+
       {/* 3-COLUMN WORKSPACE: Tickets List | Live Chat | Remote Telemetry Inspector */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5 overflow-hidden">
         {/* COL 1: TICKET QUEUE (3.5 COLS) */}
-        <div className="lg:col-span-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === "tickets" ? "flex" : "hidden lg:flex"} lg:col-span-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col min-h-0 overflow-hidden`}>
           <div className="p-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -254,7 +295,10 @@ export default function CSKHHubPage() {
             {filteredTickets.map((t) => (
               <div
                 key={t.id}
-                onClick={() => setSelectedTicketId(t.id)}
+                onClick={() => {
+                  setSelectedTicketId(t.id);
+                  setMobileTab("chat");
+                }}
                 className={`p-2.5 rounded-lg cursor-pointer transition-all ${
                   selectedTicketId === t.id
                     ? "bg-slate-100 dark:bg-slate-800 border-l-4 border-rose-500 shadow-sm"
@@ -285,36 +329,55 @@ export default function CSKHHubPage() {
         </div>
 
         {/* COL 2: LIVE CHAT WINDOW (5.5 COLS) */}
-        <div className="lg:col-span-5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col min-h-0 justify-between overflow-hidden">
+        <div className={`${mobileTab === "chat" ? "flex" : "hidden lg:flex"} lg:col-span-5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col min-h-0 justify-between overflow-hidden`}>
           {/* Chat Header */}
-          <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-200 dark:border-slate-700">
+          <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between shrink-0 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setMobileTab("tickets")}
+                className="lg:hidden p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white bg-slate-200/60 dark:bg-slate-800 text-xs font-semibold shrink-0 cursor-pointer"
+                title="Quay lại danh sách ticket"
+              >
+                ← Tickets
+              </button>
+              <div className="w-7 h-7 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-xs border border-slate-200 dark:border-slate-700 shrink-0">
                 <User className="w-3.5 h-3.5" />
               </div>
-              <div>
-                <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>{currentTicket.customerName}</span>
-                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono">● Online</span>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
+                  <span className="truncate">{currentTicket.customerName}</span>
+                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-mono shrink-0">● Online</span>
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{currentTicket.customerPhone}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">{currentTicket.customerPhone}</div>
               </div>
             </div>
 
-            {canUpdate("mod_cskh") && (
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
-                onClick={() => {
-                  setTickets((prev) =>
-                    prev.map((t) => (t.id === selectedTicketId ? { ...t, status: "RESOLVED" } : t))
-                  );
-                  showToast(language === "vi" ? "Đã giải quyết xong ticket!" : "Ticket marked as resolved!");
-                }}
-                className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[11px] px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                type="button"
+                onClick={() => setMobileTab("telemetry")}
+                className="lg:hidden bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 text-[11px] px-2 py-1 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
               >
-                <CheckCircle2 className="w-3 h-3" />
-                <span>{language === "vi" ? "Đã xử lý" : "Mark Resolved"}</span>
+                <Activity className="w-3 h-3" />
+                <span>Viễn thám</span>
               </button>
-            )}
+
+              {canUpdate("mod_cskh") && (
+                <button
+                  onClick={() => {
+                    setTickets((prev) =>
+                      prev.map((t) => (t.id === selectedTicketId ? { ...t, status: "RESOLVED" } : t))
+                    );
+                    showToast(language === "vi" ? "Đã giải quyết xong ticket!" : "Ticket marked as resolved!");
+                  }}
+                  className="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[11px] px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span className="hidden sm:inline">{language === "vi" ? "Đã xử lý" : "Mark Resolved"}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Messages Stream */}
@@ -366,13 +429,22 @@ export default function CSKHHubPage() {
         </div>
 
         {/* COL 3: REMOTE TELEMETRY INSPECTOR (3.5 COLS) */}
-        <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-3 flex flex-col min-h-0 justify-between overflow-hidden">
+        <div className={`${mobileTab === "telemetry" ? "flex" : "hidden lg:flex"} lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm p-3 flex-col min-h-0 justify-between overflow-hidden`}>
           <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-0.5">
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
-              <Activity className="w-4 h-4 text-emerald-500" />
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                {language === "vi" ? "Soi Viễn Thám Từ Xa" : "Remote Telemetry Inspector"}
-              </h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-500" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  {language === "vi" ? "Soi Viễn Thám Từ Xa" : "Remote Telemetry Inspector"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileTab("chat")}
+                className="lg:hidden text-xs text-cyan-600 dark:text-cyan-400 font-semibold p-1 hover:underline cursor-pointer"
+              >
+                ← Về Chat
+              </button>
             </div>
 
             {/* Diagnostic Alert Box */}

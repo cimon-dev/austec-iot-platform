@@ -744,11 +744,11 @@ function DevicesManagementContent() {
           </h1>
         </div>
 
-        <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5 rounded-lg gap-1 overflow-x-auto shrink-0">
+        <div className="flex bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-0.5 rounded-lg gap-1 overflow-x-auto max-w-full shrink-0">
           <button
             type="button"
             onClick={() => switchTab("groups")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "groups" ? "bg-indigo-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -758,7 +758,7 @@ function DevicesManagementContent() {
           <button
             type="button"
             onClick={() => switchTab("types")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "types" ? "bg-purple-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -768,7 +768,7 @@ function DevicesManagementContent() {
           <button
             type="button"
             onClick={() => switchTab("properties")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "properties" ? "bg-emerald-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -778,7 +778,7 @@ function DevicesManagementContent() {
           <button
             type="button"
             onClick={() => switchTab("models")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "models" ? "bg-amber-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -788,7 +788,7 @@ function DevicesManagementContent() {
           <button
             type="button"
             onClick={() => switchTab("import")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "import" ? "bg-green-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -798,7 +798,7 @@ function DevicesManagementContent() {
           <button
             type="button"
             onClick={() => switchTab("list")}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap shrink-0 ${
               activeTab === "list" ? "bg-cyan-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
@@ -1018,8 +1018,8 @@ function DevicesManagementContent() {
           )}
 
           {/* Danh sách thuộc tính */}
-          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
-            <table className="w-full text-left text-xs">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-x-auto">
+            <table className="w-full text-left text-xs min-w-[650px]">
               <thead className="bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 text-[11px]">
                 <tr>
                   <th className="p-2.5">Mã Thuộc Tính (Key)</th>
@@ -1279,12 +1279,12 @@ function DevicesManagementContent() {
 
                 {/* Real parsed rows preview if user uploaded a file */}
                 {importRows.length > 0 && (
-                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/60 overflow-hidden bg-white dark:bg-slate-900 text-xs">
+                  <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/60 overflow-x-auto bg-white dark:bg-slate-900 text-xs">
                     <div className="p-2 bg-emerald-100/50 dark:bg-emerald-950/60 font-semibold text-emerald-900 dark:text-emerald-300 text-[11px] flex justify-between">
                       <span>Dữ liệu thực tế phân tích từ file ({importRows.length} dòng):</span>
                       <span>Xem trước 5 bản ghi đầu</span>
                     </div>
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs min-w-[550px]">
                       <thead className="bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase text-slate-500 font-semibold">
                         <tr>
                           <th className="p-2">Hardware ID</th>
@@ -1478,11 +1478,11 @@ function DevicesManagementContent() {
           </div>
 
           {/* Master-Detail Split Pane */}
-          <div className="flex-1 min-h-0 flex gap-2.5 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2.5 overflow-hidden">
             {/* Master Table */}
-            <div className="flex-1 min-w-0 flex flex-col h-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden">
+            <div className={`flex-1 min-w-0 flex-col h-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden ${selectedDevice ? "hidden lg:flex" : "flex"}`}>
               <div className="flex-1 overflow-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs min-w-[760px]">
                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 uppercase text-[11px] tracking-wider">
                     <tr>
                       <th className="p-2.5">Hardware ID</th>
@@ -1575,21 +1575,30 @@ function DevicesManagementContent() {
 
             {/* Inline Inspector Detail Panel (NO SCREEN-DIMMING BACKDROP) */}
             {selectedDevice && (
-              <div className="w-80 md:w-96 lg:w-[420px] shrink-0 h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm flex flex-col justify-between overflow-hidden animate-in slide-in-from-right-3 duration-150">
+              <div className="w-full lg:w-96 lg:shrink-0 h-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-sm flex flex-col justify-between overflow-hidden animate-in slide-in-from-right-3 duration-150">
                 {/* Header Inspector */}
                 <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/40">
-                  <div>
-                    <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono tracking-wider uppercase font-bold flex items-center gap-1.5">
-                      {selectedDevice.type === "CAMERA" && <Video className="w-3 h-3" />}
-                      {selectedDevice.type === "SENSOR_ENV" && <Thermometer className="w-3 h-3" />}
-                      <span>Viễn Thám: {selectedDevice.type}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDevice(null)}
+                      className="lg:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold shrink-0 cursor-pointer"
+                    >
+                      ← Danh sách
+                    </button>
+                    <div className="min-w-0">
+                      <div className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono tracking-wider uppercase font-bold flex items-center gap-1.5 truncate">
+                        {selectedDevice.type === "CAMERA" && <Video className="w-3 h-3" />}
+                        {selectedDevice.type === "SENSOR_ENV" && <Thermometer className="w-3 h-3" />}
+                        <span>Viễn Thám: {selectedDevice.type}</span>
+                      </div>
+                      <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{selectedDevice.name}</h2>
                     </div>
-                    <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate max-w-[270px]">{selectedDevice.name}</h2>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedDevice(null)}
-                    className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0 ml-2"
                     title="Đóng chi tiết"
                   >
                     <X className="w-4 h-4" />
