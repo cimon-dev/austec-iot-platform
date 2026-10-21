@@ -27,6 +27,7 @@ import {
   Settings,
   UserCheck,
   KeyRound,
+  ShoppingBag,
   X
 } from "lucide-react";
 
@@ -277,6 +278,28 @@ function SidebarNavigation({
                 {!isCollapsed && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono">
                     SHA-256
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {canView("mod_dev") && (
+              <Link
+                href="/store"
+                onClick={onNavigate}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  pathname.startsWith("/store")
+                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/store") ? "text-cyan-400" : "text-slate-500"}`} />
+                  {!isCollapsed && <span className="truncate">{language === "vi" ? "Gian Hàng & Thương Phẩm" : "Store & Catalog"}</span>}
+                </div>
+                {!isCollapsed && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 font-mono">
+                    SYNC
                   </span>
                 )}
               </Link>
