@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { 
   Users, 
   Search, 
@@ -17,7 +18,21 @@ import {
   ChevronRight,
   ShieldAlert,
   Phone,
-  Mail
+  Mail,
+  Sliders,
+  CheckCircle2,
+  AlertCircle,
+  KeyRound,
+  Plus,
+  Trash2,
+  Clock,
+  Check,
+  UserPlus,
+  Shield,
+  Layers,
+  DoorClosed,
+  Video,
+  Battery
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
@@ -44,6 +59,41 @@ interface CustomerAccount {
   registeredAt: string;
   isActive: boolean;
   devices: CustomerDevice[];
+}
+
+interface MemberPermissionItem {
+  id: string;
+  userId: string;
+  memberName: string;
+  phoneNumber: string;
+  role: "MEMBER" | "GUEST" | "TECH";
+  canControl: boolean;
+  canViewHistory: boolean;
+  canChildLock: boolean;
+  canConfig: boolean;
+  scheduleLimitActive: boolean;
+  accessStartTime: string;
+  accessEndTime: string;
+  accessDays: boolean[];
+}
+
+interface MatrixDeviceItem {
+  hardwareId: string;
+  deviceName: string;
+  modelName: string;
+  deviceType: string;
+  isOnline: boolean;
+  subscriptionType: "LIMITED" | "PERPETUAL";
+  members: MemberPermissionItem[];
+}
+
+interface MatrixOwnerItem {
+  ownerId: string;
+  ownerName: string;
+  phoneNumber: string;
+  email: string;
+  address: string;
+  devices: MatrixDeviceItem[];
 }
 
 const MOCK_CUSTOMERS: CustomerAccount[] = [
@@ -100,8 +150,8 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
   },
   {
     id: "USR-008712",
-    fullName: "Phạm Đức Mạnh",
-    email: "pham.ducmanh@gmail.com",
+    fullName: "Nguyễn Mạnh Đức",
+    email: "duc.nguyen@austec.vn",
     phoneNumber: "0944102588",
     address: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng",
     province: "Hà Nội",
@@ -109,34 +159,52 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
     isActive: true,
     devices: [
       {
-        hardwareId: "AT-DOOR-33019F",
-        modelName: "Austec Titadoor A900 Super",
+        hardwareId: "AT-DOOR-88239A01",
+        modelName: "Cửa cuốn Gara Đức Mạnh",
         deviceType: "Cửa cuốn",
         pairedAt: "2026-01-05 08:30",
-        warrantyUntil: "2028-01-05",
-        isOnline: false,
+        warrantyUntil: "2027-12-31",
+        isOnline: true,
+        roleInHome: "OWNER"
+      },
+      {
+        hardwareId: "AT-CAM-00109A01",
+        modelName: "Camera Cổng Chính Biệt Thự",
+        deviceType: "Camera AI",
+        pairedAt: "2026-01-05 09:15",
+        warrantyUntil: "2027-12-31",
+        isOnline: true,
         roleInHome: "OWNER"
       }
     ]
   },
   {
     id: "USR-009941",
-    fullName: "Trần Thị Bích Ngọc",
-    email: "bichngoc.tran@gmail.com",
-    phoneNumber: "0933556677",
-    address: "Đường Nguyễn Hữu Thọ, Q. Cẩm Lệ",
-    province: "Đà Nẵng",
+    fullName: "Dan Phung",
+    email: "dan.phung@austec.vn",
+    phoneNumber: "0906806066",
+    address: "Biệt thự Chateau, Phú Mỹ Hưng, Quận 7",
+    province: "TP. Hồ Chí Minh",
     registeredAt: "2026-02-14",
-    isActive: false,
+    isActive: true,
     devices: [
       {
-        hardwareId: "MS-LOCK-33219E",
-        modelName: "Khóa Masaru Titan X1",
+        hardwareId: "AT-LOCK-77124B02",
+        modelName: "Khóa chính Biệt thự Dan Phung",
         deviceType: "Khóa thông minh",
         pairedAt: "2026-02-14 16:45",
-        warrantyUntil: "2028-02-14",
+        warrantyUntil: "2028-05-15",
         isOnline: true,
-        roleInHome: "MEMBER"
+        roleInHome: "OWNER"
+      },
+      {
+        hardwareId: "AT-CAM-00109A02",
+        modelName: "Camera Sân Vườn Sau",
+        deviceType: "Camera AI",
+        pairedAt: "2026-02-14 17:00",
+        warrantyUntil: "2028-05-15",
+        isOnline: true,
+        roleInHome: "OWNER"
       }
     ]
   },
@@ -151,11 +219,11 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
     isActive: true,
     devices: [
       {
-        hardwareId: "AT-BIKE-55410D",
-        modelName: "GSHT Austec 4G",
+        hardwareId: "AT-BIKE-55410D10",
+        modelName: "GSHT Xe Giao Hàng 01",
         deviceType: "GSHT",
         pairedAt: "2026-02-28 09:10",
-        warrantyUntil: "2027-02-28",
+        warrantyUntil: "2027-06-15",
         isOnline: true,
         roleInHome: "OWNER"
       }
@@ -166,17 +234,17 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
     fullName: "Vũ Đình Long",
     email: "long.vd@gmail.com",
     phoneNumber: "0977641983",
-    address: "Khu đô thị Starlake, Tây Hồ",
+    address: "Biệt thự BT4, KĐT Mỹ Đình 2, Nam Từ Liêm",
     province: "Hà Nội",
     registeredAt: "2026-03-01",
     isActive: true,
     devices: [
       {
         hardwareId: "AT-DOOR-88239A05",
-        modelName: "Austec Titadoor A900 Super",
+        modelName: "Cửa cuốn Đình Long",
         deviceType: "Cửa cuốn",
         pairedAt: "2026-03-01 11:20",
-        warrantyUntil: "2028-03-01",
+        warrantyUntil: "2027-11-15",
         isOnline: true,
         roleInHome: "OWNER"
       }
@@ -187,17 +255,17 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
     fullName: "Nguyễn Công Bằng",
     email: "bang.nguyen@yahoo.com",
     phoneNumber: "0933753799",
-    address: "Khu dân cư Him Lam, Quận 7",
+    address: "Số 120, Trần Hưng Đạo, Q. 1",
     province: "TP. Hồ Chí Minh",
     registeredAt: "2026-03-15",
-    isActive: true,
+    isActive: false,
     devices: [
       {
         hardwareId: "AT-DOOR-88239A04",
-        modelName: "Austec Titadoor A900 Super",
+        modelName: "Cửa cuốn Công Bằng",
         deviceType: "Cửa cuốn",
         pairedAt: "2026-03-15 15:30",
-        warrantyUntil: "2028-03-15",
+        warrantyUntil: "2026-10-21",
         isOnline: false,
         roleInHome: "OWNER"
       }
@@ -205,62 +273,29 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
   },
   {
     id: "USR-013441",
-    fullName: "Lò Thị Mai",
-    email: "mai.lothi@gmail.com",
-    phoneNumber: "0362227229",
-    address: "Bản Mòn, Phường Chiềng Cơi",
-    province: "Khác",
-    registeredAt: "2026-03-22",
+    fullName: "Hoàng Bích Thủy",
+    email: "thuy.hb@gmail.com",
+    phoneNumber: "0934556789",
+    address: "Tòa Park 11, Vinhomes Times City, Hai Bà Trưng",
+    province: "Hà Nội",
+    registeredAt: "2026-03-25",
     isActive: true,
     devices: [
       {
-        hardwareId: "AT-DOOR-88239A06",
-        modelName: "Cửa Cuốn Tấm Liền Công Nghệ Úc",
-        deviceType: "Cửa cuốn",
-        pairedAt: "2026-03-22 17:00",
-        warrantyUntil: "2027-09-22",
-        isOnline: true,
-        roleInHome: "OWNER"
-      }
-    ]
-  },
-  {
-    id: "USR-014520",
-    fullName: "Đặng Thùy Dung",
-    email: "thuydung.dang@gmail.com",
-    phoneNumber: "0908123899",
-    address: "Đường 30/4, P. Hưng Lợi, Q. Ninh Kiều",
-    province: "Cần Thơ",
-    registeredAt: "2026-04-02",
-    isActive: true,
-    devices: [
-      {
-        hardwareId: "MS-LOCK-77124B",
-        modelName: "Khóa Masaru Titan X1",
+        hardwareId: "AT-LOCK-77124B12",
+        modelName: "Khóa Căn Hộ Penthouse 02",
         deviceType: "Khóa thông minh",
-        pairedAt: "2026-04-02 08:45",
-        warrantyUntil: "2028-04-02",
+        pairedAt: "2026-03-25 10:00",
+        warrantyUntil: "2027-03-25",
         isOnline: true,
         roleInHome: "OWNER"
-      }
-    ]
-  },
-  {
-    id: "USR-015891",
-    fullName: "Bùi Quang Huy",
-    email: "huy.quangbui@gmail.com",
-    phoneNumber: "0982487278",
-    address: "Đường Bạch Đằng, Q. Hải Châu",
-    province: "Đà Nẵng",
-    registeredAt: "2026-04-10",
-    isActive: true,
-    devices: [
+      },
       {
-        hardwareId: "UPS-220V-99011C",
-        modelName: "Bộ Lưu Điện Austec Sin Chuẩn Pro",
-        deviceType: "Bộ lưu điện",
-        pairedAt: "2026-04-10 14:15",
-        warrantyUntil: "2027-04-10",
+        hardwareId: "AT-SENSOR-TH-8803",
+        modelName: "Cảm Biến Nhiệt Ẩm Phòng Master",
+        deviceType: "Cảm biến",
+        pairedAt: "2026-03-25 10:30",
+        warrantyUntil: "2027-03-10",
         isOnline: true,
         roleInHome: "OWNER"
       }
@@ -268,10 +303,270 @@ const MOCK_CUSTOMERS: CustomerAccount[] = [
   }
 ];
 
-export default function CustomersManagementPage() {
+const INITIAL_FAMILY_MATRIX: MatrixOwnerItem[] = [
+  {
+    ownerId: "USR-008712",
+    ownerName: "Nguyễn Mạnh Đức",
+    phoneNumber: "0944 102 588",
+    email: "duc.nguyen@austec.vn",
+    address: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội",
+    devices: [
+      {
+        hardwareId: "AT-DOOR-88239A01",
+        deviceName: "Cửa cuốn Gara Đức Mạnh",
+        modelName: "AUSTEC-A900",
+        deviceType: "Cửa cuốn",
+        isOnline: true,
+        subscriptionType: "LIMITED",
+        members: [
+          {
+            id: "PERM-001",
+            userId: "USER-FAMILY-01",
+            memberName: "Trần Thu Hà (Vợ)",
+            phoneNumber: "0988 123 456",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: true,
+            canConfig: false,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          },
+          {
+            id: "PERM-002",
+            userId: "USER-FAMILY-02",
+            memberName: "Nguyễn Đức Anh (Con trai)",
+            phoneNumber: "0977 234 567",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: false,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: true,
+            accessStartTime: "06:00",
+            accessEndTime: "22:00",
+            accessDays: [true, true, true, true, true, true, true]
+          },
+          {
+            id: "PERM-003",
+            userId: "USER-FAMILY-03",
+            memberName: "Bác Bảo Vệ Dân Phố",
+            phoneNumber: "0966 345 678",
+            role: "GUEST",
+            canControl: true,
+            canViewHistory: false,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: true,
+            accessStartTime: "07:00",
+            accessEndTime: "18:00",
+            accessDays: [true, true, true, true, true, true, false]
+          }
+        ]
+      },
+      {
+        hardwareId: "AT-CAM-00109A01",
+        deviceName: "Camera Cổng Chính Biệt Thự",
+        modelName: "AUSTEC-CAM-360",
+        deviceType: "Camera AI",
+        isOnline: true,
+        subscriptionType: "LIMITED",
+        members: [
+          {
+            id: "PERM-004",
+            userId: "USER-FAMILY-01",
+            memberName: "Trần Thu Hà (Vợ)",
+            phoneNumber: "0988 123 456",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    ownerId: "USR-009941",
+    ownerName: "Dan Phung",
+    phoneNumber: "0906 806 066",
+    email: "dan.phung@austec.vn",
+    address: "Biệt thự Chateau, Phú Mỹ Hưng, Quận 7, TP. Hồ Chí Minh",
+    devices: [
+      {
+        hardwareId: "AT-LOCK-77124B02",
+        deviceName: "Khóa chính Biệt thự Dan Phung",
+        modelName: "MASARU-X1",
+        deviceType: "Khóa thông minh",
+        isOnline: true,
+        subscriptionType: "PERPETUAL",
+        members: [
+          {
+            id: "PERM-005",
+            userId: "USER-FAMILY-04",
+            memberName: "Phan Mai Linh (Vợ)",
+            phoneNumber: "0903 999 888",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: true,
+            canConfig: true,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          },
+          {
+            id: "PERM-006",
+            userId: "USER-FAMILY-05",
+            memberName: "Cô Giúp Việc Hoa",
+            phoneNumber: "0908 111 222",
+            role: "GUEST",
+            canControl: true,
+            canViewHistory: false,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: true,
+            accessStartTime: "08:00",
+            accessEndTime: "17:00",
+            accessDays: [true, true, true, true, true, false, false]
+          }
+        ]
+      },
+      {
+        hardwareId: "AT-CAM-00109A02",
+        deviceName: "Camera Sân Vườn Sau",
+        modelName: "AUSTEC-CAM-360",
+        deviceType: "Camera AI",
+        isOnline: true,
+        subscriptionType: "PERPETUAL",
+        members: [
+          {
+            id: "PERM-007",
+            userId: "USER-FAMILY-04",
+            memberName: "Phan Mai Linh (Vợ)",
+            phoneNumber: "0903 999 888",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    ownerId: "USR-001928",
+    ownerName: "Nguyễn Văn Nam",
+    phoneNumber: "0912 345 678",
+    email: "nguyen.vannam@gmail.com",
+    address: "Số 45, Đường Lê Duẩn, Hoàn Kiếm, Hà Nội",
+    devices: [
+      {
+        hardwareId: "AT-DOOR-88239A",
+        deviceName: "Cửa Cuốn Austec Titadoor Super",
+        modelName: "Titadoor A900 Super",
+        deviceType: "Cửa cuốn",
+        isOnline: true,
+        subscriptionType: "LIMITED",
+        members: [
+          {
+            id: "PERM-008",
+            userId: "USER-FAMILY-06",
+            memberName: "Nguyễn Lan Phương (Con gái)",
+            phoneNumber: "0912 999 777",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: false,
+            canConfig: false,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    ownerId: "USR-013441",
+    ownerName: "Hoàng Bích Thủy",
+    phoneNumber: "0934 556 789",
+    email: "thuy.hb@gmail.com",
+    address: "Tòa Park 11, Vinhomes Times City, Hai Bà Trưng, Hà Nội",
+    devices: [
+      {
+        hardwareId: "AT-LOCK-77124B12",
+        deviceName: "Khóa Căn Hộ Penthouse 02",
+        modelName: "MASARU-X1",
+        deviceType: "Khóa thông minh",
+        isOnline: true,
+        subscriptionType: "LIMITED",
+        members: [
+          {
+            id: "PERM-009",
+            userId: "USER-FAMILY-07",
+            memberName: "Hoàng Quốc Việt (Em trai)",
+            phoneNumber: "0934 111 222",
+            role: "MEMBER",
+            canControl: true,
+            canViewHistory: true,
+            canChildLock: true,
+            canConfig: false,
+            scheduleLimitActive: false,
+            accessStartTime: "00:00",
+            accessEndTime: "23:59",
+            accessDays: [true, true, true, true, true, true, true]
+          }
+        ]
+      }
+    ]
+  }
+];
+
+function CustomersPageContent() {
   const { t, language } = useLanguage();
   const { canView, canUpdate } = usePermissions();
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "accounts";
+  const [activeTab, setActiveTab] = useState<string>(initialTab === "matrix" ? "matrix" : "accounts");
 
+  const switchTab = (tab: "accounts" | "matrix") => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `/customers?tab=${tab}`);
+    }
+  };
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "matrix") setActiveTab("matrix");
+    else if (tab === "accounts") setActiveTab("accounts");
+  }, [searchParams]);
+
+  // Toast
+  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "warning" } | null>(null);
+  const showToast = (message: string, type: "success" | "info" | "warning" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // =========================================================================
+  // TAB 1: ACCOUNTS STATE
+  // =========================================================================
   const [customers, setCustomers] = useState<CustomerAccount[]>(MOCK_CUSTOMERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("ALL");
@@ -289,7 +584,6 @@ export default function CustomersManagementPage() {
         cust.id.toLowerCase().includes(q);
       
       const matchProvince = selectedProvince === "ALL" || cust.province === selectedProvince;
-
       return matchSearch && matchProvince;
     });
   }, [customers, searchTerm, selectedProvince]);
@@ -306,330 +600,942 @@ export default function CustomersManagementPage() {
 
   const toggleAccountStatus = (id: string) => {
     if (!canUpdate("mod_user")) return;
-
     setCustomers(prev => prev.map(c => {
       if (c.id === id) {
         return { ...c, isActive: !c.isActive };
       }
       return c;
     }));
-
     if (viewCustomer && viewCustomer.id === id) {
       setViewCustomer(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
     }
+    showToast("Đã cập nhật trạng thái hoạt động tài khoản", "info");
   };
 
-  // RBAC Gating
+  // =========================================================================
+  // TAB 2: 3-COLUMN FAMILY RBAC MATRIX STATE
+  // =========================================================================
+  const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>(INITIAL_FAMILY_MATRIX);
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("USR-008712");
+  const [selectedHardwareId, setSelectedHardwareId] = useState<string>("AT-DOOR-88239A01");
+  const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+
+  // New member form
+  const [newMemberForm, setNewMemberForm] = useState({
+    memberName: "",
+    phoneNumber: "",
+    role: "MEMBER" as "MEMBER" | "GUEST" | "TECH",
+    canControl: true,
+    canViewHistory: true,
+    canChildLock: false,
+    canConfig: false,
+    scheduleLimitActive: false,
+    accessStartTime: "08:00",
+    accessEndTime: "18:00"
+  });
+
+  // Hydrate matrix data from backend if available
+  useEffect(() => {
+    fetch("http://localhost:4000/api/admin/family-matrix", {
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.matrix) && res.matrix.length > 0) {
+          setMatrixData(res.matrix);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const filteredOwners = useMemo(() => {
+    const q = ownerSearchQuery.toLowerCase().trim();
+    if (!q) return matrixData;
+    return matrixData.filter(o => 
+      o.ownerName.toLowerCase().includes(q) ||
+      o.phoneNumber.includes(q) ||
+      o.email.toLowerCase().includes(q) ||
+      o.address.toLowerCase().includes(q)
+    );
+  }, [matrixData, ownerSearchQuery]);
+
+  const currentSelectedOwner = useMemo(() => {
+    return matrixData.find(o => o.ownerId === selectedOwnerId) || matrixData[0] || null;
+  }, [matrixData, selectedOwnerId]);
+
+  const currentSelectedDevice = useMemo(() => {
+    if (!currentSelectedOwner) return null;
+    return currentSelectedOwner.devices.find(d => d.hardwareId === selectedHardwareId) || currentSelectedOwner.devices[0] || null;
+  }, [currentSelectedOwner, selectedHardwareId]);
+
+  // When owner changes, auto-select first device
+  const handleSelectOwner = (ownerId: string) => {
+    setSelectedOwnerId(ownerId);
+    const owner = matrixData.find(o => o.ownerId === ownerId);
+    if (owner && owner.devices.length > 0) {
+      setSelectedHardwareId(owner.devices[0].hardwareId);
+    }
+  };
+
+  // Toggle member permission toggle
+  const handleToggleMemberPermission = (memberId: string, field: "canControl" | "canViewHistory" | "canChildLock" | "canConfig" | "scheduleLimitActive") => {
+    if (!currentSelectedDevice) return;
+    const hwId = currentSelectedDevice.hardwareId;
+
+    setMatrixData(prev => prev.map(owner => ({
+      ...owner,
+      devices: owner.devices.map(dev => {
+        if (dev.hardwareId !== hwId) return dev;
+        return {
+          ...dev,
+          members: dev.members.map(m => {
+            if (m.id !== memberId) return m;
+            return { ...m, [field]: !m[field] };
+          })
+        };
+      })
+    })));
+
+    // Send backend sync asynchronously
+    fetch(`http://localhost:4000/api/devices/${hwId}/members/${memberId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer austec-admin-super-token"
+      },
+      body: JSON.stringify({ [field]: true })
+    }).catch(() => {});
+
+    showToast("Đã cập nhật phân quyền thành viên tức thì!", "success");
+  };
+
+  // Revoke member permission
+  const handleRevokeMember = (memberId: string, memberName: string) => {
+    if (!currentSelectedDevice) return;
+    const hwId = currentSelectedDevice.hardwareId;
+
+    if (!confirm(`Bạn có chắc chắn muốn thu hồi quyền truy cập của "${memberName}" trên thiết bị ${hwId}?`)) {
+      return;
+    }
+
+    setMatrixData(prev => prev.map(owner => ({
+      ...owner,
+      devices: owner.devices.map(dev => {
+        if (dev.hardwareId !== hwId) return dev;
+        return {
+          ...dev,
+          members: dev.members.filter(m => m.id !== memberId)
+        };
+      })
+    })));
+
+    fetch(`http://localhost:4000/api/devices/${hwId}/members/${memberId}`, {
+      method: "DELETE",
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    }).catch(() => {});
+
+    showToast(`Đã thu hồi quyền thành công của ${memberName}`, "info");
+  };
+
+  // Submit Add Member
+  const handleAddMemberSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentSelectedDevice) return;
+    const hwId = currentSelectedDevice.hardwareId;
+
+    if (!newMemberForm.memberName.trim() || !newMemberForm.phoneNumber.trim()) {
+      alert("Vui lòng nhập Họ tên và Số điện thoại thành viên!");
+      return;
+    }
+
+    const newMember: MemberPermissionItem = {
+      id: `PERM-${Date.now()}`,
+      userId: `USER-${Date.now()}`,
+      memberName: newMemberForm.memberName.trim(),
+      phoneNumber: newMemberForm.phoneNumber.trim(),
+      role: newMemberForm.role,
+      canControl: newMemberForm.canControl,
+      canViewHistory: newMemberForm.canViewHistory,
+      canChildLock: newMemberForm.canChildLock,
+      canConfig: newMemberForm.canConfig,
+      scheduleLimitActive: newMemberForm.scheduleLimitActive,
+      accessStartTime: newMemberForm.accessStartTime,
+      accessEndTime: newMemberForm.accessEndTime,
+      accessDays: [true, true, true, true, true, true, false]
+    };
+
+    setMatrixData(prev => prev.map(owner => ({
+      ...owner,
+      devices: owner.devices.map(dev => {
+        if (dev.hardwareId !== hwId) return dev;
+        return {
+          ...dev,
+          members: [...dev.members, newMember]
+        };
+      })
+    })));
+
+    fetch(`http://localhost:4000/api/devices/${hwId}/members`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer austec-admin-super-token"
+      },
+      body: JSON.stringify(newMember)
+    }).catch(() => {});
+
+    setIsAddMemberModalOpen(false);
+    setNewMemberForm({
+      memberName: "",
+      phoneNumber: "",
+      role: "MEMBER",
+      canControl: true,
+      canViewHistory: true,
+      canChildLock: false,
+      canConfig: false,
+      scheduleLimitActive: false,
+      accessStartTime: "08:00",
+      accessEndTime: "18:00"
+    });
+
+    showToast(`Đã thêm thành viên "${newMember.memberName}" vào thiết bị ${hwId}!`, "success");
+  };
+
   if (!canView("mod_user")) {
     return (
       <AccessDenied 
-        moduleName="Khách Hàng App (Customer Hub)"
-        requiredModule="mod_user"
+        moduleTitle="Quản Lý Khách Hàng & Phân Quyền Gia Đình"
+        requiredPermission="Quyền truy cập Phân hệ Người dùng (mod_user)"
       />
     );
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400">
+    <div className="flex flex-col h-[calc(100vh-65px)] overflow-hidden bg-slate-100 dark:bg-slate-950 p-2.5 space-y-2.5">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-lg border transition-all animate-in slide-in-from-top-2 ${
+          toast.type === "success" 
+            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+            : toast.type === "warning"
+            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+            : "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20"
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* Top Header & Tab Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-              {language === "vi" ? "Quản Lý Khách Hàng (Customer Hub)" : "Customer Identity Hub"}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Khách Hàng Ứng Dụng & Ma Trận Phân Quyền Gia Đình
+              </h1>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                RBAC Multi-Level
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Quản lý tài khoản người dùng Mobile App, danh sách thiết bị và ủy quyền thành viên thứ cấp (Gia đình / Khách)
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 font-medium">
-            {language === "vi" ? "Tổng tài khoản:" : "Total Accounts:"} <strong className="text-slate-900 dark:text-white font-mono">{customers.length}</strong>
-          </span>
-        </div>
-      </div>
-
-      {/* Search & Filter Bar */}
-      <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div className="relative flex-1 w-full">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder={language === "vi" ? "Tìm theo tên, SĐT hoặc email..." : "Search by customer name, phone, or email..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <select 
-            value={selectedProvince} 
-            onChange={(e) => setSelectedProvince(e.target.value)}
-            className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:border-cyan-500"
+        {/* Tab Switcher */}
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700/60 shrink-0">
+          <button
+            type="button"
+            onClick={() => switchTab("accounts")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "accounts"
+                ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
-            <option value="ALL">{language === "vi" ? "Mọi tỉnh thành" : "All Provinces"}</option>
-            <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-            <option value="Hà Nội">Hà Nội</option>
-            <option value="Đà Nẵng">Đà Nẵng</option>
-            <option value="Bình Dương">Bình Dương</option>
-          </select>
+            <Users className="w-3.5 h-3.5" />
+            <span>Tài Khoản Khách Hàng ({customers.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab("matrix")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+              activeTab === "matrix"
+                ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Ma Trận Phân Quyền 3 Khối (RBAC)</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Split Content: Table on Left, Docked Details on Right (if selected) */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-2.5 overflow-hidden">
-        {/* Table Area */}
-        <div className={`${viewCustomer ? "hidden lg:flex" : "flex"} flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex-col overflow-hidden`}>
-          <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300 min-w-[680px]">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10">
-                <tr>
-                  <th className="p-2.5">{language === "vi" ? "Khách hàng" : "Customer"}</th>
-                  <th className="p-2.5">{language === "vi" ? "Liên hệ & Địa chỉ" : "Contact & Address"}</th>
-                  <th className="p-2.5">{language === "vi" ? "Khu vực" : "Province"}</th>
-                  <th className="p-2.5 text-center">{language === "vi" ? "Thiết bị" : "Devices"}</th>
-                  <th className="p-2.5 text-center">{language === "vi" ? "Trạng thái" : "Status"}</th>
-                  <th className="p-2.5 text-right">{language === "vi" ? "Thao tác" : "Actions"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {paginatedCustomers.map((customer) => {
-                  const isSelected = viewCustomer?.id === customer.id;
-                  return (
-                    <tr 
-                      key={customer.id} 
-                      onClick={() => setViewCustomer(customer)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected 
-                          ? "bg-blue-500/10 border-l-4 border-blue-600 dark:border-blue-400" 
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                      }`}
-                    >
-                      <td className="p-2.5">
-                        <div className="font-semibold text-slate-900 dark:text-white">{customer.fullName}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">{customer.id}</div>
-                      </td>
-                      <td className="p-2.5">
-                        <div className="font-mono text-cyan-600 dark:text-cyan-400 font-medium">{customer.phoneNumber}</div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">{customer.email}</div>
-                      </td>
-                      <td className="p-2.5">
-                        <div className="flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-300">
-                          <MapPin className="w-3 h-3 text-slate-400" />
-                          <span>{customer.province}</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate max-w-xs">{customer.address}</div>
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-                          <Smartphone className="w-3 h-3" />
-                          {customer.devices.length}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center">
-                        {customer.isActive ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            {language === "vi" ? "Hoạt động" : "Active"}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                            {language === "vi" ? "Đang khóa" : "Locked"}
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2.5 text-right">
-                        <button 
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewCustomer(customer);
-                          }}
-                          className={`px-2 py-1 rounded-md text-[11px] font-semibold border transition-colors inline-flex items-center gap-1 cursor-pointer ${
-                            isSelected 
-                              ? "bg-blue-600 text-white border-blue-600" 
-                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                          }`}
-                        >
-                          <span>{language === "vi" ? "Chi tiết" : "Details"}</span>
-                          <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+      {/* ===================================================================== */}
+      {/* TAB 1: ACCOUNTS LIST VIEW */}
+      {/* ===================================================================== */}
+      {activeTab === "accounts" && (
+        <div className="flex-1 min-h-0 flex gap-2.5 overflow-hidden">
+          {/* Main Table Column */}
+          <div className="flex-1 min-w-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Filter Toolbar */}
+            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-wrap items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm tên, SĐT, Email, ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="text-xs pl-7 pr-3 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white w-56 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <select
+                  value={selectedProvince}
+                  onChange={(e) => setSelectedProvince(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                >
+                  <option value="ALL">Mọi tỉnh thành</option>
+                  <option value="Hà Nội">Hà Nội</option>
+                  <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                  <option value="Đà Nẵng">Đà Nẵng</option>
+                  <option value="Hải Phòng">Hải Phòng</option>
+                </select>
+              </div>
 
-                {filteredCustomers.length === 0 && (
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Tìm thấy <strong className="text-purple-600 dark:text-purple-400">{filteredCustomers.length}</strong> khách hàng
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left text-xs min-w-[760px]">
+                <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 uppercase text-[11px] tracking-wider">
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">
-                      {language === "vi" ? "Không tìm thấy khách hàng nào khớp với tìm kiếm." : "No customers found matching search query."}
-                    </td>
+                    <th className="p-2.5">User ID</th>
+                    <th className="p-2.5">Họ và Tên</th>
+                    <th className="p-2.5">Số Điện Thoại</th>
+                    <th className="p-2.5">Tỉnh / Thành Phố</th>
+                    <th className="p-2.5">Số Thiết Bị</th>
+                    <th className="p-2.5">Trạng Thái</th>
+                    <th className="p-2.5">Ngày Đăng Ký</th>
+                    <th className="p-2.5 text-right">Thao Tác</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
+                  {paginatedCustomers.map((cust) => {
+                    const isSelected = viewCustomer?.id === cust.id;
+                    return (
+                      <tr 
+                        key={cust.id}
+                        onClick={() => setViewCustomer(cust)}
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors ${
+                          isSelected ? "bg-purple-50/70 dark:bg-purple-950/40 border-l-2 border-purple-500" : ""
+                        }`}
+                      >
+                        <td className="p-2.5 font-mono text-purple-600 dark:text-purple-400 font-bold">{cust.id}</td>
+                        <td className="p-2.5 font-semibold text-slate-900 dark:text-white">{cust.fullName}</td>
+                        <td className="p-2.5 font-mono text-slate-600 dark:text-slate-400">{cust.phoneNumber}</td>
+                        <td className="p-2.5 text-slate-600 dark:text-slate-300">{cust.province}</td>
+                        <td className="p-2.5">
+                          <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 px-2 py-0.5 rounded border border-cyan-500/20">
+                            {cust.devices.length} TB
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          {cust.isActive ? (
+                            <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              Hoạt động
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                              Tạm khóa
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-500 dark:text-slate-400">{cust.registeredAt}</td>
+                        <td className="p-2.5 text-right">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewCustomer(viewCustomer?.id === cust.id ? null : cust);
+                            }}
+                            className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer transition-colors ${
+                              isSelected
+                                ? "bg-purple-600 text-white border-purple-600"
+                                : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            {isSelected ? "Đang xem" : "Chi tiết ➔"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredCustomers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[10, 15, 20, 50]}
+              itemName="khách hàng"
+            />
           </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalItems={filteredCustomers.length}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            pageSizeOptions={[10, 15, 20, 50, 100]}
-            itemName={language === "vi" ? "khách hàng" : "customers"}
-          />
-        </div>
-
-        {/* Docked Right Inspector Pane (No backdrop, No dimming) */}
-        {viewCustomer && (
-          <div className="w-full lg:w-96 lg:shrink-0 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col min-h-0 overflow-hidden animate-in slide-in-from-right-4 duration-150">
-            {/* Inspector Top */}
-            <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/70 dark:bg-slate-800/50">
-              <div className="flex items-center gap-2">
+          {/* Drawer Customer Details */}
+          {viewCustomer && (
+            <div className="w-80 lg:w-96 shrink-0 h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between overflow-hidden animate-in slide-in-from-right-3 duration-150">
+              <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/40">
+                <div className="min-w-0">
+                  <div className="text-[10px] text-purple-600 dark:text-purple-400 font-mono tracking-wider uppercase font-bold">
+                    Hồ Sơ Khách Hàng App
+                  </div>
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{viewCustomer.fullName}</h2>
+                </div>
                 <button
                   type="button"
                   onClick={() => setViewCustomer(null)}
-                  className="lg:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white rounded-md bg-slate-200/60 dark:bg-slate-800 flex items-center gap-1 text-xs font-semibold cursor-pointer"
-                  title="Quay lại danh sách"
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
                 >
-                  ← <span className="text-[11px] font-normal">Quay lại</span>
+                  <X className="w-4 h-4" />
                 </button>
-                <div>
-                  <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">{viewCustomer.id}</span>
-                  <h2 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{viewCustomer.fullName}</h2>
+              </div>
+
+              <div className="p-3 space-y-3 overflow-y-auto flex-1 text-xs">
+                {/* Basic Info */}
+                <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Mã KH:</span>
+                    <span className="font-mono text-purple-600 dark:text-purple-400 font-bold">{viewCustomer.id}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Số điện thoại:</span>
+                    <span className="font-mono text-slate-900 dark:text-white font-semibold">{viewCustomer.phoneNumber}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Email:</span>
+                    <span className="text-slate-700 dark:text-slate-300">{viewCustomer.email}</span>
+                  </div>
+                  <div className="flex justify-between items-start gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-slate-500 shrink-0">Địa chỉ:</span>
+                    <span className="text-slate-800 dark:text-slate-200 text-right">{viewCustomer.address}, {viewCustomer.province}</span>
+                  </div>
+                </div>
+
+                {/* Account Actions */}
+                {canUpdate("mod_user") && (
+                  <button
+                    type="button"
+                    onClick={() => toggleAccountStatus(viewCustomer.id)}
+                    className={`w-full py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      viewCustomer.isActive
+                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                    }`}
+                  >
+                    {viewCustomer.isActive ? (
+                      <><Lock className="w-3.5 h-3.5" /> <span>Khóa tài khoản khách hàng</span></>
+                    ) : (
+                      <><Unlock className="w-3.5 h-3.5" /> <span>Mở khóa tài khoản khách hàng</span></>
+                    )}
+                  </button>
+                )}
+
+                {/* Device List of Customer */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center justify-between">
+                    <span>Thiết Bị Sở Hữu ({viewCustomer.devices.length})</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedOwnerId(viewCustomer.id);
+                        switchTab("matrix");
+                      }}
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Xem ma trận RBAC ➔</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {viewCustomer.devices.map(dev => (
+                      <div key={dev.hardwareId} className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-[11px] space-y-1">
+                        <div className="flex justify-between items-center font-bold">
+                          <span className="font-mono text-cyan-600 dark:text-cyan-400">{dev.hardwareId}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] ${dev.isOnline ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-200 dark:bg-slate-700 text-slate-500"}`}>
+                            {dev.isOnline ? "Online" : "Offline"}
+                          </span>
+                        </div>
+                        <div className="text-slate-800 dark:text-slate-200">{dev.modelName}</div>
+                        <div className="text-[10px] text-slate-500 flex justify-between">
+                          <span>Vai trò: <strong className="text-purple-600 dark:text-purple-400">{dev.roleInHome}</strong></span>
+                          <span>BH: {dev.warrantyUntil}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={() => setViewCustomer(null)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Đóng bảng chi tiết"
+
+              <div className="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setViewCustomer(null)}
+                  className="px-3 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-semibold cursor-pointer"
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* TAB 2: 3-COLUMN FAMILY ACCESS & RBAC MATRIX */}
+      {/* ===================================================================== */}
+      {activeTab === "matrix" && (
+        <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 gap-2.5 overflow-hidden">
+          {/* COLUMN 1: USERS / OWNERS LIST (4 cols) */}
+          <div className="md:col-span-3 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Header Column 1 */}
+            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">1</span>
+                  <span>Chủ Sở Hữu (Chủ Nhà)</span>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
+                  {filteredOwners.length} chủ nhà
+                </span>
+              </div>
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên, SĐT..."
+                  value={ownerSearchQuery}
+                  onChange={(e) => setOwnerSearchQuery(e.target.value)}
+                  className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            {/* List of Owners */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
+              {filteredOwners.map((owner) => {
+                const isSelected = selectedOwnerId === owner.ownerId;
+                const totalMembers = owner.devices.reduce((acc, d) => acc + d.members.length, 0);
+                return (
+                  <div
+                    key={owner.ownerId}
+                    onClick={() => handleSelectOwner(owner.ownerId)}
+                    className={`p-2.5 cursor-pointer transition-colors ${
+                      isSelected
+                        ? "bg-purple-50 dark:bg-purple-950/40 border-l-4 border-purple-600"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/30 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                        <Users className={`w-3.5 h-3.5 ${isSelected ? "text-purple-600 dark:text-purple-400" : "text-slate-400"}`} />
+                        <span>{owner.ownerName}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 px-1.5 py-0.2 rounded border border-purple-500/20">
+                        {owner.devices.length} TB
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                      <span>{owner.phoneNumber}</span>
+                      <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-sans font-medium">
+                        {totalMembers} thành viên phụ
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                      {owner.address}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* COLUMN 2: DEVICES OF SELECTED OWNER (4 cols) */}
+          <div className="md:col-span-4 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Header Column 2 */}
+            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold">2</span>
+                  <span>Thiết Bị Của Chủ Nhà</span>
+                </div>
+                <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">
+                  {currentSelectedOwner ? currentSelectedOwner.devices.length : 0} thiết bị
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
+                Chủ sở hữu: <strong className="text-slate-900 dark:text-white">{currentSelectedOwner?.ownerName || "Chưa chọn"}</strong>
+              </div>
+            </div>
+
+            {/* List of Devices */}
+            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-2 space-y-1.5">
+              {currentSelectedOwner?.devices.map((device) => {
+                const isSelected = selectedHardwareId === device.hardwareId;
+                return (
+                  <div
+                    key={device.hardwareId}
+                    onClick={() => setSelectedHardwareId(device.hardwareId)}
+                    className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-cyan-50/60 dark:bg-cyan-950/40 border-cyan-500 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 hover:border-cyan-300 dark:hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {device.deviceType === "Cửa cuốn" && <DoorClosed className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />}
+                        {device.deviceType === "Khóa thông minh" && <Lock className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                        {device.deviceType === "Camera AI" && <Video className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                        {device.deviceType !== "Cửa cuốn" && device.deviceType !== "Khóa thông minh" && device.deviceType !== "Camera AI" && (
+                          <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        )}
+                        <span className="font-semibold text-slate-900 dark:text-white text-xs">{device.deviceName}</span>
+                      </div>
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold ${
+                        device.isOnline ? "bg-emerald-500/10 text-emerald-500" : "bg-slate-200 dark:bg-slate-700 text-slate-500"
+                      }`}>
+                        {device.isOnline ? "ONLINE" : "OFFLINE"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1">
+                      <span>{device.hardwareId}</span>
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                        {device.subscriptionType === "PERPETUAL" ? "Vô thời hạn" : "Có thời hạn"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 mt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <span>Model: {device.modelName}</span>
+                      <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+                        {device.members.length} người được chia sẻ ➔
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* COLUMN 3: SECONDARY MEMBERS & PERMISSIONS (5 cols) */}
+          <div className="md:col-span-5 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            {/* Header Column 3 */}
+            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 flex items-center justify-between">
+              <div>
+                <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">3</span>
+                  <span>Thành Viên Phụ & Ma Trận Phân Quyền</span>
+                </div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Thiết bị: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{currentSelectedDevice?.hardwareId || "Chưa chọn"}</strong>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsAddMemberModalOpen(true)}
+                disabled={!currentSelectedDevice}
+                className="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Thêm thành viên</span>
+              </button>
+            </div>
+
+            {/* List of Shared Members with Granular Switches */}
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5">
+              {(!currentSelectedDevice || currentSelectedDevice.members.length === 0) ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
+                  <Shield className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
+                  <div className="font-semibold text-xs text-slate-700 dark:text-slate-300">
+                    Chưa có thành viên phụ nào được ủy quyền
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
+                    Ấn vào nút "Thêm thành viên" để cấp quyền điều khiển cho vợ/chồng, con cái hoặc người giúp việc.
+                  </p>
+                </div>
+              ) : (
+                currentSelectedDevice.members.map((member) => (
+                  <div 
+                    key={member.id}
+                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2.5"
+                  >
+                    {/* Member Top Bar */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
+                          <span>{member.memberName}</span>
+                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            member.role === "MEMBER"
+                              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                              : member.role === "GUEST"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                          }`}>
+                            {member.role === "MEMBER" ? "GIA ĐÌNH" : member.role === "GUEST" ? "KHÁCH" : "KỸ THUẬT"}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 mt-0.5">
+                          {member.phoneNumber}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRevokeMember(member.id, member.memberName)}
+                        className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                        title="Thu hồi quyền thành viên"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Permissions Matrix Switches */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-200 dark:border-slate-700/60">
+                      {/* 1. Can Control */}
+                      <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">Quyền Điều Khiển:</span>
+                        <input
+                          type="checkbox"
+                          checked={member.canControl}
+                          onChange={() => handleToggleMemberPermission(member.id, "canControl")}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </label>
+
+                      {/* 2. Can View History */}
+                      <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">Xem Lịch Sử:</span>
+                        <input
+                          type="checkbox"
+                          checked={member.canViewHistory}
+                          onChange={() => handleToggleMemberPermission(member.id, "canViewHistory")}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </label>
+
+                      {/* 3. Can Child Lock */}
+                      <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">Khóa Trẻ Em:</span>
+                        <input
+                          type="checkbox"
+                          checked={member.canChildLock}
+                          onChange={() => handleToggleMemberPermission(member.id, "canChildLock")}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </label>
+
+                      {/* 4. Can Config */}
+                      <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                        <span className="text-slate-700 dark:text-slate-300 font-medium">Cấu Hình TB:</span>
+                        <input
+                          type="checkbox"
+                          checked={member.canConfig}
+                          onChange={() => handleToggleMemberPermission(member.id, "canConfig")}
+                          className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Schedule Limit Section */}
+                    <div className="p-2 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1.5 text-[11px]">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300">
+                          <Clock className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Giới hạn khung giờ truy cập:</span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={member.scheduleLimitActive}
+                          onChange={() => handleToggleMemberPermission(member.id, "scheduleLimitActive")}
+                          className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                        />
+                      </div>
+
+                      {member.scheduleLimitActive && (
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-[10px] font-mono">
+                          <span className="text-slate-500">Cho phép trong khoảng:</span>
+                          <span className="text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-1.5 py-0.5 rounded">
+                            {member.accessStartTime} ➔ {member.accessEndTime} (Hàng ngày)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* MODAL: ADD SECONDARY MEMBER */}
+      {/* ===================================================================== */}
+      {isAddMemberModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
+            <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
+              <div className="flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Ủy Quyền Thành Viên Mới Cho Thiết Bị
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddMemberModalOpen(false)}
+                className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Inspector Scrollable Body */}
-            <div className="flex-1 min-h-0 p-3 overflow-y-auto space-y-3 text-xs">
-              {/* Customer Profile Card */}
-              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Số điện thoại:</span>
-                  <span className="text-slate-900 dark:text-white font-mono font-bold">{viewCustomer.phoneNumber}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Email:</span>
-                  <span className="text-slate-800 dark:text-slate-200 text-[11px] font-mono">{viewCustomer.email}</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px] shrink-0 mr-2">Địa chỉ:</span>
-                  <span className="text-slate-700 dark:text-slate-300 text-[11px] text-right">{viewCustomer.address}, {viewCustomer.province}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500 dark:text-slate-400 text-[11px]">Ngày đăng ký:</span>
-                  <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">{viewCustomer.registeredAt}</span>
-                </div>
-
-                {canUpdate("mod_user") && (
-                  <div className="flex justify-between items-center border-t border-slate-200 dark:border-slate-700/60 pt-2 mt-1">
-                    <span className="text-slate-500 dark:text-slate-400 text-[11px]">Khóa tài khoản:</span>
-                    <button 
-                      onClick={() => toggleAccountStatus(viewCustomer.id)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all shadow-sm cursor-pointer ${
-                        viewCustomer.isActive 
-                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
-                      }`}
-                    >
-                      {viewCustomer.isActive ? (
-                        <>
-                          <Lock className="w-3 h-3" /> <span>Khóa truy cập</span>
-                        </>
-                      ) : (
-                        <>
-                          <Unlock className="w-3 h-3" /> <span>Mở khóa tài khoản</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+            <form onSubmit={handleAddMemberSubmit} className="p-3.5 space-y-3 text-xs">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                Thiết bị nhận phân quyền: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{currentSelectedDevice?.hardwareId}</strong> ({currentSelectedDevice?.deviceName})
               </div>
 
-              {/* Owned Devices List */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                    Thiết Bị Đang Sở Hữu ({viewCustomer.devices.length})
-                  </h3>
-                  <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-semibold">
-                    Bảo hành chính hãng
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {viewCustomer.devices.map(device => (
-                    <div 
-                      key={device.hardwareId}
-                      className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-xs font-bold text-slate-900 dark:text-slate-100 font-mono">{device.hardwareId}</div>
-                          <div className="text-[11px] text-slate-500 dark:text-slate-400">{device.modelName}</div>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${
-                          device.isOnline 
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                            : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-                        }`}>
-                          {device.isOnline ? "Online" : "Offline"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-mono bg-white dark:bg-slate-900/60 p-2 rounded-md border border-slate-200 dark:border-slate-800">
-                        <div>
-                          <span className="block text-slate-400 text-[9px]">Kích hoạt:</span>
-                          <span className="text-slate-700 dark:text-slate-300">{device.pairedAt}</span>
-                        </div>
-                        <div>
-                          <span className="block text-slate-400 text-[9px]">Hạn BH:</span>
-                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{device.warrantyUntil}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] pt-0.5">
-                        <span className="text-slate-500 dark:text-slate-400">
-                          Vai trò: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{device.roleInHome}</strong>
-                        </span>
-                        <a 
-                          href={`/devices?tab=list&search=${device.hardwareId}`}
-                          className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-500 flex items-center gap-1 font-semibold text-[11px]"
-                        >
-                          <span>Soi chi tiết</span>
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Họ và tên thành viên *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Trần Thu Hà (Vợ), Nguyễn Văn An..."
+                  value={newMemberForm.memberName}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, memberName: e.target.value })}
+                  className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                />
               </div>
-            </div>
 
-            {/* Bottom Footer */}
-            <div className="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
-              <span className="text-[10px] text-slate-400 font-mono">Austec Cloud ID</span>
-              <button 
-                onClick={() => setViewCustomer(null)}
-                className="px-3 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold transition-colors cursor-pointer"
-              >
-                Đóng
-              </button>
-            </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Số điện thoại đăng nhập App *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: 0988 123 456..."
+                  value={newMemberForm.phoneNumber}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, phoneNumber: e.target.value })}
+                  className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                  Vai trò phân định
+                </label>
+                <select
+                  value={newMemberForm.role}
+                  onChange={(e) => setNewMemberForm({ ...newMemberForm, role: e.target.value as any })}
+                  className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                >
+                  <option value="MEMBER">Thành viên gia đình (Family Member)</option>
+                  <option value="GUEST">Khách tạm thời / Người giúp việc (Guest)</option>
+                  <option value="TECH">Kỹ thuật viên bảo trì (Technician)</option>
+                </select>
+              </div>
+
+              {/* Granular permissions */}
+              <div className="space-y-1.5 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  Các quyền cho phép kích hoạt:
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newMemberForm.canControl}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, canControl: e.target.checked })}
+                    className="w-3.5 h-3.5 text-purple-600 rounded"
+                  />
+                  <span>Được phép điều khiển (Đóng / Mở / Khóa)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newMemberForm.canViewHistory}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, canViewHistory: e.target.checked })}
+                    className="w-3.5 h-3.5 text-purple-600 rounded"
+                  />
+                  <span>Xem lịch sử đóng mở và cảnh báo an ninh</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newMemberForm.canChildLock}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, canChildLock: e.target.checked })}
+                    className="w-3.5 h-3.5 text-purple-600 rounded"
+                  />
+                  <span>Kích hoạt Khóa Trẻ Em / Khóa Cứng</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newMemberForm.scheduleLimitActive}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, scheduleLimitActive: e.target.checked })}
+                    className="w-3.5 h-3.5 text-amber-600 rounded"
+                  />
+                  <span>Giới hạn khung giờ truy cập (08:00 - 18:00)</span>
+                </label>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddMemberModalOpen(false)}
+                  className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-xs cursor-pointer"
+                >
+                  Cấp Quyền & Lưu
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function CustomersManagementPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-xs text-slate-500 font-mono">Đang tải phân hệ khách hàng & RBAC...</div>}>
+      <CustomersPageContent />
+    </Suspense>
   );
 }
