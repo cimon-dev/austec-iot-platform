@@ -376,8 +376,10 @@ export function DeviceGeoMap() {
     const q = searchFilter.toLowerCase().trim();
     const matchSearch = !q || 
       d.hardwareId.toLowerCase().includes(q) ||
+      (d.serialNumber && d.serialNumber.toLowerCase().includes(q)) ||
       d.deviceName.toLowerCase().includes(q) ||
       d.ownerName.toLowerCase().includes(q) ||
+      (d.phoneNumber && d.phoneNumber.toLowerCase().includes(q)) ||
       d.formattedAddress.toLowerCase().includes(q);
     return matchProvince && matchStatus && matchSearch;
   });
@@ -562,15 +564,15 @@ export function DeviceGeoMap() {
 
           {/* Quick Filter Inputs */}
           <div className="flex flex-wrap items-center gap-1.5">
-            {/* Search Device by Serial / Address */}
+            {/* Search Device by Serial / Owner / Address */}
             <div className="relative">
               <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Tìm theo Serial, địa chỉ..."
+                placeholder="Tìm theo Serial, chủ sở hữu, địa chỉ..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="text-[11px] pl-6 pr-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white w-40 focus:outline-none focus:border-cyan-500"
+                className="text-[11px] pl-6 pr-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white w-56 md:w-64 focus:outline-none focus:border-cyan-500"
               />
             </div>
 

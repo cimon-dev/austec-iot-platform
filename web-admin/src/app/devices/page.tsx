@@ -543,41 +543,560 @@ function DevicesManagementContent() {
   // =========================================================
   // STATE: 6. Device List & Slide-over Drawer
   // =========================================================
-  const [devices, setDevices] = useState([
+  const [devices, setDevices] = useState<any[]>([
     // Smart Doors
-    { hwId: "AT-DOOR-88239A01", name: "Cửa cuốn Gara Đức Mạnh", model: "AUSTEC-A900", group: "Cửa cuốn nhôm Đức", type: "DOOR", owner: "Nguyễn Mạnh Đức", phone: "0944 102 588", status: "online", isOnline: true, battery: 98, openState: "CLOSED", isLocked: true, signal: -62, warranty: "12/2027" },
-    { hwId: "AT-DOOR-88239A04", name: "Cửa cuốn Công Bằng", model: "AUSTEC-A900", group: "Cửa cuốn nhôm Đức", type: "DOOR", owner: "Nguyễn Công Bằng", phone: "0933 753 799", status: "offline", isOnline: false, battery: 0, openState: "UNKNOWN", isLocked: false, signal: -95, warranty: "10/2026" },
-    { hwId: "AT-DOOR-88239A05", name: "Cửa cuốn Đình Long", model: "AUSTEC-A900", group: "Cửa cuốn nhôm Đức", type: "DOOR", owner: "Vũ Đình Long", phone: "0977 641 983", status: "online", isOnline: true, battery: 85, openState: "OPEN", isLocked: false, signal: -64, warranty: "11/2027" },
-    { hwId: "AT-DOOR-88239A06", name: "Cửa cuốn Lò Thị Mai", model: "AUSTEC-A900", group: "Cửa cuốn tấm liền Úc", type: "DOOR", owner: "Lò Thị Mai", phone: "0362 227 229", status: "online", isOnline: true, battery: 90, openState: "CLOSED", isLocked: true, signal: -60, warranty: "09/2027" },
-    { hwId: "AT-DOOR-88239A11", name: "Cửa cuốn Showroom Austec", model: "AUSTEC-A900", group: "Cửa cuốn nhôm Đức", type: "DOOR", owner: "Austec Flagship", phone: "024 3788 9999", status: "online", isOnline: true, battery: 100, openState: "CLOSED", isLocked: true, signal: -52, warranty: "12/2028" },
-    { hwId: "AT-DOOR-STOCK-07", name: "Cửa cuốn Titadoor Dự phòng", model: "AUSTEC-A900", group: "Cửa cuốn nhôm Đức", type: "DOOR", owner: "Kho Tổng Austec", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
-    { hwId: "AT-DOOR-88239A14", name: "Cửa cuốn Xưởng Sản Xuất 03", model: "AUSTEC-A900", group: "Cửa cuốn tấm liền Úc", type: "DOOR", owner: "Xưởng Nhôm Austec", phone: "028 3822 5566", status: "offline", isOnline: false, battery: 0, openState: "UNKNOWN", isLocked: false, signal: -98, warranty: "04/2027" },
+    { 
+      hwId: "AT-DOOR-88239A01", 
+      name: "Cửa cuốn Gara Đức Mạnh", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn nhôm Đức", 
+      type: "DOOR", 
+      owner: "Nguyễn Mạnh Đức", 
+      phone: "0944 102 588", 
+      status: "online", 
+      isOnline: true, 
+      battery: 98, 
+      openState: "CLOSED", 
+      isLocked: true, 
+      signal: -62, 
+      warranty: "12/2027",
+      address: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội",
+      deviceTypeDesc: "Cửa Cuốn Nan Nhôm Khe Thoáng Siêu Êm A900",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-10-21T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-DOOR-88239A04", 
+      name: "Cửa cuốn Công Bằng", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn nhôm Đức", 
+      type: "DOOR", 
+      owner: "Nguyễn Công Bằng", 
+      phone: "0933 753 799", 
+      status: "offline", 
+      isOnline: false, 
+      battery: 0, 
+      openState: "UNKNOWN", 
+      isLocked: false, 
+      signal: -95, 
+      warranty: "10/2026",
+      address: "Số 120, Trần Hưng Đạo, Q. 1, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Cửa Cuốn Thép Siêu Bền Công Nghệ Úc",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2026-10-21T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-DOOR-88239A05", 
+      name: "Cửa cuốn Đình Long", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn nhôm Đức", 
+      type: "DOOR", 
+      owner: "Vũ Đình Long", 
+      phone: "0977 641 983", 
+      status: "online", 
+      isOnline: true, 
+      battery: 85, 
+      openState: "OPEN", 
+      isLocked: false, 
+      signal: -64, 
+      warranty: "11/2027",
+      address: "Biệt thự BT4, KĐT Mỹ Đình 2, Nam Từ Liêm, Hà Nội",
+      deviceTypeDesc: "Cửa Cuốn Nan Nhôm Khe Thoáng Siêu Êm A900",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-11-15T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-DOOR-88239A06", 
+      name: "Cửa cuốn Lò Thị Mai", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn tấm liền Úc", 
+      type: "DOOR", 
+      owner: "Lò Thị Mai", 
+      phone: "0362 227 229", 
+      status: "online", 
+      isOnline: true, 
+      battery: 90, 
+      openState: "CLOSED", 
+      isLocked: true, 
+      signal: -60, 
+      warranty: "09/2027",
+      address: "Số 25, Hoàng Văn Thụ, TP. Điện Biên Phủ, Điện Biên",
+      deviceTypeDesc: "Cửa Cuốn Tấm Liền Công Nghệ Úc Titadoor",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-09-01T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-DOOR-88239A11", 
+      name: "Cửa cuốn Showroom Austec", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn nhôm Đức", 
+      type: "DOOR", 
+      owner: "Austec Flagship", 
+      phone: "024 3788 9999", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "CLOSED", 
+      isLocked: true, 
+      signal: -52, 
+      warranty: "12/2028",
+      address: "Tòa Nhà Austec Building, Cầu Giấy, Hà Nội",
+      deviceTypeDesc: "Cửa Cuốn Nan Nhôm Thế Hệ Mới Flagship",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-DOOR-STOCK-07", 
+      name: "Cửa cuốn Titadoor Dự phòng", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn nhôm Đức", 
+      type: "DOOR", 
+      owner: "Kho Tổng Austec", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Tổng Miền Bắc - KCN Quế Võ, Bắc Ninh",
+      deviceTypeDesc: "Cửa Cuốn Nan Nhôm Khe Thoáng A900",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-DOOR-88239A14", 
+      name: "Cửa cuốn Xưởng Sản Xuất 03", 
+      model: "AUSTEC-A900", 
+      group: "Cửa cuốn tấm liền Úc", 
+      type: "DOOR", 
+      owner: "Xưởng Nhôm Austec", 
+      phone: "028 3822 5566", 
+      status: "offline", 
+      isOnline: false, 
+      battery: 0, 
+      openState: "UNKNOWN", 
+      isLocked: false, 
+      signal: -98, 
+      warranty: "04/2027",
+      address: "KCN Tân Bình, Tân Phú, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Cửa Cuốn Tấm Liền Thép Cường Lực",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-04-10T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
 
     // Smart Locks
-    { hwId: "AT-LOCK-77124B02", name: "Khóa chính Biệt thự Dan Phung", model: "MASARU-X1", group: "Khóa Masaru chuẩn Nhật", type: "SMART_LOCK", owner: "Dan Phung", phone: "0906 806 066", status: "online", isOnline: true, battery: 92, openState: "LOCKED", isLocked: true, signal: -58, warranty: "05/2028" },
-    { hwId: "AT-LOCK-STOCK-08", name: "Khóa thông minh Masaru X1", model: "MASARU-X1", group: "Khóa Masaru chuẩn Nhật", type: "SMART_LOCK", owner: "Kho Chi Nhánh Hà Nội", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
-    { hwId: "AT-LOCK-77124B12", name: "Khóa Căn Hộ Penthouse 02", model: "MASARU-X1", group: "Khóa Masaru chuẩn Nhật", type: "SMART_LOCK", owner: "Hoàng Bích Thủy", phone: "0934 556 789", status: "online", isOnline: true, battery: 88, openState: "LOCKED", isLocked: true, signal: -68, warranty: "03/2028" },
-    { hwId: "AT-LOCK-STOCK-15", name: "Khóa Masaru Pro Nhập Kho", model: "MASARU-X1", group: "Khóa Masaru chuẩn Nhật", type: "SMART_LOCK", owner: "Kho Tổng Cần Thơ", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
+    { 
+      hwId: "AT-LOCK-77124B02", 
+      name: "Khóa chính Biệt thự Dan Phung", 
+      model: "MASARU-X1", 
+      group: "Khóa Masaru chuẩn Nhật", 
+      type: "SMART_LOCK", 
+      owner: "Dan Phung", 
+      phone: "0906 806 066", 
+      status: "online", 
+      isOnline: true, 
+      battery: 92, 
+      openState: "LOCKED", 
+      isLocked: true, 
+      signal: -58, 
+      warranty: "05/2028",
+      address: "Biệt thự Chateau, Phú Mỹ Hưng, Quận 7, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Khóa Vân Tay Thông Minh Masaru Titan X1 Chuẩn Nhật",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-LOCK-STOCK-08", 
+      name: "Khóa thông minh Masaru X1", 
+      model: "MASARU-X1", 
+      group: "Khóa Masaru chuẩn Nhật", 
+      type: "SMART_LOCK", 
+      owner: "Kho Chi Nhánh Hà Nội", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Phân Phối Hà Đông, Hà Nội",
+      deviceTypeDesc: "Khóa Masaru X1 Mặt Gương Chống Trầy",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-LOCK-77124B12", 
+      name: "Khóa Căn Hộ Penthouse 02", 
+      model: "MASARU-X1", 
+      group: "Khóa Masaru chuẩn Nhật", 
+      type: "SMART_LOCK", 
+      owner: "Hoàng Bích Thủy", 
+      phone: "0934 556 789", 
+      status: "online", 
+      isOnline: true, 
+      battery: 88, 
+      openState: "LOCKED", 
+      isLocked: true, 
+      signal: -68, 
+      warranty: "03/2028",
+      address: "Tòa Park 11, Vinhomes Times City, Hai Bà Trưng, Hà Nội",
+      deviceTypeDesc: "Khóa Vân Tay Nhận Diện Gương Mặt 3D Face Masaru",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-03-25T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-LOCK-STOCK-15", 
+      name: "Khóa Masaru Pro Nhập Kho", 
+      model: "MASARU-X1", 
+      group: "Khóa Masaru chuẩn Nhật", 
+      type: "SMART_LOCK", 
+      owner: "Kho Tổng Cần Thơ", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Tổng Tây Nam Bộ, Ninh Kiều, Cần Thơ",
+      deviceTypeDesc: "Khóa Vân Tay Push-Pull Masaru Titan",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
 
     // Camera AI
-    { hwId: "AT-CAM-00109A01", name: "Camera Cổng Chính Biệt Thự", model: "AUSTEC-CAM-360", group: "CAMERA AN NINH AI AUSTEC", type: "CAMERA", owner: "Nguyễn Mạnh Đức", phone: "0944 102 588", status: "online", isOnline: true, battery: 100, openState: "STREAMING", isLocked: false, signal: -48, warranty: "12/2027", temp: 28.5, humidity: 62, motion: true },
-    { hwId: "AT-CAM-00109A02", name: "Camera Sân Vườn Sau", model: "AUSTEC-CAM-360", group: "CAMERA AN NINH AI AUSTEC", type: "CAMERA", owner: "Dan Phung", phone: "0906 806 066", status: "online", isOnline: true, battery: 100, openState: "STREAMING", isLocked: false, signal: -55, warranty: "05/2028", temp: 29.1, humidity: 65, motion: false },
-    { hwId: "AT-CAM-00109A03", name: "Camera Gara Ô tô Showroom", model: "AUSTEC-CAM-360", group: "CAMERA AN NINH AI AUSTEC", type: "CAMERA", owner: "Austec Flagship", phone: "024 3788 9999", status: "online", isOnline: true, battery: 100, openState: "STREAMING", isLocked: false, signal: -50, warranty: "12/2028", temp: 26.8, humidity: 58, motion: true },
-    { hwId: "AT-CAM-STOCK-04", name: "Camera AI Vision Dự Phòng", model: "AUSTEC-CAM-360", group: "CAMERA AN NINH AI AUSTEC", type: "CAMERA", owner: "Kho Tổng Austec", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
+    { 
+      hwId: "AT-CAM-00109A01", 
+      name: "Camera Cổng Chính Biệt Thự", 
+      model: "AUSTEC-CAM-360", 
+      group: "CAMERA AN NINH AI AUSTEC", 
+      type: "CAMERA", 
+      owner: "Nguyễn Mạnh Đức", 
+      phone: "0944 102 588", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "STREAMING", 
+      isLocked: false, 
+      signal: -48, 
+      warranty: "12/2027", 
+      temp: 28.5, 
+      humidity: 62, 
+      motion: true,
+      address: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội",
+      deviceTypeDesc: "Camera An Ninh AI 360 Độ Quay Quét Ban Đêm 4K",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-12-01T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-CAM-00109A02", 
+      name: "Camera Sân Vườn Sau", 
+      model: "AUSTEC-CAM-360", 
+      group: "CAMERA AN NINH AI AUSTEC", 
+      type: "CAMERA", 
+      owner: "Dan Phung", 
+      phone: "0906 806 066", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "STREAMING", 
+      isLocked: false, 
+      signal: -55, 
+      warranty: "05/2028", 
+      temp: 29.1, 
+      humidity: 65, 
+      motion: false,
+      address: "Biệt thự Chateau, Phú Mỹ Hưng, Quận 7, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Camera Ngoài Trời Kháng Nước IP67 AI Vision",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-CAM-00109A03", 
+      name: "Camera Gara Ô tô Showroom", 
+      model: "AUSTEC-CAM-360", 
+      group: "CAMERA AN NINH AI AUSTEC", 
+      type: "CAMERA", 
+      owner: "Austec Flagship", 
+      phone: "024 3788 9999", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "STREAMING", 
+      isLocked: false, 
+      signal: -50, 
+      warranty: "12/2028", 
+      temp: 26.8, 
+      humidity: 58, 
+      motion: true,
+      address: "Tòa Nhà Austec Building, Cầu Giấy, Hà Nội",
+      deviceTypeDesc: "Camera AI Nhận Diện Biển Số & Khuôn Mặt UltraHD",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-CAM-STOCK-04", 
+      name: "Camera AI Vision Dự Phòng", 
+      model: "AUSTEC-CAM-360", 
+      group: "CAMERA AN NINH AI AUSTEC", 
+      type: "CAMERA", 
+      owner: "Kho Tổng Austec", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Tổng Miền Bắc - KCN Quế Võ, Bắc Ninh",
+      deviceTypeDesc: "Camera An Ninh AI 360 Độ Quay Quét Ban Đêm",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
 
     // Cảm biến môi trường nhiệt độ độ ẩm
-    { hwId: "AT-SENSOR-TH-8801", name: "Cảm Biến Nhiệt Ẩm Phòng Server", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Kỹ Thuật Austec", phone: "1900 886 999", status: "online", isOnline: true, battery: 94, openState: "24.2°C / 52%", isLocked: false, signal: -59, warranty: "08/2027", temp: 24.2, humidity: 52 },
-    { hwId: "AT-SENSOR-TH-8802", name: "Cảm Biến Nhiệt Ẩm Kho Dược Phẩm", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Công Ty Dược Hoàng Gia", phone: "0912 345 678", status: "online", isOnline: true, battery: 89, openState: "21.5°C / 48%", isLocked: false, signal: -63, warranty: "10/2027", temp: 21.5, humidity: 48 },
-    { hwId: "AT-SENSOR-TH-8803", name: "Cảm Biến Nhiệt Ẩm Phòng Master", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Hoàng Bích Thủy", phone: "0934 556 789", status: "online", isOnline: true, battery: 96, openState: "26.0°C / 60%", isLocked: false, signal: -56, warranty: "03/2028", temp: 26.0, humidity: 60 },
-    { hwId: "AT-SENSOR-TH-8804", name: "Cảm Biến Nhiệt Ẩm Nhà Màng Rau", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Hợp Tác Xã Rau Sạch", phone: "0978 999 111", status: "online", isOnline: true, battery: 78, openState: "31.4°C / 78%", isLocked: false, signal: -71, warranty: "11/2026", temp: 31.4, humidity: 78 },
-    { hwId: "AT-SENSOR-TH-8805", name: "Cảm Biến Nhiệt Ẩm Xưởng Gỗ", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Xưởng Mộc Bình Minh", phone: "0983 222 333", status: "offline", isOnline: false, battery: 12, openState: "UNKNOWN", isLocked: false, signal: -92, warranty: "05/2026", temp: 0, humidity: 0 },
-    { hwId: "AT-SENSOR-STOCK-06", name: "Cảm Biến Zigbee Tồn Kho", model: "SENSOR-TH-ZIGBEE", group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", type: "SENSOR_ENV", owner: "Kho Chi Nhánh Hà Nội", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
+    { 
+      hwId: "AT-SENSOR-TH-8801", 
+      name: "Cảm Biến Nhiệt Ẩm Phòng Server", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Kỹ Thuật Austec", 
+      phone: "1900 886 999", 
+      status: "online", 
+      isOnline: true, 
+      battery: 94, 
+      openState: "24.2°C / 52%", 
+      isLocked: false, 
+      signal: -59, 
+      warranty: "08/2027", 
+      temp: 24.2, 
+      humidity: 52,
+      address: "Phòng Máy Chủ IDC, Cầu Giấy, Hà Nội",
+      deviceTypeDesc: "Cảm Biến Nhiệt Độ & Độ Ẩm Không Khí Zigbee 3.0",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-SENSOR-TH-8802", 
+      name: "Cảm Biến Nhiệt Ẩm Kho Dược Phẩm", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Công Ty Dược Hoàng Gia", 
+      phone: "0912 345 678", 
+      status: "online", 
+      isOnline: true, 
+      battery: 89, 
+      openState: "21.5°C / 48%", 
+      isLocked: false, 
+      signal: -63, 
+      warranty: "10/2027", 
+      temp: 21.5, 
+      humidity: 48,
+      address: "Số 16, Đường 3/2, Quận 10, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Cảm Biến Môi Trường Độ Chính Xác Cao GSP",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-10-15T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-SENSOR-TH-8803", 
+      name: "Cảm Biến Nhiệt Ẩm Phòng Master", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Hoàng Bích Thủy", 
+      phone: "0934 556 789", 
+      status: "online", 
+      isOnline: true, 
+      battery: 96, 
+      openState: "26.0°C / 60%", 
+      isLocked: false, 
+      signal: -56, 
+      warranty: "03/2028", 
+      temp: 26.0, 
+      humidity: 60,
+      address: "Tòa Park 11, Vinhomes Times City, Hai Bà Trưng, Hà Nội",
+      deviceTypeDesc: "Cảm Biến Nhiệt Ẩm Đa Vùng Màn Hình E-Ink",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-03-10T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-SENSOR-TH-8804", 
+      name: "Cảm Biến Nhiệt Ẩm Nhà Màng Rau", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Hợp Tác Xã Rau Sạch", 
+      phone: "0978 999 111", 
+      status: "online", 
+      isOnline: true, 
+      battery: 78, 
+      openState: "31.4°C / 78%", 
+      isLocked: false, 
+      signal: -71, 
+      warranty: "11/2026", 
+      temp: 31.4, 
+      humidity: 78,
+      address: "Xã Trạm Hành, TP. Đà Lạt, Lâm Đồng",
+      deviceTypeDesc: "Cảm Biến Nông Nghiệp Thông Minh Kháng Bụi Ẩm",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2026-11-20T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-SENSOR-TH-8805", 
+      name: "Cảm Biến Nhiệt Ẩm Xưởng Gỗ", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Xưởng Mộc Bình Minh", 
+      phone: "0983 222 333", 
+      status: "offline", 
+      isOnline: false, 
+      battery: 12, 
+      openState: "UNKNOWN", 
+      isLocked: false, 
+      signal: -92, 
+      warranty: "05/2026", 
+      temp: 0, 
+      humidity: 0,
+      address: "Làng Nghề Mộc Chàng Sơn, Thạch Thất, Hà Nội",
+      deviceTypeDesc: "Cảm Biến Giám Sát Phòng Cháy & Nhiệt Độ Cao",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2026-05-15T00:00:00.000Z",
+      subscriptionStatus: "EXPIRED"
+    },
+    { 
+      hwId: "AT-SENSOR-STOCK-06", 
+      name: "Cảm Biến Zigbee Tồn Kho", 
+      model: "SENSOR-TH-ZIGBEE", 
+      group: "CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM", 
+      type: "SENSOR_ENV", 
+      owner: "Kho Chi Nhánh Hà Nội", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Phân Phối Hà Đông, Hà Nội",
+      deviceTypeDesc: "Cảm Biến Nhiệt Ẩm Chuẩn Zigbee 3.0",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
 
     // UPS & Bike
-    { hwId: "AT-UPS-99011C03", name: "Lưu điện UPS Nhà Quang", model: "UPS-220-SINE", group: "Lưu điện AC 220V", type: "UPS", owner: "Nguyễn Văn Quang", phone: "0982 487 278", status: "online", isOnline: true, battery: 100, openState: "AC_POWER", isLocked: false, signal: -70, warranty: "01/2027" },
-    { hwId: "AT-UPS-STOCK-09", name: "Bộ lưu điện Sine 220V", model: "UPS-220-SINE", group: "Lưu điện AC 220V", type: "UPS", owner: "Kho Trung Chuyển Đà Nẵng", phone: "1900 886 999", status: "in_stock", isOnline: false, battery: 100, openState: "STOCK", isLocked: false, signal: 0, warranty: "Chưa kích hoạt" },
-    { hwId: "AT-UPS-99011C13", name: "Bộ Lưu Điện Dự Phòng Hub", model: "UPS-220-SINE", group: "Lưu điện tiêu chuẩn", type: "UPS", owner: "Kỹ Thuật Austec", phone: "1900 886 999", status: "online", isOnline: true, battery: 100, openState: "AC_POWER", isLocked: false, signal: -65, warranty: "08/2027" },
-    { hwId: "AT-BIKE-55410D10", name: "GSHT Xe Giao Hàng 01", model: "GSHT-A4G", group: "GSHT", type: "BIKE", owner: "Vận Tải Hoàng Minh", phone: "0915 889 001", status: "online", isOnline: true, battery: 95, openState: "TRACKING", isLocked: true, signal: -61, warranty: "06/2027" }
+    { 
+      hwId: "AT-UPS-99011C03", 
+      name: "Lưu điện UPS Nhà Quang", 
+      model: "UPS-220-SINE", 
+      group: "Lưu điện AC 220V", 
+      type: "UPS", 
+      owner: "Nguyễn Văn Quang", 
+      phone: "0982 487 278", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "AC_POWER", 
+      isLocked: false, 
+      signal: -70, 
+      warranty: "01/2027",
+      address: "Số 14, Đường Phan Đình Phùng, TP. Hải Phòng",
+      deviceTypeDesc: "Bộ Lưu Điện Sóng Sin Chuẩn Pro 220V Cho Cửa Cuốn",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-01-18T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-UPS-STOCK-09", 
+      name: "Bộ lưu điện Sine 220V", 
+      model: "UPS-220-SINE", 
+      group: "Lưu điện AC 220V", 
+      type: "UPS", 
+      owner: "Kho Trung Chuyển Đà Nẵng", 
+      phone: "1900 886 999", 
+      status: "in_stock", 
+      isOnline: false, 
+      battery: 100, 
+      openState: "STOCK", 
+      isLocked: false, 
+      signal: 0, 
+      warranty: "Chưa kích hoạt",
+      address: "Kho Vận Hải Châu, TP. Đà Nẵng",
+      deviceTypeDesc: "Bộ Lưu Điện Sin Chuẩn 220V Tải Nặng",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
+    },
+    { 
+      hwId: "AT-UPS-99011C13", 
+      name: "Bộ Lưu Điện Dự Phòng Hub", 
+      model: "UPS-220-SINE", 
+      group: "Lưu điện tiêu chuẩn", 
+      type: "UPS", 
+      owner: "Kỹ Thuật Austec", 
+      phone: "1900 886 999", 
+      status: "online", 
+      isOnline: true, 
+      battery: 100, 
+      openState: "AC_POWER", 
+      isLocked: false, 
+      signal: -65, 
+      warranty: "08/2027",
+      address: "Phòng Điều Hành Trung Tâm, Cầu Giấy, Hà Nội",
+      deviceTypeDesc: "Bộ Lưu Điện Công Nghiệp 3000VA Online",
+      subscriptionType: "PERPETUAL",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "LIFETIME"
+    },
+    { 
+      hwId: "AT-BIKE-55410D10", 
+      name: "GSHT Xe Giao Hàng 01", 
+      model: "GSHT-A4G", 
+      group: "GSHT", 
+      type: "BIKE", 
+      owner: "Vận Tải Hoàng Minh", 
+      phone: "0915 889 001", 
+      status: "online", 
+      isOnline: true, 
+      battery: 95, 
+      openState: "TRACKING", 
+      isLocked: true, 
+      signal: -61, 
+      warranty: "06/2027",
+      address: "Bến Xe Miền Đông Mới, TP. Thủ Đức, TP. Hồ Chí Minh",
+      deviceTypeDesc: "Thiết Bị Giám Sát Hành Trình 4G LTE Chống Nước",
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: "2027-06-15T00:00:00.000Z",
+      subscriptionStatus: "ACTIVE"
+    }
   ]);
 
   const [selectedDevice, setSelectedDevice] = useState<any | null>(null);
@@ -591,14 +1110,15 @@ function DevicesManagementContent() {
 
   const filteredDevices = useMemo(() => {
     return devices.filter((d) => {
-      // 1. Keyword search (ID, name, owner, phone, model)
+      // 1. Keyword search (ID, name, owner, phone, model, address)
       const q = searchFilter.trim().toLowerCase();
       const matchesSearch = !q ||
         d.hwId.toLowerCase().includes(q) ||
         d.name.toLowerCase().includes(q) ||
         d.owner.toLowerCase().includes(q) ||
         d.phone.includes(q) ||
-        d.model.toLowerCase().includes(q);
+        d.model.toLowerCase().includes(q) ||
+        (d.address && d.address.toLowerCase().includes(q));
 
       // 2. Group filter
       const matchesGroup = filterGroup === "ALL" || 
@@ -654,6 +1174,53 @@ function DevicesManagementContent() {
     }, 150);
   };
 
+  const [renewLoading, setRenewLoading] = useState(false);
+
+  const handleRenewDevice = async (hwId: string, months: number, isPerpetual: boolean) => {
+    setRenewLoading(true);
+    try {
+      await fetch(`http://localhost:4000/api/devices/${hwId}/renew`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer austec-admin-super-token"
+        },
+        body: JSON.stringify({ months, isPerpetual })
+      }).catch(() => null);
+
+      const now = new Date();
+      let expiresAt: string | null = null;
+      if (!isPerpetual) {
+        let baseDate = selectedDevice?.subscriptionExpiresAt ? new Date(selectedDevice.subscriptionExpiresAt) : new Date();
+        if (isNaN(baseDate.getTime()) || baseDate < now) baseDate = new Date(now);
+        baseDate.setMonth(baseDate.getMonth() + months);
+        expiresAt = baseDate.toISOString();
+      }
+
+      const updateData = {
+        subscriptionType: isPerpetual ? "PERPETUAL" : "LIMITED",
+        subscriptionExpiresAt: expiresAt,
+        subscriptionStatus: isPerpetual ? "LIFETIME" : "ACTIVE"
+      };
+
+      setDevices((prev) => prev.map((d) => (d.hwId === hwId ? { ...d, ...updateData } : d)));
+      if (selectedDevice?.hwId === hwId) {
+        setSelectedDevice((prev: any) => ({ ...prev, ...updateData }));
+      }
+
+      showToast(
+        isPerpetual
+          ? `Đã nâng cấp ${hwId} thành VÔ THỜI HẠN (Trọn đời)!`
+          : `Đã gia hạn thành công ${hwId} thêm ${months} tháng dịch vụ!`,
+        "success"
+      );
+    } catch {
+      showToast(`Lỗi thao tác gia hạn thiết bị`, "warning");
+    } finally {
+      setRenewLoading(false);
+    }
+  };
+
   // Manual Device Creation Modal & Form with Anti-Duplicate Check
   const [isCreateDeviceOpen, setIsCreateDeviceOpen] = useState(false);
   const [newDeviceForm, setNewDeviceForm] = useState({
@@ -688,7 +1255,7 @@ function DevicesManagementContent() {
       return;
     }
 
-    const newDev = {
+    const newDev: any = {
       hwId: newDeviceForm.hwId.trim(),
       name: newDeviceForm.name.trim(),
       model: newDeviceForm.model,
@@ -702,7 +1269,12 @@ function DevicesManagementContent() {
       openState: "STOCK",
       isLocked: false,
       signal: 0,
-      warranty: newDeviceForm.warranty.trim() || "12/2028"
+      warranty: newDeviceForm.warranty.trim() || "12/2028",
+      address: "Kho Tổng Phân Phối Austec",
+      deviceTypeDesc: newDeviceForm.group,
+      subscriptionType: "LIMITED",
+      subscriptionExpiresAt: null,
+      subscriptionStatus: "ACTIVE"
     };
 
     setDevices([newDev, ...devices]);
@@ -1486,11 +2058,10 @@ function DevicesManagementContent() {
                   <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800 uppercase text-[11px] tracking-wider">
                     <tr>
                       <th className="p-2.5">Hardware ID</th>
-                      <th className="p-2.5">Tên Thiết Bị</th>
-                      <th className="p-2.5">Model</th>
-                      <th className="p-2.5">Khách Hàng</th>
-                      <th className="p-2.5">Số Điện Thoại</th>
+                      <th className="p-2.5">Tên Thiết Bị / Model</th>
+                      <th className="p-2.5">Khách Hàng / Địa Chỉ</th>
                       <th className="p-2.5">Trạng Thái</th>
+                      <th className="p-2.5">Gói Dịch Vụ</th>
                       <th className="p-2.5">Bảo Hành</th>
                       <th className="p-2.5 text-right">Thao Tác</th>
                     </tr>
@@ -1515,10 +2086,16 @@ function DevicesManagementContent() {
                             {d.type === "BIKE" && <span title="Định vị">🛵</span>}
                             <span>{d.hwId}</span>
                           </td>
-                          <td className="p-2.5 font-semibold text-slate-900 dark:text-white">{d.name}</td>
-                          <td className="p-2.5 font-mono text-[11px] text-slate-500 dark:text-slate-400">{d.model}</td>
-                          <td className="p-2.5">{d.owner}</td>
-                          <td className="p-2.5 font-mono text-slate-600 dark:text-slate-400">{d.phone}</td>
+                          <td className="p-2.5">
+                            <div className="font-semibold text-slate-900 dark:text-white">{d.name}</div>
+                            <div className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{d.model} • {d.group}</div>
+                          </td>
+                          <td className="p-2.5 max-w-[200px]">
+                            <div className="font-medium text-slate-900 dark:text-white truncate">{d.owner}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate" title={d.address || d.phone}>
+                              {d.address || d.phone}
+                            </div>
+                          </td>
                           <td className="p-2.5">
                             {d.status === "in_stock" ? (
                               <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit font-bold">
@@ -1534,6 +2111,21 @@ function DevicesManagementContent() {
                               <span className="text-[10px] font-mono text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-full flex items-center gap-1.5 w-fit font-bold">
                                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                 Offline
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            {d.subscriptionType === "PERPETUAL" ? (
+                              <span className="text-[10px] font-mono text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit font-bold">
+                                <ShieldCheck className="w-3 h-3 text-purple-500" /> Vô thời hạn
+                              </span>
+                            ) : d.subscriptionStatus === "EXPIRED" ? (
+                              <span className="text-[10px] font-mono text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit font-bold">
+                                <AlertCircle className="w-3 h-3 text-rose-500" /> Cần gia hạn
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit font-bold">
+                                <CheckCircle2 className="w-3 h-3 text-cyan-500" /> Có thời hạn (12T)
                               </span>
                             )}
                           </td>
@@ -1635,16 +2227,113 @@ function DevicesManagementContent() {
                     </div>
                   </div>
 
-                  {/* Customer Information */}
-                  <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5">
-                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">Chủ Sở Hữu / Nơi Lắp Đặt</div>
-                    <div className="flex justify-between">
+                  {/* Customer Information & Installation Address */}
+                  <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+                    <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Chủ Sở Hữu & Nơi Lắp Đặt</div>
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 dark:text-slate-400">Họ và tên:</span>
                       <span className="text-slate-900 dark:text-white font-semibold">{selectedDevice.owner}</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center text-xs">
                       <span className="text-slate-500 dark:text-slate-400">Điện thoại:</span>
                       <span className="text-cyan-600 dark:text-cyan-400 font-mono font-semibold">{selectedDevice.phone}</span>
+                    </div>
+                    <div className="flex justify-between items-start gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 shrink-0">Địa chỉ lắp đặt:</span>
+                      <span className="text-slate-800 dark:text-slate-200 text-right font-medium">
+                        {selectedDevice.address || "Số 45, Đường Lê Duẩn, Hoàn Kiếm, Hà Nội"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                      <span className="text-slate-500 dark:text-slate-400 shrink-0">Phân loại phần cứng:</span>
+                      <span className="text-cyan-600 dark:text-cyan-400 font-semibold text-right text-[11px]">
+                        {selectedDevice.deviceTypeDesc || selectedDevice.group}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Subscription & Expiration Management Card */}
+                  <div className="p-2.5 rounded-lg border border-cyan-500/30 bg-cyan-950/10 dark:bg-cyan-950/20 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="text-[11px] font-bold text-cyan-700 dark:text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-cyan-500" />
+                        <span>Gói Dịch Vụ & Thời Hạn Thiết Bị</span>
+                      </div>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                        selectedDevice.subscriptionType === 'PERPETUAL'
+                          ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30'
+                          : selectedDevice.subscriptionStatus === 'EXPIRED'
+                          ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                      }`}>
+                        {selectedDevice.subscriptionType === 'PERPETUAL' ? 'VÔ THỜI HẠN (TRỌN ĐỜI)' : 'CÓ THỜI HẠN (12 THÁNG/KỲ)'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 text-[11px] pt-1 border-t border-cyan-500/20">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Hình thức kích hoạt:</span>
+                        <span className="text-slate-900 dark:text-white font-medium">
+                          {selectedDevice.subscriptionType === 'PERPETUAL' ? 'Trọn đời (Vĩnh viễn không cần gia hạn)' : 'Gia hạn định kỳ (Mặc định 12 tháng khi KH)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Hạn dùng dịch vụ:</span>
+                        <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                          {selectedDevice.subscriptionType === 'PERPETUAL'
+                            ? 'Trọn đời không giới hạn'
+                            : selectedDevice.subscriptionExpiresAt
+                            ? `Hết hạn: ${new Date(selectedDevice.subscriptionExpiresAt).toLocaleDateString('vi-VN')} (${Math.max(0, Math.ceil((new Date(selectedDevice.subscriptionExpiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} ngày còn lại)`
+                            : 'Hết hạn: 21/10/2027 (365 ngày còn lại)'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Quyền điều khiển:</span>
+                        <span className={`font-semibold flex items-center gap-1 ${
+                          selectedDevice.subscriptionStatus === 'EXPIRED'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}>
+                          {selectedDevice.subscriptionStatus === 'EXPIRED' ? (
+                            <><AlertCircle className="w-3.5 h-3.5" /> Khóa điều khiển (Chờ gia hạn)</>
+                          ) : (
+                            <><CheckCircle2 className="w-3.5 h-3.5" /> Được phép điều khiển & giám sát</>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick Renewal Buttons */}
+                    <div className="pt-2 border-t border-cyan-500/20 space-y-1.5">
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider">
+                        Thao Tác Gia Hạn Cho Thiết Bị:
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleRenewDevice(selectedDevice.hwId, 12, false)}
+                          disabled={renewLoading}
+                          className="px-2 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-[10px] text-center transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          + 12 Tháng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRenewDevice(selectedDevice.hwId, 24, false)}
+                          disabled={renewLoading}
+                          className="px-2 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[10px] text-center transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          + 24 Tháng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRenewDevice(selectedDevice.hwId, 0, true)}
+                          disabled={renewLoading}
+                          className="px-2 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold text-[10px] text-center transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                        >
+                          Vô Thời Hạn
+                        </button>
+                      </div>
                     </div>
                   </div>
 
