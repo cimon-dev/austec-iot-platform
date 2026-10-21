@@ -32,7 +32,7 @@ class AuthService {
   /// Khởi tạo và đọc phiên đăng nhập đã lưu trong SharedPreferences
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
       _token = prefs.getString(_tokenKey);
       final userJsonStr = prefs.getString(_userKey);
       if (_token != null && userJsonStr != null) {
@@ -40,7 +40,7 @@ class AuthService {
         _currentUser = UserModel.fromJson(userMap, token: _token);
       }
     } catch (e) {
-      debugPrint('[AuthService] Lỗi khi nạp session: $e');
+      debugPrint('[AuthService] Lưu ý khi nạp session: $e');
     }
   }
 
@@ -155,11 +155,11 @@ class AuthService {
     _currentUser = null;
     _token = null;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
       await prefs.remove(_tokenKey);
       await prefs.remove(_userKey);
     } catch (e) {
-      debugPrint('[AuthService] Lỗi khi xóa session: $e');
+      debugPrint('[AuthService] Lưu ý khi xóa session: $e');
     }
   }
 
@@ -167,11 +167,11 @@ class AuthService {
     _token = token;
     _currentUser = user;
     try {
-      final prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
       await prefs.setString(_tokenKey, token);
       await prefs.setString(_userKey, jsonEncode(user.toJson()));
     } catch (e) {
-      debugPrint('[AuthService] Lỗi khi lưu session: $e');
+      debugPrint('[AuthService] Lưu ý khi lưu session: $e');
     }
   }
 }

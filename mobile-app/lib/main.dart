@@ -4,14 +4,35 @@ import 'core/services/auth_service.dart';
 import 'presentation/screens/orbital_hub_screen.dart';
 import 'presentation/screens/login_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await AuthService().init();
   runApp(const AustecIoTApp());
 }
 
-class AustecIoTApp extends StatelessWidget {
+class AustecIoTApp extends StatefulWidget {
   const AustecIoTApp({super.key});
+
+  @override
+  State<AustecIoTApp> createState() => _AustecIoTAppState();
+}
+
+class _AustecIoTAppState extends State<AustecIoTApp> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    try {
+      await AuthService().init();
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _initialized = true);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,9 +50,23 @@ class AustecIoTApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: AuthService().isLoggedIn
-          ? const OrbitalHubScreen()
-          : const LoginScreen(),
+      home: !_initialized
+          ? const Scaffold(
+              backgroundColor: AppTheme.background,
+              body: Center(
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: AppTheme.cyanAccent,
+                  ),
+                ),
+              ),
+            )
+          : (AuthService().isLoggedIn
+              ? const OrbitalHubScreen()
+              : const LoginScreen()),
     );
   }
 }
