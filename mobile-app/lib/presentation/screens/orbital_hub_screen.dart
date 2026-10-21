@@ -317,7 +317,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   Widget _buildControlHeroHeader(bool isDark) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      margin: const EdgeInsets.only(left: 14, right: 14, top: 16, bottom: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.2),
