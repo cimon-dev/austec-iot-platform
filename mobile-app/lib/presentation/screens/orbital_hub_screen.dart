@@ -251,7 +251,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 // NỘI DUNG CHÍNH (THEO TAB ĐƯỢC CHỌN)
                 Expanded(
                   child: _selectedBottomNavIndex == 0
-                      ? _buildControlPageWithBackground(isDark)
+                      ? _buildControlPageOriginal(isDark)
                       : _selectedBottomNavIndex == 1
                           ? const NativeShopScreen()
                           : _selectedBottomNavIndex == 2
@@ -275,290 +275,144 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // TRANG ĐIỀU KHIỂN: Nền là assets/background1.png (trước đây là nền Nhà của tôi) và Hero Header tích hợp trên assets/header.png
-  Widget _buildControlPageWithBackground(bool isDark) {
-    return Stack(
+  // TRANG ĐIỀU KHIỂN NGUYÊN BẢN (Banner Quảng Cáo + Card Thông Tin + Tâm Nhà Của Tôi & Các Danh Mục)
+  Widget _buildControlPageOriginal(bool isDark) {
+    return Column(
       children: [
-        // 1. NỀN DỰ ÁN CỦA TOÀN BỘ TRANG ĐIỀU KHIỂN (assets/background1.png)
-        Positioned.fill(
-          child: Image.asset(
-            "assets/background1.png",
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(color: isDark ? AppTheme.background : AppTheme.lightBackground);
-            },
-          ),
-        ),
+        // 1. BANNER QUẢNG CÁO / NHẬN DIỆN THƯƠNG HIỆU (assets/header.png)
+        _buildAdBrandBanner(),
 
-        // Lớp phủ Gradient tối nhẹ để các nút danh mục và chữ nổi bật sắc nét
-        Positioned.fill(
-          child: Container(
-            color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.45),
-          ),
-        ),
+        // 2. KHỐI THÔNG TIN NGƯỜI DÙNG & TIỆN ÍCH HỆ THỐNG
+        _buildUserInfoCard(isDark),
 
-        // 2. NỘI DUNG TRANG ĐIỀU KHIỂN
-        Column(
-          children: [
-            // HERO BANNER TÍCH HỢP (assets/header.png): Hiển thị trực tiếp Lời chào, Vị trí/Nhiệt độ, Thời gian và Thanh công cụ
-            _buildControlHeroHeader(isDark),
-
-            // KHÔNG GIAN BỐ CỤC CHÍNH (CỐ ĐỊNH NHÀ CỦA TÔI & CÁC DANH MỤC)
-            Expanded(
-              child: _buildFixedHubLayout(isDark),
-            ),
-          ],
+        // 3. KHÔNG GIAN BỐ CỤC CHÍNH (CỐ ĐỊNH NHÀ CỦA TÔI & CÁC DANH MỤC)
+        Expanded(
+          child: _buildFixedHubLayout(isDark),
         ),
       ],
     );
   }
 
-  // Hero Header trên ảnh header.png: Hiển thị Avatar, Lời chào, Thời gian, Nút công cụ trực tiếp trên ảnh
-  Widget _buildControlHeroHeader(bool isDark) {
+  // 1. Banner Quảng Cáo / Nhận Diện Thương Hiệu trên cùng
+  Widget _buildAdBrandBanner() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(left: 14, right: 14, top: 16, bottom: 8),
+      height: 72,
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.cyanAccent.withValues(alpha: 0.2),
-            blurRadius: 14,
-            offset: const Offset(0, 3),
+            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(17),
-        child: Stack(
-          children: [
-            // 1. Ảnh nền ngôi nhà thông minh header.png
-            Positioned.fill(
-              child: Image.asset(
-                "assets/header.png",
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // 2. Lớp phủ Gradient tối để tương phản chữ và icon
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withValues(alpha: 0.42),
-                      Colors.black.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-            ),
-
-            // 3. Nội dung hiển thị trực tiếp trên hình ảnh
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+        borderRadius: BorderRadius.circular(13),
+        child: Image.asset(
+          "assets/header.png",
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: const Color(0xFF0F172A),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: const Row(
                 children: [
-                  // Hàng 1: Avatar, Lời chào, Vị trí/Nhiệt độ & Đồng hồ thời gian thực
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Icon(Icons.shield_outlined, color: AppTheme.cyanAccent, size: 28),
+                  SizedBox(width: 12),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Avatar & Lời chào
-                      Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: AppTheme.cyanGradient,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.cyanAccent.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(Icons.person, color: Colors.white, size: 22),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "${AppTheme.t("welcome")}, Nguyễn Mạnh Đức",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: const [
-                                  Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 12),
-                                  SizedBox(width: 2),
-                                  Text(
-                                    "Hà Đông • 32°C • 68%",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10.5,
-                                      shadows: [
-                                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+                      Text(
+                        "AUSTEC SMART HOME SOLUTIONS",
+                        style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.8),
                       ),
-
-                      // Đồng hồ thời gian thực
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              _timeString,
-                              style: const TextStyle(
-                                color: AppTheme.cyanAccent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: "monospace",
-                              ),
-                            ),
-                            Text(
-                              _dateString,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 8.5,
-                              ),
-                            ),
-                          ],
-                        ),
+                      Text(
+                        "Hệ Sinh Thái Điều Khiển Cửa Cuốn & IoT Cao Cấp",
+                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10),
                       ),
                     ],
                   ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-                  const SizedBox(height: 8),
-                  Container(height: 1, color: Colors.white.withValues(alpha: 0.15)),
-                  const SizedBox(height: 6),
+  // 2. Thẻ Thông Tin Người Dùng & Nút Công Cụ (Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối)
+  Widget _buildUserInfoCard(bool isDark) {
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
 
-                  // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Avatar & Lời chào
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppTheme.cyanGradient,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.cyanAccent.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.person, color: Colors.white, size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nút Chuyển Đổi Dark / Light Mode
-                      InkWell(
-                        onTap: _toggleTheme,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 14, color: isDark ? AppTheme.cyanAccent : Colors.orange),
-                              const SizedBox(width: 4),
-                              Text(
-                                isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
-                                style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
+                      Text(
+                        "${AppTheme.t("welcome")}, Nguyễn Mạnh Đức",
+                        style: TextStyle(
+                          color: textCol,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-
-                      // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
-                      InkWell(
-                        onTap: _toggleLanguage,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.5)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 12)),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppTheme.currentLang == "vi" ? "VI" : "EN",
-                                style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.search, size: 19, color: Colors.white),
-                            tooltip: AppTheme.t("search_device"),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                            onPressed: _openSearchDialog,
-                          ),
+                          Icon(Icons.location_on_outlined, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, size: 12),
                           const SizedBox(width: 2),
-                          IconButton(
-                            icon: const Icon(Icons.notifications_none_rounded, size: 19, color: AppTheme.cyanAccent),
-                            tooltip: AppTheme.t("notifications"),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                            onPressed: _openNotificationCenter,
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.cyanAccent,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              minimumSize: const Size(0, 28),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          Text(
+                            "Hà Đông • 32°C • 68%",
+                            style: TextStyle(
+                              color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                              fontSize: 10.5,
                             ),
-                            icon: const Icon(Icons.add, size: 14),
-                            label: Text(
-                              AppTheme.t("add_device"),
-                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                              );
-                            },
                           ),
                         ],
                       ),
@@ -566,9 +420,138 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+
+              // Đồng hồ thời gian thực
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.cyanAccent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      _timeString,
+                      style: const TextStyle(
+                        color: AppTheme.cyanAccent,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: "monospace",
+                      ),
+                    ),
+                    Text(
+                      _dateString,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                        fontSize: 8.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          Divider(color: cardBorder, height: 1),
+          const SizedBox(height: 6),
+
+          // Thanh công cụ: Chuyển Dark/Light Mode, Chuyển Anh/Việt, Tìm Kiếm, Chuông, Ghép nối
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Nút Chuyển Đổi Dark / Light Mode
+              InkWell(
+                onTap: _toggleTheme,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: isDark ? AppTheme.cardBorder : Colors.amber.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 14, color: isDark ? AppTheme.cyanAccent : Colors.orange),
+                      const SizedBox(width: 4),
+                      Text(
+                        isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
+                        style: TextStyle(color: textCol, fontSize: 10.5, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
+              InkWell(
+                onTap: _toggleLanguage,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.purpleAccent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 12)),
+                      const SizedBox(width: 4),
+                      Text(
+                        AppTheme.currentLang == "vi" ? "VI" : "EN",
+                        style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.search, size: 20, color: textCol),
+                    tooltip: AppTheme.t("search_device"),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: _openSearchDialog,
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_rounded, size: 20, color: AppTheme.cyanAccent),
+                    tooltip: AppTheme.t("notifications"),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    onPressed: _openNotificationCenter,
+                  ),
+                  const SizedBox(width: 6),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.cyanAccent,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: const Size(0, 30),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    icon: const Icon(Icons.add, size: 14),
+                    label: Text(
+                      AppTheme.t("add_device"),
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -576,7 +559,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   // 3. Bố Cục Tâm & Các Khối Xung Quanh CỐ ĐỊNH (Tâm Nhà Của Tôi & 7 Danh Mục Xung Quanh)
   Widget _buildFixedHubLayout(bool isDark) {
     final categories = _gateway.categories;
-    final textCol = Colors.white;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -587,7 +570,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
         return Stack(
           alignment: Alignment.center,
           children: [
-            // 1. Tâm "NHÀ CỦA TÔI" & Các vòng đồng tâm phát sáng
+            // 1. Tâm "NHÀ CỦA TÔI" & Các vòng đồng tâm phát sáng (Chứa assets/background1.png như ban đầu)
             Positioned(
               left: center.dx - 120,
               top: center.dy - 120,
@@ -624,47 +607,49 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                           ),
                         ),
                       ),
-                      // Lõi trung tâm Nhà Của Tôi
+                      // Nền logo dự án (assets/background1.png)
                       Container(
                         width: 130,
                         height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                          ),
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6), width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.3),
+                              color: AppTheme.cyanAccent.withValues(alpha: 0.25),
                               blurRadius: 20,
                               spreadRadius: 2,
                             ),
                           ],
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.home_work_rounded, color: Colors.white, size: 38),
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.75),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.cyanAccent, width: 1.2),
-                              ),
-                              child: Text(
-                                AppTheme.t("my_home"),
-                                style: const TextStyle(
-                                  color: AppTheme.cyanAccent,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ),
-                          ],
+                        child: ClipOval(
+                          child: Image.asset(
+                            "assets/background1.png",
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: const Color(0xFF0F172A),
+                                child: const Icon(Icons.home_work_rounded, color: AppTheme.cyanAccent, size: 50),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      // Nhãn NHÀ CỦA TÔI
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppTheme.cyanAccent, width: 1.2),
+                        ),
+                        child: Text(
+                          AppTheme.t("my_home"),
+                          style: const TextStyle(
+                            color: AppTheme.cyanAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                          ),
                         ),
                       ),
                     ],
