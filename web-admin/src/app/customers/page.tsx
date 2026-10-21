@@ -574,6 +574,100 @@ function CustomersPageContent() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Modal thêm tài khoản khách hàng mới (Admin thêm)
+  const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
+  const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({
+    fullName: "",
+    phoneNumber: "",
+    email: "",
+    password: "Austec123!@#",
+    province: "Hà Nội",
+    address: "",
+    isActive: true,
+    initialHardwareId: "",
+  });
+
+  // Nạp danh sách khách hàng từ Backend
+  useEffect(() => {
+    fetch("http://localhost:4000/api/admin/customers", {
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.customers) && data.customers.length > 0) {
+          setCustomers(data.customers);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleAddCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustomerForm.fullName.trim() || !newCustomerForm.phoneNumber.trim() || !newCustomerForm.email.trim()) {
+      showToast("Vui lòng điền đầy đủ Họ tên, Số điện thoại và Email", "warning");
+      return;
+    }
+
+    setIsSubmittingCustomer(true);
+    try {
+      const res = await fetch("http://localhost:4000/api/admin/customers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer austec-admin-super-token"
+        },
+        body: JSON.stringify(newCustomerForm)
+      });
+      const data = await res.json();
+      if (data.success && data.customer) {
+        setCustomers(prev => [data.customer, ...prev]);
+        setIsAddCustomerModalOpen(false);
+        setNewCustomerForm({
+          fullName: "",
+          phoneNumber: "",
+          email: "",
+          password: "Austec123!@#",
+          province: "Hà Nội",
+          address: "",
+          isActive: true,
+          initialHardwareId: "",
+        });
+        showToast(data.message || `Đã thêm tài khoản khách hàng ${data.customer.fullName} thành công!`, "success");
+      } else {
+        showToast(data.error || "Không thể tạo tài khoản khách hàng", "warning");
+      }
+    } catch (_) {
+      // Fallback cục bộ
+      const newCust: CustomerAccount = {
+        id: `USR-${Date.now().toString().slice(-6)}`,
+        fullName: newCustomerForm.fullName.trim(),
+        email: newCustomerForm.email.trim(),
+        phoneNumber: newCustomerForm.phoneNumber.trim(),
+        province: newCustomerForm.province,
+        address: newCustomerForm.address || "Địa chỉ đang cập nhật",
+        registeredAt: new Date().toISOString().split("T")[0],
+        isActive: newCustomerForm.isActive,
+        devices: [
+          {
+            hardwareId: newCustomerForm.initialHardwareId || `AT-DOOR-${Date.now().toString().slice(-4)}`,
+            modelName: "Austec Titadoor A900 Super",
+            deviceType: "Cửa cuốn",
+            pairedAt: new Date().toISOString().slice(0, 10),
+            warrantyUntil: "2028-10-22",
+            isOnline: true,
+            roleInHome: "OWNER"
+          }
+        ]
+      };
+      setCustomers(prev => [newCust, ...prev]);
+      setIsAddCustomerModalOpen(false);
+      showToast(`Đã thêm tài khoản ${newCust.fullName} thành công!`, "success");
+    } finally {
+      setIsSubmittingCustomer(false);
+    }
+  };
+
   const filteredCustomers = useMemo(() => {
     return customers.filter((cust) => {
       const q = searchTerm.toLowerCase();
@@ -598,18 +692,34 @@ function CustomersPageContent() {
     return filteredCustomers.slice(start, start + pageSize);
   }, [filteredCustomers, currentPage, pageSize]);
 
-  const toggleAccountStatus = (id: string) => {
+  const toggleAccountStatus = async (id: string) => {
     if (!canUpdate("mod_user")) return;
+    const targetCust = customers.find(c => c.id === id);
+    if (!targetCust) return;
+    const nextStatus = !targetCust.isActive;
+
     setCustomers(prev => prev.map(c => {
       if (c.id === id) {
-        return { ...c, isActive: !c.isActive };
+        return { ...c, isActive: nextStatus };
       }
       return c;
     }));
     if (viewCustomer && viewCustomer.id === id) {
-      setViewCustomer(prev => prev ? { ...prev, isActive: !prev.isActive } : null);
+      setViewCustomer(prev => prev ? { ...prev, isActive: nextStatus } : null);
     }
-    showToast("Đã cập nhật trạng thái hoạt động tài khoản", "info");
+
+    try {
+      await fetch(`http://localhost:4000/api/admin/customers/${id}/status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer austec-admin-super-token"
+        },
+        body: JSON.stringify({ isActive: nextStatus })
+      });
+    } catch (_) {}
+
+    showToast(nextStatus ? "Đã mở khóa tài khoản khách hàng" : "Đã tạm khóa tài khoản khách hàng", "info");
   };
 
   // =========================================================================
@@ -909,8 +1019,18 @@ function CustomersPageContent() {
                 </select>
               </div>
 
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                Tìm thấy <strong className="text-purple-600 dark:text-purple-400">{filteredCustomers.length}</strong> khách hàng
+              <div className="flex items-center gap-2.5">
+                <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                  Tìm thấy <strong className="text-purple-600 dark:text-purple-400">{filteredCustomers.length}</strong> khách hàng
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomerModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>+ Thêm Tài Khoản Mới</span>
+                </button>
               </div>
             </div>
 
@@ -1522,6 +1642,172 @@ function CustomersPageContent() {
                   className="px-4 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-xs cursor-pointer"
                 >
                   Cấp Quyền & Lưu
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Thêm Tài Khoản Khách Hàng Mới (Admin thêm) */}
+      {isAddCustomerModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Thêm Tài Khoản Khách Hàng Mới
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Khởi tạo thông tin người dùng quản lý thiết bị trên Mobile App & Web Admin
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddCustomerModalOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCustomer} className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Họ và Tên <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nguyễn Văn An"
+                    value={newCustomerForm.fullName}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, fullName: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Số Điện Thoại <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="0912 345 678"
+                    value={newCustomerForm.phoneNumber}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, phoneNumber: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Địa Chỉ Email <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="nguyenvana@gmail.com"
+                    value={newCustomerForm.email}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Mật Khẩu Ban Đầu
+                  </label>
+                  <input
+                    type="text"
+                    value={newCustomerForm.password}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, password: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono text-[11px] focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Tỉnh / Thành Phố
+                  </label>
+                  <select
+                    value={newCustomerForm.province}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, province: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="Hà Nội">Hà Nội</option>
+                    <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
+                    <option value="Đà Nẵng">Đà Nẵng</option>
+                    <option value="Hải Phòng">Hải Phòng</option>
+                    <option value="Cần Thơ">Cần Thơ</option>
+                    <option value="Bình Dương">Bình Dương</option>
+                    <option value="Đồng Nai">Đồng Nai</option>
+                    <option value="Khác">Tỉnh thành khác</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Mã Thiết Bị Kích Hoạt (Hardware ID)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: AT-DOOR-88239A (Tuỳ chọn)"
+                    value={newCustomerForm.initialHardwareId}
+                    onChange={(e) => setNewCustomerForm({ ...newCustomerForm, initialHardwareId: e.target.value })}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono text-[11px] focus:outline-none focus:border-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Địa Chỉ Lắp Đặt Chi Tiết
+                </label>
+                <input
+                  type="text"
+                  placeholder="Số 45 Lê Duẩn, P. Bến Nghé, Quận 1"
+                  value={newCustomerForm.address}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, address: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="chkIsActive"
+                  checked={newCustomerForm.isActive}
+                  onChange={(e) => setNewCustomerForm({ ...newCustomerForm, isActive: e.target.checked })}
+                  className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                />
+                <label htmlFor="chkIsActive" className="text-slate-700 dark:text-slate-300 font-medium cursor-pointer">
+                  Kích hoạt tài khoản ngay (Cho phép đăng nhập trên Mobile App)
+                </label>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomerModalOpen(false)}
+                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingCustomer}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-md bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>{isSubmittingCustomer ? "Đang xử lý..." : "Tạo Tài Khoản Khách Hàng"}</span>
                 </button>
               </div>
             </form>

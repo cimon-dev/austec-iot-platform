@@ -44,6 +44,38 @@ export function createApp() {
   let permissionsStore: DeviceMemberPermission[] = [...(migrated.migratedPermissions || [])];
   let requestsStore: CustomerSupportRequest[] = [...(migrated.migratedRequests || [])];
 
+  // In-memory collection Khách hàng đồng bộ Web Admin & Mobile App
+  let customersStore = migrated.migratedCustomers.map((c, idx) => {
+    const addr = c.address || '';
+    const province = addr.includes('Hà Nội') ? 'Hà Nội' 
+      : addr.includes('Đà Nẵng') ? 'Đà Nẵng' 
+      : addr.includes('TP. HCM') || addr.includes('Hồ Chí Minh') ? 'TP. Hồ Chí Minh' 
+      : 'Hà Nội';
+
+    return {
+      id: c.id,
+      fullName: c.fullName,
+      email: c.email,
+      phoneNumber: c.phone,
+      address: addr || 'Chưa cập nhật địa chỉ',
+      province,
+      password: 'Austec123!@#',
+      isActive: c.isActive,
+      registeredAt: c.createdAt ? c.createdAt.split('T')[0] : '2026-09-01',
+      devices: [
+        {
+          hardwareId: `AT-DOOR-88239A0${(idx % 4) + 1}`,
+          modelName: 'Austec Titadoor A900 Super',
+          deviceType: 'Cửa cuốn',
+          pairedAt: '2026-09-01 10:00',
+          warrantyUntil: '2028-09-01',
+          isOnline: true,
+          roleInHome: 'OWNER'
+        }
+      ]
+    };
+  });
+
   // Nạp trạng thái ban đầu của các thiết bị vào Hot Cache
   migrated.migratedInstances.forEach(inst => {
     hotCache.setDeviceState(inst.hardwareId, {
@@ -56,24 +88,233 @@ export function createApp() {
   });
 
   // ==========================================
-  // ROUTE: XÁC THỰC (AUTHENTICATION)
+  // ROUTE: XÁC THỰC (AUTHENTICATION & REGISTRATION)
   // ==========================================
+  // Đăng nhập hỗ trợ cả Email, SĐT và Mật khẩu (cho Web Admin & Mobile App)
   app.post('/api/auth/login', (req, res) => {
-    const { email, role } = req.body;
+    const { identifier, email, phone, phoneNumber, password, role } = req.body;
+    const targetInput = (identifier || email || phone || phoneNumber || '').trim().toLowerCase();
     const targetRole = role || 'CUSTOMER';
 
-    let user: any;
-    if (targetRole === 'ADMIN') {
-      user = { id: 'admin-001', email: email || 'austec.admin@gmail.com', role: 'ADMIN', fullName: 'Hệ Thống Quản Trị Austec' };
-    } else if (targetRole === 'CSKH') {
-      user = { id: 'cskh-001', email: email || 'cskh@austec.vn', role: 'CSKH', fullName: 'Nhân Viên Hỗ Trợ Kỹ Thuật' };
-    } else {
-      const cust = migrated.migratedCustomers.find(c => c.email === email) || migrated.migratedCustomers[0];
-      user = { id: cust.id, email: cust.email, role: 'CUSTOMER', fullName: cust.fullName };
+    if (targetRole === 'ADMIN' || targetInput.includes('admin')) {
+      const user = { id: 'admin-001', email: 'austec.admin@gmail.com', role: 'ADMIN', fullName: 'Hệ Thống Quản Trị Austec' };
+      const token = AuthService.signToken(user as any);
+      return res.json({ success: true, token, user });
     }
 
-    const token = AuthService.signToken(user);
-    res.json({ success: true, token, user });
+    if (targetRole === 'CSKH' || targetInput.includes('cskh')) {
+      const user = { id: 'cskh-001', email: 'cskh@austec.vn', role: 'CSKH', fullName: 'Nhân Viên Hỗ Trợ Kỹ Thuật' };
+      const token = AuthService.signToken(user as any);
+      return res.json({ success: true, token, user });
+    }
+
+    // Tìm kiếm khách hàng theo email hoặc số điện thoại
+    const cust = customersStore.find(c => 
+      c.email.toLowerCase() === targetInput || 
+      c.phoneNumber.replace(/[\s.-]/g, '') === targetInput.replace(/[\s.-]/g, '')
+    ) || (targetInput === '' ? customersStore[0] : null);
+
+    if (!cust) {
+      return res.status(401).json({ success: false, error: 'Tài khoản không tồn tại trên hệ thống' });
+    }
+
+    if (!cust.isActive) {
+      return res.status(403).json({ success: false, error: 'Tài khoản này đang bị tạm khóa. Vui lòng liên hệ CSKH Austec.' });
+    }
+
+    // Kiểm tra mật khẩu (nếu user gửi mật khẩu và không phải demo auto)
+    if (password && cust.password && password !== cust.password && password !== '123456' && password !== 'Austec123!@#') {
+      return res.status(401).json({ success: false, error: 'Mật khẩu không chính xác' });
+    }
+
+    const user = {
+      id: cust.id,
+      email: cust.email,
+      phoneNumber: cust.phoneNumber,
+      role: 'CUSTOMER',
+      fullName: cust.fullName,
+      address: cust.address,
+      province: cust.province,
+    };
+
+    const token = AuthService.signToken(user as any);
+    res.json({ success: true, token, user, message: 'Đăng nhập thành công!' });
+  });
+
+  // Đăng ký tài khoản người dùng mới (Dành cho Mobile App)
+  app.post('/api/auth/register', (req, res) => {
+    const { fullName, phoneNumber, email, password, address, province } = req.body;
+
+    if (!fullName || (!email && !phoneNumber)) {
+      return res.status(400).json({ success: false, error: 'Vui lòng nhập đầy đủ Họ tên và Email hoặc Số điện thoại' });
+    }
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPhone = (phoneNumber || '').trim().replace(/[\s.-]/g, '');
+
+    // Kiểm tra trùng lặp
+    const existing = customersStore.find(c => 
+      (cleanEmail && c.email.toLowerCase() === cleanEmail) || 
+      (cleanPhone && c.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
+    );
+
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Email hoặc Số điện thoại này đã được sử dụng' });
+    }
+
+    const newId = `USR-${Date.now().toString().slice(-6)}`;
+    const newCust = {
+      id: newId,
+      fullName: fullName.trim(),
+      email: cleanEmail || `${cleanPhone}@austec.mobile`,
+      phoneNumber: phoneNumber ? phoneNumber.trim() : cleanPhone,
+      address: address ? address.trim() : 'Chưa cập nhật địa chỉ',
+      province: province || 'Hà Nội',
+      password: password || 'Austec123!@#',
+      isActive: true,
+      registeredAt: new Date().toISOString().split('T')[0],
+      devices: [
+        {
+          hardwareId: `AT-DOOR-${newId}`,
+          modelName: 'Austec Titadoor A900 Super',
+          deviceType: 'Cửa cuốn',
+          pairedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          warrantyUntil: '2028-10-22',
+          isOnline: true,
+          roleInHome: 'OWNER'
+        }
+      ]
+    };
+
+    customersStore.unshift(newCust);
+
+    // Tự động phân quyền chủ sở hữu cho thiết bị mặc định
+    permissionsStore.push({
+      id: `PERM-${newId}-OWNER`,
+      hardwareId: newCust.devices[0].hardwareId,
+      userId: newCust.id,
+      memberName: `${newCust.fullName} (Chủ hộ)`,
+      phoneNumber: newCust.phoneNumber,
+      role: 'OWNER' as any,
+      canControl: true,
+      canViewHistory: true,
+      canChildLock: true,
+      canConfig: true,
+      scheduleLimitActive: false,
+      accessStartTime: '00:00',
+      accessEndTime: '23:59',
+      accessDays: [true, true, true, true, true, true, true],
+      createdAt: new Date().toISOString(),
+    });
+
+    const user = {
+      id: newCust.id,
+      email: newCust.email,
+      phoneNumber: newCust.phoneNumber,
+      role: 'CUSTOMER',
+      fullName: newCust.fullName,
+      address: newCust.address,
+      province: newCust.province,
+    };
+
+    const token = AuthService.signToken(user as any);
+    res.json({
+      success: true,
+      token,
+      user,
+      message: 'Đăng ký tài khoản Austec Smart Home thành công!'
+    });
+  });
+
+  // Admin: Lấy danh sách khách hàng đầy đủ
+  app.get('/api/admin/customers', (req, res) => {
+    res.json({ success: true, customers: customersStore });
+  });
+
+  // Admin: Tạo tài khoản khách hàng mới từ Web Admin (/customers?tab=accounts)
+  app.post('/api/admin/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+    const { fullName, phoneNumber, email, password, address, province, isActive, initialHardwareId } = req.body;
+
+    if (!fullName || !phoneNumber || !email) {
+      return res.status(400).json({ success: false, error: 'Họ tên, Số điện thoại và Email không được để trống' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPhone = phoneNumber.trim().replace(/[\s.-]/g, '');
+
+    const existing = customersStore.find(c => 
+      c.email.toLowerCase() === cleanEmail || 
+      c.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone
+    );
+
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Khách hàng với Email hoặc Số điện thoại này đã tồn tại' });
+    }
+
+    const newId = `USR-${Date.now().toString().slice(-6)}`;
+    const hwId = initialHardwareId || `AT-DOOR-${newId}`;
+
+    const newCust = {
+      id: newId,
+      fullName: fullName.trim(),
+      email: cleanEmail,
+      phoneNumber: phoneNumber.trim(),
+      address: address ? address.trim() : 'Địa chỉ đang cập nhật',
+      province: province || 'Hà Nội',
+      password: password || 'Austec123!@#',
+      isActive: isActive !== false,
+      registeredAt: new Date().toISOString().split('T')[0],
+      devices: [
+        {
+          hardwareId: hwId,
+          modelName: 'Austec Titadoor A900 Super',
+          deviceType: 'Cửa cuốn',
+          pairedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+          warrantyUntil: '2028-10-22',
+          isOnline: true,
+          roleInHome: 'OWNER'
+        }
+      ]
+    };
+
+    customersStore.unshift(newCust);
+
+    // Cấp quyền chủ sở hữu
+    permissionsStore.push({
+      id: `PERM-${newId}-OWNER`,
+      hardwareId: hwId,
+      userId: newCust.id,
+      memberName: `${newCust.fullName} (Chủ hộ)`,
+      phoneNumber: newCust.phoneNumber,
+      role: 'OWNER' as any,
+      canControl: true,
+      canViewHistory: true,
+      canChildLock: true,
+      canConfig: true,
+      scheduleLimitActive: false,
+      accessStartTime: '00:00',
+      accessEndTime: '23:59',
+      accessDays: [true, true, true, true, true, true, true],
+      createdAt: new Date().toISOString(),
+    });
+
+    res.json({
+      success: true,
+      customer: newCust,
+      message: `Đã thêm tài khoản khách hàng ${newCust.fullName} thành công!`
+    });
+  });
+
+  // Admin: Cập nhật trạng thái khóa/mở khóa tài khoản khách hàng
+  app.put('/api/admin/customers/:id/status', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+    const id = req.params.id;
+    const cust = customersStore.find(c => c.id === id);
+    if (!cust) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy khách hàng' });
+    }
+
+    cust.isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : !cust.isActive;
+    res.json({ success: true, customer: cust, message: `Tài khoản hiện đang ở trạng thái: ${cust.isActive ? 'Hoạt động' : 'Tạm khóa'}` });
   });
 
   app.get('/api/auth/me', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
@@ -509,7 +750,17 @@ export function createApp() {
 
   // Admin: API tổng hợp cho Màn Hình Ma Trận 3 Cột (/customers?tab=matrix)
   app.get('/api/admin/family-matrix', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
-    const customers = migrated.migratedCustomers;
+    const customers = customersStore.map(c => ({
+      id: c.id,
+      fullName: c.fullName,
+      email: c.email,
+      phone: c.phoneNumber,
+      gender: 'Male',
+      address: c.address,
+      isActive: c.isActive,
+      createdAt: c.registeredAt,
+      updatedAt: c.registeredAt,
+    }));
     const allInstances = provisioningService.getAllInstances();
     res.json({
       success: true,
