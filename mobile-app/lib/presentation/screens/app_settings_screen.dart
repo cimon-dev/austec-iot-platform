@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_theme.dart';
+import '../../core/services/auth_service.dart';
 import 'device_management_center_screen.dart';
 import 'family_sharing_screen.dart';
+import 'login_screen.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
@@ -76,10 +78,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Ở lại")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.roseDanger, foregroundColor: Colors.white),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              await AuthService().logout();
+              if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Đã đăng xuất tài khoản thành công.")),
+              );
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
               );
             },
             child: const Text("Đăng xuất"),
@@ -141,40 +149,50 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                  child: Builder(
+                    builder: (context) {
+                      final user = AuthService().currentUser;
+                      final userName = user?.fullName ?? "Nguyễn Văn An";
+                      final userPhone = user?.phoneNumber ?? "0912 345 678";
+                      final userEmail = user?.email ?? "nguyenvana@gmail.com";
+                      final userLocation = user?.province ?? "Hà Nội";
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Nguyễn Mạnh Đức",
-                            style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              Text(
+                                userName,
+                                style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  "CHỦ NHÀ",
+                                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              "CHỦ NHÀ",
-                              style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5, fontWeight: FontWeight.bold),
-                            ),
+                          const SizedBox(height: 3),
+                          Text(
+                            "SĐT: $userPhone • $userEmail",
+                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "$userLocation • Hệ sinh thái Austec IoT hoạt động",
+                            style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        "SĐT: 0988.xxx.888 • Austec ID: AST-88992",
-                        style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11.5),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "7 Thiết bị trực tuyến • 4 Thành viên gia đình",
-                        style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],

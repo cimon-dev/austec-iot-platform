@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'core/constants/app_theme.dart';
+import 'core/services/auth_service.dart';
 import 'presentation/screens/orbital_hub_screen.dart';
+import 'presentation/screens/login_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AuthService().init();
   runApp(const AustecIoTApp());
 }
 
@@ -26,7 +29,9 @@ class AustecIoTApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const OrbitalHubScreen(),
+      home: AuthService().isLoggedIn
+          ? const OrbitalHubScreen()
+          : const LoginScreen(),
     );
   }
 }
