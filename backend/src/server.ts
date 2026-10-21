@@ -6,6 +6,9 @@ import {
   LegacyDataMigrator,
   DynamicSchemaEngine,
   HotCacheClient,
+  Product,
+  DeviceMemberPermission,
+  CustomerSupportRequest,
 } from '@austec/database';
 import { AuthService, AuthenticatedRequest } from './services/auth.service.js';
 import { BlackboxService } from './services/blackbox.service.js';
@@ -35,6 +38,11 @@ export function createApp() {
   const provisioningService = new ProvisioningService(migrated.migratedInventory, migrated.migratedInstances);
   const commandService = new CommandService(blackboxService, hotCache);
   const supportService = new SupportService(hotCache);
+
+  // In-memory collections cho Gian Hàng, Phân Quyền & Phiếu Yêu Cầu Hỗ Trợ
+  let productsStore: Product[] = [...(migrated.migratedProducts || [])];
+  let permissionsStore: DeviceMemberPermission[] = [...(migrated.migratedPermissions || [])];
+  let requestsStore: CustomerSupportRequest[] = [...(migrated.migratedRequests || [])];
 
   // Nạp trạng thái ban đầu của các thiết bị vào Hot Cache
   migrated.migratedInstances.forEach(inst => {
@@ -103,7 +111,14 @@ export function createApp() {
 
   // Lấy danh sách thiết bị thuộc sở hữu của người dùng hiện tại
   app.get('/api/devices/my', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const devices = provisioningService.getDevicesByOwner(req.user!.id);
+    let devices = provisioningService.getDevicesByOwner(req.user!.id);
+    if (devices.length === 0) {
+      // Fallback: Nếu tài khoản đang test chưa có thiết bị riêng, trả về thiết bị của khách hàng mẫu đầu tiên
+      const firstCustomer = migrated.migratedCustomers[0];
+      if (firstCustomer) {
+        devices = provisioningService.getDevicesByOwner(firstCustomer.id);
+      }
+    }
     const enrichedDevices = await Promise.all(
       devices.map(async d => {
         const cache = await hotCache.getDeviceState(d.hardwareId);
@@ -112,10 +127,26 @@ export function createApp() {
           isOnline: cache?.isOnline ?? d.isOnline,
           currentProperties: cache?.currentProperties ?? d.currentProperties,
           rssiSignal: cache?.rssiSignal ?? d.rssiSignal,
+          subscriptionType: d.subscriptionType || 'LIMITED',
+          subscriptionExpiresAt: d.subscriptionExpiresAt || '2027-09-01T00:00:00Z',
+          subscriptionStatus: d.subscriptionStatus || 'ACTIVE',
+          deviceType: d.deviceType || 'Cửa cuốn',
+          installationAddress: d.installationAddress || { fullText: d.addressDisplay || 'Hà Nội, Việt Nam' },
         };
       })
     );
     res.json({ success: true, devices: enrichedDevices });
+  });
+
+  // Gia hạn gói dịch vụ thiết bị (12 tháng, 24 tháng hoặc Vô thời hạn)
+  app.post('/api/devices/:hardwareId/renew', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    const { months, isPerpetual } = req.body;
+    const result = provisioningService.renewSubscription(
+      String(req.params.hardwareId),
+      months !== undefined ? Number(months) : 12,
+      Boolean(isPerpetual)
+    );
+    res.status(result.success ? 200 : 400).json(result);
   });
 
   // Điều khiển thiết bị thời gian thực (< 250ms khứ hồi)
@@ -309,6 +340,11 @@ export function createApp() {
           customerName: customer?.fullName || 'Khách vãng lai',
           customerPhone: customer?.phone || '---',
           customerEmail: customer?.email || '---',
+          subscriptionType: inst.subscriptionType || 'LIMITED',
+          subscriptionExpiresAt: inst.subscriptionExpiresAt || '2027-09-01T00:00:00Z',
+          subscriptionStatus: inst.subscriptionStatus || 'ACTIVE',
+          deviceType: inst.deviceType || 'Cửa cuốn',
+          installationAddress: inst.installationAddress || { fullText: inst.addressDisplay || 'Hà Nội, Việt Nam' },
         };
       })
     );
@@ -316,10 +352,258 @@ export function createApp() {
   });
 
   // ==========================================
-  // ROUTE: CSKH HUB & LIVE CHAT
+  // ROUTE: GIAN HÀNG SẢN PHẨM (SHOP / PRODUCTS)
+  // ==========================================
+  // Lấy danh sách sản phẩm cho Mobile App & Web Showroom
+  app.get('/api/shop/products', (req, res) => {
+    const { category, search } = req.query;
+    let list = productsStore.filter(p => p.isPublished);
+
+    if (category && category !== 'ALL') {
+      list = list.filter(p => p.categoryTag.toLowerCase() === (category as string).toLowerCase());
+    }
+
+    if (search) {
+      const q = (search as string).toLowerCase().trim();
+      list = list.filter(p => 
+        p.name.toLowerCase().includes(q) || 
+        p.subtitle.toLowerCase().includes(q) ||
+        p.categoryTag.toLowerCase().includes(q)
+      );
+    }
+
+    res.json({ success: true, products: list, total: list.length });
+  });
+
+  // Admin: Lấy toàn bộ sản phẩm (kể cả đã ẩn)
+  app.get('/api/admin/products', AuthService.authenticate, (req, res) => {
+    res.json({ success: true, products: productsStore, total: productsStore.length });
+  });
+
+  // Admin: Thêm mới sản phẩm kèm Bảng Thông Số Kỹ Thuật Xuất Xưởng
+  app.post('/api/admin/products', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req, res) => {
+    const data = req.body;
+    const newProduct: Product = {
+      id: data.id || `PROD-${Date.now()}`,
+      name: data.name || 'Sản phẩm mới Austec',
+      categoryTag: data.categoryTag || 'Phụ Kiện',
+      subtitle: data.subtitle || '',
+      price: Number(data.price) || 0,
+      originalPrice: data.originalPrice ? Number(data.originalPrice) : undefined,
+      rating: Number(data.rating) || 5.0,
+      reviewsCount: Number(data.reviewsCount) || 0,
+      imageUrl: data.imageUrl || 'https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80',
+      galleryUrls: Array.isArray(data.galleryUrls) ? data.galleryUrls : [],
+      warrantyText: data.warrantyText || 'Bảo hành chính hãng 24 tháng theo Hardware ID',
+      highlights: Array.isArray(data.highlights) ? data.highlights : [],
+      specs: (typeof data.specs === 'object' && data.specs !== null) ? data.specs : {},
+      stockQuantity: Number(data.stockQuantity) || 50,
+      isPublished: data.isPublished !== undefined ? Boolean(data.isPublished) : true,
+      displayOrder: Number(data.displayOrder) || productsStore.length + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    productsStore.unshift(newProduct);
+    res.json({ success: true, message: 'Đã thêm sản phẩm mới vào gian hàng thành công!', product: newProduct });
+  });
+
+  // Admin: Cập nhật sản phẩm
+  app.put('/api/admin/products/:id', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req, res) => {
+    const id = req.params.id;
+    const idx = productsStore.findIndex(p => p.id === id);
+    if (idx === -1) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy sản phẩm' });
+      return;
+    }
+
+    productsStore[idx] = {
+      ...productsStore[idx],
+      ...req.body,
+      id, // giữ nguyên id
+      updatedAt: new Date().toISOString(),
+    };
+
+    res.json({ success: true, message: 'Cập nhật sản phẩm thành công!', product: productsStore[idx] });
+  });
+
+  // Admin: Xóa hoặc ẩn sản phẩm
+  app.delete('/api/admin/products/:id', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req, res) => {
+    const id = req.params.id;
+    const idx = productsStore.findIndex(p => p.id === id);
+    if (idx === -1) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy sản phẩm' });
+      return;
+    }
+
+    productsStore.splice(idx, 1);
+    res.json({ success: true, message: 'Đã xóa sản phẩm khỏi gian hàng thành công!' });
+  });
+
+  // ==========================================
+  // ROUTE: PHÂN QUYỀN THÀNH VIÊN GIA ĐÌNH (FAMILY ACCESS & RBAC)
+  // ==========================================
+  // Lấy danh sách thành viên được phân quyền trên một thiết bị
+  app.get('/api/devices/:hardwareId/members', AuthService.authenticate, (req, res) => {
+    const members = permissionsStore.filter(p => p.hardwareId === req.params.hardwareId);
+    res.json({ success: true, members, total: members.length });
+  });
+
+  // Thêm thành viên mới vào thiết bị
+  app.post('/api/devices/:hardwareId/members', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    const data = req.body;
+    const newMember: DeviceMemberPermission = {
+      id: `PERM-${Date.now()}`,
+      hardwareId: String(req.params.hardwareId),
+      userId: data.userId || `USER-${Date.now()}`,
+      memberName: data.memberName || 'Thành viên mới',
+      phoneNumber: data.phoneNumber || '',
+      role: data.role || 'MEMBER',
+      canControl: data.canControl !== undefined ? Boolean(data.canControl) : true,
+      canViewHistory: data.canViewHistory !== undefined ? Boolean(data.canViewHistory) : true,
+      canChildLock: Boolean(data.canChildLock),
+      canConfig: Boolean(data.canConfig),
+      scheduleLimitActive: Boolean(data.scheduleLimitActive),
+      accessStartTime: data.accessStartTime || '08:00',
+      accessEndTime: data.accessEndTime || '18:00',
+      accessDays: Array.isArray(data.accessDays) ? data.accessDays : [true, true, true, true, true, true, false],
+      createdAt: new Date().toISOString(),
+    };
+
+    permissionsStore.push(newMember);
+    res.json({ success: true, message: 'Thêm và phân quyền thành viên thành công!', member: newMember });
+  });
+
+  // Sửa quyền thành viên
+  app.put('/api/devices/:hardwareId/members/:memberId', AuthService.authenticate, (req, res) => {
+    const { hardwareId, memberId } = req.params;
+    const idx = permissionsStore.findIndex(p => p.hardwareId === hardwareId && p.id === memberId);
+    if (idx === -1) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy thành viên trong thiết bị' });
+      return;
+    }
+
+    permissionsStore[idx] = {
+      ...permissionsStore[idx],
+      ...req.body,
+      id: memberId,
+      hardwareId,
+      updatedAt: new Date().toISOString(),
+    };
+
+    res.json({ success: true, message: 'Đã cập nhật phân quyền thành công!', member: permissionsStore[idx] });
+  });
+
+  // Thu hồi quyền khẩn cấp / Xóa thành viên
+  app.delete('/api/devices/:hardwareId/members/:memberId', AuthService.authenticate, (req, res) => {
+    const { hardwareId, memberId } = req.params;
+    const idx = permissionsStore.findIndex(p => p.hardwareId === hardwareId && p.id === memberId);
+    if (idx === -1) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy thành viên' });
+      return;
+    }
+
+    permissionsStore.splice(idx, 1);
+    res.json({ success: true, message: 'Đã thu hồi quyền truy cập của thành viên thành công!' });
+  });
+
+  // Admin: API tổng hợp cho Màn Hình Ma Trận 3 Cột (/customers?tab=matrix)
+  app.get('/api/admin/family-matrix', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+    const customers = migrated.migratedCustomers;
+    const allInstances = provisioningService.getAllInstances();
+    res.json({
+      success: true,
+      customers,
+      devices: allInstances,
+      permissions: permissionsStore,
+    });
+  });
+
+  // ==========================================
+  // ROUTE: PHIẾU YÊU CẦU HỖ TRỢ OFFLINE (CUSTOMER SUPPORT REQUESTS)
+  // ==========================================
+  app.get('/api/cskh/requests', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    res.json({ success: true, requests: requestsStore, total: requestsStore.length });
+  });
+
+  app.post('/api/cskh/requests', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    const data = req.body;
+    const cust = migrated.migratedCustomers.find(c => c.id === req.user!.id) || migrated.migratedCustomers[0];
+
+    const newReq: CustomerSupportRequest = {
+      id: `REQ-${Date.now()}`,
+      customerId: req.user!.id,
+      customerName: cust?.fullName || 'Khách Hàng Austec',
+      customerPhone: data.contactPhone || cust?.phone || '0944102588',
+      hardwareId: data.hardwareId || undefined,
+      requestType: data.requestType || 'WARRANTY',
+      requestTypeName: data.requestTypeName || 'Yêu cầu hỗ trợ',
+      description: data.description || '',
+      attachmentUrls: Array.isArray(data.attachmentUrls) ? data.attachmentUrls : [],
+      replyChannel: data.replyChannel || 'EMAIL',
+      contactEmail: data.contactEmail || cust?.email,
+      priority: data.priority || 'NORMAL',
+      status: 'OPEN',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    requestsStore.unshift(newReq);
+    res.json({ success: true, message: 'Gửi phiếu yêu cầu hỗ trợ thành công! Đội ngũ CSKH sẽ phản hồi sớm nhất.', request: newReq });
+  });
+
+  app.put('/api/cskh/requests/:id', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+    const id = req.params.id;
+    const idx = requestsStore.findIndex(r => r.id === id);
+    if (idx === -1) {
+      res.status(404).json({ success: false, error: 'Không tìm thấy phiếu yêu cầu' });
+      return;
+    }
+
+    requestsStore[idx] = {
+      ...requestsStore[idx],
+      ...req.body,
+      id,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (req.body.status === 'RESOLVED') {
+      requestsStore[idx].resolvedAt = new Date().toISOString();
+    }
+
+    res.json({ success: true, message: 'Đã cập nhật trạng thái phiếu yêu cầu hỗ trợ!', request: requestsStore[idx] });
+  });
+
+  // ==========================================
+  // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC
   // ==========================================
   app.get('/api/cskh/tickets', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
     res.json({ success: true, tickets: supportService.getAllOpenTickets() });
+  });
+
+  // Lấy hoặc khởi tạo ticket trò chuyện 1-1 cho khách hàng/thiết bị
+  app.get('/api/cskh/active-chat', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    const customerId = (req.query.customerId as string) || req.user!.id;
+    const hardwareId = req.query.hardwareId as string | undefined;
+    const ticket = supportService.getOrCreateCustomerTicket(customerId, hardwareId);
+    const messages = supportService.getMessagesByTicket(ticket.id);
+    res.json({ success: true, ticket, messages });
+  });
+
+  app.post('/api/cskh/active-chat/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
+    const { message, attachmentUrls, customerId, hardwareId } = req.body;
+    const targetCustomerId = customerId || req.user!.id;
+    const ticket = supportService.getOrCreateCustomerTicket(targetCustomerId, hardwareId);
+
+    const msg = await supportService.sendMessage({
+      ticketId: ticket.id,
+      senderId: req.user!.id,
+      senderRole: req.user!.role === 'CUSTOMER' ? 'CUSTOMER' : 'CSKH',
+      message,
+      attachmentUrls,
+    });
+
+    res.json({ success: true, message: msg, ticketId: ticket.id });
   });
 
   app.post('/api/cskh/tickets', AuthService.authenticate, (req: AuthenticatedRequest, res) => {

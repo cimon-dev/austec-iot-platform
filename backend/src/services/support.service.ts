@@ -78,6 +78,23 @@ export class SupportService {
     return msg;
   }
 
+  public getOrCreateCustomerTicket(customerId: string, hardwareId?: string): SupportTicket {
+    const existing = this.getTicketsByCustomer(customerId).find(t => t.status !== 'CLOSED');
+    if (existing) {
+      if (hardwareId && !existing.hardwareId) {
+        existing.hardwareId = hardwareId;
+      }
+      return existing;
+    }
+
+    return this.createTicket({
+      customerId,
+      hardwareId: hardwareId || 'AT-DOOR-88239A01',
+      subject: `Kênh hỗ trợ trực tiếp cho khách hàng`,
+      priority: 'NORMAL',
+    });
+  }
+
   public getMessagesByTicket(ticketId: string): LiveChatMessage[] {
     return this.messages.filter(m => m.ticketId === ticketId);
   }
@@ -105,3 +122,4 @@ export class SupportService {
     }
   }
 }
+

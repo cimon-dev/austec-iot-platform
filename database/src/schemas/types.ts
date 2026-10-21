@@ -204,6 +204,17 @@ export interface DeviceInstance {
   currentProperties: Record<string, any>; // Snapshot giá trị telemetry mới nhất
   warrantyStartAt?: string;
   warrantyEndAt?: string;
+  subscriptionType?: 'LIMITED' | 'PERPETUAL';
+  subscriptionExpiresAt?: string;
+  subscriptionStatus?: 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'LIFETIME';
+  deviceType?: string;
+  installationAddress?: {
+    street?: string;
+    ward?: string;
+    district?: string;
+    province?: string;
+    fullText?: string;
+  };
   locationLat?: number;
   locationLng?: number;
   addressDisplay?: string;
@@ -223,6 +234,17 @@ export const DeviceInstanceValidator = z.object({
   currentProperties: z.record(z.any()).default({}),
   warrantyStartAt: z.string().optional(),
   warrantyEndAt: z.string().optional(),
+  subscriptionType: z.enum(['LIMITED', 'PERPETUAL']).default('LIMITED'),
+  subscriptionExpiresAt: z.string().optional(),
+  subscriptionStatus: z.enum(['ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'LIFETIME']).optional(),
+  deviceType: z.string().optional(),
+  installationAddress: z.object({
+    street: z.string().optional(),
+    ward: z.string().optional(),
+    district: z.string().optional(),
+    province: z.string().optional(),
+    fullText: z.string().optional(),
+  }).optional(),
   locationLat: z.number().optional(),
   locationLng: z.number().optional(),
   addressDisplay: z.string().optional(),
@@ -275,3 +297,146 @@ export interface LiveChatMessage {
   deviceSnapshot?: Record<string, any>; // Đính kèm snapshot viễn thám thiết bị khi gửi
   createdAt: string;
 }
+
+/**
+ * 10. PRODUCT (Gian hàng sản phẩm & Thông số kỹ thuật xuất xưởng)
+ */
+export interface Product {
+  id: string;
+  name: string;
+  categoryTag: string; // "Cửa Cuốn", "Khóa Masaru", "Lưu Điện UPS", "Động Cơ", "Cảm Biến", "AI Camera", "Phụ Kiện"
+  subtitle: string;
+  price: number;
+  originalPrice?: number;
+  rating: number;
+  reviewsCount: number;
+  imageUrl: string;
+  galleryUrls?: string[];
+  warrantyText: string; // "Bảo hành chính hãng 24 tháng theo Hardware ID"
+  highlights: string[]; // Danh sách đặc điểm nổi bật
+  specs: Record<string, string>; // Bảng thông số kỹ thuật xuất xưởng (Specs: Nan cửa, Động cơ, Điện áp...)
+  stockQuantity: number;
+  isPublished: boolean;
+  displayOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const ProductValidator = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2).max(150),
+  categoryTag: z.string().min(2).max(50),
+  subtitle: z.string().max(255).default(''),
+  price: z.number().nonnegative(),
+  originalPrice: z.number().nonnegative().optional(),
+  rating: z.number().min(0).max(5).default(5),
+  reviewsCount: z.number().int().nonnegative().default(0),
+  imageUrl: z.string(),
+  galleryUrls: z.array(z.string()).default([]),
+  warrantyText: z.string().default('Bảo hành chính hãng 24 tháng theo Hardware ID'),
+  highlights: z.array(z.string()).default([]),
+  specs: z.record(z.string()).default({}),
+  stockQuantity: z.number().int().default(100),
+  isPublished: z.boolean().default(true),
+  displayOrder: z.number().int().default(0),
+});
+
+/**
+ * 11. DEVICE MEMBER PERMISSION (Phân quyền thành viên gia đình sử dụng thiết bị)
+ */
+export type MemberRole = 'OWNER' | 'MEMBER' | 'GUEST';
+
+export interface DeviceMemberPermission {
+  id: string;
+  hardwareId: string;
+  userId: string;
+  memberName: string;
+  phoneNumber: string;
+  role: MemberRole;
+  canControl: boolean;
+  canViewHistory: boolean;
+  canChildLock: boolean;
+  canConfig: boolean;
+  scheduleLimitActive: boolean;
+  accessStartTime?: string; // e.g. "08:00"
+  accessEndTime?: string;   // e.g. "18:00"
+  accessDays?: boolean[];   // [T2, T3, T4, T5, T6, T7, CN]
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export const DeviceMemberPermissionValidator = z.object({
+  id: z.string().optional(),
+  hardwareId: z.string().min(4),
+  userId: z.string().min(1),
+  memberName: z.string().min(2),
+  phoneNumber: z.string().min(8),
+  role: z.enum(['OWNER', 'MEMBER', 'GUEST']),
+  canControl: z.boolean().default(true),
+  canViewHistory: z.boolean().default(true),
+  canChildLock: z.boolean().default(false),
+  canConfig: z.boolean().default(false),
+  scheduleLimitActive: z.boolean().default(false),
+  accessStartTime: z.string().optional(),
+  accessEndTime: z.string().optional(),
+  accessDays: z.array(z.boolean()).optional(),
+});
+
+/**
+ * 12. CUSTOMER SUPPORT REQUEST (Phiếu yêu cầu hỗ trợ / Báo hỏng từ khách hàng)
+ */
+export type SupportRequestType = 
+  | 'WARRANTY'           // Yêu cầu bảo hành chính hãng
+  | 'ROLLER_DOOR_JAM'    // Sự cố kẹt nan / hỏng motor
+  | 'CONNECTION_ERROR'   // Lỗi kết nối WiFi / BLE
+  | 'BATTERY_REPLACE'    // Hỏng ắc quy / Thay pin UPS
+  | 'RENEW_SUBSCRIPTION' // Gia hạn gói dịch vụ thiết bị
+  | 'PURCHASE_ADVICE'    // Tư vấn lắp đặt & Mua thêm thiết bị
+  | 'OTHER';             // Yêu cầu khác
+
+export type ReplyChannelType = 'EMAIL' | 'PUSH_NOTIFICATION' | 'PHONE_CALL';
+
+export interface CustomerSupportRequest {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  hardwareId?: string;
+  requestType: SupportRequestType;
+  requestTypeName: string;
+  description: string;
+  attachmentUrls: string[];
+  replyChannel: ReplyChannelType;
+  contactEmail?: string;
+  priority: 'LOW' | 'NORMAL' | 'URGENT';
+  status: 'OPEN' | 'PROCESSING' | 'RESOLVED' | 'CLOSED';
+  adminResponse?: string;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const CustomerSupportRequestValidator = z.object({
+  id: z.string().optional(),
+  customerId: z.string(),
+  customerName: z.string().min(2),
+  customerPhone: z.string().min(8),
+  hardwareId: z.string().optional(),
+  requestType: z.enum([
+    'WARRANTY',
+    'ROLLER_DOOR_JAM',
+    'CONNECTION_ERROR',
+    'BATTERY_REPLACE',
+    'RENEW_SUBSCRIPTION',
+    'PURCHASE_ADVICE',
+    'OTHER'
+  ]),
+  requestTypeName: z.string(),
+  description: z.string().min(5),
+  attachmentUrls: z.array(z.string()).default([]),
+  replyChannel: z.enum(['EMAIL', 'PUSH_NOTIFICATION', 'PHONE_CALL']).default('EMAIL'),
+  contactEmail: z.string().email().optional().or(z.literal('')),
+  priority: z.enum(['LOW', 'NORMAL', 'URGENT']).default('NORMAL'),
+  status: z.enum(['OPEN', 'PROCESSING', 'RESOLVED', 'CLOSED']).default('OPEN'),
+  adminResponse: z.string().optional(),
+});

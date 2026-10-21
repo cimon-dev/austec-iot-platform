@@ -88,6 +88,9 @@ export class ProvisioningService {
     this.inventoryStore.set(item.hardwareId, item);
 
     // Tạo Instance người dùng
+    const subscriptionExpires = new Date(now);
+    subscriptionExpires.setMonth(subscriptionExpires.getMonth() + 12); // Mặc định 12 tháng khi lần đầu kích hoạt
+
     const newInstance: DeviceInstance = {
       id: `inst-${item.hardwareId}-${Date.now()}`,
       hardwareId: item.hardwareId,
@@ -103,6 +106,13 @@ export class ProvisioningService {
       },
       warrantyStartAt: now.toISOString(),
       warrantyEndAt: warrantyEnd.toISOString(),
+      subscriptionType: 'LIMITED',
+      subscriptionExpiresAt: subscriptionExpires.toISOString(),
+      subscriptionStatus: 'ACTIVE',
+      deviceType: item.modelId === 2 ? 'Khóa thông minh' : (item.modelId === 3 ? 'Bộ lưu điện' : 'Cửa cuốn'),
+      installationAddress: {
+        fullText: req.addressDisplay || 'Hà Nội, Việt Nam',
+      },
       locationLat: req.locationLat,
       locationLng: req.locationLng,
       addressDisplay: req.addressDisplay,
@@ -113,9 +123,45 @@ export class ProvisioningService {
 
     return {
       success: true,
-      message: 'Ghép nối và kích hoạt bảo hành điện tử 24 tháng thành công!',
+      message: 'Ghép nối và kích hoạt bảo hành điện tử 24 tháng thành công (Kèm 12 tháng gói dịch vụ khởi tạo)!',
       device: newInstance,
       warrantyEndAt: warrantyEnd.toISOString(),
+    };
+  }
+
+  /**
+   * Gia hạn gói dịch vụ thiết bị (12 tháng, 24 tháng hoặc Vô thời hạn)
+   */
+  public renewSubscription(
+    hardwareId: string, 
+    months: number = 12, 
+    isPerpetual: boolean = false
+  ): { success: boolean; message: string; device?: DeviceInstance } {
+    const inst = this.instanceStore.get(hardwareId);
+    if (!inst) {
+      return { success: false, message: 'Thiết bị không tồn tại trong hệ thống' };
+    }
+
+    if (isPerpetual) {
+      inst.subscriptionType = 'PERPETUAL';
+      inst.subscriptionStatus = 'LIFETIME';
+      inst.subscriptionExpiresAt = '2099-12-31T23:59:59Z';
+    } else {
+      inst.subscriptionType = 'LIMITED';
+      inst.subscriptionStatus = 'ACTIVE';
+      const currentExp = inst.subscriptionExpiresAt ? new Date(inst.subscriptionExpiresAt) : new Date();
+      const baseDate = currentExp.getTime() > Date.now() ? currentExp : new Date();
+      baseDate.setMonth(baseDate.getMonth() + months);
+      inst.subscriptionExpiresAt = baseDate.toISOString();
+    }
+
+    this.instanceStore.set(hardwareId, inst);
+    return {
+      success: true,
+      message: isPerpetual 
+        ? `Đã nâng cấp thiết bị ${hardwareId} lên gói Vô Thời Hạn (Trọn đời) thành công!` 
+        : `Đã gia hạn thiết bị ${hardwareId} thêm ${months} tháng thành công! Hạn mới: ${new Date(inst.subscriptionExpiresAt!).toLocaleDateString('vi-VN')}`,
+      device: inst,
     };
   }
 
