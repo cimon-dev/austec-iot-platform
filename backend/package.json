@@ -4,7 +4,7 @@
   "description": "Austec IoT Ecosystem - Core Backend API, MQTT Gateway & Blackbox Service",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "test:phase2": "tsx tests/phase2-gateway-tests.ts"
   },

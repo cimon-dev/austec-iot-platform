@@ -227,12 +227,14 @@ export function createApp() {
   });
 
   // Admin: Lấy danh sách khách hàng đầy đủ
-  app.get('/api/admin/customers', (req, res) => {
+  const handleGetCustomers = (req: any, res: any) => {
     res.json({ success: true, customers: customersStore });
-  });
+  };
+  app.get('/api/admin/customers', handleGetCustomers);
+  app.get('/api/customers', handleGetCustomers);
 
   // Admin: Tạo tài khoản khách hàng mới từ Web Admin (/customers?tab=accounts)
-  app.post('/api/admin/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+  const handlePostCustomer = (req: AuthenticatedRequest, res: any) => {
     const { fullName, phoneNumber, email, password, address, province, isActive, initialHardwareId } = req.body;
 
     if (!fullName || !phoneNumber || !email) {
@@ -303,7 +305,9 @@ export function createApp() {
       customer: newCust,
       message: `Đã thêm tài khoản khách hàng ${newCust.fullName} thành công!`
     });
-  });
+  };
+  app.post('/api/admin/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), handlePostCustomer);
+  app.post('/api/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), handlePostCustomer);
 
   // Admin: Cập nhật trạng thái khóa/mở khóa tài khoản khách hàng
   app.put('/api/admin/customers/:id/status', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
@@ -360,6 +364,7 @@ export function createApp() {
           hardwareId: d.hardwareId,
           macAddress: 'FC:F5:C4:88:23:91',
           customName: d.modelName,
+          name: d.modelName,
           ownerId: cust.id,
           modelId: 1,
           status: 'ACTIVATED',
@@ -861,10 +866,35 @@ export function createApp() {
 
   // Lấy hoặc khởi tạo ticket trò chuyện 1-1 cho khách hàng/thiết bị
   app.get('/api/cskh/active-chat', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
-    const customerId = (req.query.customerId as string) || req.user?.id || '00000000-0000-0000-0000-000000000001';
+    let customerId = req.query.customerId as string | undefined;
+    const ticketId = req.query.ticketId as string | undefined;
     const hardwareId = req.query.hardwareId as string | undefined;
-    const ticket = supportService.getOrCreateCustomerTicket(customerId, hardwareId);
-    const rawMessages = supportService.getMessagesByTicket(ticket.id);
+
+    let ticket: any;
+    if (ticketId) {
+      ticket = supportService.getAllOpenTickets().find(t => t.id === ticketId);
+    }
+
+    if (!ticket) {
+      if (!customerId) {
+        if (req.user?.role === 'CUSTOMER') {
+          customerId = req.user.id;
+        } else {
+          // Admin/CSKH: Tìm ticket mở gần nhất của khách hàng đang chat
+          const allOpen = supportService.getAllOpenTickets();
+          if (allOpen.length > 0) {
+            ticket = allOpen[allOpen.length - 1];
+          } else {
+            customerId = '00000000-0000-0000-0000-000000000001';
+          }
+        }
+      }
+      if (!ticket && customerId) {
+        ticket = supportService.getOrCreateCustomerTicket(customerId, hardwareId);
+      }
+    }
+
+    const rawMessages = ticket ? supportService.getMessagesByTicket(ticket.id) : [];
 
     // Chuẩn hóa định dạng tin nhắn cho cả Web Admin và Mobile App
     const messages = rawMessages.map(m => {
@@ -889,9 +919,32 @@ export function createApp() {
   });
 
   app.post('/api/cskh/active-chat/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const { message, text, attachmentUrls, customerId, hardwareId, sender } = req.body;
-    const targetCustomerId = customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
-    const ticket = supportService.getOrCreateCustomerTicket(targetCustomerId, hardwareId);
+    const { message, text, attachmentUrls, customerId, hardwareId, sender, ticketId } = req.body;
+    
+    let ticket: any;
+    if (ticketId) {
+      ticket = supportService.getAllOpenTickets().find(t => t.id === ticketId);
+    }
+
+    if (!ticket) {
+      let targetCustomerId = customerId;
+      if (!targetCustomerId) {
+        if (req.user?.role === 'CUSTOMER') {
+          targetCustomerId = req.user.id;
+        } else {
+          // Nếu Admin gửi không kèm ID khách, gắn vào ticket mở gần nhất của khách hàng
+          const allOpen = supportService.getAllOpenTickets();
+          if (allOpen.length > 0) {
+            ticket = allOpen[allOpen.length - 1];
+          } else {
+            targetCustomerId = '00000000-0000-0000-0000-000000000001';
+          }
+        }
+      }
+      if (!ticket && targetCustomerId) {
+        ticket = supportService.getOrCreateCustomerTicket(targetCustomerId, hardwareId);
+      }
+    }
 
     const actualMessage = (message || text || '').toString().trim();
     if (!actualMessage) {
@@ -904,7 +957,7 @@ export function createApp() {
 
     const msg = await supportService.sendMessage({
       ticketId: ticket.id,
-      senderId: req.user?.id || (isCSKH ? 'cskh-001' : targetCustomerId),
+      senderId: req.user?.id || (isCSKH ? 'cskh-001' : ticket.customerId),
       senderRole,
       message: actualMessage,
       attachmentUrls,
