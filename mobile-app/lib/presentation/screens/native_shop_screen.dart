@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/iot_gateway_client.dart';
@@ -14,6 +16,7 @@ class NativeShopScreen extends StatefulWidget {
 class _NativeShopScreenState extends State<NativeShopScreen> {
   final IoTGatewayClient _gateway = IoTGatewayClient();
   String _selectedCategory = "Tất cả";
+  List<ProductItem>? _backendProducts;
 
   final List<String> _categories = [
     "Tất cả",
@@ -23,6 +26,71 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
     "Động Cơ & Bo Mạch",
     "Cảm Biến",
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProductsFromBackend();
+  }
+
+  Future<void> _fetchProductsFromBackend() async {
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:4000/api/shop/products'),
+        headers: {'Authorization': 'Bearer austec-customer-token'},
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['products'] is List) {
+          final List list = data['products'];
+          final List<ProductItem> parsed = [];
+          for (var p in list) {
+            String catTag = "Cửa Cuốn";
+            final c = p['category'] ?? '';
+            if (c == 'LOCK') catTag = "Khóa Thông Minh";
+            else if (c == 'UPS') catTag = "Lưu Điện UPS";
+            else if (c == 'SENSOR') catTag = "Cảm Biến";
+            else if (c == 'CAMERA') catTag = "Cảm Biến";
+
+            final Map<String, String> specsMap = {};
+            if (p['specs'] is Map) {
+              (p['specs'] as Map).forEach((k, v) {
+                specsMap[k.toString()] = v.toString();
+              });
+            }
+
+            final List<String> hl = [];
+            if (p['highlights'] is List) {
+              for (var h in p['highlights']) {
+                hl.add(h.toString());
+              }
+            }
+
+            parsed.add(ProductItem(
+              id: p['id'] ?? '',
+              name: p['name'] ?? '',
+              categoryTag: catTag,
+              subtitle: p['description'] ?? '',
+              price: (p['price'] as num?)?.toInt() ?? 0,
+              originalPrice: (p['originalPrice'] as num?)?.toInt(),
+              rating: 4.9,
+              reviewsCount: 128,
+              imagePath: p['imageUrl'] ?? 'assets/doors.png',
+              highlights: hl.isNotEmpty ? hl : ["Bảo hành chính hãng 24 tháng", "Austec Smart IoT"],
+              specs: specsMap.isNotEmpty ? specsMap : {"Bảo hành": "24 tháng chính hãng"},
+            ));
+          }
+
+          if (mounted && parsed.isNotEmpty) {
+            setState(() {
+              _backendProducts = parsed;
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   void _openProductDetail(ProductItem product) {
     showModalBottomSheet(
@@ -35,7 +103,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final allProducts = _gateway.storeProducts;
+    final allProducts = _backendProducts ?? _gateway.storeProducts;
     final filteredProducts = _selectedCategory == "Tất cả"
         ? allProducts
         : allProducts.where((p) => p.categoryTag == _selectedCategory).toList();
@@ -201,7 +269,13 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               child: Center(
                 child: Hero(
                   tag: product.id,
-                  child: Image.asset(product.imagePath, fit: BoxFit.contain),
+                  child: product.imagePath.startsWith("http")
+                      ? Image.network(
+                          product.imagePath,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Image.asset("assets/doors.png", fit: BoxFit.contain),
+                        )
+                      : Image.asset(product.imagePath, fit: BoxFit.contain),
                 ),
               ),
             ),
@@ -299,7 +373,13 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
             Center(
               child: SizedBox(
                 height: 140,
-                child: Image.asset(product.imagePath, fit: BoxFit.contain),
+                child: product.imagePath.startsWith("http")
+                    ? Image.network(
+                        product.imagePath,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Image.asset("assets/doors.png", fit: BoxFit.contain),
+                      )
+                    : Image.asset(product.imagePath, fit: BoxFit.contain),
               ),
             ),
             const SizedBox(height: 16),

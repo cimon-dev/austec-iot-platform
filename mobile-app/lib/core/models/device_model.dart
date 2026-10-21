@@ -69,6 +69,15 @@ class DeviceItem {
   final String warrantyCode;
   final FamilyRole userRole;
 
+  // Gói dịch vụ & Hạn sử dụng (Mặc định 12 tháng khi KH)
+  String subscriptionType; // 'LIMITED' hoặc 'PERPETUAL'
+  String? subscriptionExpiresAt;
+  String subscriptionStatus; // 'ACTIVE', 'EXPIRED', 'LIFETIME'
+  String installationAddress;
+
+  bool get isPerpetual => subscriptionType == 'PERPETUAL';
+  bool get isExpired => subscriptionStatus == 'EXPIRED';
+
   // Cửa cuốn (Roller Door)
   int positionPercent; // 0 = Đóng kín, 100 = Mở hết
   bool isChildLockActive;
@@ -131,6 +140,10 @@ class DeviceItem {
     this.warrantyUntil = "2028-10-21",
     this.warrantyCode = "EW-AUSTEC-24M",
     this.userRole = FamilyRole.owner,
+    this.subscriptionType = 'LIMITED',
+    this.subscriptionExpiresAt = '2027-10-21T00:00:00.000Z',
+    this.subscriptionStatus = 'ACTIVE',
+    this.installationAddress = 'Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội',
     this.positionPercent = 0,
     this.isChildLockActive = false,
     this.isMoving = false,
