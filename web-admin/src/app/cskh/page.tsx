@@ -286,13 +286,49 @@ function CSKHContent() {
       },
       body: JSON.stringify({
         sender: "CSKH",
-        text: replyText
+        text: replyText,
+        message: replyText
       })
     }).catch(() => {});
 
     setReplyText("");
     showToast("Đã gửi tin nhắn tới ứng dụng Mobile của khách hàng!");
   };
+
+  // Polling đồng bộ tin nhắn 1-1 thời gian thực từ Mobile App
+  useEffect(() => {
+    const fetchChatMessages = () => {
+      fetch("http://localhost:4000/api/cskh/active-chat", {
+        headers: { "Authorization": "Bearer austec-admin-super-token" }
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && Array.isArray(res.messages) && res.messages.length > 0) {
+            setTickets(prev =>
+              prev.map(t => {
+                if (t.id === selectedTicketId) {
+                  return {
+                    ...t,
+                    messages: res.messages.map((m: any) => ({
+                      sender: m.sender || (m.senderRole === "CSKH" ? "CSKH" : "CUSTOMER"),
+                      text: m.text || m.message || "",
+                      time: m.time || "Vừa xong",
+                      hasSnapshot: m.hasSnapshot
+                    }))
+                  };
+                }
+                return t;
+              })
+            );
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchChatMessages();
+    const chatTimer = setInterval(fetchChatMessages, 2500);
+    return () => clearInterval(chatTimer);
+  }, [selectedTicketId]);
 
   const handleSoftReboot = () => {
     if (isRebooting) return;
@@ -344,18 +380,24 @@ function CSKHContent() {
   const [adminReplyInput, setAdminReplyInput] = useState("");
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-  // Hydrate support requests from backend
+  // Polling danh sách phiếu yêu cầu hỗ trợ từ Mobile App theo thời gian thực
   useEffect(() => {
-    fetch("http://localhost:4000/api/cskh/requests", {
-      headers: { "Authorization": "Bearer austec-admin-super-token" }
-    })
-      .then(r => r.json())
-      .then(res => {
-        if (res.success && Array.isArray(res.requests) && res.requests.length > 0) {
-          setSupportRequests(res.requests);
-        }
+    const fetchRequests = () => {
+      fetch("http://localhost:4000/api/cskh/requests", {
+        headers: { "Authorization": "Bearer austec-admin-super-token" }
       })
-      .catch(() => {});
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && Array.isArray(res.requests) && res.requests.length > 0) {
+            setSupportRequests(res.requests);
+          }
+        })
+        .catch(() => {});
+    };
+
+    fetchRequests();
+    const reqTimer = setInterval(fetchRequests, 3000);
+    return () => clearInterval(reqTimer);
   }, []);
 
   // Filtered requests

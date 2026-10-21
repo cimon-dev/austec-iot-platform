@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:crypto/crypto.dart';
+import 'package:http/http.dart' as http;
 import '../models/device_model.dart';
 import '../constants/app_theme.dart';
 
@@ -263,6 +263,70 @@ class IoTGatewayClient {
   }
 
   void updateDeviceName(String hardwareId, String newName) => renameDevice(hardwareId, newName);
+
+  /// Nạp danh sách thiết bị thật từ Backend theo quyền sở hữu của người dùng hiện tại
+  Future<void> fetchDevicesFromBackend({String? token}) async {
+    try {
+      final authToken = token ?? 'austec-customer-token';
+      final res = await http.get(
+        Uri.parse('http://localhost:4000/api/devices/my'),
+        headers: {'Authorization': 'Bearer $authToken'},
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['devices'] is List) {
+          final List list = data['devices'];
+          if (list.isNotEmpty) {
+            final List<DeviceItem> parsed = [];
+            for (var d in list) {
+              final hwId = (d['hardwareId'] ?? '').toString();
+              final name = (d['customName'] ?? d['name'] ?? 'Thiết bị Austec').toString();
+              final typeStr = (d['deviceType'] ?? '').toString();
+              DeviceCategory cat = DeviceCategory.rollerDoor;
+              if (typeStr.contains('Khóa') || hwId.contains('LOCK')) {
+                cat = DeviceCategory.othersControl;
+              } else if (typeStr.contains('điện') || hwId.contains('UPS')) {
+                cat = DeviceCategory.energyManage;
+              } else if (typeStr.contains('biến') || hwId.contains('SENSOR')) {
+                cat = DeviceCategory.environment;
+              } else if (typeStr.contains('Camera') || hwId.contains('CAM')) {
+                cat = DeviceCategory.camera;
+              }
+
+              final props = d['currentProperties'] is Map ? d['currentProperties'] : {};
+              final doorState = (props['door_state'] ?? 'CLOSED').toString();
+              final int pos = doorState == 'CLOSED' ? 0 : doorState == 'OPEN' ? 100 : 50;
+
+              parsed.add(DeviceItem(
+                id: d['id']?.toString() ?? hwId,
+                hardwareId: hwId,
+                name: name,
+                modelName: name,
+                category: cat,
+                badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : "SMART",
+                deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
+                roomName: d['installationAddress'] is Map 
+                    ? (d['installationAddress']['fullText'] ?? "Phòng khách").toString() 
+                    : "Phòng khách",
+                isOnline: d['isOnline'] == true,
+                positionPercent: pos,
+                batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,
+                motorCurrentA: (props['motor_current'] as num?)?.toDouble() ?? 2.4,
+                subscriptionType: (d['subscriptionType'] ?? 'LIMITED').toString(),
+                subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-22').toString(),
+                subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
+              ));
+            }
+            if (parsed.isNotEmpty) {
+              _devices.clear();
+              _devices.addAll(parsed);
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
 
   // Dispatch command with audit logging
   Future<CommandResult> sendCommand({

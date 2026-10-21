@@ -354,10 +354,33 @@ export function createApp() {
   app.get('/api/devices/my', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
     let devices = provisioningService.getDevicesByOwner(req.user!.id);
     if (devices.length === 0) {
-      // Fallback: Nếu tài khoản đang test chưa có thiết bị riêng, trả về thiết bị của khách hàng mẫu đầu tiên
-      const firstCustomer = migrated.migratedCustomers[0];
-      if (firstCustomer) {
-        devices = provisioningService.getDevicesByOwner(firstCustomer.id);
+      const cust = customersStore.find(c => c.id === req.user!.id);
+      if (cust && cust.devices && cust.devices.length > 0) {
+        devices = cust.devices.map(d => ({
+          hardwareId: d.hardwareId,
+          macAddress: 'FC:F5:C4:88:23:91',
+          customName: d.modelName,
+          ownerId: cust.id,
+          modelId: 1,
+          status: 'ACTIVATED',
+          isOnline: d.isOnline ?? true,
+          subscriptionType: 'LIMITED',
+          subscriptionExpiresAt: d.warrantyUntil || '2028-10-22T00:00:00Z',
+          subscriptionStatus: 'ACTIVE',
+          deviceType: d.deviceType || 'Cửa cuốn',
+          installationAddress: { fullText: cust.address || 'Hà Nội, Việt Nam' },
+          currentProperties: {
+            door_state: 'CLOSED',
+            battery_pct: 95,
+            motor_current: 2.1,
+          },
+          rssiSignal: -58,
+        })) as any;
+      } else {
+        const firstCustomer = migrated.migratedCustomers[0];
+        if (firstCustomer) {
+          devices = provisioningService.getDevicesByOwner(firstCustomer.id);
+        }
       }
     }
     const enrichedDevices = await Promise.all(
@@ -779,23 +802,27 @@ export function createApp() {
 
   app.post('/api/cskh/requests', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
     const data = req.body;
-    const cust = migrated.migratedCustomers.find(c => c.id === req.user!.id) || migrated.migratedCustomers[0];
+    const cust = customersStore.find(c => c.id === req.user?.id) || 
+                 customersStore.find(c => c.id === data.customerId) || 
+                 customersStore[0];
 
-    const newReq: CustomerSupportRequest = {
-      id: `REQ-${Date.now()}`,
-      customerId: req.user!.id,
-      customerName: cust?.fullName || 'Khách Hàng Austec',
-      customerPhone: data.contactPhone || cust?.phone || '0944102588',
-      hardwareId: data.hardwareId || undefined,
-      requestType: data.requestType || 'WARRANTY',
-      requestTypeName: data.requestTypeName || 'Yêu cầu hỗ trợ',
+    const newReq: any = {
+      id: data.id || `REQ-${Date.now()}`,
+      customerId: data.customerId || req.user?.id || cust?.id || 'USR-001',
+      customerName: data.customerName || cust?.fullName || 'Khách Hàng Austec',
+      customerPhone: data.customerPhone || data.contactPhone || cust?.phoneNumber || '0912345678',
+      customerEmail: data.customerEmail || data.contactEmail || cust?.email || 'customer@austec.vn',
+      hardwareId: data.hardwareId || 'AT-DOOR-88239A01',
+      deviceName: data.deviceName || 'Cửa Cuốn Austec Smart',
+      requestType: data.requestType || 'TECHNICAL',
+      requestTypeName: data.requestTypeName || data.requestType || 'Yêu cầu hỗ trợ',
       description: data.description || '',
-      attachmentUrls: Array.isArray(data.attachmentUrls) ? data.attachmentUrls : [],
-      replyChannel: data.replyChannel || 'EMAIL',
-      contactEmail: data.contactEmail || cust?.email,
-      priority: data.priority || 'NORMAL',
-      status: 'OPEN',
-      createdAt: new Date().toISOString(),
+      images: Array.isArray(data.images) ? data.images : Array.isArray(data.attachmentUrls) ? data.attachmentUrls : [],
+      attachmentUrls: Array.isArray(data.attachmentUrls) ? data.attachmentUrls : Array.isArray(data.images) ? data.images : [],
+      replyChannel: data.replyChannel || 'PHONE',
+      preferredContactTime: data.preferredContactTime || 'Bất kỳ lúc nào',
+      status: data.status || 'PENDING',
+      createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
       updatedAt: new Date().toISOString(),
     };
 
@@ -834,27 +861,70 @@ export function createApp() {
 
   // Lấy hoặc khởi tạo ticket trò chuyện 1-1 cho khách hàng/thiết bị
   app.get('/api/cskh/active-chat', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
-    const customerId = (req.query.customerId as string) || req.user!.id;
+    const customerId = (req.query.customerId as string) || req.user?.id || '00000000-0000-0000-0000-000000000001';
     const hardwareId = req.query.hardwareId as string | undefined;
     const ticket = supportService.getOrCreateCustomerTicket(customerId, hardwareId);
-    const messages = supportService.getMessagesByTicket(ticket.id);
+    const rawMessages = supportService.getMessagesByTicket(ticket.id);
+
+    // Chuẩn hóa định dạng tin nhắn cho cả Web Admin và Mobile App
+    const messages = rawMessages.map(m => {
+      const d = new Date(m.createdAt);
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const isCSKH = m.senderRole === 'CSKH';
+      return {
+        id: m.id,
+        ticketId: m.ticketId,
+        sender: isCSKH ? 'CSKH' : 'user',
+        senderRole: m.senderRole,
+        text: m.message,
+        message: m.message,
+        time: timeStr,
+        createdAt: m.createdAt,
+        hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
+        deviceSnapshot: m.deviceSnapshot,
+      };
+    });
+
     res.json({ success: true, ticket, messages });
   });
 
   app.post('/api/cskh/active-chat/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const { message, attachmentUrls, customerId, hardwareId } = req.body;
-    const targetCustomerId = customerId || req.user!.id;
+    const { message, text, attachmentUrls, customerId, hardwareId, sender } = req.body;
+    const targetCustomerId = customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
     const ticket = supportService.getOrCreateCustomerTicket(targetCustomerId, hardwareId);
+
+    const actualMessage = (message || text || '').toString().trim();
+    if (!actualMessage) {
+      res.status(400).json({ success: false, error: 'Tin nhắn không được để trống' });
+      return;
+    }
+
+    const isCSKH = sender === 'CSKH' || req.user?.role === 'CSKH' || req.user?.role === 'ADMIN';
+    const senderRole = isCSKH ? 'CSKH' : 'CUSTOMER';
 
     const msg = await supportService.sendMessage({
       ticketId: ticket.id,
-      senderId: req.user!.id,
-      senderRole: req.user!.role === 'CUSTOMER' ? 'CUSTOMER' : 'CSKH',
-      message,
+      senderId: req.user?.id || (isCSKH ? 'cskh-001' : targetCustomerId),
+      senderRole,
+      message: actualMessage,
       attachmentUrls,
     });
 
-    res.json({ success: true, message: msg, ticketId: ticket.id });
+    const d = new Date(msg.createdAt);
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+    const formattedMsg = {
+      id: msg.id,
+      ticketId: msg.ticketId,
+      sender: isCSKH ? 'CSKH' : 'user',
+      senderRole,
+      text: msg.message,
+      message: msg.message,
+      time: timeStr,
+      createdAt: msg.createdAt,
+    };
+
+    res.json({ success: true, message: formattedMsg, ticketId: ticket.id });
   });
 
   app.post('/api/cskh/tickets', AuthService.authenticate, (req: AuthenticatedRequest, res) => {

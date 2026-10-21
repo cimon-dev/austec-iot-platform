@@ -8,6 +8,7 @@ import 'native_shop_screen.dart';
 import 'cskh_chat_screen.dart';
 import 'provisioning_screen.dart';
 import 'app_settings_screen.dart';
+import '../../core/services/auth_service.dart';
 
 class OrbitalHubScreen extends StatefulWidget {
   const OrbitalHubScreen({super.key});
@@ -39,6 +40,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+    
+    // Nạp danh sách thiết bị thật của người dùng từ Backend API
+    _gateway.fetchDevicesFromBackend(token: AuthService().token).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _updateClock() {
@@ -398,38 +404,46 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                             child: const Icon(Icons.person, color: Colors.white, size: 22),
                           ),
                           const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "${AppTheme.t("welcome")}, Nguyễn Mạnh Đức",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: const [
-                                  Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 12),
-                                  SizedBox(width: 2),
+                          Builder(
+                            builder: (context) {
+                              final user = AuthService().currentUser;
+                              final userName = user?.fullName ?? "Nguyễn Văn An";
+                              final userProvince = user?.province ?? "Hà Nội";
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
                                   Text(
-                                    "Hà Đông • 32°C • 68%",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 10.5,
+                                    "${AppTheme.t("welcome")}, $userName",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.bold,
                                       shadows: [
                                         Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
                                       ],
                                     ),
                                   ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 12),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        "$userProvince • 30°C • Bình thường",
+                                        style: const TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 10.5,
+                                          shadows: [
+                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ],
                       ),

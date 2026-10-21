@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
 import '../../core/services/iot_gateway_client.dart';
+import '../../core/services/auth_service.dart';
 
 class ChatMessage {
   final String sender; // 'user' | 'cskh' | 'system'
@@ -71,26 +72,37 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
 
   Future<void> _fetchLiveChatMessages() async {
     try {
+      final token = AuthService().token ?? 'austec-customer-token';
+      final customerId = AuthService().currentUser?.id;
+      final uri = customerId != null 
+          ? Uri.parse('http://localhost:4000/api/cskh/active-chat?customerId=$customerId')
+          : Uri.parse('http://localhost:4000/api/cskh/active-chat');
+
       final res = await http.get(
-        Uri.parse('http://localhost:4000/api/cskh/active-chat'),
-        headers: {'Authorization': 'Bearer austec-customer-token'},
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 2));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['success'] == true && data['messages'] is List) {
           final List incoming = data['messages'];
-          if (incoming.length > _messages.length) {
+          if (incoming.length > _messages.length || _messages.isEmpty) {
             final List<ChatMessage> updated = [];
             for (var m in incoming) {
-              updated.add(ChatMessage(
-                sender: (m['sender'] == 'CSKH') ? 'cskh' : 'user',
-                text: m['text'] ?? '',
-                time: m['time'] ?? 'Vừa xong',
-                isTelemetrySnapshot: m['hasSnapshot'] == true,
-              ));
+              final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
+              final textContent = (m['text'] ?? m['message'] ?? '').toString();
+              final timeContent = (m['time'] ?? 'Vừa xong').toString();
+              if (textContent.isNotEmpty) {
+                updated.add(ChatMessage(
+                  sender: isCSKH ? 'cskh' : 'user',
+                  text: textContent,
+                  time: timeContent,
+                  isTelemetrySnapshot: m['hasSnapshot'] == true,
+                ));
+              }
             }
-            if (mounted) {
+            if (mounted && updated.isNotEmpty) {
               setState(() {
                 _messages.clear();
                 _messages.addAll(updated);
@@ -135,15 +147,20 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     _scrollToBottom();
 
     // Call backend API for real-time synchronization with Web Admin
+    final token = AuthService().token ?? 'austec-customer-token';
+    final customerId = AuthService().currentUser?.id;
     http.post(
       Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer austec-customer-token',
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
         'sender': 'CUSTOMER',
+        'senderRole': 'CUSTOMER',
         'text': txt,
+        'message': txt,
+        'customerId': customerId,
       }),
     ).catchError((_) => http.Response('{}', 500));
   }
@@ -468,22 +485,27 @@ class _SupportTicketFormSheetState extends State<_SupportTicketFormSheet> {
     setState(() => _isSubmitting = true);
 
     final ticketId = "REQ-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}";
+    final user = AuthService().currentUser;
+    final dev = IoTGatewayClient().devices.isNotEmpty
+        ? IoTGatewayClient().devices.first
+        : null;
 
     try {
+      final token = AuthService().token ?? 'austec-customer-token';
       await http.post(
         Uri.parse('http://localhost:4000/api/cskh/requests'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer austec-customer-token',
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode({
           'id': ticketId,
-          'customerId': 'USR-008712',
-          'customerName': 'Nguyễn Mạnh Đức',
-          'customerPhone': '0944 102 588',
-          'customerEmail': 'duc.nguyen@austec.vn',
-          'hardwareId': 'amtuong1834',
-          'deviceName': 'Cửa Cuốn Gara Đức Mạnh',
+          'customerId': user?.id ?? 'USR-001',
+          'customerName': user?.fullName ?? 'Khách Hàng Austec',
+          'customerPhone': user?.phoneNumber ?? '0912345678',
+          'customerEmail': user?.email ?? 'customer@austec.vn',
+          'hardwareId': dev?.hardwareId ?? 'AT-DOOR-88239A01',
+          'deviceName': dev?.name ?? 'Cửa Cuốn Austec Smart',
           'requestType': _selectedType,
           'description': desc,
           'replyChannel': _selectedReplyChannel,
