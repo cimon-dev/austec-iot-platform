@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
+import 'dart:async';
 import '../../core/constants/app_theme.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/iot_gateway_client.dart';
-import 'provisioning_screen.dart';
+import 'category_device_list_sheet.dart';
+import 'native_shop_screen.dart';
 import 'cskh_chat_screen.dart';
-import 'family_sharing_screen.dart';
+import 'provisioning_screen.dart';
+import 'app_settings_screen.dart';
 
 class OrbitalHubScreen extends StatefulWidget {
   const OrbitalHubScreen({super.key});
@@ -15,142 +17,185 @@ class OrbitalHubScreen extends StatefulWidget {
 }
 
 class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerProviderStateMixin {
-  late AnimationController _rotationController;
+  late AnimationController _pulseController;
   final IoTGatewayClient _gateway = IoTGatewayClient();
-  int _selectedTabIndex = 0;
-  bool _isAutoRotating = true;
-  DeviceItem? _activeSheetDevice;
-  bool _isActionExecuting = false;
-  String _lastActionStatus = "";
+  int _selectedBottomNavIndex = 0;
+
+  // Thời gian thực
+  late Timer _clockTimer;
+  String _timeString = "";
+  String _dateString = "";
 
   @override
   void initState() {
     super.initState();
-    _rotationController = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 40),
-    )..repeat();
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+
+    final now = DateTime.now();
+    _timeString = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+    _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
   }
 
-  @override
-  void dispose() {
-    _rotationController.dispose();
-    super.dispose();
-  }
-
-  void _open2ClickQuickSheet(DeviceItem device) {
-    setState(() {
-      _activeSheetDevice = device;
-      _lastActionStatus = "";
-    });
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _build2ClickActionSheet(device),
-    );
-  }
-
-  // 2-Click Action Dispatcher
-  Future<void> _executeAction(String action, [Map<String, dynamic>? params]) async {
-    if (_activeSheetDevice == null) return;
-    setState(() {
-      _isActionExecuting = true;
-    });
-
-    final res = await _gateway.sendCommand(
-      hardwareId: _activeSheetDevice!.hardwareId,
-      action: action,
-      parameters: params,
-    );
-
-    setState(() {
-      _isActionExecuting = false;
-      _lastActionStatus = "${res.message} (${res.latencyMs}ms)";
-    });
-
-    // Provide haptic feedback visually & toast
+  void _updateClock() {
+    final now = DateTime.now();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: AppTheme.emeraldSuccess, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  "${res.message} • ${res.latencyMs}ms",
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: AppTheme.surfaceGlass,
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      setState(() {
+        _timeString = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+        _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+      });
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final devices = _gateway.devices;
+  void dispose() {
+    _pulseController.dispose();
+    _clockTimer.cancel();
+    super.dispose();
+  }
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: Stack(
-        children: [
-          // Background ambient gradient glows
-          Positioned(
-            top: -100,
-            left: -100,
-            child: Container(
-              width: 320,
-              height: 320,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [AppTheme.blueAccent.withOpacity(0.2), Colors.transparent],
-                ),
+  void _toggleTheme() {
+    setState(() {
+      AppTheme.isDarkMode = !AppTheme.isDarkMode;
+    });
+  }
+
+  void _toggleLanguage() {
+    setState(() {
+      AppTheme.currentLang = AppTheme.currentLang == "vi" ? "en" : "vi";
+    });
+  }
+
+  void _openCategoryDevices(CategoryMeta categoryMeta) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => CategoryDeviceListSheet(categoryMeta: categoryMeta),
+    );
+  }
+
+  void _openSearchDialog() {
+    final isDark = AppTheme.isDarkMode;
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
+        title: Text(AppTheme.t("search_device"), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: isDark ? Colors.white : Colors.black),
+          decoration: InputDecoration(
+            hintText: "Nhập tên hoặc mã thiết bị...",
+            hintStyle: TextStyle(color: isDark ? AppTheme.textMuted : Colors.grey),
+            prefixIcon: const Icon(Icons.search, color: AppTheme.cyanAccent),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[300]!)),
+            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cyanAccent)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(AppTheme.t("cancel")),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              final q = controller.text.trim().toLowerCase();
+              if (q.isNotEmpty) {
+                final found = _gateway.devices.where((d) => d.name.toLowerCase().contains(q) || d.hardwareId.toLowerCase().contains(q)).toList();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Tìm thấy ${found.length} thiết bị phù hợp với '$q'"),
+                    backgroundColor: isDark ? AppTheme.surfaceGlass : Colors.grey[800],
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: Text(AppTheme.t("search_device")),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openNotificationCenter() {
+    final isDark = AppTheme.isDarkMode;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surface : AppTheme.lightSurface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, width: 1.5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: isDark ? AppTheme.textMuted : Colors.grey[400], borderRadius: BorderRadius.circular(2)),
               ),
             ),
-          ),
-          Positioned(
-            bottom: 100,
-            right: -100,
-            child: Container(
-              width: 360,
-              height: 360,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [AppTheme.cyanAccent.withOpacity(0.15), Colors.transparent],
-                ),
-              ),
-            ),
-          ),
-
-          SafeArea(
-            child: Column(
+            const SizedBox(height: 16),
+            Row(
               children: [
-                // Top App Bar
-                _buildTopHeader(),
-
-                // Center Orbital View or Content
-                Expanded(
-                  child: _selectedTabIndex == 0
-                      ? _buildOrbitalSpaceView(devices)
-                      : _selectedTabIndex == 1
-                          ? const CskhChatScreen()
-                          : _selectedTabIndex == 2
-                              ? const FamilySharingScreen()
-                              : _buildProfileSettings(),
+                const Icon(Icons.notifications_active, color: AppTheme.cyanAccent, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  AppTheme.t("notifications"),
+                  style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 15, fontWeight: FontWeight.bold),
                 ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _buildNotiItem("Cửa Cuốn Mặt Tiền (amtuong834) đã đóng an toàn 100%", "Lúc 08:15 • Remote RF #1", Icons.check_circle, AppTheme.emeraldSuccess, isDark),
+            _buildNotiItem("Chế độ Khóa Trẻ Em đã được kích hoạt", "Lúc 10:05 • App Mobile", Icons.security, AppTheme.cyanAccent, isDark),
+            _buildNotiItem("Nhiệt độ phòng khách đạt 32°C • Độ ẩm 68%", "Lúc 11:20 • Cảm biến Môi Trường", Icons.thermostat, AppTheme.amberWarning, isDark),
+          ],
+        ),
+      ),
+    );
+  }
 
-                // Bottom Modern Glass Nav Bar
-                _buildBottomNavBar(),
+  Widget _buildNotiItem(String title, String time, IconData icon, Color color, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.background : AppTheme.lightBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  time,
+                  style: TextStyle(color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary, fontSize: 10),
+                ),
               ],
             ),
           ),
@@ -159,722 +204,725 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // Top Header with Weather and Pairing Button
-  Widget _buildTopHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.cyanGradient,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.cyanAccent.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    "A",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "AUSTEC SMART HOME",
-                    style: TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppTheme.emeraldSuccess,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        "${_gateway.devices.length} Thiết bị trực tuyến • < 180ms",
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
+    final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
 
-          // Add Device / QR BLE Pairing Button
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: AppTheme.glassBox(
-                color: AppTheme.cyanAccent.withOpacity(0.12),
-                borderColor: AppTheme.cyanAccent.withOpacity(0.4),
-                radius: 12,
-                glow: true,
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.qr_code_scanner, color: AppTheme.cyanAccent, size: 18),
-                  SizedBox(width: 6),
-                  Text(
-                    "Ghép Nối",
-                    style: TextStyle(
-                      color: AppTheme.cyanAccent,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+    return Scaffold(
+      backgroundColor: bgCol,
+      body: Stack(
+        children: [
+          // Nền Cyberpunk Ambient Glow nếu ở Dark Mode
+          if (isDark) ...[
+            Positioned(
+              top: -100,
+              left: -80,
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [AppTheme.blueAccent.withValues(alpha: 0.16), Colors.transparent],
                   ),
-                ],
+                ),
               ),
             ),
+            Positioned(
+              bottom: 80,
+              right: -100,
+              child: Container(
+                width: 340,
+                height: 340,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [AppTheme.cyanAccent.withValues(alpha: 0.12), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+          ],
+
+          SafeArea(
+            child: Column(
+              children: [
+                // NỘI DUNG CHÍNH (THEO TAB ĐƯỢC CHỌN)
+                Expanded(
+                  child: _selectedBottomNavIndex == 0
+                      ? _buildControlPageWithBackground(isDark)
+                      : _selectedBottomNavIndex == 1
+                          ? const NativeShopScreen()
+                          : _selectedBottomNavIndex == 2
+                              ? const CskhChatScreen()
+                              : AppSettingsScreen(
+                                  onThemeChanged: _toggleTheme,
+                                  onLanguageChanged: _toggleLanguage,
+                                ),
+                ),
+
+                // BOTTOM NAVIGATION BAR
+                _buildBottomNavBar(isDark),
+              ],
+            ),
           ),
+
+          // NÚT CSKH CHAT NỔI (CHỈ HIỂN THỊ TẠI TRANG ĐIỀU KHIỂN)
+          if (_selectedBottomNavIndex == 0) _buildFloatingChatBubble(),
         ],
       ),
     );
   }
 
-  // Central Orbital Hub UI
-  Widget _buildOrbitalSpaceView(List<DeviceItem> devices) {
+  // TRANG ĐIỀU KHIỂN: Nền là assets/background1.png (trước đây là nền Nhà của tôi) và Hero Header tích hợp trên assets/header.png
+  Widget _buildControlPageWithBackground(bool isDark) {
+    return Stack(
+      children: [
+        // 1. NỀN DỰ ÁN CỦA TOÀN BỘ TRANG ĐIỀU KHIỂN (assets/background1.png)
+        Positioned.fill(
+          child: Image.asset(
+            "assets/background1.png",
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(color: isDark ? AppTheme.background : AppTheme.lightBackground);
+            },
+          ),
+        ),
+
+        // Lớp phủ Gradient tối nhẹ để các nút danh mục và chữ nổi bật sắc nét
+        Positioned.fill(
+          child: Container(
+            color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.45),
+          ),
+        ),
+
+        // 2. NỘI DUNG TRANG ĐIỀU KHIỂN
+        Column(
+          children: [
+            // HERO BANNER TÍCH HỢP (assets/header.png): Hiển thị trực tiếp Lời chào, Vị trí/Nhiệt độ, Thời gian và Thanh công cụ
+            _buildControlHeroHeader(isDark),
+
+            // KHÔNG GIAN BỐ CỤC CHÍNH (CỐ ĐỊNH NHÀ CỦA TÔI & CÁC DANH MỤC)
+            Expanded(
+              child: _buildFixedHubLayout(isDark),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Hero Header trên ảnh header.png: Hiển thị Avatar, Lời chào, Thời gian, Nút công cụ trực tiếp trên ảnh
+  Widget _buildControlHeroHeader(bool isDark) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.cyanAccent.withValues(alpha: 0.2),
+            blurRadius: 14,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
+        child: Stack(
+          children: [
+            // 1. Ảnh nền ngôi nhà thông minh header.png
+            Positioned.fill(
+              child: Image.asset(
+                "assets/header.png",
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // 2. Lớp phủ Gradient tối để tương phản chữ và icon
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.black.withValues(alpha: 0.42),
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Nội dung hiển thị trực tiếp trên hình ảnh
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Hàng 1: Avatar, Lời chào, Vị trí/Nhiệt độ & Đồng hồ thời gian thực
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Avatar & Lời chào
+                      Row(
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: AppTheme.cyanGradient,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.cyanAccent.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.person, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "${AppTheme.t("welcome")}, Nguyễn Mạnh Đức",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Row(
+                                children: const [
+                                  Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 12),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    "Hà Đông • 32°C • 68%",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 10.5,
+                                      shadows: [
+                                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      // Đồng hồ thời gian thực
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              _timeString,
+                              style: const TextStyle(
+                                color: AppTheme.cyanAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: "monospace",
+                              ),
+                            ),
+                            Text(
+                              _dateString,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 8.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 8),
+                  Container(height: 1, color: Colors.white.withValues(alpha: 0.15)),
+                  const SizedBox(height: 6),
+
+                  // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Nút Chuyển Đổi Dark / Light Mode
+                      InkWell(
+                        onTap: _toggleTheme,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 14, color: isDark ? AppTheme.cyanAccent : Colors.orange),
+                              const SizedBox(width: 4),
+                              Text(
+                                isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
+                                style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
+                      InkWell(
+                        onTap: _toggleLanguage,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 12)),
+                              const SizedBox(width: 4),
+                              Text(
+                                AppTheme.currentLang == "vi" ? "VI" : "EN",
+                                style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.search, size: 19, color: Colors.white),
+                            tooltip: AppTheme.t("search_device"),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                            onPressed: _openSearchDialog,
+                          ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            icon: const Icon(Icons.notifications_none_rounded, size: 19, color: AppTheme.cyanAccent),
+                            tooltip: AppTheme.t("notifications"),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                            onPressed: _openNotificationCenter,
+                          ),
+                          const SizedBox(width: 4),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.cyanAccent,
+                              foregroundColor: Colors.black,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              minimumSize: const Size(0, 28),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            icon: const Icon(Icons.add, size: 14),
+                            label: Text(
+                              AppTheme.t("add_device"),
+                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 3. Bố Cục Tâm & Các Khối Xung Quanh CỐ ĐỊNH (Tâm Nhà Của Tôi & 7 Danh Mục Xung Quanh)
+  Widget _buildFixedHubLayout(bool isDark) {
+    final categories = _gateway.categories;
+    final textCol = Colors.white;
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final center = Offset(constraints.maxWidth / 2, constraints.maxHeight / 2 - 20);
-        final radius = math.min(constraints.maxWidth, constraints.maxHeight) * 0.38;
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final center = Offset(w / 2, h / 2 - 8);
 
         return Stack(
           alignment: Alignment.center,
           children: [
-            // Orbital ring circles
-            CustomPaint(
-              size: Size(constraints.maxWidth, constraints.maxHeight),
-              painter: OrbitalRingPainter(center: center, radius: radius),
-            ),
-
-            // Central Glowing Smart Home Hub Node
+            // 1. Tâm "NHÀ CỦA TÔI" & Các vòng đồng tâm phát sáng
             Positioned(
-              left: center.dx - 65,
-              top: center.dy - 65,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.surfaceGlass,
-                  border: Border.all(color: AppTheme.cyanAccent.withOpacity(0.5), width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.cyanAccent.withOpacity(0.2),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.home_rounded, color: AppTheme.cyanAccent, size: 36),
-                    const SizedBox(height: 4),
-                    const Text(
-                      "NGÔI NHÀ",
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
+              left: center.dx - 120,
+              top: center.dy - 120,
+              width: 240,
+              height: 240,
+              child: AnimatedBuilder(
+                animation: _pulseController,
+                builder: (context, child) {
+                  final pulseVal = _pulseController.value;
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Vòng ngoài lớn phát sáng
+                      Container(
+                        width: 220 + pulseVal * 12,
+                        height: 220 + pulseVal * 12,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.2 + pulseVal * 0.2),
+                            width: 1.5,
+                          ),
+                        ),
                       ),
-                    ),
-                    Text(
-                      "${devices.length} Thiết bị",
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                      // Vòng nhỡ
+                      Container(
+                        width: 170,
+                        height: 170,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.blueAccent.withValues(alpha: 0.35),
+                            width: 1.2,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      // Lõi trung tâm Nhà Của Tôi
+                      Container(
+                        width: 130,
+                        height: 130,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const RadialGradient(
+                            colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                          ),
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.cyanAccent.withValues(alpha: 0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.home_work_rounded, color: Colors.white, size: 38),
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.cyanAccent, width: 1.2),
+                              ),
+                              child: Text(
+                                AppTheme.t("my_home"),
+                                style: const TextStyle(
+                                  color: AppTheme.cyanAccent,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
 
-            // Orbiting Satellite Nodes (Devices)
-            AnimatedBuilder(
-              animation: _rotationController,
-              builder: (context, child) {
-                final baseAngle = _isAutoRotating ? _rotationController.value * 2 * math.pi : 0.0;
+            // 2. Các Khối Danh Mục Xung Quanh CỐ ĐỊNH (Fixed Offsets, hoàn toàn KHÔNG di chuyển/xoay)
+            ...categories.map((cat) {
+              final catDevices = _gateway.getDevicesByCategory(cat.category);
+              final posX = center.dx + cat.offsetX - 46;
+              final posY = center.dy + cat.offsetY - 42;
 
-                return Stack(
-                  children: List.generate(devices.length, (index) {
-                    final device = devices[index];
-                    final angle = baseAngle + (index * 2 * math.pi / devices.length);
-                    final dx = center.dx + radius * math.cos(angle) - 40;
-                    final dy = center.dy + radius * math.sin(angle) - 40;
-
-                    return Positioned(
-                      left: dx,
-                      top: dy,
-                      child: GestureDetector(
-                        onTap: () => _open2ClickQuickSheet(device),
-                        child: _buildSatelliteDeviceNode(device),
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-
-            // Helper hint at the bottom
-            Positioned(
-              bottom: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: AppTheme.glassBox(
-                  color: AppTheme.surfaceGlass.withOpacity(0.85),
-                  radius: 20,
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.touch_app, color: AppTheme.cyanAccent, size: 16),
-                    SizedBox(width: 8),
-                    Text(
-                      "Chạm vệ tinh bất kỳ để kích hoạt 2-Click Quick Sheet",
-                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+              return Positioned(
+                left: posX,
+                top: posY,
+                child: _buildFixedCategorySphere(cat, catDevices.length, isDark, textCol),
+              );
+            }),
           ],
         );
       },
     );
   }
 
-  // Individual Satellite Node
-  Widget _buildSatelliteDeviceNode(DeviceItem device) {
-    IconData icon;
-    Color accentColor;
+  // Khối danh mục hình vuông bo góc cố định
+  Widget _buildFixedCategorySphere(CategoryMeta cat, int deviceCount, bool isDark, Color textCol) {
+    final borderColor = cat.neonColor;
 
-    switch (device.category) {
-      case DeviceCategory.rollerDoor:
-        icon = Icons.garage_rounded;
-        accentColor = AppTheme.cyanAccent;
-        break;
-      case DeviceCategory.smartLock:
-        icon = Icons.lock_outline_rounded;
-        accentColor = AppTheme.amberWarning;
-        break;
-      case DeviceCategory.smartUps:
-        icon = Icons.bolt_rounded;
-        accentColor = AppTheme.emeraldSuccess;
-        break;
-      case DeviceCategory.smartSocket:
-        icon = Icons.power_rounded;
-        accentColor = AppTheme.blueAccent;
-        break;
-      case DeviceCategory.sensor:
-        icon = Icons.thermostat_rounded;
-        accentColor = Colors.purpleAccent;
-        break;
-    }
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppTheme.surfaceGlass,
-            border: Border.all(color: accentColor.withOpacity(0.7), width: 1.5),
-            boxShadow: [
-              BoxShadow(
-                color: accentColor.withOpacity(0.25),
-                blurRadius: 16,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Center(
-            child: Icon(icon, color: accentColor, size: 30),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            device.name,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // 2-Click Action Bottom Sheet
-  Widget _build2ClickActionSheet(DeviceItem device) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        border: Border(top: BorderSide(color: AppTheme.cardBorder, width: 1.5)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Drag handle
-          Center(
-            child: Container(
-              width: 48,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppTheme.textMuted,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // Device info header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    device.hardwareId,
-                    style: const TextStyle(
-                      color: AppTheme.cyanAccent,
-                      fontSize: 12,
-                      fontFamily: "monospace",
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    device.name,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    device.modelName,
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.emeraldSuccess.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.emeraldSuccess.withOpacity(0.3)),
-                ),
-                child: Text(
-                  device.stateSummary,
-                  style: const TextStyle(
-                    color: AppTheme.emeraldSuccess,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
-          const Divider(color: AppTheme.cardBorder, height: 1),
-          const SizedBox(height: 20),
-
-          // Dynamic 2-Click Controls depending on Category
-          if (device.category == DeviceCategory.rollerDoor)
-            _buildRollerDoor2ClickControls(device)
-          else if (device.category == DeviceCategory.smartLock)
-            _buildSmartLock2ClickControls(device)
-          else if (device.category == DeviceCategory.smartUps)
-            _buildUps2ClickControls(device)
-          else if (device.category == DeviceCategory.smartSocket)
-            _buildSocket2ClickControls(device)
-          else
-            _buildSensorTelemetries(device),
-
-          const SizedBox(height: 16),
-          // Latency & SLA footer
-          Center(
-            child: Text(
-              "Độ trễ khứ hồi: < 200ms • Mã hóa MQTT TLS 1.3 • Hộp đen Kiểm toán",
-              style: TextStyle(color: AppTheme.textMuted.withOpacity(0.8), fontSize: 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 1. Roller Door 2-Click: UP - STOP - DOWN + Child Lock
-  Widget _buildRollerDoor2ClickControls(DeviceItem device) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildActionButton(
-              label: "MỞ CỬA",
-              icon: Icons.arrow_upward_rounded,
-              gradient: AppTheme.cyanGradient,
-              onTap: () => _executeAction("OPEN_DOOR"),
-            ),
-            _buildActionButton(
-              label: "DỪNG LẠI",
-              icon: Icons.stop_rounded,
-              gradient: AppTheme.amberGradient,
-              onTap: () => _executeAction("STOP_DOOR"),
-            ),
-            _buildActionButton(
-              label: "ĐÓNG CỬA",
-              icon: Icons.arrow_downward_rounded,
-              gradient: const LinearGradient(colors: [Color(0xFF64748B), Color(0xFF334155)]),
-              onTap: () => _executeAction("CLOSE_DOOR"),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Child lock toggle
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Khóa an toàn trẻ em (Vô hiệu hóa remote RF)",
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
-            Switch(
-              value: device.isChildLockActive,
-              activeColor: AppTheme.cyanAccent,
-              onChanged: (val) => _executeAction("TOGGLE_CHILD_LOCK"),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // 2. Smart Lock 2-Click: Slide to unlock
-  Widget _buildSmartLock2ClickControls(DeviceItem device) {
-    return Column(
-      children: [
-        Container(
-          height: 60,
-          decoration: BoxDecoration(
-            color: AppTheme.background,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: AppTheme.cardBorder),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => _executeAction(device.isLocked ? "UNLOCK_SLIDE" : "LOCK_SLIDE"),
-                child: Container(
-                  width: 54,
-                  height: 54,
-                  margin: const EdgeInsets.all(3),
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.amberGradient,
-                  ),
-                  child: Icon(
-                    device.isLocked ? Icons.lock_open_rounded : Icons.lock_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    device.isLocked ? "Chạm để MỞ KHÓA MỘT CHẠM" : "Chạm để KHÓA CHỐT AN TOÀN",
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 54),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          "Mức pin khóa: ${device.batteryPercent}% • Nhật ký: Mở bằng vân tay lúc 19:42",
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-        ),
-      ],
-    );
-  }
-
-  // 3. UPS 2-Click: Auto discharge toggle
-  Widget _buildUps2ClickControls(DeviceItem device) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildActionButton(
-          label: device.isDischarging ? "DỪNG XẢ BẢO DƯỠNG" : "XẢ PIN THÔNG MINH",
-          icon: Icons.battery_charging_full_rounded,
-          gradient: AppTheme.emeraldGradient,
-          onTap: () => _executeAction("DISCHARGE_UPS"),
-        ),
-      ],
-    );
-  }
-
-  // 4. Smart Socket 2-Click: Power Toggle
-  Widget _buildSocket2ClickControls(DeviceItem device) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildActionButton(
-          label: device.isSocketRelayOn ? "NGẮT NGUỒN ĐIỆN" : "BẬT NGUỒN ĐIỆN",
-          icon: Icons.power_settings_new_rounded,
-          gradient: device.isSocketRelayOn ? AppTheme.amberGradient : AppTheme.cyanGradient,
-          onTap: () => _executeAction("TOGGLE_SOCKET"),
-        ),
-      ],
-    );
-  }
-
-  // 5. Environmental Sensors
-  Widget _buildSensorTelemetries(DeviceItem device) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        _buildSensorStatCard("Nhiệt độ", "${device.temperature.toStringAsFixed(1)} °C", Icons.thermostat),
-        _buildSensorStatCard("Độ ẩm", "${device.humidity.toStringAsFixed(0)} %", Icons.water_drop),
-      ],
-    );
-  }
-
-  Widget _buildSensorStatCard(String title, String val, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: AppTheme.glassBox(color: AppTheme.background, radius: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.cyanAccent, size: 24),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-              Text(val, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Action Button Widget
-  Widget _buildActionButton({
-    required String label,
-    required IconData icon,
-    required LinearGradient gradient,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: _isActionExecuting ? null : onTap,
-      child: Container(
-        width: 100,
-        height: 80,
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 28),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Bottom Navigation Bar
-  Widget _buildBottomNavBar() {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: AppTheme.glassBox(
-        color: AppTheme.surfaceGlass.withOpacity(0.95),
-        radius: 24,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(Icons.hub_rounded, "Quỹ Đạo", 0),
-          _buildNavItem(Icons.support_agent_rounded, "CSKH Trực Tuyến", 1),
-          _buildNavItem(Icons.group_rounded, "Gia Đình", 2),
-          _buildNavItem(Icons.person_rounded, "Cá Nhân", 3),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    final isSelected = _selectedTabIndex == index;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTabIndex = index;
-        });
-      },
+    return InkWell(
+      onTap: () => _openCategoryDevices(cat),
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: isSelected ? AppTheme.cyanAccent : AppTheme.textMuted,
-            size: 22,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? AppTheme.cyanAccent : AppTheme.textMuted,
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileSettings() {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Cài Đặt & Tài Khoản",
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: AppTheme.glassBox(),
-            child: const Column(
-              children: [
-                ListTile(
-                  leading: Icon(Icons.person_outline, color: AppTheme.cyanAccent),
-                  title: Text("Nguyễn Văn Nam", style: TextStyle(color: Colors.white)),
-                  subtitle: Text("nguyen.vannam@gmail.com • 0912345678", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+            width: 92,
+            height: 78,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor, width: 1.8),
+              boxShadow: [
+                BoxShadow(
+                  color: borderColor.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                  offset: const Offset(0, 3),
                 ),
-                Divider(color: AppTheme.cardBorder),
-                ListTile(
-                  leading: Icon(Icons.shield_outlined, color: AppTheme.emeraldSuccess),
-                  title: Text("Bảo hành điện tử chính hãng", style: TextStyle(color: Colors.white)),
-                  subtitle: Text("24 tháng kích hoạt tự động theo Hardware ID", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon danh mục
+                SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: Image.asset(
+                    cat.assetPath,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(_getCategoryFallbackIcon(cat.category), color: borderColor, size: 22);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 4),
+
+                // Tên danh mục (Được format ngắt dòng 2 hàng thông minh, không bao giờ bị cắt chữ ...)
+                Text(
+                  _formatCategoryTitle(cat.title),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textCol,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                    height: 1.15,
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 4),
+
+          // Huy hiệu số lượng thiết bị
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: borderColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1),
+            ),
+            child: Text(
+              "$deviceCount ${AppTheme.t("devices")}",
+              style: TextStyle(
+                color: borderColor,
+                fontSize: 8.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
-}
 
-// Custom Painter for Orbital rings
-class OrbitalRingPainter extends CustomPainter {
-  final Offset center;
-  final double radius;
-
-  OrbitalRingPainter({required this.center, required this.radius});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppTheme.cyanAccent.withOpacity(0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-
-    // Draw main orbit ring
-    canvas.drawCircle(center, radius, paint);
-
-    // Draw secondary outer dashed ring
-    final outerPaint = Paint()
-      ..color = AppTheme.blueAccent.withOpacity(0.08)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
-    canvas.drawCircle(center, radius * 1.25, outerPaint);
+  // Định dạng tên danh mục để ngắt dòng đẹp mắt
+  String _formatCategoryTitle(String rawTitle) {
+    switch (rawTitle.toUpperCase().trim()) {
+      case "ENERGY MANAGE":
+        return "ENERGY\nMANAGE";
+      case "LIGHT & SWITCH":
+        return "LIGHT &\nSWITCH";
+      case "OTHERS CONTROL":
+        return "OTHERS\nCONTROL";
+      case "DATA ANALYTICS":
+        return "DATA\nANALYTICS";
+      case "AI CAMERA":
+        return "AI\nCAMERA";
+      default:
+        return rawTitle;
+    }
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  IconData _getCategoryFallbackIcon(DeviceCategory category) {
+    switch (category) {
+      case DeviceCategory.rollerDoor:
+        return Icons.roller_shades_closed_outlined;
+      case DeviceCategory.energyManage:
+        return Icons.electric_meter_rounded;
+      case DeviceCategory.environment:
+        return Icons.cloud_outlined;
+      case DeviceCategory.othersControl:
+        return Icons.developer_board_rounded;
+      case DeviceCategory.dataAnalytics:
+        return Icons.analytics_outlined;
+      case DeviceCategory.lightSwitch:
+        return Icons.lightbulb_outline_rounded;
+      case DeviceCategory.camera:
+        return Icons.videocam_outlined;
+    }
+  }
+
+  // Floating Chat Bubble CSKH
+  Widget _buildFloatingChatBubble() {
+    return Positioned(
+      right: 18,
+      bottom: 80,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat
+          });
+        },
+        borderRadius: BorderRadius.circular(30),
+        child: Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            gradient: AppTheme.cyanGradient,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.cyanAccent.withValues(alpha: 0.45),
+                blurRadius: 14,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.chat_bubble_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt)
+  Widget _buildBottomNavBar(bool isDark) {
+    final bg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final border = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: border, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildNavItem(0, Icons.grid_view_rounded, AppTheme.t("control"), isDark),
+          _buildNavItem(1, Icons.storefront_rounded, AppTheme.t("shop"), isDark),
+          _buildNavItem(2, Icons.forum_rounded, AppTheme.t("chat"), isDark),
+          _buildNavItem(3, Icons.settings_rounded, AppTheme.currentLang == 'vi' ? "Cài đặt" : "Settings", isDark),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
+    final isSelected = _selectedBottomNavIndex == index;
+    final activeColor = AppTheme.cyanAccent;
+    final inactiveColor = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _selectedBottomNavIndex = index;
+        });
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? activeColor.withValues(alpha: 0.4) : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isSelected ? activeColor : inactiveColor, size: 20),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? activeColor : inactiveColor,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

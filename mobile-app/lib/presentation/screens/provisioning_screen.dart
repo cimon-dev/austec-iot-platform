@@ -120,7 +120,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                           style: const TextStyle(color: Colors.white, fontFamily: "monospace"),
                           decoration: InputDecoration(
                             labelText: "Hardware ID (quét từ tem)",
-                            labelStyle: const TextStyle(color: AppTheme.textSecondary),
+                            labelStyle: TextStyle(color: AppTheme.textSecondary),
                             filled: true,
                             fillColor: AppTheme.surface,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -144,7 +144,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     "Mỗi bo mạch Austec được định danh duy nhất bằng Hardware ID in chìm trên tem bảo hành chống giả.",
                     style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
                   ),
@@ -161,11 +161,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: AppTheme.glassBox(),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
+                    const SizedBox(width: 12),
                     Text("Đang quét radar BLE xung quanh...", style: TextStyle(color: AppTheme.textSecondary)),
                   ],
                 ),
@@ -211,7 +211,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                                 ),
                                 Text(
                                   dev.modelName,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                                 ),
                               ],
                             ),
@@ -223,7 +223,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                                 "${dev.rssi} dBm",
                                 style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11, fontWeight: FontWeight.bold),
                               ),
-                              const Text("Sóng mạnh", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                              Text("Sóng mạnh", style: TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                             ],
                           ),
                         ],
@@ -248,7 +248,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: "Tên mạng WiFi (2.4GHz / 5GHz)",
-                      labelStyle: const TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
                       filled: true,
                       fillColor: AppTheme.surface,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -262,7 +262,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       labelText: "Mật khẩu WiFi",
-                      labelStyle: const TextStyle(color: AppTheme.textSecondary),
+                      labelStyle: TextStyle(color: AppTheme.textSecondary),
                       filled: true,
                       fillColor: AppTheme.surface,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -320,7 +320,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                           ),
                           Text(
                             "Hạn bảo hành chính hãng: ${_pairingResult!.warrantyUntil}",
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                           ),
                           const SizedBox(height: 14),
                           ElevatedButton(

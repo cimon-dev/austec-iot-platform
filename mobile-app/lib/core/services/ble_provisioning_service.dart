@@ -53,14 +53,14 @@ class BleProvisioningService {
     DiscoveredHardwareBLE(
       hardwareId: "MS-LOCK-88102A",
       modelName: "Khóa Masaru Titan X1 Pro",
-      category: DeviceCategory.smartLock,
+      category: DeviceCategory.othersControl,
       rssi: -62,
       bleUuid: "0000aust-0000-1000-8000-00805f9b34fb-MS-LOCK-88102A",
     ),
     DiscoveredHardwareBLE(
       hardwareId: "UPS-220V-55109D",
       modelName: "Austec Sin Chuẩn Pro 220V",
-      category: DeviceCategory.smartUps,
+      category: DeviceCategory.energyManage,
       rssi: -70,
       bleUuid: "0000aust-0000-1000-8000-00805f9b34fb-UPS-220V-55109D",
     ),
