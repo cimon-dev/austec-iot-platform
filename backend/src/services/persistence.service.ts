@@ -26,11 +26,21 @@ export interface PersistentDataPayload {
   version?: string;
 }
 
+import { PostgresService } from './postgres.service.js';
+
 export class PersistenceService {
   private filePath: string;
   private saveTimeout: NodeJS.Timeout | null = null;
+  private postgresService: PostgresService | null = null;
 
   constructor(customPath?: string) {
+    // Khởi tạo PostgresService nếu có DATABASE_URL
+    const dbUrl = process.env.DATABASE_URL || 'postgresql://austec_admin:AustecSecure2026Password!@127.0.0.1:5432/austec_iot_db';
+    this.postgresService = new PostgresService(dbUrl);
+    this.initPostgres().catch(err => {
+      console.warn('[PersistenceService] Postgres chưa sẵn sàng, sẽ dùng file JSON dự phòng:', err.message);
+    });
+
     if (customPath) {
       this.filePath = customPath;
     } else {
@@ -58,6 +68,18 @@ export class PersistenceService {
         console.error('[PersistenceService] Không thể tạo thư mục data:', e);
       }
     }
+  }
+
+  private async initPostgres(): Promise<void> {
+    if (!this.postgresService) return;
+    const ok = await this.postgresService.connect();
+    if (ok) {
+      await this.postgresService.initTables();
+    }
+  }
+
+  public getPostgresService(): PostgresService | null {
+    return this.postgresService;
   }
 
   public getFilePath(): string {
@@ -125,6 +147,13 @@ export class PersistenceService {
       console.log(
         `[PersistenceService] Đã lưu dữ liệu bền vững thành công (${data.users?.length || 0} users, ${data.permissions?.length || 0} perms)`
       );
+
+      // Tự động đồng bộ ngay sang PostgreSQL
+      if (this.postgresService && this.postgresService.getConnected()) {
+        this.postgresService.syncAllToPostgres(data).catch(err => {
+          console.warn('[PersistenceService] Lỗi ngầm khi đồng bộ sang PostgreSQL:', err.message);
+        });
+      }
     } catch (e) {
       try {
         fs.writeFileSync(this.filePath, JSON.stringify(data, null, 2), 'utf-8');
