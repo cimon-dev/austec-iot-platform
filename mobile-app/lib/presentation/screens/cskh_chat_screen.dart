@@ -275,7 +275,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     } else if (type == 'NEW_MESSAGE' && data['message'] != null) {
       final m = data['message'];
       final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
-      final text = (m['text'] ?? m['message'] ?? '').toString();
+      final text = (m['text'] ?? m['message'] ?? '').toString().trim();
       final time = (m['time'] ?? 'Vừa xong').toString();
 
       List<String> images = [];
@@ -291,7 +291,10 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       if (text.isNotEmpty || images.isNotEmpty) {
         setState(() {
           // Check duplicate
-          final exists = _messages.any((msg) => msg.text == text && msg.sender == (isCSKH ? 'cskh' : 'user') && msg.time == time);
+          final exists = _messages.any((msg) =>
+            msg.text.trim() == text &&
+            msg.sender == (isCSKH ? 'cskh' : 'user')
+          );
           if (!exists) {
             _messages.add(ChatMessage(
               sender: isCSKH ? 'cskh' : 'user',
@@ -301,6 +304,22 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
               selectedDevice: dev,
               isTelemetrySnapshot: m['hasSnapshot'] == true,
             ));
+          } else {
+            // Cập nhật lại thời gian chuẩn nếu tin nhắn lạc quan trước đó đang để "Vừa xong"
+            final idx = _messages.lastIndexWhere((msg) =>
+              msg.text.trim() == text &&
+              msg.sender == (isCSKH ? 'cskh' : 'user')
+            );
+            if (idx != -1 && _messages[idx].time == 'Vừa xong') {
+              _messages[idx] = ChatMessage(
+                sender: isCSKH ? 'cskh' : 'user',
+                text: text,
+                time: time,
+                attachmentUrls: _messages[idx].attachmentUrls,
+                selectedDevice: _messages[idx].selectedDevice,
+                isTelemetrySnapshot: _messages[idx].isTelemetrySnapshot,
+              );
+            }
           }
           _hasActiveConversation = true;
           _isLoading = false;
@@ -327,10 +346,17 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     if (ticket['messages'] is List) {
       final List incoming = ticket['messages'];
       final List<ChatMessage> updated = [];
+      final seen = <String>{};
+
       for (var m in incoming) {
         final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
-        final textContent = (m['text'] ?? m['message'] ?? '').toString();
+        final textContent = (m['text'] ?? m['message'] ?? '').toString().trim();
         final timeContent = (m['time'] ?? 'Vừa xong').toString();
+        final role = isCSKH ? 'cskh' : 'user';
+
+        final key = "$role|$textContent";
+        if (seen.contains(key)) continue;
+        seen.add(key);
 
         List<String> images = [];
         if (m['attachmentUrls'] is List) {
@@ -385,42 +411,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         if (data['success'] == true && data['messages'] is List) {
           final List incoming = data['messages'];
           if (incoming.isNotEmpty && hasActive) {
-            final List<ChatMessage> updated = [];
-            for (var m in incoming) {
-              final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
-              final textContent = (m['text'] ?? m['message'] ?? '').toString();
-              final timeContent = (m['time'] ?? 'Vừa xong').toString();
-
-              List<String> images = [];
-              if (m['attachmentUrls'] is List) {
-                images = List<String>.from(m['attachmentUrls'].map((e) => e.toString()));
-              }
-
-              ChatDeviceItem? dev;
-              if (m['selectedDevice'] is Map) {
-                dev = ChatDeviceItem.fromJson(Map<String, dynamic>.from(m['selectedDevice']));
-              }
-
-              if (textContent.isNotEmpty || images.isNotEmpty) {
-                updated.add(ChatMessage(
-                  sender: isCSKH ? 'cskh' : 'user',
-                  text: textContent,
-                  time: timeContent,
-                  attachmentUrls: images,
-                  selectedDevice: dev,
-                  isTelemetrySnapshot: m['hasSnapshot'] == true,
-                ));
-              }
-            }
-            if (mounted) {
-              setState(() {
-                _messages.clear();
-                _messages.addAll(updated);
-                _hasActiveConversation = true;
-                _isLoading = false;
-              });
-              _scrollToBottom();
-            }
+            _loadTicketData(data['ticket'] ?? {'messages': data['messages']});
           } else {
             if (mounted && (_hasActiveConversation || _messages.isNotEmpty || _isLoading)) {
               setState(() {
@@ -446,7 +437,10 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     final token = AuthService().token ?? 'austec-customer-token';
     final user = AuthService().currentUser;
     final customerId = user?.id ?? '00000000-0000-0000-0000-000000000001';
-    final customerName = user?.fullName ?? 'Khách Hàng Austec';
+    String customerName = (user?.fullName ?? '').trim();
+    if (customerName.contains('@') || customerName.startsWith('USR-') || customerName.isEmpty) {
+      customerName = 'Quý khách';
+    }
     final customerPhone = user?.phoneNumber ?? '0912 345 678';
 
     final dev = _selectedDevice;
@@ -456,7 +450,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         ? 'Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${dev.deviceName}.'
         : 'Xin chào Trung tâm CSKH Austec! Tôi cần tư vấn và hỗ trợ dịch vụ.';
 
-    // 1. Send via WebSocket if connected
+    // 1. Send via WebSocket if connected (CHỈ GỬI QUA WS NẾU ĐANG KẾT NỐI, KHÔNG GỬI KÈM REST TRÁNH DUPLICATE)
     if (_isWsConnected && _wsChannel != null) {
       _wsChannel?.sink.add(jsonEncode({
         'type': 'START_CONVERSATION',
@@ -468,9 +462,10 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         'selectedDevice': dev?.toJson(),
         'message': greeting,
       }));
+      return;
     }
 
-    // 2. Call REST endpoint as reliable fallback
+    // 2. Call REST endpoint ONLY when WebSocket is not connected
     try {
       final res = await http.post(
         Uri.parse('http://localhost:4000/api/cskh/conversations/start'),
@@ -491,32 +486,8 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        if (data['success'] == true && data['messages'] is List) {
-          final List incoming = data['messages'];
-          final List<ChatMessage> updated = [];
-          for (var m in incoming) {
-            final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
-            final textContent = (m['text'] ?? m['message'] ?? '').toString();
-            final timeContent = (m['time'] ?? 'Vừa xong').toString();
-            if (textContent.isNotEmpty) {
-              updated.add(ChatMessage(
-                sender: isCSKH ? 'cskh' : 'user',
-                text: textContent,
-                time: timeContent,
-                selectedDevice: dev,
-                isTelemetrySnapshot: m['hasSnapshot'] == true,
-              ));
-            }
-          }
-          if (mounted) {
-            setState(() {
-              _messages.clear();
-              _messages.addAll(updated);
-              _hasActiveConversation = true;
-              _isStartingConversation = false;
-            });
-            _scrollToBottom();
-          }
+        if (data['success'] == true && data['ticket'] != null) {
+          _loadTicketData(data['ticket']);
           return;
         }
       }
@@ -536,7 +507,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
             ),
             ChatMessage(
               sender: "cskh",
-              text: "Dạ em chào Quý khách! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và kết nối từ xa qua WebSocket. Em có thể hỗ trợ gì cho bạn ạ?",
+              text: "Dạ em chào Quý khách! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và kết nối từ xa. Em có thể hỗ trợ gì cho bạn ạ?",
               time: timeStr,
             ),
           ]);
@@ -585,7 +556,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     final user = AuthService().currentUser;
     final customerId = user?.id;
 
-    // Send via WebSocket
+    // Send via WebSocket if connected, otherwise fallback to REST (TRÁNH GỬI CÙNG LÚC 2 LẦN)
     if (_isWsConnected && _wsChannel != null) {
       _wsChannel?.sink.add(jsonEncode({
         'type': 'SEND_MESSAGE',
@@ -595,26 +566,26 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         'attachmentUrls': attachmentsToSend,
         'selectedDevice': devToSend?.toJson(),
       }));
+    } else {
+      // Call REST fallback ONLY when WebSocket is not connected
+      final token = AuthService().token ?? 'austec-customer-token';
+      http.post(
+        Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'sender': 'CUSTOMER',
+          'senderRole': 'CUSTOMER',
+          'text': txt.isNotEmpty ? txt : "[Hình ảnh hiện trường đính kèm]",
+          'message': txt,
+          'customerId': customerId,
+          'attachmentUrls': attachmentsToSend,
+          'selectedDevice': devToSend?.toJson(),
+        }),
+      ).catchError((_) => http.Response('{}', 500));
     }
-
-    // Call REST fallback
-    final token = AuthService().token ?? 'austec-customer-token';
-    http.post(
-      Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'sender': 'CUSTOMER',
-        'senderRole': 'CUSTOMER',
-        'text': txt.isNotEmpty ? txt : "[Hình ảnh hiện trường đính kèm]",
-        'message': txt,
-        'customerId': customerId,
-        'attachmentUrls': attachmentsToSend,
-        'selectedDevice': devToSend?.toJson(),
-      }),
-    ).catchError((_) => http.Response('{}', 500));
   }
 
   void _attachTelemetrySnapshot() {
@@ -657,23 +628,23 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         'hasSnapshot': true,
         'selectedDevice': dev?.toJson(),
       }));
+    } else {
+      final token = AuthService().token ?? 'austec-customer-token';
+      http.post(
+        Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'sender': 'CUSTOMER',
+          'customerId': customerId,
+          'text': '[TELEMETRY]: Đã gửi gói viễn thám thiết bị $hwId ($model)',
+          'hasSnapshot': true,
+          'selectedDevice': dev?.toJson(),
+        }),
+      ).catchError((_) => http.Response('{}', 500));
     }
-
-    final token = AuthService().token ?? 'austec-customer-token';
-    http.post(
-      Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'sender': 'CUSTOMER',
-        'customerId': customerId,
-        'text': '[TELEMETRY]: Đã gửi gói viễn thám thiết bị $hwId ($model)',
-        'hasSnapshot': true,
-        'selectedDevice': dev?.toJson(),
-      }),
-    ).catchError((_) => http.Response('{}', 500));
   }
 
   // Open Device Combobox Selection Modal

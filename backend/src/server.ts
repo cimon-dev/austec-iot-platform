@@ -1263,7 +1263,10 @@ export function createApp() {
             const { customerId, customerName, customerPhone, hardwareId, message, images, attachmentUrls, selectedDevice } = payload;
             const targetCustomerId = customerId || ws.userData?.customerId || '00000000-0000-0000-0000-000000000001';
             const targetUser = usersStore.find(u => u.id === targetCustomerId);
-            const actualName = customerName || targetUser?.fullName || ws.userData?.customerName || 'Khách Hàng Austec';
+            let actualName = (customerName || targetUser?.fullName || ws.userData?.customerName || '').trim();
+            if (actualName.includes('@') || actualName.startsWith('USR-') || !actualName) {
+              actualName = 'Quý khách';
+            }
             const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
             const actualHwId = hardwareId || selectedDevice?.hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
             const actualAttachments = images || attachmentUrls || [];
@@ -1434,7 +1437,10 @@ export function createApp() {
     const { customerId, customerName, hardwareId, message, images, attachmentUrls, selectedDevice } = req.body;
     const targetCustomerId = customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
     const targetUser = usersStore.find(u => u.id === targetCustomerId);
-    const actualName = customerName || targetUser?.fullName || req.user?.fullName || 'Khách Hàng Austec';
+    let actualName = (customerName || targetUser?.fullName || req.user?.fullName || '').trim();
+    if (actualName.includes('@') || actualName.startsWith('USR-') || !actualName) {
+      actualName = 'Quý khách';
+    }
     const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
     const actualHwId = hardwareId || selectedDevice?.hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
     const actualAttachments = images || attachmentUrls || [];

@@ -394,6 +394,24 @@ function CSKHContent() {
     });
   }, [tickets, ticketSearch]);
 
+  const deduplicateTicketMessages = (msgs: any[]): any[] => {
+    if (!Array.isArray(msgs)) return [];
+    const deduped: any[] = [];
+    for (const m of msgs) {
+      const text = (m.text || m.message || '').toString().trim();
+      const sender = m.sender || m.senderRole;
+      const isDupe = deduped.some(x => {
+        const xText = (x.text || x.message || '').toString().trim();
+        const xSender = x.sender || x.senderRole;
+        return xSender === sender && xText === text;
+      });
+      if (!isDupe) {
+        deduped.push(m);
+      }
+    }
+    return deduped;
+  };
+
   const fetchLiveTickets = () => {
     fetch("http://localhost:4000/api/cskh/tickets", {
       headers: { "Authorization": "Bearer austec-admin-super-token" }
@@ -401,10 +419,14 @@ function CSKHContent() {
       .then(r => r.json())
       .then(res => {
         if (res.success && Array.isArray(res.tickets)) {
-          setTickets(res.tickets);
+          const cleaned = res.tickets.map((t: any) => ({
+            ...t,
+            messages: deduplicateTicketMessages(t.messages)
+          }));
+          setTickets(cleaned);
           setSelectedTicketId(prev => {
-            if (!prev && res.tickets.length > 0) return res.tickets[0].id;
-            if (prev && !res.tickets.some((t: any) => t.id === prev) && res.tickets.length > 0) return res.tickets[0].id;
+            if (!prev && cleaned.length > 0) return cleaned[0].id;
+            if (prev && !cleaned.some((t: any) => t.id === prev) && cleaned.length > 0) return cleaned[0].id;
             return prev;
           });
         }
@@ -440,20 +462,32 @@ function CSKHContent() {
           try {
             const data = JSON.parse(event.data);
             if (data.type === "TICKETS_UPDATED" && Array.isArray(data.tickets)) {
-              setTickets(data.tickets);
+              const cleaned = data.tickets.map((t: any) => ({
+                ...t,
+                messages: deduplicateTicketMessages(t.messages)
+              }));
+              setTickets(cleaned);
               setSelectedTicketId(prev => {
-                if (!prev && data.tickets.length > 0) return data.tickets[0].id;
-                if (prev && !data.tickets.some((t: any) => t.id === prev) && data.tickets.length > 0) return data.tickets[0].id;
+                if (!prev && cleaned.length > 0) return cleaned[0].id;
+                if (prev && !cleaned.some((t: any) => t.id === prev) && cleaned.length > 0) return cleaned[0].id;
                 return prev;
               });
             } else if (data.type === "NEW_TICKET" && data.ticket) {
-              setTickets(prev => [data.ticket, ...prev.filter(t => t.id !== data.ticket.id)]);
+              const cleanedTicket = {
+                ...data.ticket,
+                messages: deduplicateTicketMessages(data.ticket.messages)
+              };
+              setTickets(prev => [cleanedTicket, ...prev.filter(t => t.id !== data.ticket.id)]);
               setSelectedTicketId(data.ticket.id);
               showToast(`Khách hàng ${data.ticket.customerName} vừa bắt đầu phiên hỗ trợ mới!`);
             } else if (data.type === "NEW_MESSAGE" && data.message) {
               setTickets(prev => prev.map(t => {
                 if (t.id === data.ticketId) {
-                  const exists = t.messages.some(m => m.text === data.message.text && m.time === data.message.time);
+                  const normMsg = (data.message.text || data.message.message || "").toString().trim();
+                  const exists = t.messages.some(m => 
+                    (m.text || "").toString().trim() === normMsg && 
+                    (m.sender === data.message.sender || (m as any).senderRole === data.message.senderRole)
+                  );
                   if (exists) return t;
                   return {
                     ...t,
@@ -468,7 +502,11 @@ function CSKHContent() {
                 setSelectedProductInfo(data.message.selectedDevice);
               }
             } else if (data.type === "CONVERSATION_STARTED" && data.ticket) {
-              setTickets(prev => [data.ticket, ...prev.filter(t => t.id !== data.ticket.id)]);
+              const cleanedTicket = {
+                ...data.ticket,
+                messages: deduplicateTicketMessages(data.ticket.messages)
+              };
+              setTickets(prev => [cleanedTicket, ...prev.filter(t => t.id !== data.ticket.id)]);
               setSelectedTicketId(data.ticket.id);
               if (data.ticket.selectedDevice) {
                 setSelectedProductInfo(data.ticket.selectedDevice);
@@ -527,7 +565,7 @@ function CSKHContent() {
       })
     );
 
-    // Send via WebSocket
+    // Send via WebSocket if connected, otherwise fallback to REST (KHÔNG GỬI 2 LẦN CÙNG LÚC)
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: "SEND_MESSAGE",
@@ -535,21 +573,21 @@ function CSKHContent() {
         sender: "CSKH",
         text: replyText.trim(),
       }));
+    } else {
+      // Call REST endpoint ONLY when WebSocket is disconnected
+      fetch(`http://localhost:4000/api/cskh/tickets/${currentTicket.id}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer austec-admin-super-token"
+        },
+        body: JSON.stringify({
+          sender: "CSKH",
+          text: replyText.trim(),
+          message: replyText.trim()
+        })
+      }).catch(() => {});
     }
-
-    // Call REST endpoint as reliable fallback
-    fetch(`http://localhost:4000/api/cskh/tickets/${currentTicket.id}/messages`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer austec-admin-super-token"
-      },
-      body: JSON.stringify({
-        sender: "CSKH",
-        text: replyText.trim(),
-        message: replyText.trim()
-      })
-    }).catch(() => {});
 
     setReplyText("");
     showToast("Đã gửi tin nhắn tức thời qua WebSocket tới Mobile của khách hàng!");

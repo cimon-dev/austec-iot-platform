@@ -70,6 +70,19 @@ export class SupportService {
       }
     }
 
+    // DEDUPLICATION: Tránh duplicate khi cả WebSocket và REST cùng gửi đồng thời trong 4s
+    const normMsg = (data.message || '').trim();
+    const recentDuplicate = this.messages.slice().reverse().find(m => 
+      m.ticketId === data.ticketId &&
+      m.senderRole === data.senderRole &&
+      m.message.trim() === normMsg &&
+      (Date.now() - new Date(m.createdAt).getTime()) < 4000
+    );
+
+    if (recentDuplicate) {
+      return recentDuplicate;
+    }
+
     const msg: LiveChatMessage = {
       id: this.currentMsgId++,
       ticketId: data.ticketId,
@@ -139,6 +152,15 @@ export class SupportService {
       (ticket as any).selectedDevice = data.selectedDevice;
     }
 
+    // Nếu cuộc trò chuyện này ĐÃ có tin nhắn rồi, không bao giờ gửi lặp lại lời chào khởi tạo
+    const existingMessages = this.getMessagesByTicket(ticket.id);
+    if (existingMessages.length > 0) {
+      return {
+        ticket,
+        messages: existingMessages,
+      };
+    }
+
     // 1. Tin nhắn khởi tạo từ khách hàng
     const userMsg = await this.sendMessage({
       ticketId: ticket.id,
@@ -149,8 +171,19 @@ export class SupportService {
       selectedDevice: data.selectedDevice,
     });
 
-    // 2. Phản hồi chào mừng tức thì từ CSKH Austec
-    const greetingName = data.customerName ? `anh/chị ${data.customerName}` : 'Quý khách';
+    // 2. Phản hồi chào mừng tức thì từ CSKH Austec (Xử lý tên khách hàng lịch sự, không chào bằng email)
+    let cleanName = (data.customerName || '').trim();
+    if (
+      cleanName.includes('@') ||
+      cleanName.startsWith('USR-') ||
+      !cleanName ||
+      cleanName.toLowerCase() === 'quý khách' ||
+      cleanName.toLowerCase() === 'khách hàng austec'
+    ) {
+      cleanName = '';
+    }
+    const greetingName = cleanName ? `anh/chị ${cleanName}` : 'Quý khách';
+    const honorific = cleanName ? 'anh/chị' : 'Quý khách';
     const deviceGreeting = data.selectedDevice
       ? ` và thiết bị ${data.selectedDevice.deviceName || data.selectedDevice.modelName}`
       : '';
@@ -158,7 +191,7 @@ export class SupportService {
       ticketId: ticket.id,
       senderId: 'cskh-001',
       senderRole: 'CSKH',
-      message: `Dạ em chào ${greetingName}! Kỹ thuật viên Austec đã tiếp nhận yêu cầu${deviceGreeting} và kết nối trực tuyến với anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?`,
+      message: `Dạ em chào ${greetingName}! Kỹ thuật viên Austec đã tiếp nhận yêu cầu${deviceGreeting} và kết nối trực tuyến với ${honorific}. Em có thể hỗ trợ gì cho ${honorific} ạ?`,
     });
 
     return {
@@ -168,7 +201,20 @@ export class SupportService {
   }
 
   public getMessagesByTicket(ticketId: string): LiveChatMessage[] {
-    return this.messages.filter(m => m.ticketId === ticketId);
+    const list = this.messages.filter(m => m.ticketId === ticketId);
+    // Deduplicate identical consecutive messages
+    const deduped: LiveChatMessage[] = [];
+    for (const m of list) {
+      const isDupe = deduped.some(x => 
+        x.senderRole === m.senderRole && 
+        x.message.trim() === m.message.trim() && 
+        Math.abs(new Date(x.createdAt).getTime() - new Date(m.createdAt).getTime()) < 4000
+      );
+      if (!isDupe) {
+        deduped.push(m);
+      }
+    }
+    return deduped;
   }
 
   public getTicketsByCustomer(customerId: string): SupportTicket[] {
