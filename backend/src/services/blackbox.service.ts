@@ -3,6 +3,19 @@ import { DeviceBlackboxLog, ActorRole, AckStatus } from '@austec/database';
 export class BlackboxService {
   private logs: DeviceBlackboxLog[] = [];
   private currentId = 1;
+  public onUpdate?: () => void;
+
+  public exportData(): DeviceBlackboxLog[] {
+    return this.logs;
+  }
+
+  public importData(logs: DeviceBlackboxLog[]): void {
+    if (Array.isArray(logs)) {
+      this.logs = [...logs];
+      const maxId = this.logs.reduce((max, l) => (l.id && l.id > max ? l.id : max), 0);
+      this.currentId = maxId + 1;
+    }
+  }
 
   /**
    * Ghi vết bất biến vào hộp đen
@@ -31,6 +44,7 @@ export class BlackboxService {
     };
 
     this.logs.push(record);
+    this.onUpdate?.();
     return record;
   }
 

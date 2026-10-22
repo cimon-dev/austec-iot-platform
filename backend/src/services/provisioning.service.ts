@@ -23,6 +23,7 @@ export class ProvisioningService {
   private inventoryStore: Map<string, DeviceInventory> = new Map();
   private instanceStore: Map<string, DeviceInstance> = new Map();
   private transferOTPs: Map<string, { hardwareId: string; currentOwnerId: string; expiresAt: number }> = new Map();
+  public onUpdate?: () => void;
 
   constructor(initialInventory?: DeviceInventory[], initialInstances?: DeviceInstance[]) {
     if (initialInventory) {
@@ -33,11 +34,28 @@ export class ProvisioningService {
     }
   }
 
+  public exportData(): { inventory: DeviceInventory[]; instances: DeviceInstance[] } {
+    return {
+      inventory: Array.from(this.inventoryStore.values()),
+      instances: Array.from(this.instanceStore.values()),
+    };
+  }
+
+  public importData(data: { inventory?: DeviceInventory[]; instances?: DeviceInstance[] }) {
+    if (data.inventory && Array.isArray(data.inventory)) {
+      data.inventory.forEach(inv => this.inventoryStore.set(inv.hardwareId, inv));
+    }
+    if (data.instances && Array.isArray(data.instances)) {
+      data.instances.forEach(inst => this.instanceStore.set(inst.hardwareId, inst));
+    }
+  }
+
   /**
    * Đăng ký thiết bị xuất xưởng vào kho
    */
   public registerToInventory(inventory: DeviceInventory): void {
     this.inventoryStore.set(inventory.hardwareId, inventory);
+    this.onUpdate?.();
   }
 
   /**
@@ -120,6 +138,7 @@ export class ProvisioningService {
     };
 
     this.instanceStore.set(req.hardwareId, newInstance);
+    this.onUpdate?.();
 
     return {
       success: true,

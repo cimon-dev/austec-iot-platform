@@ -256,6 +256,17 @@ export function createApp() {
         messages: persistedData.supportMessages,
       });
     }
+
+    if (persistedData.deviceInstances || persistedData.deviceInventory) {
+      provisioningService.importData({
+        instances: persistedData.deviceInstances,
+        inventory: persistedData.deviceInventory,
+      });
+    }
+
+    if (persistedData.blackboxLogs) {
+      blackboxService.importData(persistedData.blackboxLogs);
+    }
   } else {
     productsStore = [...(migrated.migratedProducts || [])];
     permissionsStore = [...(migrated.migratedPermissions || [])];
@@ -270,14 +281,23 @@ export function createApp() {
     products: productsStore,
     supportTickets: supportService.exportData().tickets,
     supportMessages: supportService.exportData().messages,
+    deviceInstances: provisioningService.exportData().instances,
+    deviceInventory: provisioningService.exportData().inventory,
+    blackboxLogs: blackboxService.exportData(),
   });
 
   const persistAll = (immediate: boolean = false) => {
     persistenceService.save(getSnapshot(), immediate);
   };
 
-  // Tự động đồng bộ bền vững khi có tin nhắn hoặc ticket CSKH mới
+  // Tự động đồng bộ bền vững khi có tin nhắn, ticket CSKH, thiết bị ghép nối hoặc log hộp đen mới
   supportService.onUpdate = () => {
+    persistAll(false);
+  };
+  provisioningService.onUpdate = () => {
+    persistAll(true);
+  };
+  blackboxService.onUpdate = () => {
     persistAll(false);
   };
 

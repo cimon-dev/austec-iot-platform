@@ -7,6 +7,9 @@ import {
   CustomerSupportRequest,
   SupportTicket,
   LiveChatMessage,
+  DeviceInstance,
+  DeviceInventory,
+  DeviceBlackboxLog,
 } from '@austec/database';
 
 export interface PersistentDataPayload {
@@ -16,6 +19,9 @@ export interface PersistentDataPayload {
   products: Product[];
   supportTickets: SupportTicket[];
   supportMessages: LiveChatMessage[];
+  deviceInstances?: DeviceInstance[];
+  deviceInventory?: DeviceInventory[];
+  blackboxLogs?: DeviceBlackboxLog[];
   lastSavedAt?: string;
   version?: string;
 }
