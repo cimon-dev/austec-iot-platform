@@ -41,10 +41,18 @@ export class SupportService {
     senderRole: 'CUSTOMER' | 'CSKH';
     message: string;
     attachmentUrls?: string[];
+    selectedDevice?: any;
   }): Promise<LiveChatMessage> {
     const ticket = this.tickets.get(data.ticketId);
     if (!ticket) {
       throw new Error(`Ticket '${data.ticketId}' không tồn tại.`);
+    }
+
+    if (data.selectedDevice) {
+      (ticket as any).selectedDevice = data.selectedDevice;
+      if (data.selectedDevice.hardwareId && !ticket.hardwareId) {
+        ticket.hardwareId = data.selectedDevice.hardwareId;
+      }
     }
 
     // Tự động kẹp ảnh chụp trạng thái kỹ thuật của thiết bị nếu có
@@ -69,6 +77,7 @@ export class SupportService {
       senderRole: data.senderRole,
       message: data.message,
       attachmentUrls: data.attachmentUrls || [],
+      selectedDevice: data.selectedDevice,
       deviceSnapshot,
       createdAt: new Date().toISOString(),
     };
@@ -112,15 +121,22 @@ export class SupportService {
     customerName?: string;
     hardwareId?: string;
     message: string;
+    attachmentUrls?: string[];
+    selectedDevice?: any;
   }): Promise<{ ticket: SupportTicket; messages: LiveChatMessage[] }> {
     let ticket = this.findActiveCustomerTicket(data.customerId);
     if (!ticket) {
+      const deviceLabel = data.selectedDevice ? ` (${data.selectedDevice.deviceName || data.selectedDevice.modelName || 'Thiết bị mới'})` : '';
       ticket = this.createTicket({
         customerId: data.customerId,
-        hardwareId: data.hardwareId || 'AT-DOOR-88239A01',
-        subject: `Kênh hỗ trợ 1-1 cho khách hàng ${data.customerName || data.customerId}`,
+        hardwareId: data.hardwareId || data.selectedDevice?.hardwareId || 'AT-DOOR-88239A01',
+        subject: `Kênh hỗ trợ 1-1 cho khách hàng ${data.customerName || data.customerId}${deviceLabel}`,
         priority: 'NORMAL',
       });
+    }
+
+    if (data.selectedDevice) {
+      (ticket as any).selectedDevice = data.selectedDevice;
     }
 
     // 1. Tin nhắn khởi tạo từ khách hàng
@@ -129,15 +145,20 @@ export class SupportService {
       senderId: data.customerId,
       senderRole: 'CUSTOMER',
       message: data.message,
+      attachmentUrls: data.attachmentUrls,
+      selectedDevice: data.selectedDevice,
     });
 
     // 2. Phản hồi chào mừng tức thì từ CSKH Austec
     const greetingName = data.customerName ? `anh/chị ${data.customerName}` : 'Quý khách';
+    const deviceGreeting = data.selectedDevice
+      ? ` và thiết bị ${data.selectedDevice.deviceName || data.selectedDevice.modelName}`
+      : '';
     const cskhWelcomeMsg = await this.sendMessage({
       ticketId: ticket.id,
       senderId: 'cskh-001',
       senderRole: 'CSKH',
-      message: `Dạ em chào ${greetingName}! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và kết nối từ xa với thiết bị của anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?`,
+      message: `Dạ em chào ${greetingName}! Kỹ thuật viên Austec đã tiếp nhận yêu cầu${deviceGreeting} và kết nối trực tuyến với anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?`,
     });
 
     return {

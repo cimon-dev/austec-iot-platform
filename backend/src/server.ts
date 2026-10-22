@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 import express from 'express';
 import cors from 'cors';
 import {
@@ -40,6 +42,9 @@ export function createApp() {
   const app = express();
   app.use(cors());
   app.use(express.json());
+
+  const server = http.createServer(app);
+  const wss = new WebSocketServer({ server, path: '/ws/chat' });
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', uptime: process.uptime(), timestamp: new Date().toISOString() });
@@ -1103,62 +1108,254 @@ export function createApp() {
   // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC
   // ==========================================
   // ==========================================
-  // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC (ĐÚNG NGƯỜI - ĐÚNG CUỘC TRÒ CHUYỆN)
+  // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC (WEBSOCKET & REST HYBRID)
   // ==========================================
+  interface ExtendedWebSocket extends WebSocket {
+    isAlive?: boolean;
+    userData?: {
+      role?: 'ADMIN' | 'CSKH' | 'CUSTOMER';
+      customerId?: string;
+      customerName?: string;
+    };
+  }
+
+  const wsClients = new Set<ExtendedWebSocket>();
+
+  function formatLiveMessage(m: any) {
+    const d = new Date(m.createdAt);
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const isCSKH = m.senderRole === 'CSKH';
+    const attachments = m.attachmentUrls || m.images || [];
+    return {
+      id: m.id,
+      ticketId: m.ticketId,
+      sender: isCSKH ? 'CSKH' : 'user',
+      senderRole: m.senderRole,
+      text: m.message,
+      message: m.message,
+      time: timeStr,
+      createdAt: m.createdAt,
+      attachmentUrls: attachments,
+      images: attachments,
+      selectedDevice: m.selectedDevice,
+      hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
+      deviceSnapshot: m.deviceSnapshot,
+    };
+  }
+
+  function enrichTicket(t: any, formattedMessages: any[]) {
+    const customer = usersStore.find(u => u.id === t.customerId);
+    const lastMsg = formattedMessages.length > 0 ? formattedMessages[formattedMessages.length - 1] : undefined;
+    const device = t.selectedDevice || customer?.devices?.[0];
+    return {
+      id: t.id,
+      customerId: t.customerId,
+      customerName: customer?.fullName || t.subject.replace('Kênh hỗ trợ 1-1 cho khách hàng ', '') || 'Khách hàng Austec',
+      customerPhone: customer?.phoneNumber || '---',
+      customerEmail: customer?.email || '',
+      hardwareId: t.hardwareId || device?.hardwareId || 'AT-DOOR-88239A01',
+      deviceName: device?.deviceName || device?.modelName || customer?.devices?.[0]?.modelName || 'Cửa cuốn Austec Titadoor A900 Super',
+      subject: t.subject,
+      status: t.status,
+      priority: t.priority,
+      selectedDevice: t.selectedDevice || device,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      messages: formattedMessages,
+      lastMessage: lastMsg ? {
+        text: lastMsg.text,
+        sender: lastMsg.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
+        time: lastMsg.time,
+      } : undefined,
+      technicalSnapshot: {
+        model: device?.modelName || customer?.devices?.[0]?.modelName || "Austec Titadoor A900 Super",
+        fwVersion: "v2.4.1",
+        rssi: -62,
+        battery: 98,
+        isOnline: device?.isOnline !== false,
+        lastHeartbeat: "3 giây trước",
+        diagnostics: "Thiết bị hoạt động ổn định. Telemetry trực tuyến.",
+      }
+    };
+  }
+
+  function broadcastToCustomer(customerId: string, data: any) {
+    const jsonStr = JSON.stringify(data);
+    for (const c of wsClients) {
+      if (c.readyState === WebSocket.OPEN && c.userData?.customerId === customerId) {
+        c.send(jsonStr);
+      }
+    }
+  }
+
+  function broadcastToStaff(data: any) {
+    const jsonStr = JSON.stringify(data);
+    for (const c of wsClients) {
+      if (c.readyState === WebSocket.OPEN && (c.userData?.role === 'ADMIN' || c.userData?.role === 'CSKH' || !c.userData?.role)) {
+        c.send(jsonStr);
+      }
+    }
+  }
+
+  function broadcastAllTickets() {
+    const rawTickets = supportService.getAllOpenTickets();
+    const tickets = rawTickets
+      .filter(t => supportService.hasActiveMessages(t.id))
+      .map(t => {
+        const rawMsgs = supportService.getMessagesByTicket(t.id);
+        return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
+      });
+    broadcastToStaff({
+      type: 'TICKETS_UPDATED',
+      tickets,
+    });
+  }
+
+  // Khởi tạo kênh WebSocket hai chiều thời gian thực (/ws/chat)
+  wss.on('connection', (ws: ExtendedWebSocket) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    wsClients.add(ws);
+
+    ws.on('message', async (raw) => {
+      try {
+        const payload = JSON.parse(raw.toString());
+        const { type } = payload;
+
+        switch (type) {
+          case 'JOIN': {
+            ws.userData = {
+              role: payload.role || 'CUSTOMER',
+              customerId: payload.customerId,
+              customerName: payload.customerName,
+            };
+            ws.send(JSON.stringify({
+              type: 'JOINED',
+              success: true,
+              role: ws.userData.role,
+              customerId: ws.userData.customerId,
+            }));
+            break;
+          }
+
+          case 'PING': {
+            ws.send(JSON.stringify({ type: 'PONG' }));
+            break;
+          }
+
+          case 'START_CONVERSATION': {
+            const { customerId, customerName, customerPhone, hardwareId, message, images, attachmentUrls, selectedDevice } = payload;
+            const targetCustomerId = customerId || ws.userData?.customerId || '00000000-0000-0000-0000-000000000001';
+            const targetUser = usersStore.find(u => u.id === targetCustomerId);
+            const actualName = customerName || targetUser?.fullName || ws.userData?.customerName || 'Khách Hàng Austec';
+            const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
+            const actualHwId = hardwareId || selectedDevice?.hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
+            const actualAttachments = images || attachmentUrls || [];
+
+            const result = await supportService.startConversation({
+              customerId: targetCustomerId,
+              customerName: actualName,
+              hardwareId: actualHwId,
+              message: actualMsg,
+              attachmentUrls: actualAttachments,
+              selectedDevice,
+            });
+
+            const formattedMessages = result.messages.map(m => formatLiveMessage(m));
+            const enrichedTicket = enrichTicket(result.ticket, formattedMessages);
+
+            ws.send(JSON.stringify({
+              type: 'CONVERSATION_STARTED',
+              success: true,
+              ticket: enrichedTicket,
+              messages: formattedMessages,
+            }));
+
+            broadcastToStaff({
+              type: 'NEW_TICKET',
+              ticket: enrichedTicket,
+              messages: formattedMessages,
+            });
+            break;
+          }
+
+          case 'SEND_MESSAGE': {
+            const { ticketId, customerId, sender, senderRole, text, message, images, attachmentUrls, selectedDevice } = payload;
+            const actualText = (text || message || '').toString().trim();
+            const actualAttachments = images || attachmentUrls || [];
+            if (!actualText && actualAttachments.length === 0) return;
+
+            let ticket: any;
+            if (ticketId) {
+              ticket = supportService.getTicketById(ticketId);
+            }
+            const targetCustomerId = customerId || ws.userData?.customerId;
+            if (!ticket && targetCustomerId) {
+              ticket = supportService.findActiveCustomerTicket(targetCustomerId);
+            }
+            if (!ticket) {
+              ticket = supportService.getOrCreateCustomerTicket(targetCustomerId || '00000000-0000-0000-0000-000000000001');
+            }
+
+            const isCSKH = sender === 'CSKH' || senderRole === 'CSKH' || ws.userData?.role === 'CSKH' || ws.userData?.role === 'ADMIN';
+            const role = isCSKH ? 'CSKH' : 'CUSTOMER';
+            const senderId = isCSKH ? (ws.userData?.customerId || 'cskh-001') : ticket.customerId;
+
+            const newMsg = await supportService.sendMessage({
+              ticketId: ticket.id,
+              senderId,
+              senderRole: role,
+              message: actualText || (actualAttachments.length > 0 ? '[Hình ảnh đính kèm]' : ''),
+              attachmentUrls: actualAttachments,
+              selectedDevice,
+            });
+
+            const formatted = formatLiveMessage(newMsg);
+            const enriched = enrichTicket(ticket, supportService.getMessagesByTicket(ticket.id).map(m => formatLiveMessage(m)));
+
+            broadcastToCustomer(ticket.customerId, {
+              type: 'NEW_MESSAGE',
+              ticketId: ticket.id,
+              message: formatted,
+            });
+
+            broadcastToStaff({
+              type: 'NEW_MESSAGE',
+              ticketId: ticket.id,
+              customerId: ticket.customerId,
+              message: formatted,
+              ticket: enriched,
+            });
+            break;
+          }
+
+          case 'TYPING': {
+            const { ticketId, customerId, isTyping } = payload;
+            if (ws.userData?.role === 'CUSTOMER') {
+              broadcastToStaff({ type: 'TYPING', ticketId, customerId: ws.userData.customerId, isTyping });
+            } else if (customerId) {
+              broadcastToCustomer(customerId, { type: 'TYPING', ticketId, isTyping });
+            }
+            break;
+          }
+        }
+      } catch (err) {
+        console.error('[WebSocket Error]', err);
+      }
+    });
+
+    ws.on('close', () => {
+      wsClients.delete(ws);
+    });
+  });
+
   // Lấy danh sách các cuộc trò chuyện đang hoạt động cho Web Admin
   app.get('/api/cskh/tickets', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
     const rawTickets = supportService.getAllOpenTickets();
     const tickets = rawTickets.map(t => {
-      const customer = usersStore.find(u => u.id === t.customerId);
       const msgs = supportService.getMessagesByTicket(t.id);
-      const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
-
-      const formattedMessages = msgs.map(m => {
-        const d = new Date(m.createdAt);
-        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-        return {
-          id: m.id,
-          ticketId: m.ticketId,
-          sender: m.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
-          senderRole: m.senderRole,
-          text: m.message,
-          message: m.message,
-          time: timeStr,
-          createdAt: m.createdAt,
-          hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
-          deviceSnapshot: m.deviceSnapshot,
-        };
-      });
-
-      return {
-        id: t.id,
-        customerId: t.customerId,
-        customerName: customer?.fullName || t.subject.replace('Kênh hỗ trợ 1-1 cho khách hàng ', '') || 'Khách hàng Austec',
-        customerPhone: customer?.phoneNumber || '---',
-        customerEmail: customer?.email || '',
-        hardwareId: t.hardwareId || 'AT-DOOR-88239A01',
-        deviceName: customer?.devices?.[0]?.modelName || 'Cửa cuốn Austec Titadoor A900 Super',
-        subject: t.subject,
-        status: t.status,
-        priority: t.priority,
-        createdAt: t.createdAt,
-        updatedAt: t.updatedAt,
-        messages: formattedMessages,
-        lastMessage: lastMsg ? {
-          text: lastMsg.message,
-          sender: lastMsg.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
-          time: new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        } : undefined,
-        technicalSnapshot: {
-          model: customer?.devices?.[0]?.modelName || "Austec Titadoor A900 Super",
-          fwVersion: "v2.4.1",
-          rssi: -62,
-          battery: 98,
-          isOnline: true,
-          lastHeartbeat: "3 giây trước",
-          diagnostics: "Thiết bị hoạt động ổn định. Telemetry trực tuyến.",
-        }
-      };
+      const formattedMessages = msgs.map(m => formatLiveMessage(m));
+      return enrichTicket(t, formattedMessages);
     });
 
     res.json({ success: true, tickets });
@@ -1212,71 +1409,57 @@ export function createApp() {
       });
     }
 
-    // Chuẩn hóa định dạng tin nhắn cho cả Web Admin và Mobile App
-    const messages = rawMessages.map(m => {
-      const d = new Date(m.createdAt);
-      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      const isCSKH = m.senderRole === 'CSKH';
-      return {
-        id: m.id,
-        ticketId: m.ticketId,
-        sender: isCSKH ? 'CSKH' : 'user',
-        senderRole: m.senderRole,
-        text: m.message,
-        message: m.message,
-        time: timeStr,
-        createdAt: m.createdAt,
-        hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
-        deviceSnapshot: m.deviceSnapshot,
-      };
-    });
-
-    res.json({ success: true, hasActiveConversation: true, ticket, messages });
+    const messages = rawMessages.map(m => formatLiveMessage(m));
+    res.json({ success: true, hasActiveConversation: true, ticket: enrichTicket(ticket, messages), messages });
   });
 
-  // KHỞI TẠO CUỘC TRÒ CHUYỆN LẦN ĐẦU TỪ MOBILE (GỬI LỜI CHÀO & TỰ ĐỘNG PHẢN HỒI)
+  // KHỞI TẠO CUỘC TRÒ CHUYỆN LẦN ĐẦU (GỬI LỜI CHÀO & TỰ ĐỘNG PHẢN HỒI)
   app.post('/api/cskh/conversations/start', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const { customerId, customerName, hardwareId, message } = req.body;
+    const { customerId, customerName, hardwareId, message, images, attachmentUrls, selectedDevice } = req.body;
     const targetCustomerId = customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
     const targetUser = usersStore.find(u => u.id === targetCustomerId);
     const actualName = customerName || targetUser?.fullName || req.user?.fullName || 'Khách Hàng Austec';
     const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
-    const actualHwId = hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
+    const actualHwId = hardwareId || selectedDevice?.hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
+    const actualAttachments = images || attachmentUrls || [];
 
     const result = await supportService.startConversation({
       customerId: targetCustomerId,
       customerName: actualName,
       hardwareId: actualHwId,
       message: actualMsg,
+      attachmentUrls: actualAttachments,
+      selectedDevice,
     });
 
-    const formattedMessages = result.messages.map(m => {
-      const d = new Date(m.createdAt);
-      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-      const isCSKH = m.senderRole === 'CSKH';
-      return {
-        id: m.id,
-        ticketId: m.ticketId,
-        sender: isCSKH ? 'CSKH' : 'user',
-        senderRole: m.senderRole,
-        text: m.message,
-        message: m.message,
-        time: timeStr,
-        createdAt: m.createdAt,
-      };
+    const formattedMessages = result.messages.map(m => formatLiveMessage(m));
+    const enrichedTicket = enrichTicket(result.ticket, formattedMessages);
+
+    // Phát WebSocket broadcast tức thì tới cả Mobile và Web Admin
+    broadcastToCustomer(targetCustomerId, {
+      type: 'CONVERSATION_STARTED',
+      success: true,
+      ticket: enrichedTicket,
+      messages: formattedMessages,
+    });
+
+    broadcastToStaff({
+      type: 'NEW_TICKET',
+      ticket: enrichedTicket,
+      messages: formattedMessages,
     });
 
     res.json({
       success: true,
       hasActiveConversation: true,
-      ticket: result.ticket,
+      ticket: enrichedTicket,
       messages: formattedMessages
     });
   });
 
   // GỬI TIN NHẮN TIẾP THEO TRONG CUỘC TRÒ CHUYỆN
   app.post('/api/cskh/active-chat/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const { message, text, attachmentUrls, customerId, hardwareId, sender, ticketId } = req.body;
+    const { message, text, attachmentUrls, images, selectedDevice, customerId, hardwareId, sender, ticketId } = req.body;
     
     let ticket: any;
     if (ticketId) {
@@ -1295,7 +1478,8 @@ export function createApp() {
     }
 
     const actualMessage = (message || text || '').toString().trim();
-    if (!actualMessage) {
+    const actualAttachments = images || attachmentUrls || [];
+    if (!actualMessage && actualAttachments.length === 0) {
       res.status(400).json({ success: false, error: 'Tin nhắn không được để trống' });
       return;
     }
@@ -1307,23 +1491,28 @@ export function createApp() {
       ticketId: ticket.id,
       senderId: req.user?.id || (isCSKH ? 'cskh-001' : ticket.customerId),
       senderRole,
-      message: actualMessage,
-      attachmentUrls,
+      message: actualMessage || '[Hình ảnh đính kèm]',
+      attachmentUrls: actualAttachments,
+      selectedDevice,
     });
 
-    const d = new Date(msg.createdAt);
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const formattedMsg = formatLiveMessage(msg);
+    const enrichedTicket = enrichTicket(ticket, supportService.getMessagesByTicket(ticket.id).map(m => formatLiveMessage(m)));
 
-    const formattedMsg = {
-      id: msg.id,
-      ticketId: msg.ticketId,
-      sender: isCSKH ? 'CSKH' : 'user',
-      senderRole,
-      text: msg.message,
-      message: msg.message,
-      time: timeStr,
-      createdAt: msg.createdAt,
-    };
+    // Phát WebSocket broadcast tức thì
+    broadcastToCustomer(ticket.customerId, {
+      type: 'NEW_MESSAGE',
+      ticketId: ticket.id,
+      message: formattedMsg,
+    });
+
+    broadcastToStaff({
+      type: 'NEW_MESSAGE',
+      ticketId: ticket.id,
+      customerId: ticket.customerId,
+      message: formattedMsg,
+      ticket: enrichedTicket,
+    });
 
     res.json({ success: true, message: formattedMsg, ticketId: ticket.id });
   });
@@ -1335,9 +1524,10 @@ export function createApp() {
       return res.status(404).json({ success: false, error: 'Không tìm thấy cuộc trò chuyện' });
     }
 
-    const { message, text, attachmentUrls, sender } = req.body;
+    const { message, text, attachmentUrls, images, selectedDevice, sender } = req.body;
     const actualMessage = (message || text || '').toString().trim();
-    if (!actualMessage) {
+    const actualAttachments = images || attachmentUrls || [];
+    if (!actualMessage && actualAttachments.length === 0) {
       return res.status(400).json({ success: false, error: 'Tin nhắn không được để trống' });
     }
 
@@ -1348,26 +1538,96 @@ export function createApp() {
       ticketId: ticket.id,
       senderId: req.user?.id || (isCSKH ? 'cskh-001' : ticket.customerId),
       senderRole,
-      message: actualMessage,
-      attachmentUrls,
+      message: actualMessage || '[Hình ảnh đính kèm]',
+      attachmentUrls: actualAttachments,
+      selectedDevice,
     });
 
-    const d = new Date(msg.createdAt);
-    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const formattedMsg = formatLiveMessage(msg);
+    const enrichedTicket = enrichTicket(ticket, supportService.getMessagesByTicket(ticket.id).map(m => formatLiveMessage(m)));
+
+    // Phát WebSocket broadcast tức thì
+    broadcastToCustomer(ticket.customerId, {
+      type: 'NEW_MESSAGE',
+      ticketId: ticket.id,
+      message: formattedMsg,
+    });
+
+    broadcastToStaff({
+      type: 'NEW_MESSAGE',
+      ticketId: ticket.id,
+      customerId: ticket.customerId,
+      message: formattedMsg,
+      ticket: enrichedTicket,
+    });
 
     res.json({
       success: true,
-      message: {
-        id: msg.id,
-        ticketId: msg.ticketId,
-        sender: isCSKH ? 'CSKH' : 'user',
-        senderRole,
-        text: msg.message,
-        message: msg.message,
-        time: timeStr,
-        createdAt: msg.createdAt,
-      }
+      message: formattedMsg
     });
+  });
+
+  // ==========================================
+  // ROUTE: PHIẾU YÊU CẦU HỖ TRỢ (SUPPORT REQUESTS)
+  // ==========================================
+  app.get('/api/cskh/requests', AuthService.authenticate, (req, res) => {
+    const list = requestsStore.map(r => ({
+      id: r.id,
+      customerId: r.customerId,
+      customerName: r.customerName,
+      customerPhone: r.customerPhone,
+      customerEmail: (r as any).customerEmail || (r as any).contactEmail || '',
+      hardwareId: r.hardwareId,
+      deviceName: (r as any).deviceName || 'Thiết bị Austec',
+      requestType: r.requestType || 'TECHNICAL',
+      description: r.description || '',
+      images: (r as any).images || r.attachmentUrls || [],
+      replyChannel: r.replyChannel === 'PUSH_NOTIFICATION' ? 'PUSH' : r.replyChannel === 'PHONE_CALL' ? 'PHONE' : (r.replyChannel || 'PHONE'),
+      preferredContactTime: (r as any).preferredContactTime || 'Trong giờ hành chính',
+      status: r.status === 'OPEN' ? 'PENDING' : r.status,
+      adminResponse: r.adminResponse,
+      respondedAt: (r as any).respondedAt || (r as any).resolvedAt,
+      createdAt: r.createdAt || new Date().toLocaleString('vi-VN'),
+    }));
+    res.json({ success: true, requests: list, total: list.length });
+  });
+
+  app.post('/api/cskh/requests', AuthService.authenticate, (req, res) => {
+    const data = req.body;
+    const newReq: any = {
+      id: data.id || `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerId: data.customerId || (req as any).user?.id || 'USR-001',
+      customerName: data.customerName || (req as any).user?.fullName || 'Khách Hàng Austec',
+      customerPhone: data.customerPhone || '0912 345 678',
+      customerEmail: data.customerEmail || '',
+      hardwareId: data.hardwareId || 'AT-DOOR-88239A01',
+      deviceName: data.deviceName || 'Cửa cuốn Austec Smart',
+      requestType: data.requestType || 'TECHNICAL',
+      description: data.description || '',
+      images: data.images || data.attachmentUrls || [],
+      attachmentUrls: data.images || data.attachmentUrls || [],
+      replyChannel: data.replyChannel || 'PHONE',
+      preferredContactTime: data.preferredContactTime || 'Trong giờ hành chính',
+      status: data.status || 'PENDING',
+      createdAt: data.createdAt || new Date().toLocaleString('vi-VN'),
+      updatedAt: new Date().toISOString(),
+    };
+    requestsStore.unshift(newReq);
+    res.json({ success: true, message: 'Đã tiếp nhận phiếu yêu cầu hỗ trợ thành công!', request: newReq });
+  });
+
+  app.put('/api/cskh/requests/:id', AuthService.authenticate, (req, res) => {
+    const { id } = req.params;
+    const idx = requestsStore.findIndex(r => r.id === id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy phiếu yêu cầu' });
+    }
+    requestsStore[idx] = {
+      ...requestsStore[idx],
+      ...req.body,
+      updatedAt: new Date().toISOString(),
+    };
+    res.json({ success: true, message: 'Cập nhật phiếu yêu cầu thành công!', request: requestsStore[idx] });
   });
 
   app.post('/api/cskh/tickets', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
@@ -1386,18 +1646,6 @@ export function createApp() {
     res.json({ success: true, messages });
   });
 
-  app.post('/api/cskh/tickets/:id/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
-    const { message, attachmentUrls } = req.body;
-    const msg = await supportService.sendMessage({
-      ticketId: String(req.params.id),
-      senderId: req.user!.id,
-      senderRole: req.user!.role === 'CUSTOMER' ? 'CUSTOMER' : 'CSKH',
-      message,
-      attachmentUrls,
-    });
-    res.json({ success: true, message: msg });
-  });
-
   // ==========================================
   // ROUTE: HỘP ĐEN KIỂM TOÁN (BLACKBOX AUDIT)
   // ==========================================
@@ -1414,6 +1662,11 @@ export function createApp() {
 
   return {
     app,
+    server,
+    wss,
+    broadcastToCustomer,
+    broadcastToStaff,
+    broadcastAllTickets,
     services: {
       authService: AuthService,
       schemaEngine,
@@ -1427,9 +1680,9 @@ export function createApp() {
 }
 
 if (process.env.NODE_ENV !== 'test') {
-  const { app } = createApp();
-  const PORT = process.env.PORT || 5050;
-  app.listen(PORT, () => {
-    console.log(`[AUSTEC IOT BACKEND] Server đang chạy mượt mà tại http://localhost:${PORT}`);
+  const { server } = createApp();
+  const PORT = process.env.PORT || 4000;
+  server.listen(PORT, () => {
+    console.log(`[AUSTEC IOT BACKEND] Server HTTP & WebSocket đang chạy mượt mà tại http://localhost:${PORT} (WS: ws://localhost:${PORT}/ws/chat)`);
   });
 }

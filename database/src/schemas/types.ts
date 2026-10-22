@@ -294,6 +294,7 @@ export interface LiveChatMessage {
   senderRole: 'CUSTOMER' | 'CSKH';
   message: string;
   attachmentUrls?: string[];
+  selectedDevice?: any;
   deviceSnapshot?: Record<string, any>; // Đính kèm snapshot viễn thám thiết bị khi gửi
   createdAt: string;
 }

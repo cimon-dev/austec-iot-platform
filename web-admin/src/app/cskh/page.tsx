@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { 
   Headphones, 
@@ -29,12 +29,19 @@ import {
   ChevronRight,
   ShieldCheck,
   AlertCircle,
-  Radio
+  Radio,
+  Box,
+  Cpu,
+  Tag,
+  Maximize2,
+  CheckCheck,
+  Sparkles,
+  Layers,
+  Info
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
-import { Pagination } from "@/components/Pagination";
 
 interface Ticket {
   id: string;
@@ -46,11 +53,38 @@ interface Ticket {
   status: "OPEN" | "PROCESSING" | "RESOLVED";
   priority: "URGENT" | "NORMAL" | "LOW";
   createdAt: string;
+  selectedDevice?: {
+    isOwned: boolean;
+    hardwareId?: string;
+    deviceName: string;
+    modelName: string;
+    categoryTag: string;
+    specs?: Record<string, string>;
+    imageUrl?: string;
+    price?: number;
+    subscriptionStatus?: string;
+    warrantyMonths?: number;
+    activationDate?: string;
+  };
   messages: Array<{
     sender: "CUSTOMER" | "CSKH";
     text: string;
     time: string;
     hasSnapshot?: boolean;
+    attachmentUrls?: string[];
+    selectedDevice?: {
+      isOwned: boolean;
+      hardwareId?: string;
+      deviceName: string;
+      modelName: string;
+      categoryTag: string;
+      specs?: Record<string, string>;
+      imageUrl?: string;
+      price?: number;
+      subscriptionStatus?: string;
+      warrantyMonths?: number;
+      activationDate?: string;
+    };
   }>;
   technicalSnapshot: {
     model: string;
@@ -157,12 +191,112 @@ const INITIAL_SUPPORT_REQUESTS: SupportRequestTicket[] = [
   }
 ];
 
+function resolveProductFromTicket(ticket: Ticket | null) {
+  if (!ticket) return null;
+
+  if (ticket.selectedDevice) {
+    return ticket.selectedDevice;
+  }
+
+  const name = ticket.deviceName || "";
+  const model = ticket.technicalSnapshot?.model || "Austec Titadoor A900 Super";
+  const hwId = ticket.hardwareId || "AT-DOOR-88239A01";
+
+  if (name.includes("Cửa Cuốn") || name.includes("Gara") || hwId.includes("DOOR")) {
+    return {
+      isOwned: true,
+      hardwareId: hwId,
+      deviceName: name || "Cửa Cuốn Khe Thoáng Austec Titadoor A900 Super",
+      modelName: model,
+      categoryTag: "CỬA CUỐN THÔNG MINH",
+      imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+      subscriptionStatus: "Còn hạn (Gia hạn đến 12/2027)",
+      warrantyMonths: 36,
+      activationDate: "15/10/2024",
+      specs: {
+        "Công suất": "850W Turbo Inverter",
+        "Tải trọng tối đa": "1200 kg",
+        "Thân cửa": "Hợp kim nhôm 6063-T5 AkzoNobel",
+        "Điện áp": "220V AC / 50Hz (UPS 48h)",
+        "Chuẩn kháng nước": "IP65 toàn thân motor",
+        "Chuẩn kết nối": "Wi-Fi 2.4GHz + RF 433MHz Rolling Code",
+        "Cảm biến an toàn": "Chống xô kẹp quang học + Đảo chiều",
+        "Tốc độ đóng mở": "15 cm/giây (Êm ái)"
+      }
+    };
+  } else if (name.includes("Khóa") || hwId.includes("LOCK")) {
+    return {
+      isOwned: true,
+      hardwareId: hwId,
+      deviceName: name || "Khóa Thông Minh FaceID Austec Masaru Pro",
+      modelName: "Austec Masaru FaceID X1",
+      categoryTag: "KHÓA CỬA TỰ ĐỘNG",
+      imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+      subscriptionStatus: "Trọn đời (Perpetual)",
+      warrantyMonths: 24,
+      activationDate: "02/01/2025",
+      specs: {
+        "Mở khóa": "FaceID 3D, Vân tay FPC, Mã PIN, Thẻ từ RFID",
+        "Tốc độ nhận diện": "< 0.3s (Chống giả mạo ảnh chụp)",
+        "Nguồn điện": "Pin sạc Lithium 5000mAh (Type-C)",
+        "Chất liệu": "Hợp kim kẽm nguyên khối CNC",
+        "Báo động": "Báo động cạy phá, sai mật khẩu 5 lần"
+      }
+    };
+  } else if (name.includes("Cổng") || hwId.includes("GATE")) {
+    return {
+      isOwned: true,
+      hardwareId: hwId,
+      deviceName: name || "Motor Cổng Trượt Tự Động Austec Turbo",
+      modelName: "Austec Gate Turbo 1500",
+      categoryTag: "MOTOR CỔNG TỰ ĐỘNG",
+      imageUrl: "https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=600&auto=format&fit=crop&q=80",
+      subscriptionStatus: "Còn hạn 12 tháng",
+      warrantyMonths: 24,
+      activationDate: "18/06/2025",
+      specs: {
+        "Công suất": "550W Biến tần Inverter",
+        "Tải trọng cổng": "1500 kg (Chiều dài 12m)",
+        "Tiêu chuẩn bảo vệ": "IP67 chống ngập nước ngoài trời",
+        "Điện áp": "220V AC / 24V DC Brushless"
+      }
+    };
+  }
+
+  return {
+    isOwned: true,
+    hardwareId: hwId,
+    deviceName: name || "Thiết Bị Thông Minh Austec IoT",
+    modelName: model,
+    categoryTag: "HỆ THỐNG SMART HOME AUSTEC",
+    imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+    subscriptionStatus: "Tiêu chuẩn",
+    warrantyMonths: 24,
+    activationDate: "2025",
+    specs: {
+      "Model": model,
+      "Hardware ID": hwId,
+      "Kết nối": "Wi-Fi IoT Gateway Austec",
+      "Nguồn điện": "220V AC / 50Hz"
+    }
+  };
+}
+
 function CSKHContent() {
   const { t, language } = useLanguage();
   const { canView, canUpdate, canCreate } = usePermissions();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [activeTab, setActiveTab] = useState<"chat" | "tickets">(tabParam === "tickets" ? "tickets" : "chat");
+
+  // Sync tab with URL parameter
+  useEffect(() => {
+    if (tabParam === "tickets") {
+      setActiveTab("tickets");
+    } else if (tabParam === "chat") {
+      setActiveTab("chat");
+    }
+  }, [tabParam]);
 
   const switchTab = (tab: "chat" | "tickets") => {
     setActiveTab(tab);
@@ -179,28 +313,57 @@ function CSKHContent() {
   };
 
   // =========================================================================
-  // TAB 1: LIVE 1-1 CHAT
+  // TAB 1: LIVE 1-1 CHAT (WEBSOCKET REAL-TIME)
   // =========================================================================
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>("");
   const [ticketSearch, setTicketSearch] = useState("");
   const [replyText, setReplyText] = useState("");
   const [isRebooting, setIsRebooting] = useState(false);
-  const [mobileTab, setMobileTab] = useState<"tickets" | "chat" | "telemetry">("chat");
+  const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
+  const [selectedProductInfo, setSelectedProductInfo] = useState<any>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-  const currentTicket = tickets.find((t) => t.id === selectedTicketId) || (tickets.length > 0 ? tickets[0] : null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const filteredTickets = tickets.filter((t) => {
-    const q = ticketSearch.toLowerCase();
-    return (
-      t.id.toLowerCase().includes(q) ||
-      t.customerName.toLowerCase().includes(q) ||
-      t.customerPhone.includes(q) ||
-      t.subject.toLowerCase().includes(q) ||
-      t.deviceName.toLowerCase().includes(q) ||
-      t.hardwareId.toLowerCase().includes(q)
-    );
-  });
+  const currentTicket = useMemo(() => {
+    return tickets.find((t) => t.id === selectedTicketId) || (tickets.length > 0 ? tickets[0] : null);
+  }, [tickets, selectedTicketId]);
+
+  // Keep selected product in sync with ticket
+  useEffect(() => {
+    if (currentTicket) {
+      if (currentTicket.selectedDevice) {
+        setSelectedProductInfo(currentTicket.selectedDevice);
+      } else {
+        setSelectedProductInfo(resolveProductFromTicket(currentTicket));
+      }
+    } else {
+      setSelectedProductInfo(null);
+    }
+  }, [currentTicket?.id, currentTicket?.selectedDevice]);
+
+  // Scroll messages to bottom on new message
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [currentTicket?.messages?.length]);
+
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((t) => {
+      const q = ticketSearch.toLowerCase();
+      return (
+        (t.id && t.id.toLowerCase().includes(q)) ||
+        (t.customerName && t.customerName.toLowerCase().includes(q)) ||
+        (t.customerPhone && t.customerPhone.includes(q)) ||
+        (t.subject && t.subject.toLowerCase().includes(q)) ||
+        (t.deviceName && t.deviceName.toLowerCase().includes(q)) ||
+        (t.hardwareId && t.hardwareId.toLowerCase().includes(q))
+      );
+    });
+  }, [tickets, ticketSearch]);
 
   const fetchLiveTickets = () => {
     fetch("http://localhost:4000/api/cskh/tickets", {
@@ -220,11 +383,93 @@ function CSKHContent() {
       .catch(() => {});
   };
 
-  // Polling đồng bộ danh sách cuộc trò chuyện và tin nhắn 1-1 thời gian thực từ Mobile App
+  // WebSocket Connection Lifecycle
   useEffect(() => {
     fetchLiveTickets();
-    const chatTimer = setInterval(fetchLiveTickets, 2500);
-    return () => clearInterval(chatTimer);
+
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectWebSocket = () => {
+      try {
+        const host = typeof window !== "undefined" ? (window.location.hostname || "localhost") : "localhost";
+        const wsUrl = `ws://${host}:4000/ws/chat`;
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setWsStatus("connected");
+          ws?.send(JSON.stringify({
+            type: "JOIN",
+            role: "CSKH",
+            userId: "cskh-admin",
+            customerName: "CSKH Quản Trị Viên"
+          }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === "TICKETS_UPDATED" && Array.isArray(data.tickets)) {
+              setTickets(data.tickets);
+              setSelectedTicketId(prev => {
+                if (!prev && data.tickets.length > 0) return data.tickets[0].id;
+                if (prev && !data.tickets.some((t: any) => t.id === prev) && data.tickets.length > 0) return data.tickets[0].id;
+                return prev;
+              });
+            } else if (data.type === "NEW_TICKET" && data.ticket) {
+              setTickets(prev => [data.ticket, ...prev.filter(t => t.id !== data.ticket.id)]);
+              setSelectedTicketId(data.ticket.id);
+              showToast(`Khách hàng ${data.ticket.customerName} vừa bắt đầu phiên hỗ trợ mới!`);
+            } else if (data.type === "NEW_MESSAGE" && data.message) {
+              setTickets(prev => prev.map(t => {
+                if (t.id === data.ticketId) {
+                  const exists = t.messages.some(m => m.text === data.message.text && m.time === data.message.time);
+                  if (exists) return t;
+                  return {
+                    ...t,
+                    status: "PROCESSING",
+                    messages: [...t.messages, data.message],
+                    selectedDevice: data.message.selectedDevice || t.selectedDevice
+                  };
+                }
+                return t;
+              }));
+              if (data.message.selectedDevice) {
+                setSelectedProductInfo(data.message.selectedDevice);
+              }
+            } else if (data.type === "CONVERSATION_STARTED" && data.ticket) {
+              setTickets(prev => [data.ticket, ...prev.filter(t => t.id !== data.ticket.id)]);
+              setSelectedTicketId(data.ticket.id);
+              if (data.ticket.selectedDevice) {
+                setSelectedProductInfo(data.ticket.selectedDevice);
+              }
+            }
+          } catch (e) {
+            console.error("WS error parsing message:", e);
+          }
+        };
+
+        ws.onclose = () => {
+          setWsStatus("disconnected");
+          reconnectTimeout = setTimeout(connectWebSocket, 3000);
+        };
+
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch (e) {
+        setWsStatus("disconnected");
+        reconnectTimeout = setTimeout(connectWebSocket, 3000);
+      }
+    };
+
+    connectWebSocket();
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
   }, []);
 
   const handleSendReply = () => {
@@ -233,6 +478,12 @@ function CSKHContent() {
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
+    const newMsg = {
+      sender: "CSKH" as const,
+      text: replyText.trim(),
+      time: timeStr,
+    };
+
     // Optimistic local state update
     setTickets((prev) =>
       prev.map((t) => {
@@ -240,21 +491,24 @@ function CSKHContent() {
           return {
             ...t,
             status: "PROCESSING",
-            messages: [
-              ...t.messages,
-              {
-                sender: "CSKH",
-                text: replyText,
-                time: timeStr,
-              },
-            ],
+            messages: [...t.messages, newMsg],
           };
         }
         return t;
       })
     );
 
-    // Gửi tin nhắn vào đúng cuộc trò chuyện của khách hàng này
+    // Send via WebSocket
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "SEND_MESSAGE",
+        ticketId: currentTicket.id,
+        sender: "CSKH",
+        text: replyText.trim(),
+      }));
+    }
+
+    // Call REST endpoint as reliable fallback
     fetch(`http://localhost:4000/api/cskh/tickets/${currentTicket.id}/messages`, {
       method: "POST",
       headers: {
@@ -263,20 +517,18 @@ function CSKHContent() {
       },
       body: JSON.stringify({
         sender: "CSKH",
-        text: replyText,
-        message: replyText
+        text: replyText.trim(),
+        message: replyText.trim()
       })
-    })
-      .then(() => fetchLiveTickets())
-      .catch(() => {});
+    }).catch(() => {});
 
     setReplyText("");
-    showToast("Đã gửi tin nhắn tới ứng dụng Mobile của khách hàng!");
+    showToast("Đã gửi tin nhắn tức thời qua WebSocket tới Mobile của khách hàng!");
   };
 
   const handleSoftReboot = () => {
     if (isRebooting || !currentTicket) return;
-    const targetHwId = currentTicket.hardwareId;
+    const targetHwId = selectedProductInfo?.hardwareId || currentTicket.hardwareId;
     setIsRebooting(true);
     showToast(`Đang phát lệnh Soft Reboot tới ${targetHwId}...`);
 
@@ -286,24 +538,35 @@ function CSKHContent() {
       
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const rebootMsg = `[HỆ THỐNG]: Kỹ thuật viên CSKH đã gửi lệnh Khởi động lại vi điều khiển (Soft Reboot). Thiết bị ${targetHwId} đã kết nối lại ổn định.`;
+
+      // Broadcast reboot via WS
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({
+          type: "SEND_MESSAGE",
+          ticketId: currentTicket.id,
+          sender: "CSKH",
+          text: rebootMsg
+        }));
+      }
 
       setTickets((prev) =>
         prev.map((t) => {
-          if (t.id === selectedTicketId) {
+          if (t.id === currentTicket.id) {
             return {
               ...t,
               messages: [
                 ...t.messages,
                 {
                   sender: "CSKH",
-                  text: `[HỆ THỐNG]: Kỹ thuật viên CSKH đã gửi lệnh Khởi động lại vi điều khiển (Soft Reboot). Thiết bị đã kết nối lại bình thường.`,
+                  text: rebootMsg,
                   time: timeStr,
                 },
               ],
               technicalSnapshot: {
                 ...t.technicalSnapshot,
                 lastHeartbeat: "1 giây trước",
-                diagnostics: "Thiết bị vừa được Soft Reboot thành công. Tất cả thông số đã trở về ngưỡng ổn định.",
+                diagnostics: "Thiết bị vừa được Soft Reboot thành công. Tất cả thông số viễn thám đã trở về ngưỡng ổn định.",
               },
             };
           }
@@ -315,10 +578,17 @@ function CSKHContent() {
 
   const handleTriggerTelemetry = () => {
     if (!currentTicket) return;
-    showToast(`Đang kéo dữ liệu Telemetry viễn thám từ ${currentTicket.hardwareId}...`);
+    const hwId = selectedProductInfo?.hardwareId || currentTicket.hardwareId;
+    showToast(`Đang đồng bộ Telemetry viễn thám từ ${hwId}...`);
     setTimeout(() => {
-      showToast(`Đã đồng bộ thông số viễn thám thiết bị ${currentTicket.hardwareId} thành công!`);
-    }, 1200);
+      showToast(`Đã kéo dữ liệu viễn thám thiết bị ${hwId} thành công qua WebSocket!`);
+    }, 1000);
+  };
+
+  const handleSendQuickCatalog = () => {
+    if (!currentTicket || !selectedProductInfo) return;
+    const text = `Dạ chào Quý khách! CSKH Austec xin gửi thông tin chi tiết và catalogue sản phẩm ${selectedProductInfo.deviceName || selectedProductInfo.modelName}: https://austec.vn/products/${(selectedProductInfo.modelName || 'device').toLowerCase().replace(/\s+/g, '-')}. Quý khách cần hỗ trợ thêm thông số nào cứ nhắn em nhé ạ!`;
+    setReplyText(text);
   };
 
   // =========================================================================
@@ -331,37 +601,35 @@ function CSKHContent() {
   const [requestSearchQuery, setRequestSearchQuery] = useState<string>("");
   const [isCreateRequestModalOpen, setIsCreateRequestModalOpen] = useState(false);
   const [adminReplyInput, setAdminReplyInput] = useState("");
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
-  // Polling danh sách phiếu yêu cầu hỗ trợ từ Mobile App theo thời gian thực
-  useEffect(() => {
-    const fetchRequests = () => {
-      fetch("http://localhost:4000/api/cskh/requests", {
-        headers: { "Authorization": "Bearer austec-admin-super-token" }
+  const fetchRequests = () => {
+    fetch("http://localhost:4000/api/cskh/requests", {
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.requests) && res.requests.length > 0) {
+          setSupportRequests(res.requests);
+        }
       })
-        .then(r => r.json())
-        .then(res => {
-          if (res.success && Array.isArray(res.requests) && res.requests.length > 0) {
-            setSupportRequests(res.requests);
-          }
-        })
-        .catch(() => {});
-    };
+      .catch(() => {});
+  };
 
+  useEffect(() => {
     fetchRequests();
-    const reqTimer = setInterval(fetchRequests, 3000);
+    const reqTimer = setInterval(fetchRequests, 10000);
     return () => clearInterval(reqTimer);
   }, []);
 
-  // Filtered requests
+  // Filtered requests with defensive null checks
   const filteredSupportRequests = useMemo(() => {
     return supportRequests.filter((r) => {
       const q = requestSearchQuery.toLowerCase().trim();
       const matchSearch = !q ||
-        r.id.toLowerCase().includes(q) ||
-        r.customerName.toLowerCase().includes(q) ||
-        r.customerPhone.includes(q) ||
-        r.description.toLowerCase().includes(q) ||
+        (r.id && r.id.toLowerCase().includes(q)) ||
+        (r.customerName && r.customerName.toLowerCase().includes(q)) ||
+        (r.customerPhone && r.customerPhone.includes(q)) ||
+        (r.description && r.description.toLowerCase().includes(q)) ||
         (r.hardwareId && r.hardwareId.toLowerCase().includes(q));
 
       const matchType = requestFilterType === "ALL" || r.requestType === requestFilterType;
@@ -374,7 +642,6 @@ function CSKHContent() {
     return supportRequests.find(r => r.id === selectedRequestId) || supportRequests[0] || null;
   }, [supportRequests, selectedRequestId]);
 
-  // Update request status
   const handleUpdateRequestStatus = (requestId: string, newStatus: "PENDING" | "PROCESSING" | "RESOLVED" | "REJECTED") => {
     setSupportRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: newStatus } : r));
 
@@ -390,7 +657,6 @@ function CSKHContent() {
     showToast(`Đã chuyển trạng thái phiếu ${requestId} thành "${newStatus}"`);
   };
 
-  // Submit admin response to ticket
   const handleSendAdminResponse = (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminReplyInput.trim() || !currentRequest) return;
@@ -500,8 +766,9 @@ function CSKHContent() {
               <h1 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Trung Tâm Vận Hành CSKH & Hỗ Trợ Khách Hàng
               </h1>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                LIVE & TICKET HUB
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                <span className={`w-1.5 h-1.5 rounded-full ${wsStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                {wsStatus === 'connected' ? 'WEBSOCKET REALTIME' : 'KẾT NỐI LẠI WS'}
               </span>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
@@ -570,7 +837,7 @@ function CSKHContent() {
                 <div className="p-8 text-center text-xs text-slate-400">
                   <MessageSquare className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2 opacity-60" />
                   <p className="font-semibold text-slate-600 dark:text-slate-400">Chưa có cuộc trò chuyện nào</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Hàng chờ sẽ tự động cập nhật khi khách hàng bắt đầu chat từ Mobile App.</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Hàng chờ sẽ tự động cập nhật ngay khi khách hàng gửi tin nhắn từ Mobile App qua WebSocket.</p>
                 </div>
               ) : (
                 filteredTickets.map((t) => {
@@ -580,7 +847,11 @@ function CSKHContent() {
                       key={t.id}
                       onClick={() => {
                         setSelectedTicketId(t.id);
-                        setMobileTab("chat");
+                        if (t.selectedDevice) {
+                          setSelectedProductInfo(t.selectedDevice);
+                        } else {
+                          setSelectedProductInfo(resolveProductFromTicket(t));
+                        }
                       }}
                       className={`p-2.5 cursor-pointer transition-colors ${
                         isSelected
@@ -590,19 +861,30 @@ function CSKHContent() {
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-mono text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{t.id}</span>
-                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                          t.priority === "URGENT" 
-                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
-                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                        }`}>
-                          {t.priority === "URGENT" ? "KHẨN CẤP" : "THƯỜNG"}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          {t.selectedDevice && (
+                            <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
+                              t.selectedDevice.isOwned 
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
+                                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                            }`}>
+                              {t.selectedDevice.isOwned ? "ĐÃ SỞ HỮU" : "TƯ VẤN"}
+                            </span>
+                          )}
+                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                            t.priority === "URGENT" 
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
+                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          }`}>
+                            {t.priority === "URGENT" ? "KHẨN CẤP" : "THƯỜNG"}
+                          </span>
+                        </div>
                       </div>
                       <div className="font-semibold text-slate-900 dark:text-white text-xs mt-1 truncate">{t.customerName}</div>
                       <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{t.subject}</div>
                       <div className="text-[10px] font-mono text-slate-400 mt-1 flex justify-between">
                         <span>{t.customerPhone}</span>
-                        <span>{t.createdAt ? t.createdAt.split("T")[0] : ""}</span>
+                        <span className="truncate max-w-[120px]">{t.deviceName}</span>
                       </div>
                     </div>
                   );
@@ -622,7 +904,7 @@ function CSKHContent() {
                   Chưa Có Cuộc Trò Chuyện Nào Đang Hoạt Động
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
-                  Khi khách hàng nhấn nút <strong>&quot;Bắt đầu cuộc trò chuyện&quot;</strong> trên Austec Mobile App, luồng tin nhắn sẽ tự động kết nối và xuất hiện tại đây theo thời gian thực để CSKH hỗ trợ.
+                  Khi khách hàng nhấn nút <strong>&quot;Bắt đầu cuộc trò chuyện&quot;</strong> trên Austec Mobile App, luồng tin nhắn sẽ tự động kết nối qua WebSocket và xuất hiện tại đây theo thời gian thực để CSKH hỗ trợ.
                 </p>
               </div>
             ) : (
@@ -637,14 +919,25 @@ function CSKHContent() {
                     <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 font-mono">
                       <span>Thiết bị: {currentTicket.hardwareId}</span>
                       <span>•</span>
-                      <span>{currentTicket.deviceName}</span>
+                      <span className="text-slate-700 dark:text-slate-300 font-semibold">{currentTicket.deviceName}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const prod = currentTicket.selectedDevice || resolveProductFromTicket(currentTicket);
+                        setSelectedProductInfo(prod);
+                      }}
+                      className="px-2 py-1 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Box className="w-3 h-3" />
+                      <span>Xem chi tiết sản phẩm ➔</span>
+                    </button>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Đang đồng bộ Mobile
+                      WebSocket Live
                     </span>
                   </div>
                 </div>
@@ -663,18 +956,60 @@ function CSKHContent() {
                             : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none border border-slate-200 dark:border-slate-700/60"
                         }`}
                       >
+                        {/* Device Chip if Attached */}
+                        {m.selectedDevice && (
+                          <div
+                            onClick={() => setSelectedProductInfo(m.selectedDevice)}
+                            className={`mb-2 p-2 rounded-lg cursor-pointer transition-all border flex items-center justify-between gap-2 ${
+                              m.sender === "CSKH"
+                                ? "bg-white/10 border-white/20 hover:bg-white/20 text-white"
+                                : "bg-cyan-500/10 border-cyan-500/30 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400"
+                            }`}
+                            title="Bấm để hiển thị chi tiết sản phẩm ở khối bên phải"
+                          >
+                            <div className="flex items-center gap-1.5 overflow-hidden">
+                              <Tag className="w-3.5 h-3.5 shrink-0" />
+                              <div className="truncate">
+                                <span className="font-bold text-[11px] block truncate">
+                                  {m.selectedDevice.deviceName || m.selectedDevice.modelName}
+                                </span>
+                                <span className="text-[10px] opacity-80 font-mono">
+                                  {m.selectedDevice.isOwned ? `Đã sở hữu • ${m.selectedDevice.hardwareId || ""}` : "Tư vấn mới • Chưa sở hữu"}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold underline shrink-0">Xem thông số ➔</span>
+                          </div>
+                        )}
+
+                        {/* Image Attachments */}
+                        {m.attachmentUrls && m.attachmentUrls.length > 0 && (
+                          <div className="mb-2 flex flex-wrap gap-1.5">
+                            {m.attachmentUrls.map((img, i) => (
+                              <div
+                                key={i}
+                                onClick={() => setImagePreviewUrl(img)}
+                                className="relative w-28 h-24 rounded-lg overflow-hidden border border-white/20 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+                              >
+                                <img src={img} alt="Hình ảnh đính kèm" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                         {m.text}
                       </div>
                       <span className="text-[9px] text-slate-400 font-mono mt-0.5 px-1">{m.time}</span>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
 
                 {/* Input Bar */}
                 <div className="p-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center gap-2 shrink-0">
                   <input
                     type="text"
-                    placeholder="Nhập nội dung phản hồi cho khách hàng..."
+                    placeholder="Nhập nội dung phản hồi cho khách hàng qua WebSocket..."
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSendReply()}
@@ -693,74 +1028,154 @@ function CSKHContent() {
             )}
           </div>
 
-          {/* Right Column: Telemetry & Live Diagnostics */}
-          <div className="w-full md:w-72 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
+          {/* Right Column: THÔNG TIN SẢN PHẨM & THIẾT BỊ ĐƯỢC CHỌN (KHỐI THAY THẾ CHẨN ĐOÁN VIỄN THÁM) */}
+          <div className="w-full md:w-80 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-cyan-500" />
-                <span>Chẩn Đoán Viễn Thám</span>
+                <Box className="w-3.5 h-3.5 text-cyan-500" />
+                <span>Thông Tin Sản Phẩm & Thiết Bị</span>
               </span>
+              {selectedProductInfo && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${
+                  selectedProductInfo.isOwned
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                }`}>
+                  {selectedProductInfo.isOwned ? "ĐÃ SỞ HỮU" : "CHƯA SỞ HỮU"}
+                </span>
+              )}
             </div>
 
-            {!currentTicket ? (
-              <div className="p-6 text-center text-xs text-slate-400">
-                Chưa có thiết bị kết nối viễn thám
+            {!selectedProductInfo ? (
+              <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center flex-1">
+                <Box className="w-10 h-10 mb-2 text-slate-300 dark:text-slate-700" />
+                <p className="font-semibold text-slate-600 dark:text-slate-400">Chưa chọn sản phẩm nào</p>
+                <p className="text-[11px] text-slate-400 mt-1 max-w-[200px]">
+                  Bấm vào thiết bị đính kèm trong tin nhắn chat hoặc chọn ticket để xem thông số kỹ thuật đầy đủ tại đây.
+                </p>
               </div>
             ) : (
-              <div className="p-3 space-y-2.5 overflow-y-auto flex-1 text-xs">
+              <div className="p-3 space-y-3 overflow-y-auto flex-1 text-xs">
+                {/* Product Render Image & Title */}
+                <div className="rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-800/40">
+                  <div className="relative h-32 w-full bg-slate-200 dark:bg-slate-800">
+                    <img 
+                      src={selectedProductInfo.imageUrl || "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80"} 
+                      alt="Hình ảnh thiết bị" 
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2 right-2">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-900/80 text-white backdrop-blur-xs">
+                        {selectedProductInfo.categoryTag || "SMART DEVICE"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-2.5">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">
+                      {selectedProductInfo.deviceName || selectedProductInfo.modelName}
+                    </h3>
+                    <p className="font-mono text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      Model: {selectedProductInfo.modelName}
+                    </p>
+                    {selectedProductInfo.hardwareId && (
+                      <div className="mt-1 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-500 font-mono">Serial / MAC:</span>
+                        <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{selectedProductInfo.hardwareId}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ownership & Warranty Card */}
                 <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5 text-[11px]">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Model:</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">{currentTicket.technicalSnapshot?.model || "Austec Titadoor A900 Super"}</span>
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-cyan-500" />
+                    <span>Tình Trạng & Bảo Hành</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Firmware:</span>
-                    <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{currentTicket.technicalSnapshot?.fwVersion || "v2.4.1"}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Sóng Wi-Fi:</span>
-                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                      <Wifi className="w-3 h-3" /> {currentTicket.technicalSnapshot?.rssi ?? -62} dBm
+                    <span className="text-slate-500">Phân loại:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {selectedProductInfo.isOwned ? "Thiết bị khách hàng đã sở hữu" : "Khách hàng cần tư vấn mua mới"}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Pin / Nguồn:</span>
-                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                      <Battery className="w-3 h-3" /> {currentTicket.technicalSnapshot?.battery ?? 98}%
+                  {selectedProductInfo.isOwned ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Gói Cloud / IoT:</span>
+                        <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                          {selectedProductInfo.subscriptionStatus || "Còn hạn (Gia hạn đến 12/2027)"}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Bảo hành chính hãng:</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">{selectedProductInfo.warrantyMonths || 36} Tháng</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Giá tham khảo:</span>
+                      <span className="font-bold text-cyan-600 dark:text-cyan-400">
+                        {selectedProductInfo.price ? `${selectedProductInfo.price.toLocaleString("vi-VN")} đ` : "Liên hệ báo giá"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Specifications List */}
+                <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5 text-[11px]">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Cpu className="w-3 h-3 text-purple-500" />
+                    <span>Thông Số Xuất Xưởng</span>
+                  </div>
+                  {selectedProductInfo.specs ? (
+                    Object.entries(selectedProductInfo.specs).map(([k, v]) => (
+                      <div key={k} className="flex justify-between items-center py-0.5 border-b border-slate-100 dark:border-slate-800/50 last:border-none">
+                        <span className="text-slate-500">{k}:</span>
+                        <span className="font-semibold text-slate-900 dark:text-white text-right font-mono text-[10px] max-w-[170px] truncate">
+                          {String(v)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-slate-400 text-[10px]">Đang cập nhật tài liệu kỹ thuật từ nhà máy Austec.</p>
+                  )}
+                </div>
+
+                {/* Telemetry Quick Actions (If Owned) */}
+                {selectedProductInfo.isOwned && currentTicket && (
+                  <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+                    <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
+                      Thao Tác Kỹ Thuật Từ Xa
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleSoftReboot}
+                      disabled={isRebooting}
+                      className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isRebooting ? "animate-spin" : ""}`} />
+                      <span>{isRebooting ? "Đang gửi tín hiệu..." : "Soft Reboot Bo Mạch"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleTriggerTelemetry}
+                      className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      <span>Kéo Telemetry Viễn Thám</span>
+                    </button>
                   </div>
-                </div>
+                )}
 
-                {/* Diagnostics Box */}
-                <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-950/10 dark:bg-amber-950/20 space-y-1 text-[11px]">
-                  <div className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>Phát hiện hệ thống:</span>
-                  </div>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                    {currentTicket.technicalSnapshot?.diagnostics || "Thiết bị hoạt động ổn định. Telemetry trực tuyến."}
-                  </p>
-                </div>
-
-                {/* Remote Actions */}
-                <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
-                  <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider block">Tác vụ khẩn cấp</span>
+                {/* CSKH Quick Assistance Actions */}
+                <div className="space-y-1.5 pt-1">
                   <button
                     type="button"
-                    onClick={handleSoftReboot}
-                    disabled={isRebooting}
-                    className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    onClick={handleSendQuickCatalog}
+                    className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isRebooting ? "animate-spin" : ""}`} />
-                    <span>{isRebooting ? "Đang gửi tín hiệu..." : "Soft Reboot Bo Mạch"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleTriggerTelemetry}
-                    className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Radio className="w-3.5 h-3.5" />
-                    <span>Kéo Telemetry Viễn Thám</span>
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Gửi Link Catalogue Vào Chat</span>
                   </button>
                 </div>
               </div>
@@ -770,7 +1185,7 @@ function CSKHContent() {
       )}
 
       {/* ===================================================================== */}
-      {/* TAB 2: SERVICE TICKETS / SUPPORT REQUEST FORM */}
+      {/* TAB 2: SERVICE TICKETS / SUPPORT REQUEST FORM (DEFENSIVE GUARDS APPLIED) */}
       {/* ===================================================================== */}
       {activeTab === "tickets" && (
         <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 overflow-hidden">
@@ -842,85 +1257,95 @@ function CSKHContent() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-                  {filteredSupportRequests.map((req) => {
-                    const isSelected = selectedRequestId === req.id;
-                    return (
-                      <tr
-                        key={req.id}
-                        onClick={() => setSelectedRequestId(req.id)}
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors ${
-                          isSelected ? "bg-cyan-50/70 dark:bg-cyan-950/40 border-l-2 border-cyan-500" : ""
-                        }`}
-                      >
-                        <td className="p-2.5 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{req.id}</td>
-                        <td className="p-2.5">
-                          <div className="font-semibold text-slate-900 dark:text-white">{req.customerName}</div>
-                          <div className="font-mono text-[10px] text-slate-500">{req.customerPhone}</div>
-                        </td>
-                        <td className="p-2.5">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            req.requestType === "TECHNICAL"
-                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                              : req.requestType === "RENEWAL"
-                              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                              : req.requestType === "WARRANTY"
-                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                              : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                          }`}>
-                            {req.requestType === "TECHNICAL" ? "SỰ CỐ KỸ THUẬT" : req.requestType === "RENEWAL" ? "GIA HẠN" : req.requestType === "WARRANTY" ? "BẢO HÀNH" : "HƯỚNG DẪN"}
-                          </span>
-                        </td>
-                        <td className="p-2.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
-                          {req.hardwareId || "Chưa gán TB"}
-                        </td>
-                        <td className="p-2.5">
-                          <span className="flex items-center gap-1 font-mono text-[10px] text-slate-600 dark:text-slate-400">
-                            {req.replyChannel === "EMAIL" && <Mail className="w-3 h-3 text-cyan-500" />}
-                            {req.replyChannel === "PHONE" && <Phone className="w-3 h-3 text-emerald-500" />}
-                            {req.replyChannel === "PUSH" && <Bell className="w-3 h-3 text-amber-500" />}
-                            <span>{req.replyChannel}</span>
-                          </span>
-                        </td>
-                        <td className="p-2.5">
-                          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                            req.status === "RESOLVED"
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                              : req.status === "PROCESSING"
-                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                              : req.status === "REJECTED"
-                              ? "bg-slate-200 dark:bg-slate-700 text-slate-500 border-slate-300 dark:border-slate-600"
-                              : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                          }`}>
-                            {req.status === "RESOLVED" ? "ĐÃ XỬ LÝ" : req.status === "PROCESSING" ? "ĐANG XỬ LÝ" : req.status === "PENDING" ? "MỚI GỬI" : "TỪ CHỐI"}
-                          </span>
-                        </td>
-                        <td className="p-2.5 font-mono text-[10px] text-slate-400">{req.createdAt}</td>
-                        <td className="p-2.5 text-right">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedRequestId(req.id);
-                            }}
-                            className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer ${
-                              isSelected
-                                ? "bg-cyan-600 text-white border-cyan-600"
-                                : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700"
-                            }`}
-                          >
-                            {isSelected ? "Đang xem" : "Xem phiếu ➔"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filteredSupportRequests.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                        <FileText className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2 opacity-60" />
+                        <p className="font-semibold text-slate-600 dark:text-slate-400">Chưa có phiếu yêu cầu hỗ trợ nào</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Các phiếu được gửi từ Mobile App hoặc tạo tại đây sẽ hiển thị danh sách tại bảng này.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredSupportRequests.map((req) => {
+                      const isSelected = selectedRequestId === req.id;
+                      return (
+                        <tr
+                          key={req.id}
+                          onClick={() => setSelectedRequestId(req.id)}
+                          className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors ${
+                            isSelected ? "bg-cyan-50/70 dark:bg-cyan-950/40 border-l-2 border-cyan-500" : ""
+                          }`}
+                        >
+                          <td className="p-2.5 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{req.id}</td>
+                          <td className="p-2.5">
+                            <div className="font-semibold text-slate-900 dark:text-white">{req.customerName || "Khách Hàng"}</div>
+                            <div className="font-mono text-[10px] text-slate-500">{req.customerPhone || "---"}</div>
+                          </td>
+                          <td className="p-2.5">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              req.requestType === "TECHNICAL"
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                : req.requestType === "RENEWAL"
+                                ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
+                                : req.requestType === "WARRANTY"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                                : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                            }`}>
+                              {req.requestType === "TECHNICAL" ? "SỰ CỐ KỸ THUẬT" : req.requestType === "RENEWAL" ? "GIA HẠN" : req.requestType === "WARRANTY" ? "BẢO HÀNH" : "HƯỚNG DẪN"}
+                            </span>
+                          </td>
+                          <td className="p-2.5 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+                            {req.hardwareId || "Chưa gán TB"}
+                          </td>
+                          <td className="p-2.5">
+                            <span className="flex items-center gap-1 font-mono text-[10px] text-slate-600 dark:text-slate-400">
+                              {req.replyChannel === "EMAIL" && <Mail className="w-3 h-3 text-cyan-500" />}
+                              {req.replyChannel === "PHONE" && <Phone className="w-3 h-3 text-emerald-500" />}
+                              {req.replyChannel === "PUSH" && <Bell className="w-3 h-3 text-amber-500" />}
+                              <span>{req.replyChannel}</span>
+                            </span>
+                          </td>
+                          <td className="p-2.5">
+                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                              req.status === "RESOLVED"
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                : req.status === "PROCESSING"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                : req.status === "REJECTED"
+                                ? "bg-slate-200 dark:bg-slate-700 text-slate-500 border-slate-300 dark:border-slate-600"
+                                : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                            }`}>
+                              {req.status === "RESOLVED" ? "ĐÃ XỬ LÝ" : req.status === "PROCESSING" ? "ĐANG XỬ LÝ" : req.status === "PENDING" ? "MỚI GỬI" : "TỪ CHỐI"}
+                            </span>
+                          </td>
+                          <td className="p-2.5 font-mono text-[10px] text-slate-400">{req.createdAt}</td>
+                          <td className="p-2.5 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedRequestId(req.id);
+                              }}
+                              className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer ${
+                                isSelected
+                                  ? "bg-cyan-600 text-white border-cyan-600"
+                                  : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700"
+                              }`}
+                            >
+                              {isSelected ? "Đang xem" : "Xem phiếu ➔"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
 
           {/* Right Column: Ticket Inspector Details & Resolution Form */}
-          {currentRequest && (
+          {currentRequest ? (
             <div className="w-full md:w-96 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
               <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
                 <div>
@@ -990,14 +1415,14 @@ function CSKHContent() {
                 </div>
 
                 {/* Attached Images */}
-                {currentRequest.images.length > 0 && (
+                {(currentRequest.images || []).length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                       <ImageIcon className="w-3 h-3" />
-                      <span>Hình Ảnh / Hiện Trường Đính Kèm ({currentRequest.images.length})</span>
+                      <span>Hình Ảnh / Hiện Trường Đính Kèm ({(currentRequest.images || []).length})</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {currentRequest.images.map((imgUrl, i) => (
+                      {(currentRequest.images || []).map((imgUrl, i) => (
                         <div
                           key={i}
                           onClick={() => setImagePreviewUrl(imgUrl)}
@@ -1046,6 +1471,11 @@ function CSKHContent() {
                   </button>
                 </form>
               </div>
+            </div>
+          ) : (
+            <div className="w-full md:w-96 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden items-center justify-center p-6 text-center text-slate-400">
+              <FileText className="w-10 h-10 mb-2 text-slate-300 dark:text-slate-700" />
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400">Chọn một phiếu từ danh sách để xem chi tiết</p>
             </div>
           )}
         </div>
@@ -1189,7 +1619,13 @@ function CSKHContent() {
           onClick={() => setImagePreviewUrl(null)} 
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
         >
-          <div className="max-w-2xl max-h-[85vh] rounded-lg overflow-hidden border border-slate-700 shadow-2xl">
+          <div className="max-w-2xl max-h-[85vh] rounded-lg overflow-hidden border border-slate-700 shadow-2xl relative">
+            <button
+              onClick={() => setImagePreviewUrl(null)}
+              className="absolute top-2 right-2 p-1.5 rounded-full bg-slate-900/80 text-white hover:bg-slate-900 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <img src={imagePreviewUrl} alt="Chi tiết ảnh hiện trường" className="max-w-full max-h-[85vh] object-contain" />
           </div>
         </div>
