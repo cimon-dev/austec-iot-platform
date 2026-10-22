@@ -42,3 +42,6 @@ coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+
+# Persistent database temp files
+data/*.tmp

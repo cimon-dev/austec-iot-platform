@@ -17,6 +17,7 @@ import { BlackboxService } from './services/blackbox.service.js';
 import { ProvisioningService } from './services/provisioning.service.js';
 import { CommandService } from './services/command.service.js';
 import { SupportService } from './services/support.service.js';
+import { PersistenceService, PersistentDataPayload } from './services/persistence.service.js';
 
 export interface UnifiedUser {
   id: string;
@@ -64,14 +65,10 @@ export function createApp() {
   const commandService = new CommandService(blackboxService, hotCache);
   const supportService = new SupportService(hotCache);
 
-  // In-memory collections cho Gian Hàng, Phân Quyền & Phiếu Yêu Cầu Hỗ Trợ
-  let productsStore: Product[] = [...(migrated.migratedProducts || [])];
-  let permissionsStore: DeviceMemberPermission[] = [...(migrated.migratedPermissions || [])];
-  let requestsStore: CustomerSupportRequest[] = [...(migrated.migratedRequests || [])];
+  const persistenceService = new PersistenceService();
 
-  // CƠ SỞ DỮ LIỆU NGƯỜI DÙNG DUY NHẤT (UNIFIED DATABASE)
-  // Quản trị toàn bộ Cán bộ quản trị (Admin, CSKH) và Khách hàng (User App)
-  let usersStore: UnifiedUser[] = [
+  // DANH SÁCH TÀI KHOẢN MẪU & DI TRÚ CHUẨN (INITIAL SEED USERS)
+  const initialUsers: UnifiedUser[] = [
     // 1. CÁN BỘ QUẢN TRỊ (ADMIN & CSKH)
     {
       id: 'admin-001',
@@ -154,7 +151,33 @@ export function createApp() {
       updatedBy: 'austec.admin@gmail.com',
     },
 
-    // 2. KHÁCH HÀNG (CUSTOMER / USER APP)
+    // 2. TÀI KHOẢN MẪU KHÁCH HÀNG (CUSTOMER / USER APP)
+    {
+      id: '00000000-0000-0000-0000-000000000099',
+      fullName: 'Nguyễn Văn An',
+      email: 'nguyenvana@gmail.com',
+      phoneNumber: '0912345678',
+      address: 'Số 12 Chùa Bộc, Đống Đa, Hà Nội',
+      province: 'Hà Nội',
+      role: 'CUSTOMER' as const,
+      roleTitle: 'Khách hàng',
+      password: 'Austec123!@#',
+      isActive: true,
+      registeredAt: '2026-09-01',
+      devices: [
+        {
+          hardwareId: 'AT-DOOR-88239A02',
+          modelName: 'Austec Titadoor A900 Super',
+          deviceType: 'Cửa cuốn',
+          pairedAt: '2026-09-01 10:00',
+          warrantyUntil: '2028-09-01',
+          isOnline: true,
+          roleInHome: 'OWNER'
+        }
+      ]
+    },
+
+    // 3. TOÀN BỘ KHÁCH HÀNG TỪ DI TRÚ (Bao gồm Nguyễn Mạnh Đức - ducduc02092005@gmail.com)
     ...migrated.migratedCustomers.map((c, idx) => {
       const addr = c.address || '';
       const province = addr.includes('Hà Nội') ? 'Hà Nội' 
@@ -188,6 +211,80 @@ export function createApp() {
       };
     })
   ];
+
+  // ==========================================
+  // NẠP CƠ SỞ DỮ LIỆU BỀN VỮNG (PERSISTENT DATABASE ENGINE)
+  // ==========================================
+  const persistedData = persistenceService.load();
+
+  let productsStore: Product[];
+  let permissionsStore: DeviceMemberPermission[];
+  let requestsStore: CustomerSupportRequest[];
+  let usersStore: UnifiedUser[];
+
+  if (persistedData) {
+    productsStore = Array.isArray(persistedData.products) && persistedData.products.length > 0
+      ? persistedData.products
+      : [...(migrated.migratedProducts || [])];
+
+    permissionsStore = Array.isArray(persistedData.permissions) && persistedData.permissions.length > 0
+      ? persistedData.permissions
+      : [...(migrated.migratedPermissions || [])];
+
+    requestsStore = Array.isArray(persistedData.requests) && persistedData.requests.length > 0
+      ? persistedData.requests
+      : [...(migrated.migratedRequests || [])];
+
+    usersStore = Array.isArray(persistedData.users) && persistedData.users.length > 0
+      ? persistedData.users
+      : [...initialUsers];
+
+    // Hợp nhất các tài khoản quản trị & tài khoản chính nếu chưa có trong bản sao lưu
+    initialUsers.forEach(initU => {
+      const exists = usersStore.some(u => 
+        u.id === initU.id || 
+        (u.email && initU.email && u.email.toLowerCase() === initU.email.toLowerCase())
+      );
+      if (!exists) {
+        usersStore.push(initU);
+      }
+    });
+
+    if (persistedData.supportTickets || persistedData.supportMessages) {
+      supportService.importData({
+        tickets: persistedData.supportTickets,
+        messages: persistedData.supportMessages,
+      });
+    }
+  } else {
+    productsStore = [...(migrated.migratedProducts || [])];
+    permissionsStore = [...(migrated.migratedPermissions || [])];
+    requestsStore = [...(migrated.migratedRequests || [])];
+    usersStore = [...initialUsers];
+  }
+
+  const getSnapshot = (): PersistentDataPayload => ({
+    users: usersStore,
+    permissions: permissionsStore,
+    requests: requestsStore,
+    products: productsStore,
+    supportTickets: supportService.exportData().tickets,
+    supportMessages: supportService.exportData().messages,
+  });
+
+  const persistAll = (immediate: boolean = false) => {
+    persistenceService.save(getSnapshot(), immediate);
+  };
+
+  // Tự động đồng bộ bền vững khi có tin nhắn hoặc ticket CSKH mới
+  supportService.onUpdate = () => {
+    persistAll(false);
+  };
+
+  // Nếu chưa có file dữ liệu trên đĩa, lưu ngay bản snapshot đầu tiên
+  if (!persistedData) {
+    persistAll(true);
+  }
 
   // Khai báo getter động để các luồng cũ đọc danh sách khách hàng tự động đồng bộ 100%
   const getCustomers = () => usersStore.filter(u => u.role === 'CUSTOMER');
@@ -345,6 +442,8 @@ export function createApp() {
       createdAt: new Date().toISOString(),
     });
 
+    persistAll(true);
+
     const userPayload = {
       id: newCust.id,
       email: newCust.email,
@@ -425,6 +524,7 @@ export function createApp() {
     };
 
     usersStore.unshift(newStaff);
+    persistAll(true);
     res.json({ success: true, staff: newStaff, message: 'Thêm cán bộ quản trị thành công!' });
   });
 
@@ -446,6 +546,7 @@ export function createApp() {
     if (password) staff.password = password;
     staff.updatedAt = new Date().toISOString().split('T')[0];
     staff.updatedBy = req.user?.email || 'austec.admin@gmail.com';
+    persistAll(true);
 
     res.json({ success: true, staff, message: 'Cập nhật cán bộ thành công!' });
   });
@@ -457,6 +558,7 @@ export function createApp() {
       return res.status(404).json({ success: false, error: 'Không tìm thấy cán bộ' });
     }
     usersStore.splice(idx, 1);
+    persistAll(true);
     res.json({ success: true, message: 'Đã xóa cán bộ khỏi hệ thống!' });
   });
 
@@ -468,6 +570,7 @@ export function createApp() {
     }
     staff.isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : !staff.isActive;
     staff.updatedAt = new Date().toISOString().split('T')[0];
+    persistAll(true);
     res.json({ success: true, staff, message: `Tài khoản cán bộ hiện đang ở trạng thái: ${staff.isActive ? 'Hoạt động' : 'Tạm khóa'}` });
   });
 
@@ -548,6 +651,8 @@ export function createApp() {
       createdAt: new Date().toISOString(),
     });
 
+    persistAll(true);
+
     res.json({
       success: true,
       customer: newCust,
@@ -565,6 +670,7 @@ export function createApp() {
     }
 
     cust.isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : !cust.isActive;
+    persistAll(true);
     res.json({ success: true, customer: cust, message: `Tài khoản hiện đang ở trạng thái: ${cust.isActive ? 'Hoạt động' : 'Tạm khóa'}` });
   });
 
@@ -921,6 +1027,7 @@ export function createApp() {
     };
 
     productsStore.unshift(newProduct);
+    persistAll(true);
     res.json({ success: true, message: 'Đã thêm sản phẩm mới vào gian hàng thành công!', product: newProduct });
   });
 
@@ -940,6 +1047,7 @@ export function createApp() {
       updatedAt: new Date().toISOString(),
     };
 
+    persistAll(true);
     res.json({ success: true, message: 'Cập nhật sản phẩm thành công!', product: productsStore[idx] });
   });
 
@@ -953,6 +1061,7 @@ export function createApp() {
     }
 
     productsStore.splice(idx, 1);
+    persistAll(true);
     res.json({ success: true, message: 'Đã xóa sản phẩm khỏi gian hàng thành công!' });
   });
 
@@ -1137,6 +1246,7 @@ export function createApp() {
     };
 
     permissionsStore.push(newMember);
+    persistAll(true);
     res.json({ success: true, message: 'Thêm và phân quyền thành viên thành công!', member: newMember });
   });
 
@@ -1157,6 +1267,7 @@ export function createApp() {
       updatedAt: new Date().toISOString(),
     };
 
+    persistAll(true);
     res.json({ success: true, message: 'Đã cập nhật phân quyền thành công!', member: permissionsStore[idx] });
   });
 
@@ -1170,6 +1281,7 @@ export function createApp() {
     }
 
     permissionsStore.splice(idx, 1);
+    persistAll(true);
     res.json({ success: true, message: 'Đã thu hồi quyền truy cập của thành viên thành công!' });
   });
 
@@ -1229,6 +1341,7 @@ export function createApp() {
     };
 
     requestsStore.unshift(newReq);
+    persistAll(true);
     res.json({ success: true, message: 'Gửi phiếu yêu cầu hỗ trợ thành công! Đội ngũ CSKH sẽ phản hồi sớm nhất.', request: newReq });
   });
 
@@ -1251,6 +1364,7 @@ export function createApp() {
       requestsStore[idx].resolvedAt = new Date().toISOString();
     }
 
+    persistAll(true);
     res.json({ success: true, message: 'Đã cập nhật trạng thái phiếu yêu cầu hỗ trợ!', request: requestsStore[idx] });
   });
 
@@ -1785,6 +1899,7 @@ export function createApp() {
       updatedAt: new Date().toISOString(),
     };
     requestsStore.unshift(newReq);
+    persistAll(true);
     res.json({ success: true, message: 'Đã tiếp nhận phiếu yêu cầu hỗ trợ thành công!', request: newReq });
   });
 
@@ -1799,6 +1914,7 @@ export function createApp() {
       ...req.body,
       updatedAt: new Date().toISOString(),
     };
+    persistAll(true);
     res.json({ success: true, message: 'Cập nhật phiếu yêu cầu thành công!', request: requestsStore[idx] });
   });
 
@@ -1847,14 +1963,25 @@ export function createApp() {
       provisioningService,
       commandService,
       supportService,
+      persistenceService,
     },
+    persistAll,
   };
 }
 
 if (process.env.NODE_ENV !== 'test') {
-  const { server } = createApp();
+  const { server, persistAll } = createApp();
   const PORT = process.env.PORT || 4000;
   server.listen(PORT, () => {
     console.log(`[AUSTEC IOT BACKEND] Server HTTP & WebSocket đang chạy mượt mà tại http://localhost:${PORT} (WS: ws://localhost:${PORT}/ws/chat)`);
   });
+
+  const handleExit = () => {
+    try {
+      persistAll(true);
+    } catch (_) {}
+    process.exit(0);
+  };
+  process.on('SIGINT', handleExit);
+  process.on('SIGTERM', handleExit);
 }

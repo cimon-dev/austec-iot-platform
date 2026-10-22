@@ -12,12 +12,29 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _identifierController = TextEditingController(text: "nguyenvana@gmail.com");
+  final TextEditingController _identifierController = TextEditingController(text: "ducduc02092005@gmail.com");
   final TextEditingController _passwordController = TextEditingController(text: "Austec123!@#");
   bool _obscurePassword = true;
   bool _rememberMe = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLastIdentifier();
+  }
+
+  Future<void> _loadLastIdentifier() async {
+    try {
+      final last = await AuthService().getLastIdentifier();
+      if (mounted && last != null && last.isNotEmpty) {
+        setState(() {
+          _identifierController.text = last;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -385,8 +402,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           spacing: 8,
                           runSpacing: 6,
                           children: [
+                            _buildDemoChip("Nguyễn Mạnh Đức", "ducduc02092005@gmail.com", "0944102588"),
                             _buildDemoChip("Nguyễn Văn An", "nguyenvana@gmail.com", "0912345678"),
-                            _buildDemoChip("Lê Văn Thành", "le.vanthanh@gmail.com", "0987654321"),
                             _buildDemoChip("Tạ Thị Hoan", "thanhhoan151191@gmail.com", "0979031573"),
                           ],
                         ),

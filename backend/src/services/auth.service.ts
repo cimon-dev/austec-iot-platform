@@ -54,7 +54,7 @@ export class AuthService {
       return next();
     }
     if (token === 'austec-customer-token') {
-      req.user = { id: '00000000-0000-0000-0000-000000000001', email: 'nguyenvana@gmail.com', role: 'CUSTOMER', fullName: 'Nguyễn Văn An' };
+      req.user = { id: '00000000-0000-0000-0000-000000000001', email: 'ducduc02092005@gmail.com', role: 'CUSTOMER', fullName: 'Nguyễn Mạnh Đức' };
       return next();
     }
 

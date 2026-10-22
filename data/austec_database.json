@@ -1,0 +1,631 @@
+{
+  "users": [
+    {
+      "id": "admin-001",
+      "empID": "AUSTEC001",
+      "fullName": "AUSTEC Super Admin",
+      "email": "austec.admin@gmail.com",
+      "phoneNumber": "0912 345 678",
+      "company": "AUSTEC GROUP",
+      "department": "Ban Điều Hành",
+      "role": "ADMIN",
+      "roleTitle": "Administrator",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-01-01",
+      "updatedAt": "2026-10-18",
+      "updatedBy": "System"
+    },
+    {
+      "id": "admin-002",
+      "empID": "AUSTEC002",
+      "fullName": "Trần Minh Quang",
+      "email": "quang.tm@austec.vn",
+      "phoneNumber": "0988 776 655",
+      "company": "AUSTEC",
+      "department": "Phòng Kỹ Thuật IoT",
+      "role": "ADMIN",
+      "roleTitle": "Device Admin",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-01-10",
+      "updatedAt": "2026-10-16",
+      "updatedBy": "austec.admin@gmail.com"
+    },
+    {
+      "id": "cskh-001",
+      "empID": "HOANGCONG001",
+      "fullName": "Công ty Hoàng Công - CSKH",
+      "email": "luan.pham.264.95@gmail.com",
+      "phoneNumber": "0905 123 456",
+      "company": "Hoàng Công Partner",
+      "department": "Bộ Phận Vận Hành",
+      "role": "CSKH",
+      "roleTitle": "Support Agent",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-02-01",
+      "updatedAt": "2026-10-12",
+      "updatedBy": "rent.vehicle@gmail.com"
+    },
+    {
+      "id": "cskh-002",
+      "empID": "AUSTEC005",
+      "fullName": "Nguyễn Thu Hà",
+      "email": "ha.nt@austec.vn",
+      "phoneNumber": "0944 889 900",
+      "company": "AUSTEC",
+      "department": "Chăm Sóc Khách Hàng",
+      "role": "CSKH",
+      "roleTitle": "CSKH Support",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-03-01",
+      "updatedAt": "2026-10-10",
+      "updatedBy": "austec.admin@gmail.com"
+    },
+    {
+      "id": "cskh-003",
+      "empID": "AUSTEC006",
+      "fullName": "Đặng Văn Hùng",
+      "email": "hung.dv@austec.vn",
+      "phoneNumber": "0912 888 777",
+      "company": "AUSTEC",
+      "department": "Kho Vận & Logistics",
+      "role": "CSKH",
+      "roleTitle": "Kỹ Thuật Kho",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-04-01",
+      "updatedAt": "2026-10-08",
+      "updatedBy": "austec.admin@gmail.com"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000099",
+      "fullName": "Nguyễn Văn An",
+      "email": "nguyenvana@gmail.com",
+      "phoneNumber": "0912345678",
+      "address": "Số 12 Chùa Bộc, Đống Đa, Hà Nội",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A02",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "fullName": "Nguyễn Mạnh Đức",
+      "email": "ducduc02092005@gmail.com",
+      "phoneNumber": "0944102588",
+      "address": "Số 45, Đường Lê Duẩn, Hoàn Kiếm, Hà Nội",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A01",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "fullName": "Dan Phung",
+      "email": "tigerphung@gmail.com",
+      "phoneNumber": "0906806066",
+      "address": "Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A02",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000003",
+      "fullName": "Nguyễn Văn Quang",
+      "email": "nguyenvanquangdao0301992@gmail.com",
+      "phoneNumber": "0982487278",
+      "address": "Số 88, Phố Huế, Hai Bà Trưng, Hà Nội",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A03",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000004",
+      "fullName": "Nguyễn Dung",
+      "email": "dungnguyen2009agribank@gmail.com",
+      "phoneNumber": "0396881625",
+      "address": "Số 120, Lê Lợi, P. Bến Nghé, Quận 1, TP. HCM",
+      "province": "TP. Hồ Chí Minh",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A04",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000005",
+      "fullName": "Nguyễn Công Bằng",
+      "email": "banghn79@gmail.com",
+      "phoneNumber": "0933753799",
+      "address": "Khu dân cư Him Lam, P. Tân Hưng, Quận 7, TP. HCM",
+      "province": "TP. Hồ Chí Minh",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A01",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000006",
+      "fullName": "Tạ Thị Hoan",
+      "email": "thanhhoan151191@gmail.com",
+      "phoneNumber": "0979031573",
+      "address": "Số 56, Nguyễn Văn Linh, Q. Hải Châu, Đà Nẵng",
+      "province": "Đà Nẵng",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A02",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000007",
+      "fullName": "Vũ Đình Long",
+      "email": "vulong721985@gmail.com",
+      "phoneNumber": "0977641983",
+      "address": "Khu đô thị Starlake, Tây Hồ, Hà Nội",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A03",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000008",
+      "fullName": "Lò Thị Mai",
+      "email": "bjnzey11493@gmail.com",
+      "phoneNumber": "0362227229",
+      "address": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "Austec123!@#",
+      "isActive": true,
+      "registeredAt": "2026-09-01",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-88239A04",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-09-01 10:00",
+          "warrantyUntil": "2028-09-01",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    {
+      "id": "PERM-01",
+      "hardwareId": "AT-DOOR-88239A01",
+      "userId": "00000000-0000-0000-0000-000000000001",
+      "memberName": "Nguyễn Mạnh Đức",
+      "phoneNumber": "0944102588",
+      "role": "OWNER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": true,
+      "scheduleLimitActive": false,
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "PERM-02",
+      "hardwareId": "AT-DOOR-88239A01",
+      "userId": "USER-SUB-001",
+      "memberName": "Trần Thu Hà (Vợ)",
+      "phoneNumber": "0988776655",
+      "role": "MEMBER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": false,
+      "scheduleLimitActive": false,
+      "createdAt": "2026-09-02T10:00:00Z"
+    },
+    {
+      "id": "PERM-03",
+      "hardwareId": "AT-DOOR-88239A01",
+      "userId": "USER-SUB-002",
+      "memberName": "Nguyễn Minh Khang (Con trai)",
+      "phoneNumber": "0977112233",
+      "role": "MEMBER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": false,
+      "canConfig": false,
+      "scheduleLimitActive": false,
+      "createdAt": "2026-09-05T14:30:00Z"
+    },
+    {
+      "id": "PERM-04",
+      "hardwareId": "AT-DOOR-88239A01",
+      "userId": "USER-SUB-003",
+      "memberName": "Lê Văn Toàn (Tài xế / Khách)",
+      "phoneNumber": "0911223344",
+      "role": "GUEST",
+      "canControl": true,
+      "canViewHistory": false,
+      "canChildLock": false,
+      "canConfig": false,
+      "scheduleLimitActive": true,
+      "accessStartTime": "07:30",
+      "accessEndTime": "18:30",
+      "accessDays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        false
+      ],
+      "createdAt": "2026-09-10T08:00:00Z"
+    },
+    {
+      "id": "PERM-05",
+      "hardwareId": "AT-LOCK-77124B02",
+      "userId": "00000000-0000-0000-0000-000000000002",
+      "memberName": "Dan Phung",
+      "phoneNumber": "0906806066",
+      "role": "OWNER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": true,
+      "scheduleLimitActive": false,
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "PERM-06",
+      "hardwareId": "AT-LOCK-77124B02",
+      "userId": "USER-SUB-004",
+      "memberName": "Bùi Thị Lan (Người giúp việc)",
+      "phoneNumber": "0934123999",
+      "role": "GUEST",
+      "canControl": true,
+      "canViewHistory": false,
+      "canChildLock": false,
+      "canConfig": false,
+      "scheduleLimitActive": true,
+      "accessStartTime": "08:00",
+      "accessEndTime": "12:00",
+      "accessDays": [
+        true,
+        false,
+        true,
+        false,
+        true,
+        false,
+        false
+      ],
+      "createdAt": "2026-09-15T09:00:00Z"
+    }
+  ],
+  "requests": [
+    {
+      "id": "REQ-2026-001",
+      "customerId": "00000000-0000-0000-0000-000000000001",
+      "customerName": "Nguyễn Mạnh Đức",
+      "customerPhone": "0944102588",
+      "hardwareId": "AT-DOOR-88239A01",
+      "requestType": "WARRANTY",
+      "requestTypeName": "Yêu Cầu Bảo Hành Định Kỳ 6 Tháng",
+      "description": "Cửa cuốn nhà tôi hoạt động tốt nhưng dạo gần đây gioăng cao su đáy có hiện tượng hơi kêu rít khi chạm sàn. Nhờ xưởng cử kỹ thuật qua tra mỡ bảo dưỡng giúp tôi.",
+      "attachmentUrls": [
+        "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=600&q=80"
+      ],
+      "replyChannel": "EMAIL",
+      "contactEmail": "ducduc02092005@gmail.com",
+      "priority": "NORMAL",
+      "status": "OPEN",
+      "createdAt": "2026-10-20T10:15:00Z",
+      "updatedAt": "2026-10-20T10:15:00Z"
+    },
+    {
+      "id": "REQ-2026-002",
+      "customerId": "00000000-0000-0000-0000-000000000003",
+      "customerName": "Nguyễn Văn Quang",
+      "customerPhone": "0982487278",
+      "hardwareId": "AT-UPS-99011C03",
+      "requestType": "BATTERY_REPLACE",
+      "requestTypeName": "Kiểm Tra Bình Ắc Quy UPS Lưu Điện",
+      "description": "Bộ lưu điện báo pin 100% nhưng khi cúp điện thử thì đèn báo đỏ nhấp nháy. Nghi ngờ bình ắc quy bị sụt dung lượng. Xin kiểm tra và đổi bình mới chính hãng.",
+      "attachmentUrls": [],
+      "replyChannel": "PUSH_NOTIFICATION",
+      "contactEmail": "nguyenvanquangdao0301992@gmail.com",
+      "priority": "URGENT",
+      "status": "PROCESSING",
+      "adminResponse": "Kỹ thuật viên khu vực Hai Bà Trưng đã nhận phiếu và sẽ liên hệ anh Quang trước 14h hôm nay.",
+      "createdAt": "2026-10-21T08:30:00Z",
+      "updatedAt": "2026-10-21T09:00:00Z"
+    },
+    {
+      "id": "REQ-2026-003",
+      "customerId": "00000000-0000-0000-0000-000000000002",
+      "customerName": "Dan Phung",
+      "customerPhone": "0906806066",
+      "hardwareId": "AT-LOCK-77124B02",
+      "requestType": "RENEW_SUBSCRIPTION",
+      "requestTypeName": "Gia Hạn Gói Dịch Vụ Viễn Thám Khóa Masaru",
+      "description": "Khóa cửa biệt thự của tôi sắp hết hạn 12 tháng đầu tiên, tôi muốn gia hạn thêm gói 24 tháng hoặc chuyển hẳn sang vĩnh viễn trọn đời. Vui lòng gửi hướng dẫn thanh toán.",
+      "attachmentUrls": [],
+      "replyChannel": "EMAIL",
+      "contactEmail": "tigerphung@gmail.com",
+      "priority": "NORMAL",
+      "status": "RESOLVED",
+      "adminResponse": "Đã gia hạn thành công thêm 24 tháng cho thiết bị AT-LOCK-77124B02 của quý khách đến 10/2028.",
+      "resolvedAt": "2026-10-21T11:20:00Z",
+      "createdAt": "2026-10-19T14:00:00Z",
+      "updatedAt": "2026-10-21T11:20:00Z"
+    }
+  ],
+  "products": [
+    {
+      "id": "PROD-DOOR-A900",
+      "name": "Cửa Cuốn Austec Titadoor A900 Super",
+      "categoryTag": "Cửa Cuốn",
+      "subtitle": "Nhôm định hình 6063 T6 • Khe thoáng thông minh thế hệ mới",
+      "price": 18500000,
+      "originalPrice": 21000000,
+      "rating": 4.9,
+      "reviewsCount": 142,
+      "imageUrl": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [
+        "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80"
+      ],
+      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
+      "highlights": [
+        "Sơn tĩnh điện cao cấp AkzoNobel chống phai màu 10 năm ngoài trời",
+        "Cảm biến tự dừng & đảo chiều thông minh khi gặp vật cản siêu nhạy",
+        "Bo mạch kép kết nối đồng thời WiFi băng tần kép + Bluetooth BLE 5.0",
+        "Vận hành êm ái dưới 45dB nhờ gioăng cao su giảm chấn 2 chiều kép"
+      ],
+      "specs": {
+        "Độ dày nan cửa": "1.4mm - 1.8mm (Nan kép khe thoáng)",
+        "Chất liệu cấu thành": "Hợp kim nhôm 6063-T6 đạt chuẩn quốc tế",
+        "Tốc độ đóng/mở": "15cm - 18cm / giây",
+        "Màu sắc chuẩn": "Ghi sần / Cafe ánh kim / Vàng kem hoàng gia",
+        "Công suất động cơ": "Austec Turbo 800W lõi đồng nguyên chất",
+        "Kháng nước & bụi": "Chuẩn IP65 chống nước mưa tạt ngang",
+        "Tích hợp": "Điều khiển qua App, Tay RF học lệnh, Nút bấm âm tường"
+      },
+      "stockQuantity": 45,
+      "isPublished": true,
+      "displayOrder": 1,
+      "createdAt": "2026-08-01T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-LOCK-MASARU-X1",
+      "name": "Khóa Cửa Thông Minh Masaru Titan X1 FaceID",
+      "categoryTag": "Khóa Masaru",
+      "subtitle": "Nhận diện khuôn mặt 3D AI • Vân tay bán dẫn FPC Thụy Điển",
+      "price": 9800000,
+      "originalPrice": 12500000,
+      "rating": 5,
+      "reviewsCount": 88,
+      "imageUrl": "https://images.unsplash.com/photo-1558089687-f282ffcbc126?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành 1 đổi 1 trong 24 tháng theo Hardware ID",
+      "highlights": [
+        "Camera 3D cấu trúc ánh sáng nhận diện FaceID trong 0.2 giây",
+        "Thân khóa đúc bằng hợp kim Titan nguyên khối chống cưa cắt phá hoại",
+        "Cảnh báo đột nhập và còi hú tự động chụp ảnh gửi về điện thoại",
+        "Mã số ảo chống nhìn trộm và cấp mã OTP một lần cho khách"
+      ],
+      "specs": {
+        "Phương thức mở khóa": "FaceID 3D, Vân tay FPC, Thẻ từ RFID, Mã số, Khóa cơ, App Mobile",
+        "Dung lượng lưu trữ": "50 Khuôn mặt, 100 Vân tay, 100 Thẻ từ, 100 Mật mã",
+        "Chất liệu thân khóa": "Hợp kim Kẽm & Titan đúc liền khối",
+        "Thời lượng pin": "Pin sạc Lithium 5000mAh (Dùng 10 - 12 tháng/lần sạc)",
+        "Cổng sạc khẩn cấp": "USB Type-C tiện lợi",
+        "Tiêu chuẩn ruột khóa": "Ruột 6068 inox 304 tiêu chuẩn châu Âu"
+      },
+      "stockQuantity": 60,
+      "isPublished": true,
+      "displayOrder": 2,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-UPS-SINE-1200",
+      "name": "Bộ Lưu Điện Austec Sin Chuẩn Pro 1200VA",
+      "categoryTag": "Lưu Điện UPS",
+      "subtitle": "Sóng sin chuẩn tinh khiết • Tự động xả bảo dưỡng chống chai ắc quy",
+      "price": 4600000,
+      "originalPrice": 5200000,
+      "rating": 4.8,
+      "reviewsCount": 95,
+      "imageUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành bo mạch & ắc quy chính hãng 24 tháng",
+      "highlights": [
+        "Điện áp ra sóng sin chuẩn 220V/50Hz giúp motor cửa chạy êm không gằn",
+        "Thời gian lưu điện chờ liên tục lên đến 72 giờ không mất nguồn",
+        "Thuật toán AI tự động xả ắc quy định kỳ mỗi 30 ngày giúp pin bền gấp 3 lần",
+        "Màn hình LCD và viễn thám báo chính xác dung lượng pin còn lại theo %"
+      ],
+      "specs": {
+        "Công suất định mức": "1200VA / 900W",
+        "Điện áp đầu vào": "AC 160V - 240V / 50Hz",
+        "Điện áp đầu ra": "AC 220V ± 2% (Sóng sin chuẩn tinh khiết)",
+        "Dung lượng ắc quy": "2 x 12V / 12Ah kín khí chuyên dụng",
+        "Thời gian chuyển mạch": "< 4ms (Không gây gián đoạn động cơ)",
+        "Cơ chế bảo vệ": "Quá tải, ngắn mạch, sụt áp, quá nhiệt độ"
+      },
+      "stockQuantity": 80,
+      "isPublished": true,
+      "displayOrder": 3,
+      "createdAt": "2026-08-15T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-CAM-AI-VISION",
+      "name": "Camera AI An Ninh Ngoài Trời Austec Vision 4K",
+      "categoryTag": "AI Camera",
+      "subtitle": "Độ phân giải 4K HDR • Nhận diện chuyển động người AI • Quay quét 360°",
+      "price": 2450000,
+      "originalPrice": 2900000,
+      "rating": 4.9,
+      "reviewsCount": 110,
+      "imageUrl": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
+      "highlights": [
+        "Ống kính 8.0MP 4K HDR ghi hình sắc nét ngày đêm có màu ban đêm",
+        "Chip AI tích hợp phát hiện chính xác người, xe, cảnh báo xua đuổi còi hú",
+        "Đàm thoại 2 chiều lọc tiếng ồn rõ ràng từ điện thoại",
+        "Chuẩn chống nước ngoài trời IP67 chịu mưa bão khắc nghiệt"
+      ],
+      "specs": {
+        "Cảm biến hình ảnh": "Sony Starvis CMOS 8MP 4K Ultra HD",
+        "Góc nhìn": "Quay ngang 355°, quay dọc 90°, ống kính 4mm",
+        "Tầm nhìn ban đêm": "Hồng ngoại 30m + Đèn LED trợ sáng có màu 20m",
+        "Chuẩn nén video": "H.265+ tiết kiệm 80% dung lượng",
+        "Lưu trữ": "Thẻ nhớ MicroSD tối đa 256GB hoặc Austec Cloud NVR"
+      },
+      "stockQuantity": 120,
+      "isPublished": true,
+      "displayOrder": 4,
+      "createdAt": "2026-08-20T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-SENSOR-ENV-M1",
+      "name": "Trạm Cảm Biến Môi Trường Không Dây MultiSensor M1 Pro",
+      "categoryTag": "Cảm Biến",
+      "subtitle": "Đo nhiệt độ, độ ẩm, chất lượng không khí AQI • Kết nối Zigbee 3.0",
+      "price": 850000,
+      "originalPrice": 1100000,
+      "rating": 4.7,
+      "reviewsCount": 76,
+      "imageUrl": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành chính hãng 24 tháng 1 đổi 1",
+      "highlights": [
+        "Cảm biến Sensirion Thụy Sĩ sai số nhiệt độ dưới 0.2°C",
+        "Tự động kích hoạt đóng cửa khi phát hiện mưa hoặc mở quạt thông gió khi nhiệt độ cao",
+        "Thời lượng pin cúc áo CR2450 dùng liên tục 2 năm"
+      ],
+      "specs": {
+        "Dải đo nhiệt độ": "-20°C đến 60°C (Sai số ±0.2°C)",
+        "Dải đo độ ẩm": "0% đến 99% RH (Sai số ±2%)",
+        "Giao thức kết nối": "Zigbee 3.0 / BLE Mesh",
+        "Kích thước": "40mm x 40mm x 12mm (Cực kỳ nhỏ gọn)"
+      },
+      "stockQuantity": 150,
+      "isPublished": true,
+      "displayOrder": 5,
+      "createdAt": "2026-08-22T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    }
+  ],
+  "supportTickets": [],
+  "supportMessages": [],
+  "lastSavedAt": "2026-10-22T07:17:26.943Z",
+  "version": "1.0"
+}

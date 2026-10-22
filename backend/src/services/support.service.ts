@@ -4,8 +4,27 @@ export class SupportService {
   private tickets: Map<string, SupportTicket> = new Map();
   private messages: LiveChatMessage[] = [];
   private currentMsgId = 1;
+  public onUpdate?: () => void;
 
   constructor(private hotCache: HotCacheClient) {}
+
+  public exportData(): { tickets: SupportTicket[]; messages: LiveChatMessage[] } {
+    return {
+      tickets: Array.from(this.tickets.values()),
+      messages: this.messages,
+    };
+  }
+
+  public importData(data: { tickets?: SupportTicket[]; messages?: LiveChatMessage[] }) {
+    if (data.tickets && Array.isArray(data.tickets)) {
+      data.tickets.forEach(t => this.tickets.set(t.id, t));
+    }
+    if (data.messages && Array.isArray(data.messages)) {
+      this.messages = [...data.messages];
+      const maxId = this.messages.reduce((max, m) => (m.id && m.id > max ? m.id : max), 0);
+      this.currentMsgId = maxId + 1;
+    }
+  }
 
   /**
    * Khởi tạo Ticket hỗ trợ từ khách hàng
@@ -29,6 +48,7 @@ export class SupportService {
     };
 
     this.tickets.set(ticketId, ticket);
+    this.onUpdate?.();
     return ticket;
   }
 
@@ -97,6 +117,7 @@ export class SupportService {
 
     this.messages.push(msg);
     ticket.updatedAt = new Date().toISOString();
+    this.onUpdate?.();
     return msg;
   }
 
@@ -230,6 +251,7 @@ export class SupportService {
     if (t) {
       t.assignedCskhId = cskhId;
       t.status = 'PROCESSING';
+      this.onUpdate?.();
     }
   }
 
@@ -237,6 +259,7 @@ export class SupportService {
     const t = this.tickets.get(ticketId);
     if (t) {
       t.status = 'RESOLVED';
+      this.onUpdate?.();
     }
   }
 }

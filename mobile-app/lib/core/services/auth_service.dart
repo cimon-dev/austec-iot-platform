@@ -32,7 +32,7 @@ class AuthService {
   /// Khởi tạo và đọc phiên đăng nhập đã lưu trong SharedPreferences
   Future<void> init() async {
     try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
+      final prefs = await SharedPreferences.getInstance();
       _token = prefs.getString(_tokenKey);
       final userJsonStr = prefs.getString(_userKey);
       if (_token != null && userJsonStr != null) {
@@ -71,12 +71,13 @@ class AuthService {
       }
     } catch (_) {
       // Offline fallback: Cho phép đăng nhập tài khoản mẫu khi backend offline
+      final isMainDev = cleanInput.contains('ducduc') || cleanInput == '0944102588';
       final fallbackUser = UserModel(
         id: '00000000-0000-0000-0000-000000000001',
-        fullName: cleanInput.contains('@') ? cleanInput.split('@')[0] : 'Nguyễn Văn An',
-        email: cleanInput.contains('@') ? cleanInput : 'nguyenvana@gmail.com',
-        phoneNumber: cleanInput.contains('@') ? '0912 345 678' : cleanInput,
-        address: 'Số 45 Lê Duẩn, Bến Nghé, Hà Nội',
+        fullName: isMainDev ? 'Nguyễn Mạnh Đức' : (cleanInput.contains('@') ? cleanInput.split('@')[0] : 'Nguyễn Văn An'),
+        email: isMainDev ? 'ducduc02092005@gmail.com' : (cleanInput.contains('@') ? cleanInput : 'nguyenvana@gmail.com'),
+        phoneNumber: isMainDev ? '0944102588' : (cleanInput.contains('@') ? '0912 345 678' : cleanInput),
+        address: 'Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội',
         province: 'Hà Nội',
         token: 'austec-customer-token',
       );
@@ -143,10 +144,20 @@ class AuthService {
     return login(identifier: email, password: 'Austec123!@#');
   }
 
+  /// Lấy định danh đã đăng nhập thành công gần nhất
+  Future<String?> getLastIdentifier() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString('austec_last_identifier');
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Đăng nhập nhanh bằng Sinh trắc học (FaceID / Vân tay)
   Future<AuthResult> biometricLogin() async {
     // Nếu đã có thông tin user trước đó thì dùng lại, nếu chưa thì đăng nhập tài khoản chính mẫu
-    final target = _currentUser?.email ?? 'nguyenvana@gmail.com';
+    final target = _currentUser?.email ?? 'ducduc02092005@gmail.com';
     return login(identifier: target, password: 'Austec123!@#');
   }
 
@@ -155,7 +166,7 @@ class AuthService {
     _currentUser = null;
     _token = null;
     try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
+      final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
       await prefs.remove(_userKey);
     } catch (e) {
@@ -167,9 +178,10 @@ class AuthService {
     _token = token;
     _currentUser = user;
     try {
-      final prefs = await SharedPreferences.getInstance().timeout(const Duration(milliseconds: 800));
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_tokenKey, token);
       await prefs.setString(_userKey, jsonEncode(user.toJson()));
+      await prefs.setString('austec_last_identifier', user.email.isNotEmpty ? user.email : user.phoneNumber);
     } catch (e) {
       debugPrint('[AuthService] Lưu ý khi lưu session: $e');
     }
