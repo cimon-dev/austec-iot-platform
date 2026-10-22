@@ -128,7 +128,14 @@ class ChatMessage {
 }
 
 class CskhChatScreen extends StatefulWidget {
-  const CskhChatScreen({super.key});
+  final ChatDeviceItem? initialDevice;
+  final String? initialPrompt;
+
+  const CskhChatScreen({
+    super.key,
+    this.initialDevice,
+    this.initialPrompt,
+  });
 
   @override
   State<CskhChatScreen> createState() => _CskhChatScreenState();
@@ -157,10 +164,25 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Default: KHÔNG chọn trước thiết bị nào (hoàn toàn tùy chọn, không bắt buộc)
-    _selectedDevice = null;
+    _selectedDevice = widget.initialDevice;
+    if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
+      _textController.text = widget.initialPrompt!;
+    }
     _fetchLiveChatMessages();
     _connectWebSocket();
+  }
+
+  @override
+  void didUpdateWidget(CskhChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialDevice != null && widget.initialDevice != _selectedDevice) {
+      setState(() {
+        _selectedDevice = widget.initialDevice;
+        if (widget.initialPrompt != null && widget.initialPrompt!.isNotEmpty) {
+          _textController.text = widget.initialPrompt!;
+        }
+      });
+    }
   }
 
   @override

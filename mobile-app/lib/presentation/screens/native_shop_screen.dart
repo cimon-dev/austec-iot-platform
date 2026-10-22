@@ -7,7 +7,12 @@ import '../../core/services/iot_gateway_client.dart';
 import 'cskh_chat_screen.dart';
 
 class NativeShopScreen extends StatefulWidget {
-  const NativeShopScreen({super.key});
+  final void Function(ProductItem product)? onConsultProduct;
+
+  const NativeShopScreen({
+    super.key,
+    this.onConsultProduct,
+  });
 
   @override
   State<NativeShopScreen> createState() => _NativeShopScreenState();
@@ -99,6 +104,44 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => _buildProductDetailSheet(product),
     );
+  }
+
+  void _handleConsult(ProductItem product) {
+    if (widget.onConsultProduct != null) {
+      widget.onConsultProduct!(product);
+    } else {
+      final chatDev = ChatDeviceItem(
+        isOwned: false,
+        deviceName: product.name,
+        modelName: product.name,
+        categoryTag: product.categoryTag,
+        price: product.price,
+        imageUrl: product.imagePath,
+        specs: product.specs,
+      );
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            backgroundColor: AppTheme.background,
+            appBar: AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text("Tư vấn: ${product.name}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            ),
+            body: SafeArea(
+              child: CskhChatScreen(
+                initialDevice: chatDev,
+                initialPrompt: "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.",
+              ),
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -331,13 +374,42 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.blueAccent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text("Chi Tiết", style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _handleConsult(product),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.headset_mic_outlined, size: 11, color: AppTheme.cyanAccent),
+                            SizedBox(width: 3),
+                            Text("Tư vấn", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    InkWell(
+                      onTap: () => _openProductDetail(product),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.blueAccent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text("Chi Tiết", style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -463,14 +535,10 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.support_agent_rounded),
-                    label: const Text("Tư Vấn & Khảo Sát", style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: const Text("Tư Vấn & Khảo Sát (Chat CSKH)", style: TextStyle(fontWeight: FontWeight.bold)),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const Scaffold(backgroundColor: AppTheme.background, body: SafeArea(child: CskhChatScreen())),
-                        ),
-                      );
+                      _handleConsult(product);
                     },
                   ),
                 ),

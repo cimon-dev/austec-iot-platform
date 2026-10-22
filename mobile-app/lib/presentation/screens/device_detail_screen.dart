@@ -76,8 +76,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             icon: const Icon(Icons.headset_mic_outlined, color: AppTheme.cyanAccent),
             tooltip: "Chat CSKH về thiết bị này",
             onPressed: () {
+              final chatDev = ChatDeviceItem(
+                isOwned: true,
+                hardwareId: widget.device.hardwareId,
+                deviceName: widget.device.name,
+                modelName: widget.device.modelName,
+                categoryTag: widget.device.badgeText.isNotEmpty ? widget.device.badgeText : "AUSTEC",
+              );
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const Scaffold(backgroundColor: AppTheme.background, body: SafeArea(child: CskhChatScreen()))),
+                MaterialPageRoute(
+                  builder: (context) => Scaffold(
+                    backgroundColor: AppTheme.background,
+                    appBar: AppBar(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      leading: IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new, size: 20),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      title: Text(
+                        "Hỗ trợ kỹ thuật: ${widget.device.name}",
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    body: SafeArea(
+                      child: CskhChatScreen(
+                        initialDevice: chatDev,
+                        initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${widget.device.name} (HWID: ${widget.device.hardwareId}).",
+                      ),
+                    ),
+                  ),
+                ),
               );
             },
           ),

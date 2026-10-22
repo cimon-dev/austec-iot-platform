@@ -22,6 +22,26 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   final IoTGatewayClient _gateway = IoTGatewayClient();
   int _selectedBottomNavIndex = 0;
 
+  ChatDeviceItem? _cskhPrefilledDevice;
+  String? _cskhPrefilledPrompt;
+
+  void _handleConsultProduct(ProductItem product) {
+    final chatDev = ChatDeviceItem(
+      isOwned: false,
+      deviceName: product.name,
+      modelName: product.name,
+      categoryTag: product.categoryTag,
+      price: product.price,
+      imageUrl: product.imagePath,
+      specs: product.specs,
+    );
+    setState(() {
+      _cskhPrefilledDevice = chatDev;
+      _cskhPrefilledPrompt = "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.";
+      _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat (Navbar giữ nguyên)
+    });
+  }
+
   // Thời gian thực
   late Timer _clockTimer;
   String _timeString = "";
@@ -259,9 +279,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   child: _selectedBottomNavIndex == 0
                       ? _buildControlPageWithBackground(isDark)
                       : _selectedBottomNavIndex == 1
-                          ? const NativeShopScreen()
+                          ? NativeShopScreen(onConsultProduct: _handleConsultProduct)
                           : _selectedBottomNavIndex == 2
-                              ? const CskhChatScreen()
+                              ? CskhChatScreen(
+                                  initialDevice: _cskhPrefilledDevice,
+                                  initialPrompt: _cskhPrefilledPrompt,
+                                )
                               : AppSettingsScreen(
                                   onThemeChanged: _toggleTheme,
                                   onLanguageChanged: _toggleLanguage,
