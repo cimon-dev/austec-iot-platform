@@ -1115,7 +1115,9 @@ export function createApp() {
     userData?: {
       role?: 'ADMIN' | 'CSKH' | 'CUSTOMER';
       customerId?: string;
+      userId?: string;
       customerName?: string;
+      customerPhone?: string;
     };
   }
 
@@ -1182,8 +1184,19 @@ export function createApp() {
   function broadcastToCustomer(customerId: string, data: any) {
     const jsonStr = JSON.stringify(data);
     for (const c of wsClients) {
-      if (c.readyState === WebSocket.OPEN && c.userData?.customerId === customerId) {
-        c.send(jsonStr);
+      if (c.readyState === WebSocket.OPEN) {
+        const cCustId = c.userData?.customerId || c.userData?.userId;
+        const isCustomer = c.userData?.role === 'CUSTOMER';
+        // Match customer by ID, userId, phone, or if this is the customer socket in this 1-1 chat
+        const isMatch = isCustomer && (
+          !customerId || 
+          !cCustId || 
+          cCustId === customerId || 
+          c.userData?.customerPhone === customerId
+        );
+        if (isMatch) {
+          c.send(jsonStr);
+        }
       }
     }
   }
@@ -1224,16 +1237,19 @@ export function createApp() {
 
         switch (type) {
           case 'JOIN': {
+            const cid = payload.customerId || payload.userId || '00000000-0000-0000-0000-000000000001';
             ws.userData = {
               role: payload.role || 'CUSTOMER',
-              customerId: payload.customerId,
-              customerName: payload.customerName,
+              customerId: cid,
+              userId: cid,
+              customerName: payload.customerName || 'Khách Hàng Austec',
+              customerPhone: payload.customerPhone || '',
             };
             ws.send(JSON.stringify({
               type: 'JOINED',
               success: true,
-              role: ws.userData.role,
-              customerId: ws.userData.customerId,
+              role: ws.userData?.role,
+              customerId: ws.userData?.customerId,
             }));
             break;
           }

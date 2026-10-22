@@ -53,6 +53,7 @@ interface Ticket {
   status: "OPEN" | "PROCESSING" | "RESOLVED";
   priority: "URGENT" | "NORMAL" | "LOW";
   createdAt: string;
+  updatedAt?: string;
   selectedDevice?: {
     isOwned: boolean;
     hardwareId?: string;
@@ -68,8 +69,10 @@ interface Ticket {
   };
   messages: Array<{
     sender: "CUSTOMER" | "CSKH";
+    senderRole?: string;
     text: string;
     time: string;
+    createdAt?: string;
     hasSnapshot?: boolean;
     attachmentUrls?: string[];
     selectedDevice?: {
@@ -351,8 +354,27 @@ function CSKHContent() {
     }
   }, [currentTicket?.messages?.length]);
 
+  const getTicketActivityTimestamp = (t: Ticket): number => {
+    if (t.messages && t.messages.length > 0) {
+      const lastMsg = t.messages[t.messages.length - 1];
+      if (lastMsg.createdAt) {
+        const d = new Date(lastMsg.createdAt).getTime();
+        if (!isNaN(d) && d > 0) return d;
+      }
+    }
+    if (t.updatedAt) {
+      const d = new Date(t.updatedAt).getTime();
+      if (!isNaN(d) && d > 0) return d;
+    }
+    if (t.createdAt) {
+      const d = new Date(t.createdAt).getTime();
+      if (!isNaN(d) && d > 0) return d;
+    }
+    return 0;
+  };
+
   const filteredTickets = useMemo(() => {
-    return tickets.filter((t) => {
+    const list = tickets.filter((t) => {
       const q = ticketSearch.toLowerCase();
       return (
         (t.id && t.id.toLowerCase().includes(q)) ||
@@ -362,6 +384,13 @@ function CSKHContent() {
         (t.deviceName && t.deviceName.toLowerCase().includes(q)) ||
         (t.hardwareId && t.hardwareId.toLowerCase().includes(q))
       );
+    });
+
+    // Sắp xếp tin nhắn / hoạt động mới nhất lên đầu tiên theo thời gian thực
+    return [...list].sort((a, b) => {
+      const timeA = getTicketActivityTimestamp(a);
+      const timeB = getTicketActivityTimestamp(b);
+      return timeB - timeA;
     });
   }, [tickets, ticketSearch]);
 
@@ -691,8 +720,7 @@ function CSKHContent() {
     hardwareId: "AT-DOOR-88239A01",
     requestType: "TECHNICAL" as const,
     description: "",
-    replyChannel: "PHONE" as const,
-    preferredContactTime: "Trong giờ hành chính",
+    replyChannel: "PUSH" as const,
     imageUrl: ""
   });
 
@@ -715,7 +743,6 @@ function CSKHContent() {
       description: newRequestForm.description.trim(),
       images: newRequestForm.imageUrl.trim() ? [newRequestForm.imageUrl.trim()] : [],
       replyChannel: newRequestForm.replyChannel,
-      preferredContactTime: newRequestForm.preferredContactTime,
       status: "PENDING",
       createdAt: new Date().toLocaleString("vi-VN")
     };
@@ -842,6 +869,12 @@ function CSKHContent() {
               ) : (
                 filteredTickets.map((t) => {
                   const isSelected = selectedTicketId === t.id;
+                  const lastMsg = t.messages && t.messages.length > 0 ? t.messages[t.messages.length - 1] : null;
+                  const lastTime = lastMsg?.time || (t.createdAt ? t.createdAt.substring(11, 16) : "--:--");
+                  const isCustomerSender = lastMsg ? (lastMsg.sender === "CUSTOMER" || (lastMsg as any).senderRole === "CUSTOMER") : false;
+                  // Nhận biết chưa đọc / đã đọc bằng màu sắc và icon (tránh rườm rà chữ)
+                  const isUnread = isCustomerSender;
+
                   return (
                     <div
                       key={t.id}
@@ -856,12 +889,33 @@ function CSKHContent() {
                       className={`p-2.5 cursor-pointer transition-colors ${
                         isSelected
                           ? "bg-cyan-50 dark:bg-cyan-950/40 border-l-4 border-cyan-500"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                          : isUnread
+                            ? "bg-cyan-500/[0.04] dark:bg-cyan-950/20 hover:bg-slate-50 dark:hover:bg-slate-800/40 border-l-2 border-cyan-400"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 border-l-2 border-transparent"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{t.id}</span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
+                          {/* Nhận biết chưa/đã đọc chỉ bằng màu sắc và icon */}
+                          {isUnread ? (
+                            <span className="relative flex h-2 w-2 shrink-0" title="Khách gửi tin nhắn mới - Chưa phản hồi">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                            </span>
+                          ) : (
+                            <span title="CSKH đã trả lời" className="flex items-center">
+                              <CheckCheck className="w-3.5 h-3.5 text-emerald-500/90 shrink-0" />
+                            </span>
+                          )}
+                          <span className="font-mono text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{t.id}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Thời gian cuối cùng trả lời */}
+                          <span className="flex items-center gap-0.5 font-mono text-[10px] text-slate-400 dark:text-slate-500" title="Thời gian trả lời cuối cùng">
+                            <Clock className="w-2.5 h-2.5" />
+                            {lastTime}
+                          </span>
                           {t.selectedDevice && (
                             <span className={`text-[8px] font-bold px-1 py-0.2 rounded ${
                               t.selectedDevice.isOwned 
@@ -871,20 +925,21 @@ function CSKHContent() {
                               {t.selectedDevice.isOwned ? "ĐÃ SỞ HỮU" : "TƯ VẤN"}
                             </span>
                           )}
-                          <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                            t.priority === "URGENT" 
-                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                          }`}>
-                            {t.priority === "URGENT" ? "KHẨN CẤP" : "THƯỜNG"}
-                          </span>
                         </div>
                       </div>
-                      <div className="font-semibold text-slate-900 dark:text-white text-xs mt-1 truncate">{t.customerName}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{t.subject}</div>
+
+                      <div className="font-semibold text-slate-900 dark:text-white text-xs mt-1 truncate flex items-center justify-between">
+                        <span className="truncate">{t.customerName}</span>
+                        {isUnread && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 ml-1"></span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {lastMsg ? lastMsg.text : t.subject}
+                      </div>
                       <div className="text-[10px] font-mono text-slate-400 mt-1 flex justify-between">
                         <span>{t.customerPhone}</span>
-                        <span className="truncate max-w-[120px]">{t.deviceName}</span>
+                        <span className="truncate max-w-[120px]">{t.deviceName || 'Hỗ trợ chung'}</span>
                       </div>
                     </div>
                   );
@@ -1559,9 +1614,9 @@ function CSKHContent() {
                     onChange={(e) => setNewRequestForm({ ...newRequestForm, replyChannel: e.target.value as any })}
                     className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
                   >
+                    <option value="PUSH">Gửi thông báo đẩy về Mobile App (Mặc định)</option>
                     <option value="PHONE">Gọi điện thoại trực tiếp</option>
                     <option value="EMAIL">Gửi thông báo qua Email</option>
-                    <option value="PUSH">Gửi thông báo đẩy về Mobile App</option>
                   </select>
                 </div>
               </div>

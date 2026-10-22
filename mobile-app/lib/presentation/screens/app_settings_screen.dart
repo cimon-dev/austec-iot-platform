@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/services/auth_service.dart';
+import 'customer_support_tickets_screen.dart';
 import 'device_management_center_screen.dart';
 import 'family_sharing_screen.dart';
 import 'login_screen.dart';
@@ -462,6 +463,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             decoration: _cardBox(isDark, cardBg, cardBorder),
             child: Column(
               children: [
+                _buildSettingsTile(
+                  icon: Icons.assignment_outlined,
+                  iconColor: AppTheme.purpleAccent,
+                  title: "Danh sách phiếu yêu cầu hỗ trợ",
+                  subtitle: "Theo dõi tiến độ và phản hồi từ kỹ thuật viên",
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CustomerSupportTicketsScreen(),
+                      ),
+                    );
+                  },
+                  isDark: isDark,
+                  textCol: textCol,
+                ),
+                _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.menu_book_outlined,
                   iconColor: AppTheme.cyanAccent,

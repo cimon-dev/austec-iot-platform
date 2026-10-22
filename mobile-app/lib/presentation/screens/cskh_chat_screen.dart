@@ -157,11 +157,8 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Default select first owned device if available
-    final owned = _getOwnedDevices();
-    if (owned.isNotEmpty) {
-      _selectedDevice = owned.first;
-    }
+    // Default: KHÔNG chọn trước thiết bị nào (hoàn toàn tùy chọn, không bắt buộc)
+    _selectedDevice = null;
     _fetchLiveChatMessages();
     _connectWebSocket();
   }
@@ -232,6 +229,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       _wsChannel?.sink.add(jsonEncode({
         'type': 'JOIN',
         'role': 'CUSTOMER',
+        'customerId': customerId,
         'userId': customerId,
         'customerName': customerName,
         'customerPhone': customerPhone,
@@ -293,7 +291,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       if (text.isNotEmpty || images.isNotEmpty) {
         setState(() {
           // Check duplicate
-          final exists = _messages.any((msg) => msg.text == text && msg.time == time);
+          final exists = _messages.any((msg) => msg.text == text && msg.sender == (isCSKH ? 'cskh' : 'user') && msg.time == time);
           if (!exists) {
             _messages.add(ChatMessage(
               sender: isCSKH ? 'cskh' : 'user',
@@ -451,9 +449,12 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     final customerName = user?.fullName ?? 'Khách Hàng Austec';
     final customerPhone = user?.phoneNumber ?? '0912 345 678';
 
-    final dev = _selectedDevice ?? (_getOwnedDevices().isNotEmpty ? _getOwnedDevices().first : null);
-    final hardwareId = dev?.hardwareId ?? 'AT-DOOR-88239A01';
-    final deviceName = dev?.deviceName ?? 'Cửa Cuốn Austec Titadoor A900 Super';
+    final dev = _selectedDevice;
+    final hardwareId = dev?.hardwareId ?? '';
+    final deviceName = dev?.deviceName ?? '';
+    final greeting = dev != null
+        ? 'Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${dev.deviceName}.'
+        : 'Xin chào Trung tâm CSKH Austec! Tôi cần tư vấn và hỗ trợ dịch vụ.';
 
     // 1. Send via WebSocket if connected
     if (_isWsConnected && _wsChannel != null) {
@@ -465,7 +466,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         'hardwareId': hardwareId,
         'deviceName': deviceName,
         'selectedDevice': dev?.toJson(),
-        'message': 'Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${dev?.deviceName ?? "Austec"}.',
+        'message': greeting,
       }));
     }
 
@@ -484,7 +485,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
           'hardwareId': hardwareId,
           'deviceName': deviceName,
           'selectedDevice': dev?.toJson(),
-          'message': 'Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${dev?.deviceName ?? "Austec"}.',
+          'message': greeting,
         }),
       ).timeout(const Duration(seconds: 4));
 
@@ -529,7 +530,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
           _messages.addAll([
             ChatMessage(
               sender: "user",
-              text: "Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${dev?.deviceName ?? "Austec"}.",
+              text: greeting,
               time: timeStr,
               selectedDevice: dev,
             ),
@@ -689,13 +690,23 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
           setState(() {
             _selectedDevice = selected;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: AppTheme.blueAccent,
-              content: Text("Đã chọn thiết bị: ${selected.deviceName} (${selected.isOwned ? 'Đã sở hữu' : 'Tư vấn mới'})"),
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          if (selected != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                backgroundColor: AppTheme.blueAccent,
+                content: Text("Đã chọn thiết bị: ${selected.deviceName} (${selected.isOwned ? 'Đã sở hữu' : 'Tư vấn mới'})"),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                backgroundColor: AppTheme.surfaceGlass,
+                content: Text("Đã hủy chọn thiết bị. Chế độ trò chuyện chung."),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         },
       ),
     );
@@ -775,7 +786,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
   }
 
   Widget _buildStartConversationView() {
-    final dev = _selectedDevice ?? (_getOwnedDevices().isNotEmpty ? _getOwnedDevices().first : null);
+    final dev = _selectedDevice;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
@@ -838,13 +849,13 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
             ),
             const SizedBox(height: 18),
 
-            // Device Combobox Selector Preview Card
+            // Device Combobox Selector Preview Card (100% Optional)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: AppTheme.glassBox(
                 color: AppTheme.surfaceGlass,
-                borderColor: AppTheme.cyanAccent.withOpacity(0.3),
+                borderColor: dev != null ? AppTheme.cyanAccent.withOpacity(0.4) : AppTheme.cardBorder,
                 radius: 14,
               ),
               child: Column(
@@ -854,14 +865,14 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
-                        "THIẾT BỊ HỖ TRỢ ĐÍNH KÈM (COMBOBOX):",
+                        "THIẾT BỊ HỖ TRỢ ĐÍNH KÈM (TÙY CHỌN):",
                         style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                       GestureDetector(
                         onTap: _openDeviceComboboxModal,
-                        child: const Text(
-                          "Đổi thiết bị ➔",
-                          style: TextStyle(color: AppTheme.blueAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                        child: Text(
+                          dev != null ? "Đổi thiết bị ➔" : "Chọn thiết bị ➔",
+                          style: const TextStyle(color: AppTheme.blueAccent, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -875,13 +886,17 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
                       decoration: BoxDecoration(
                         color: AppTheme.surface,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppTheme.cardBorder),
+                        border: Border.all(color: dev != null ? AppTheme.cyanAccent.withOpacity(0.5) : AppTheme.cardBorder),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            dev?.isOwned == true ? Icons.verified : Icons.shopping_bag_outlined,
-                            color: dev?.isOwned == true ? AppTheme.emeraldSuccess : AppTheme.cyanAccent,
+                            dev == null
+                                ? Icons.devices_other_outlined
+                                : (dev.isOwned ? Icons.verified : Icons.shopping_bag_outlined),
+                            color: dev == null
+                                ? AppTheme.textMuted
+                                : (dev.isOwned ? AppTheme.emeraldSuccess : AppTheme.cyanAccent),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
@@ -890,19 +905,34 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  dev?.deviceName ?? "Chọn thiết bị cần hỗ trợ",
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                  dev?.deviceName ?? "Chưa chọn thiết bị (Không bắt buộc)",
+                                  style: TextStyle(
+                                    color: dev == null ? AppTheme.textSecondary : Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: dev == null ? FontWeight.normal : FontWeight.bold,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
-                                  dev?.isOwned == true ? "Đã sở hữu • ${dev?.hardwareId ?? ''}" : "Sản phẩm tư vấn mới • Chưa sở hữu",
+                                  dev == null
+                                      ? "Mặc định không chọn. Chạm vào đây nếu bạn muốn hỏi về thiết bị cụ thể."
+                                      : (dev.isOwned ? "Đã sở hữu • ${dev.hardwareId}" : "Sản phẩm tư vấn mới • Chưa sở hữu"),
                                   style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                          if (dev != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _selectedDevice = null),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(Icons.close, size: 16, color: Colors.white70),
+                              ),
+                            )
+                          else
+                            const Icon(Icons.arrow_drop_down, color: Colors.white70),
                         ],
                       ),
                     ),
@@ -1454,7 +1484,7 @@ class _DeviceSelectionSheet extends StatefulWidget {
   final ChatDeviceItem? currentlySelected;
   final List<ChatDeviceItem> ownedDevices;
   final List<ChatDeviceItem> unownedDevices;
-  final Function(ChatDeviceItem selected) onSelectDevice;
+  final Function(ChatDeviceItem? selected) onSelectDevice;
 
   const _DeviceSelectionSheet({
     required this.currentlySelected,
@@ -1515,8 +1545,60 @@ class _DeviceSelectionSheetState extends State<_DeviceSelectionSheet> with Singl
             ],
           ),
           const Text(
-            "Chọn thiết bị bạn đang cần giải đáp sự cố hoặc sản phẩm cần tư vấn mới để kỹ thuật viên CSKH chuẩn bị tài liệu kỹ thuật chính xác nhất.",
+            "Chọn thiết bị bạn đang cần giải đáp sự cố hoặc sản phẩm cần tư vấn mới (không bắt buộc).",
             style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+
+          // Option: Không chọn thiết bị nào (Hỏi thông tin & tư vấn chung)
+          InkWell(
+            onTap: () {
+              widget.onSelectDevice(null);
+              Navigator.of(context).pop();
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: widget.currentlySelected == null ? AppTheme.cyanAccent.withOpacity(0.12) : AppTheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: widget.currentlySelected == null ? AppTheme.cyanAccent : AppTheme.cardBorder,
+                  width: widget.currentlySelected == null ? 1.5 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.not_interested,
+                    color: widget.currentlySelected == null ? AppTheme.cyanAccent : AppTheme.textMuted,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Không chọn thiết bị nào (Mặc định)",
+                          style: TextStyle(
+                            color: widget.currentlySelected == null ? Colors.white : AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          "Hỏi tư vấn chung, hỗ trợ tài khoản hoặc bảo hành tổng quan",
+                          style: TextStyle(color: AppTheme.textMuted, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.currentlySelected == null)
+                    const Icon(Icons.check_circle, color: AppTheme.cyanAccent, size: 18),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -1791,9 +1873,8 @@ class _SupportTicketFormSheet extends StatefulWidget {
 
 class _SupportTicketFormSheetState extends State<_SupportTicketFormSheet> {
   final TextEditingController _descController = TextEditingController();
-  final TextEditingController _contactTimeController = TextEditingController(text: "Sau 17:30 chiều");
   String _selectedType = "TECHNICAL";
-  String _selectedReplyChannel = "PHONE";
+  String _selectedReplyChannel = "PUSH";
   bool _isSubmitting = false;
 
   final Map<String, String> _typeLabels = {
@@ -1839,7 +1920,6 @@ class _SupportTicketFormSheetState extends State<_SupportTicketFormSheet> {
           'requestType': _selectedType,
           'description': desc,
           'replyChannel': _selectedReplyChannel,
-          'preferredContactTime': _contactTimeController.text.trim(),
           'images': [],
           'status': 'PENDING',
         }),
@@ -1948,32 +2028,17 @@ class _SupportTicketFormSheetState extends State<_SupportTicketFormSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Kênh nhận phản hồi
-            const Text("KÊNH PHẢN HỒI MONG MUỐN", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+            // Kênh nhận phản hồi (Mặc định: Thông báo App PUSH)
+            const Text("KÊNH PHẢN HỒI MONG MUỐN (MẶC ĐỊNH: THÔNG BÁO APP)", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Row(
               children: [
+                _buildChannelOption("PUSH", "Thông báo App", Icons.notifications),
+                const SizedBox(width: 8),
                 _buildChannelOption("PHONE", "Gọi điện thoại", Icons.phone),
                 const SizedBox(width: 8),
                 _buildChannelOption("EMAIL", "Email", Icons.email),
-                const SizedBox(width: 8),
-                _buildChannelOption("PUSH", "Thông báo App", Icons.notifications),
               ],
-            ),
-            const SizedBox(height: 14),
-
-            // Khung giờ hẹn
-            const Text("KHUNG GIỜ LIÊN HỆ THUẬN TIỆN", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _contactTimeController,
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: AppTheme.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
             ),
             const SizedBox(height: 20),
 
