@@ -28,7 +28,8 @@ import {
   ExternalLink,
   ChevronRight,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Radio
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
@@ -180,63 +181,14 @@ function CSKHContent() {
   // =========================================================================
   // TAB 1: LIVE 1-1 CHAT
   // =========================================================================
-  const [tickets, setTickets] = useState<Ticket[]>([
-    {
-      id: "TICK-9081",
-      customerName: "Nguyễn Mạnh Đức",
-      customerPhone: "0944 102 588",
-      hardwareId: "AT-DOOR-88239A01",
-      deviceName: "Cửa cuốn Gara Đức Mạnh",
-      subject: "Cửa cuốn phát tiếng kêu rít lạ khi bấm mở từ App",
-      status: "OPEN",
-      priority: "URGENT",
-      createdAt: "5 phút trước",
-      messages: [
-        { sender: "CUSTOMER", text: "Chào kỹ thuật, tôi bấm mở cửa cuốn trên app thì nghe tiếng rít rất to ở motor, nhờ kiểm tra giúp.", time: "14:30", hasSnapshot: true },
-        { sender: "CSKH", text: "Dạ em chào anh Đức. Hệ thống đã tự động nhận diện thiết bị của anh. Em kiểm tra thấy dòng motor hơi cao (4.8A), anh vui lòng tạm dừng cửa giúp em nhé.", time: "14:31" },
-      ],
-      technicalSnapshot: {
-        model: "Austec Titadoor A900 Super",
-        fwVersion: "v2.4.1",
-        rssi: -62,
-        battery: 98,
-        isOnline: true,
-        lastHeartbeat: "3 giây trước",
-        diagnostics: "Cảnh báo: Dòng điện tải motor 4.8A (Ngưỡng an toàn < 4.0A). Nghi vấn kẹt ray hoặc khô dầu mỡ.",
-      },
-    },
-    {
-      id: "TICK-9082",
-      customerName: "Dan Phung",
-      customerPhone: "0906 806 066",
-      hardwareId: "AT-LOCK-77124B02",
-      deviceName: "Khóa chính Biệt thự",
-      subject: "Hỏi cách tạo mã số OTP mở khóa từ xa cho người giúp việc",
-      status: "PROCESSING",
-      priority: "NORMAL",
-      createdAt: "20 phút trước",
-      messages: [
-        { sender: "CUSTOMER", text: "Tôi muốn tạo mã mở cửa 1 lần cho người giúp việc vào nhà lúc 16h thì thao tác thế nào?", time: "14:15" },
-      ],
-      technicalSnapshot: {
-        model: "Masaru Smart Lock X1 Pro",
-        fwVersion: "v3.1.0",
-        rssi: -58,
-        battery: 92,
-        isOnline: true,
-        lastHeartbeat: "10 giây trước",
-        diagnostics: "Thiết bị hoạt động hoàn hảo. Pin 92%. Đã kích hoạt tính năng OTP ảo.",
-      },
-    },
-  ]);
-
-  const [selectedTicketId, setSelectedTicketId] = useState<string>("TICK-9081");
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedTicketId, setSelectedTicketId] = useState<string>("");
   const [ticketSearch, setTicketSearch] = useState("");
   const [replyText, setReplyText] = useState("");
   const [isRebooting, setIsRebooting] = useState(false);
   const [mobileTab, setMobileTab] = useState<"tickets" | "chat" | "telemetry">("chat");
 
-  const currentTicket = tickets.find((t) => t.id === selectedTicketId) || tickets[0];
+  const currentTicket = tickets.find((t) => t.id === selectedTicketId) || (tickets.length > 0 ? tickets[0] : null);
 
   const filteredTickets = tickets.filter((t) => {
     const q = ticketSearch.toLowerCase();
@@ -250,16 +202,41 @@ function CSKHContent() {
     );
   });
 
+  const fetchLiveTickets = () => {
+    fetch("http://localhost:4000/api/cskh/tickets", {
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.tickets)) {
+          setTickets(res.tickets);
+          setSelectedTicketId(prev => {
+            if (!prev && res.tickets.length > 0) return res.tickets[0].id;
+            if (prev && !res.tickets.some((t: any) => t.id === prev) && res.tickets.length > 0) return res.tickets[0].id;
+            return prev;
+          });
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Polling đồng bộ danh sách cuộc trò chuyện và tin nhắn 1-1 thời gian thực từ Mobile App
+  useEffect(() => {
+    fetchLiveTickets();
+    const chatTimer = setInterval(fetchLiveTickets, 2500);
+    return () => clearInterval(chatTimer);
+  }, []);
+
   const handleSendReply = () => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || !currentTicket) return;
 
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
-    // Update local state
+    // Optimistic local state update
     setTickets((prev) =>
       prev.map((t) => {
-        if (t.id === selectedTicketId) {
+        if (t.id === currentTicket.id) {
           return {
             ...t,
             status: "PROCESSING",
@@ -277,8 +254,8 @@ function CSKHContent() {
       })
     );
 
-    // Call backend API for real-time 1-1 chat synchronization
-    fetch("http://localhost:4000/api/cskh/active-chat/messages", {
+    // Gửi tin nhắn vào đúng cuộc trò chuyện của khách hàng này
+    fetch(`http://localhost:4000/api/cskh/tickets/${currentTicket.id}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -289,55 +266,23 @@ function CSKHContent() {
         text: replyText,
         message: replyText
       })
-    }).catch(() => {});
+    })
+      .then(() => fetchLiveTickets())
+      .catch(() => {});
 
     setReplyText("");
     showToast("Đã gửi tin nhắn tới ứng dụng Mobile của khách hàng!");
   };
 
-  // Polling đồng bộ tin nhắn 1-1 thời gian thực từ Mobile App
-  useEffect(() => {
-    const fetchChatMessages = () => {
-      fetch("http://localhost:4000/api/cskh/active-chat", {
-        headers: { "Authorization": "Bearer austec-admin-super-token" }
-      })
-        .then(r => r.json())
-        .then(res => {
-          if (res.success && Array.isArray(res.messages) && res.messages.length > 0) {
-            setTickets(prev =>
-              prev.map(t => {
-                if (t.id === selectedTicketId) {
-                  return {
-                    ...t,
-                    messages: res.messages.map((m: any) => ({
-                      sender: m.sender || (m.senderRole === "CSKH" ? "CSKH" : "CUSTOMER"),
-                      text: m.text || m.message || "",
-                      time: m.time || "Vừa xong",
-                      hasSnapshot: m.hasSnapshot
-                    }))
-                  };
-                }
-                return t;
-              })
-            );
-          }
-        })
-        .catch(() => {});
-    };
-
-    fetchChatMessages();
-    const chatTimer = setInterval(fetchChatMessages, 2500);
-    return () => clearInterval(chatTimer);
-  }, [selectedTicketId]);
-
   const handleSoftReboot = () => {
-    if (isRebooting) return;
+    if (isRebooting || !currentTicket) return;
+    const targetHwId = currentTicket.hardwareId;
     setIsRebooting(true);
-    showToast(`Đang phát lệnh Soft Reboot tới ${currentTicket.hardwareId}...`);
+    showToast(`Đang phát lệnh Soft Reboot tới ${targetHwId}...`);
 
     setTimeout(() => {
       setIsRebooting(false);
-      showToast(`Thiết bị ${currentTicket.hardwareId} đã hoàn tất Soft Reboot thành công!`);
+      showToast(`Thiết bị ${targetHwId} đã hoàn tất Soft Reboot thành công!`);
       
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -366,6 +311,14 @@ function CSKHContent() {
         })
       );
     }, 2000);
+  };
+
+  const handleTriggerTelemetry = () => {
+    if (!currentTicket) return;
+    showToast(`Đang kéo dữ liệu Telemetry viễn thám từ ${currentTicket.hardwareId}...`);
+    setTimeout(() => {
+      showToast(`Đã đồng bộ thông số viễn thám thiết bị ${currentTicket.hardwareId} thành công!`);
+    }, 1200);
   };
 
   // =========================================================================
@@ -613,107 +566,131 @@ function CSKHContent() {
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-              {filteredTickets.map((t) => {
-                const isSelected = selectedTicketId === t.id;
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => {
-                      setSelectedTicketId(t.id);
-                      setMobileTab("chat");
-                    }}
-                    className={`p-2.5 cursor-pointer transition-colors ${
-                      isSelected
-                        ? "bg-cyan-50 dark:bg-cyan-950/40 border-l-4 border-cyan-500"
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{t.id}</span>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                        t.priority === "URGENT" 
-                          ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      }`}>
-                        {t.priority === "URGENT" ? "KHẨN CẤP" : "THƯỜNG"}
-                      </span>
+              {filteredTickets.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">
+                  <MessageSquare className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2 opacity-60" />
+                  <p className="font-semibold text-slate-600 dark:text-slate-400">Chưa có cuộc trò chuyện nào</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Hàng chờ sẽ tự động cập nhật khi khách hàng bắt đầu chat từ Mobile App.</p>
+                </div>
+              ) : (
+                filteredTickets.map((t) => {
+                  const isSelected = selectedTicketId === t.id;
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setSelectedTicketId(t.id);
+                        setMobileTab("chat");
+                      }}
+                      className={`p-2.5 cursor-pointer transition-colors ${
+                        isSelected
+                          ? "bg-cyan-50 dark:bg-cyan-950/40 border-l-4 border-cyan-500"
+                          : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[10px] font-bold text-cyan-600 dark:text-cyan-400">{t.id}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
+                          t.priority === "URGENT" 
+                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20" 
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                        }`}>
+                          {t.priority === "URGENT" ? "KHẨN CẤP" : "THƯỜNG"}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-slate-900 dark:text-white text-xs mt-1 truncate">{t.customerName}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{t.subject}</div>
+                      <div className="text-[10px] font-mono text-slate-400 mt-1 flex justify-between">
+                        <span>{t.customerPhone}</span>
+                        <span>{t.createdAt ? t.createdAt.split("T")[0] : ""}</span>
+                      </div>
                     </div>
-                    <div className="font-semibold text-slate-900 dark:text-white text-xs mt-1 truncate">{t.customerName}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">{t.subject}</div>
-                    <div className="text-[10px] font-mono text-slate-400 mt-1 flex justify-between">
-                      <span>{t.customerPhone}</span>
-                      <span>{t.createdAt}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
           {/* Middle Column: Chat Window */}
           <div className="flex-1 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            {/* Chat Header */}
-            <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-2">
-                  <span>{currentTicket.customerName}</span>
-                  <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">{currentTicket.customerPhone}</span>
+            {!currentTicket ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-900/50">
+                <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center mb-3 border border-cyan-500/20 shadow-inner">
+                  <Headphones className="w-7 h-7" />
                 </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 font-mono">
-                  <span>Thiết bị: {currentTicket.hardwareId}</span>
-                  <span>•</span>
-                  <span>{currentTicket.deviceName}</span>
-                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
+                  Chưa Có Cuộc Trò Chuyện Nào Đang Hoạt Động
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
+                  Khi khách hàng nhấn nút <strong>&quot;Bắt đầu cuộc trò chuyện&quot;</strong> trên Austec Mobile App, luồng tin nhắn sẽ tự động kết nối và xuất hiện tại đây theo thời gian thực để CSKH hỗ trợ.
+                </p>
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  Đang đồng bộ Mobile
-                </span>
-              </div>
-            </div>
-
-            {/* Chat Messages Log */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs">
-              {currentTicket.messages.map((m, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col ${m.sender === "CSKH" ? "items-end" : "items-start"}`}
-                >
-                  <div
-                    className={`max-w-[85%] p-2.5 rounded-xl text-xs leading-relaxed ${
-                      m.sender === "CSKH"
-                        ? "bg-cyan-600 text-white rounded-br-none"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none border border-slate-200 dark:border-slate-700/60"
-                    }`}
-                  >
-                    {m.text}
+            ) : (
+              <>
+                {/* Chat Header */}
+                <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
+                  <div>
+                    <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-2">
+                      <span>{currentTicket.customerName}</span>
+                      <span className="font-mono text-[11px] text-cyan-600 dark:text-cyan-400 font-semibold">{currentTicket.customerPhone}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 font-mono">
+                      <span>Thiết bị: {currentTicket.hardwareId}</span>
+                      <span>•</span>
+                      <span>{currentTicket.deviceName}</span>
+                    </div>
                   </div>
-                  <span className="text-[9px] text-slate-400 font-mono mt-0.5 px-1">{m.time}</span>
-                </div>
-              ))}
-            </div>
 
-            {/* Input Bar */}
-            <div className="p-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center gap-2 shrink-0">
-              <input
-                type="text"
-                placeholder="Nhập nội dung phản hồi cho khách hàng..."
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendReply()}
-                className="flex-1 text-xs px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
-              />
-              <button
-                type="button"
-                onClick={handleSendReply}
-                className="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Gửi</span>
-              </button>
-            </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Đang đồng bộ Mobile
+                    </span>
+                  </div>
+                </div>
+
+                {/* Chat Messages Log */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-2.5 text-xs">
+                  {currentTicket.messages.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex flex-col ${m.sender === "CSKH" ? "items-end" : "items-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] p-2.5 rounded-xl text-xs leading-relaxed ${
+                          m.sender === "CSKH"
+                            ? "bg-cyan-600 text-white rounded-br-none"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white rounded-bl-none border border-slate-200 dark:border-slate-700/60"
+                        }`}
+                      >
+                        {m.text}
+                      </div>
+                      <span className="text-[9px] text-slate-400 font-mono mt-0.5 px-1">{m.time}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Input Bar */}
+                <div className="p-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center gap-2 shrink-0">
+                  <input
+                    type="text"
+                    placeholder="Nhập nội dung phản hồi cho khách hàng..."
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendReply()}
+                    className="flex-1 text-xs px-3 py-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendReply}
+                    className="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Gửi</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right Column: Telemetry & Live Diagnostics */}
@@ -725,54 +702,69 @@ function CSKHContent() {
               </span>
             </div>
 
-            <div className="p-3 space-y-2.5 overflow-y-auto flex-1 text-xs">
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5 text-[11px]">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Model:</span>
-                  <span className="font-semibold text-slate-900 dark:text-white">{currentTicket.technicalSnapshot.model}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Firmware:</span>
-                  <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{currentTicket.technicalSnapshot.fwVersion}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Sóng Wi-Fi:</span>
-                  <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
-                    <Wifi className="w-3 h-3" /> {currentTicket.technicalSnapshot.rssi} dBm
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Pin / Nguồn:</span>
-                  <span className="font-mono text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
-                    <Battery className="w-3 h-3" /> {currentTicket.technicalSnapshot.battery}%
-                  </span>
-                </div>
+            {!currentTicket ? (
+              <div className="p-6 text-center text-xs text-slate-400">
+                Chưa có thiết bị kết nối viễn thám
               </div>
+            ) : (
+              <div className="p-3 space-y-2.5 overflow-y-auto flex-1 text-xs">
+                <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-1.5 text-[11px]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Model:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">{currentTicket.technicalSnapshot?.model || "Austec Titadoor A900 Super"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Firmware:</span>
+                    <span className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">{currentTicket.technicalSnapshot?.fwVersion || "v2.4.1"}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Sóng Wi-Fi:</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <Wifi className="w-3 h-3" /> {currentTicket.technicalSnapshot?.rssi ?? -62} dBm
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Pin / Nguồn:</span>
+                    <span className="font-mono text-amber-600 dark:text-amber-400 font-bold flex items-center gap-1">
+                      <Battery className="w-3 h-3" /> {currentTicket.technicalSnapshot?.battery ?? 98}%
+                    </span>
+                  </div>
+                </div>
 
-              {/* Diagnostics Box */}
-              <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-950/10 dark:bg-amber-950/20 space-y-1 text-[11px]">
-                <div className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span>Phát hiện hệ thống:</span>
+                {/* Diagnostics Box */}
+                <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-950/10 dark:bg-amber-950/20 space-y-1 text-[11px]">
+                  <div className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>Phát hiện hệ thống:</span>
+                  </div>
+                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                    {currentTicket.technicalSnapshot?.diagnostics || "Thiết bị hoạt động ổn định. Telemetry trực tuyến."}
+                  </p>
                 </div>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {currentTicket.technicalSnapshot.diagnostics}
-                </p>
-              </div>
 
-              {/* Action Button: Soft Reboot */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleSoftReboot}
-                  disabled={isRebooting}
-                  className="w-full py-2 px-3 rounded-md bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRebooting ? "animate-spin" : ""}`} />
-                  <span>{isRebooting ? "Đang phát lệnh..." : "Phát Lệnh Soft Reboot"}</span>
-                </button>
+                {/* Remote Actions */}
+                <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2">
+                  <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider block">Tác vụ khẩn cấp</span>
+                  <button
+                    type="button"
+                    onClick={handleSoftReboot}
+                    disabled={isRebooting}
+                    className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRebooting ? "animate-spin" : ""}`} />
+                    <span>{isRebooting ? "Đang gửi tín hiệu..." : "Soft Reboot Bo Mạch"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTriggerTelemetry}
+                    className="w-full py-1.5 px-2.5 rounded-md text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    <span>Kéo Telemetry Viễn Thám</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

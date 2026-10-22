@@ -16,6 +16,26 @@ import { ProvisioningService } from './services/provisioning.service.js';
 import { CommandService } from './services/command.service.js';
 import { SupportService } from './services/support.service.js';
 
+export interface UnifiedUser {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: 'ADMIN' | 'CSKH' | 'CUSTOMER';
+  empID?: string;
+  roleTitle?: string;
+  department?: string;
+  company?: string;
+  address?: string;
+  province?: string;
+  password?: string;
+  isActive: boolean;
+  registeredAt: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  devices?: any[];
+}
+
 export function createApp() {
   const app = express();
   app.use(cors());
@@ -44,36 +64,141 @@ export function createApp() {
   let permissionsStore: DeviceMemberPermission[] = [...(migrated.migratedPermissions || [])];
   let requestsStore: CustomerSupportRequest[] = [...(migrated.migratedRequests || [])];
 
-  // In-memory collection Khách hàng đồng bộ Web Admin & Mobile App
-  let customersStore = migrated.migratedCustomers.map((c, idx) => {
-    const addr = c.address || '';
-    const province = addr.includes('Hà Nội') ? 'Hà Nội' 
-      : addr.includes('Đà Nẵng') ? 'Đà Nẵng' 
-      : addr.includes('TP. HCM') || addr.includes('Hồ Chí Minh') ? 'TP. Hồ Chí Minh' 
-      : 'Hà Nội';
-
-    return {
-      id: c.id,
-      fullName: c.fullName,
-      email: c.email,
-      phoneNumber: c.phone,
-      address: addr || 'Chưa cập nhật địa chỉ',
-      province,
+  // CƠ SỞ DỮ LIỆU NGƯỜI DÙNG DUY NHẤT (UNIFIED DATABASE)
+  // Quản trị toàn bộ Cán bộ quản trị (Admin, CSKH) và Khách hàng (User App)
+  let usersStore: UnifiedUser[] = [
+    // 1. CÁN BỘ QUẢN TRỊ (ADMIN & CSKH)
+    {
+      id: 'admin-001',
+      empID: 'AUSTEC001',
+      fullName: 'AUSTEC Super Admin',
+      email: 'austec.admin@gmail.com',
+      phoneNumber: '0912 345 678',
+      company: 'AUSTEC GROUP',
+      department: 'Ban Điều Hành',
+      role: 'ADMIN',
+      roleTitle: 'Administrator',
       password: 'Austec123!@#',
-      isActive: c.isActive,
-      registeredAt: c.createdAt ? c.createdAt.split('T')[0] : '2026-09-01',
-      devices: [
-        {
-          hardwareId: `AT-DOOR-88239A0${(idx % 4) + 1}`,
-          modelName: 'Austec Titadoor A900 Super',
-          deviceType: 'Cửa cuốn',
-          pairedAt: '2026-09-01 10:00',
-          warrantyUntil: '2028-09-01',
-          isOnline: true,
-          roleInHome: 'OWNER'
-        }
-      ]
-    };
+      isActive: true,
+      registeredAt: '2026-01-01',
+      updatedAt: '2026-10-18',
+      updatedBy: 'System',
+    },
+    {
+      id: 'admin-002',
+      empID: 'AUSTEC002',
+      fullName: 'Trần Minh Quang',
+      email: 'quang.tm@austec.vn',
+      phoneNumber: '0988 776 655',
+      company: 'AUSTEC',
+      department: 'Phòng Kỹ Thuật IoT',
+      role: 'ADMIN',
+      roleTitle: 'Device Admin',
+      password: 'Austec123!@#',
+      isActive: true,
+      registeredAt: '2026-01-10',
+      updatedAt: '2026-10-16',
+      updatedBy: 'austec.admin@gmail.com',
+    },
+    {
+      id: 'cskh-001',
+      empID: 'HOANGCONG001',
+      fullName: 'Công ty Hoàng Công - CSKH',
+      email: 'luan.pham.264.95@gmail.com',
+      phoneNumber: '0905 123 456',
+      company: 'Hoàng Công Partner',
+      department: 'Bộ Phận Vận Hành',
+      role: 'CSKH',
+      roleTitle: 'Support Agent',
+      password: 'Austec123!@#',
+      isActive: true,
+      registeredAt: '2026-02-01',
+      updatedAt: '2026-10-12',
+      updatedBy: 'rent.vehicle@gmail.com',
+    },
+    {
+      id: 'cskh-002',
+      empID: 'AUSTEC005',
+      fullName: 'Nguyễn Thu Hà',
+      email: 'ha.nt@austec.vn',
+      phoneNumber: '0944 889 900',
+      company: 'AUSTEC',
+      department: 'Chăm Sóc Khách Hàng',
+      role: 'CSKH',
+      roleTitle: 'CSKH Support',
+      password: 'Austec123!@#',
+      isActive: true,
+      registeredAt: '2026-03-01',
+      updatedAt: '2026-10-10',
+      updatedBy: 'austec.admin@gmail.com',
+    },
+    {
+      id: 'cskh-003',
+      empID: 'AUSTEC006',
+      fullName: 'Đặng Văn Hùng',
+      email: 'hung.dv@austec.vn',
+      phoneNumber: '0912 888 777',
+      company: 'AUSTEC',
+      department: 'Kho Vận & Logistics',
+      role: 'CSKH',
+      roleTitle: 'Kỹ Thuật Kho',
+      password: 'Austec123!@#',
+      isActive: true,
+      registeredAt: '2026-04-01',
+      updatedAt: '2026-10-08',
+      updatedBy: 'austec.admin@gmail.com',
+    },
+
+    // 2. KHÁCH HÀNG (CUSTOMER / USER APP)
+    ...migrated.migratedCustomers.map((c, idx) => {
+      const addr = c.address || '';
+      const province = addr.includes('Hà Nội') ? 'Hà Nội' 
+        : addr.includes('Đà Nẵng') ? 'Đà Nẵng' 
+        : addr.includes('TP. HCM') || addr.includes('Hồ Chí Minh') ? 'TP. Hồ Chí Minh' 
+        : 'Hà Nội';
+
+      return {
+        id: c.id,
+        fullName: c.fullName,
+        email: c.email,
+        phoneNumber: c.phone,
+        address: addr || 'Chưa cập nhật địa chỉ',
+        province,
+        role: 'CUSTOMER' as const,
+        roleTitle: 'Khách hàng',
+        password: 'Austec123!@#',
+        isActive: c.isActive,
+        registeredAt: c.createdAt ? c.createdAt.split('T')[0] : '2026-09-01',
+        devices: [
+          {
+            hardwareId: `AT-DOOR-88239A0${(idx % 4) + 1}`,
+            modelName: 'Austec Titadoor A900 Super',
+            deviceType: 'Cửa cuốn',
+            pairedAt: '2026-09-01 10:00',
+            warrantyUntil: '2028-09-01',
+            isOnline: true,
+            roleInHome: 'OWNER'
+          }
+        ]
+      };
+    })
+  ];
+
+  // Khai báo getter động để các luồng cũ đọc danh sách khách hàng tự động đồng bộ 100%
+  const getCustomers = () => usersStore.filter(u => u.role === 'CUSTOMER');
+  const getStaff = () => usersStore.filter(u => u.role === 'ADMIN' || u.role === 'CSKH');
+  let customersStore = new Proxy([] as any[], {
+    get(target, prop, receiver) {
+      const list = getCustomers();
+      if (prop === 'length') return list.length;
+      if (typeof prop === 'string' && !isNaN(Number(prop))) return list[Number(prop)];
+      const val = (list as any)[prop];
+      if (typeof val === 'function') return val.bind(list);
+      return Reflect.get(target, prop, receiver);
+    },
+    set(target, prop, value, receiver) {
+      return Reflect.set(target, prop, value, receiver);
+    }
   });
 
   // Nạp trạng thái ban đầu của các thiết bị vào Hot Cache
@@ -90,55 +215,61 @@ export function createApp() {
   // ==========================================
   // ROUTE: XÁC THỰC (AUTHENTICATION & REGISTRATION)
   // ==========================================
-  // Đăng nhập hỗ trợ cả Email, SĐT và Mật khẩu (cho Web Admin & Mobile App)
+  // ==========================================
+  // ROUTE: XÁC THỰC (AUTHENTICATION & REGISTRATION TRÊN UNIFIED DB)
+  // ==========================================
+  // Đăng nhập hỗ trợ cả Email, SĐT, Mã nhân viên empID và Mật khẩu (cho Admin, CSKH & Mobile App)
   app.post('/api/auth/login', (req, res) => {
     const { identifier, email, phone, phoneNumber, password, role } = req.body;
     const targetInput = (identifier || email || phone || phoneNumber || '').trim().toLowerCase();
-    const targetRole = role || 'CUSTOMER';
+    const cleanPhone = targetInput.replace(/[\s.-]/g, '');
 
-    if (targetRole === 'ADMIN' || targetInput.includes('admin')) {
-      const user = { id: 'admin-001', email: 'austec.admin@gmail.com', role: 'ADMIN', fullName: 'Hệ Thống Quản Trị Austec' };
-      const token = AuthService.signToken(user as any);
-      return res.json({ success: true, token, user });
+    // Tìm kiếm trong Unified usersStore (hỗ trợ cả Admin, CSKH, Customer qua email, phone, empID)
+    let userRecord = usersStore.find(u => 
+      (u.email && u.email.toLowerCase() === targetInput) || 
+      (u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone) ||
+      (u.empID && u.empID.toLowerCase() === targetInput)
+    );
+
+    // Fallback nếu targetRole chỉ định hoặc demo shortcut
+    if (!userRecord) {
+      if (role === 'ADMIN' || targetInput.includes('admin')) {
+        userRecord = usersStore.find(u => u.role === 'ADMIN');
+      } else if (role === 'CSKH' || targetInput.includes('cskh')) {
+        userRecord = usersStore.find(u => u.role === 'CSKH');
+      } else if (targetInput === '') {
+        userRecord = usersStore.find(u => u.role === 'CUSTOMER');
+      }
     }
 
-    if (targetRole === 'CSKH' || targetInput.includes('cskh')) {
-      const user = { id: 'cskh-001', email: 'cskh@austec.vn', role: 'CSKH', fullName: 'Nhân Viên Hỗ Trợ Kỹ Thuật' };
-      const token = AuthService.signToken(user as any);
-      return res.json({ success: true, token, user });
-    }
-
-    // Tìm kiếm khách hàng theo email hoặc số điện thoại
-    const cust = customersStore.find(c => 
-      c.email.toLowerCase() === targetInput || 
-      c.phoneNumber.replace(/[\s.-]/g, '') === targetInput.replace(/[\s.-]/g, '')
-    ) || (targetInput === '' ? customersStore[0] : null);
-
-    if (!cust) {
+    if (!userRecord) {
       return res.status(401).json({ success: false, error: 'Tài khoản không tồn tại trên hệ thống' });
     }
 
-    if (!cust.isActive) {
-      return res.status(403).json({ success: false, error: 'Tài khoản này đang bị tạm khóa. Vui lòng liên hệ CSKH Austec.' });
+    if (!userRecord.isActive) {
+      return res.status(403).json({ success: false, error: 'Tài khoản này đang bị tạm khóa. Vui lòng liên hệ quản trị viên.' });
     }
 
     // Kiểm tra mật khẩu (nếu user gửi mật khẩu và không phải demo auto)
-    if (password && cust.password && password !== cust.password && password !== '123456' && password !== 'Austec123!@#') {
+    if (password && userRecord.password && password !== userRecord.password && password !== '123456' && password !== 'Austec123!@#') {
       return res.status(401).json({ success: false, error: 'Mật khẩu không chính xác' });
     }
 
-    const user = {
-      id: cust.id,
-      email: cust.email,
-      phoneNumber: cust.phoneNumber,
-      role: 'CUSTOMER',
-      fullName: cust.fullName,
-      address: cust.address,
-      province: cust.province,
+    const payload = {
+      id: userRecord.id,
+      email: userRecord.email,
+      phoneNumber: userRecord.phoneNumber,
+      role: userRecord.role,
+      fullName: userRecord.fullName,
+      address: userRecord.address,
+      province: userRecord.province,
+      company: userRecord.company,
+      department: userRecord.department,
+      empID: userRecord.empID,
     };
 
-    const token = AuthService.signToken(user as any);
-    res.json({ success: true, token, user, message: 'Đăng nhập thành công!' });
+    const token = AuthService.signToken(payload as any);
+    res.json({ success: true, token, user: payload, message: 'Đăng nhập thành công!' });
   });
 
   // Đăng ký tài khoản người dùng mới (Dành cho Mobile App)
@@ -152,10 +283,10 @@ export function createApp() {
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanPhone = (phoneNumber || '').trim().replace(/[\s.-]/g, '');
 
-    // Kiểm tra trùng lặp
-    const existing = customersStore.find(c => 
-      (cleanEmail && c.email.toLowerCase() === cleanEmail) || 
-      (cleanPhone && c.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
+    // Kiểm tra trùng lặp trên toàn bộ usersStore
+    const existing = usersStore.find(u => 
+      (cleanEmail && u.email.toLowerCase() === cleanEmail) || 
+      (cleanPhone && u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
     );
 
     if (existing) {
@@ -163,13 +294,15 @@ export function createApp() {
     }
 
     const newId = `USR-${Date.now().toString().slice(-6)}`;
-    const newCust = {
+    const newCust: UnifiedUser = {
       id: newId,
       fullName: fullName.trim(),
       email: cleanEmail || `${cleanPhone}@austec.mobile`,
       phoneNumber: phoneNumber ? phoneNumber.trim() : cleanPhone,
       address: address ? address.trim() : 'Chưa cập nhật địa chỉ',
       province: province || 'Hà Nội',
+      role: 'CUSTOMER',
+      roleTitle: 'Khách hàng',
       password: password || 'Austec123!@#',
       isActive: true,
       registeredAt: new Date().toISOString().split('T')[0],
@@ -186,12 +319,12 @@ export function createApp() {
       ]
     };
 
-    customersStore.unshift(newCust);
+    usersStore.unshift(newCust);
 
     // Tự động phân quyền chủ sở hữu cho thiết bị mặc định
     permissionsStore.push({
       id: `PERM-${newId}-OWNER`,
-      hardwareId: newCust.devices[0].hardwareId,
+      hardwareId: newCust.devices![0].hardwareId,
       userId: newCust.id,
       memberName: `${newCust.fullName} (Chủ hộ)`,
       phoneNumber: newCust.phoneNumber,
@@ -207,7 +340,7 @@ export function createApp() {
       createdAt: new Date().toISOString(),
     });
 
-    const user = {
+    const userPayload = {
       id: newCust.id,
       email: newCust.email,
       phoneNumber: newCust.phoneNumber,
@@ -217,23 +350,131 @@ export function createApp() {
       province: newCust.province,
     };
 
-    const token = AuthService.signToken(user as any);
+    const token = AuthService.signToken(userPayload as any);
     res.json({
       success: true,
       token,
-      user,
+      user: userPayload,
       message: 'Đăng ký tài khoản Austec Smart Home thành công!'
     });
   });
 
-  // Admin: Lấy danh sách khách hàng đầy đủ
+  // ==========================================
+  // ROUTE: QUẢN TRỊ CÁN BỘ (ADMIN & CSKH) TRÊN UNIFIED DB
+  // ==========================================
+  app.get('/api/admin/staff', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
+    const staff = getStaff().map((u, idx) => ({
+      id: u.id,
+      empID: u.empID || `AUSTEC${String(idx + 1).padStart(3, '0')}`,
+      name: u.fullName,
+      fullName: u.fullName,
+      email: u.email,
+      phone: u.phoneNumber,
+      phoneNumber: u.phoneNumber,
+      company: u.company || 'AUSTEC GROUP',
+      department: u.department || 'Ban Điều Hành',
+      role: u.roleTitle || (u.role === 'ADMIN' ? 'Administrator' : 'CSKH Support'),
+      systemRole: u.role,
+      isActive: u.isActive,
+      updatedBy: u.updatedBy || 'System',
+      updatedAt: u.updatedAt || u.registeredAt,
+    }));
+    res.json({ success: true, staff });
+  });
+
+  app.post('/api/admin/staff', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req: AuthenticatedRequest, res) => {
+    const { name, fullName, email, phone, phoneNumber, company, department, role, systemRole, password } = req.body;
+    const cleanName = (fullName || name || '').trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPhone = (phoneNumber || phone || '').trim();
+
+    if (!cleanName || !cleanEmail) {
+      return res.status(400).json({ success: false, error: 'Họ tên và Email không được để trống' });
+    }
+
+    const existing = usersStore.find(u => u.email.toLowerCase() === cleanEmail);
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'Email này đã tồn tại trong hệ thống' });
+    }
+
+    const roleUpper = (systemRole || role || '').toString().toUpperCase();
+    const actualRole: 'ADMIN' | 'CSKH' = (roleUpper.includes('ADMIN') || roleUpper === 'ADMINISTRATOR' || roleUpper === 'DEVICE ADMIN') ? 'ADMIN' : 'CSKH';
+    const staffCount = getStaff().length + 1;
+    const newEmpId = `AUSTEC${String(staffCount).padStart(3, '0')}`;
+
+    const newStaff: UnifiedUser = {
+      id: `staff-${Date.now()}`,
+      empID: newEmpId,
+      fullName: cleanName,
+      email: cleanEmail,
+      phoneNumber: cleanPhone || '0900000000',
+      company: company || 'AUSTEC',
+      department: department || (actualRole === 'ADMIN' ? 'Phòng Kỹ Thuật IoT' : 'Chăm Sóc Khách Hàng'),
+      role: actualRole,
+      roleTitle: role || (actualRole === 'ADMIN' ? 'Administrator' : 'CSKH Support'),
+      password: password || 'Austec123!@#',
+      isActive: true,
+      registeredAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
+      updatedBy: req.user?.email || 'austec.admin@gmail.com',
+    };
+
+    usersStore.unshift(newStaff);
+    res.json({ success: true, staff: newStaff, message: 'Thêm cán bộ quản trị thành công!' });
+  });
+
+  app.put('/api/admin/staff/:id', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req: AuthenticatedRequest, res) => {
+    const { id } = req.params;
+    const staff = usersStore.find(u => (u.id === id || u.empID === id) && u.role !== 'CUSTOMER');
+    if (!staff) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy cán bộ quản trị' });
+    }
+
+    const { name, fullName, email, phone, phoneNumber, company, department, role, systemRole, password } = req.body;
+    if (fullName || name) staff.fullName = (fullName || name).trim();
+    if (email) staff.email = email.trim().toLowerCase();
+    if (phone || phoneNumber) staff.phoneNumber = (phoneNumber || phone).trim();
+    if (company) staff.company = company;
+    if (department) staff.department = department;
+    if (role) staff.roleTitle = role;
+    if (systemRole) staff.role = systemRole;
+    if (password) staff.password = password;
+    staff.updatedAt = new Date().toISOString().split('T')[0];
+    staff.updatedBy = req.user?.email || 'austec.admin@gmail.com';
+
+    res.json({ success: true, staff, message: 'Cập nhật cán bộ thành công!' });
+  });
+
+  app.delete('/api/admin/staff/:id', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req, res) => {
+    const { id } = req.params;
+    const idx = usersStore.findIndex(u => (u.id === id || u.empID === id) && u.role !== 'CUSTOMER');
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy cán bộ' });
+    }
+    usersStore.splice(idx, 1);
+    res.json({ success: true, message: 'Đã xóa cán bộ khỏi hệ thống!' });
+  });
+
+  app.put('/api/admin/staff/:id/status', AuthService.authenticate, AuthService.requireRole(['ADMIN']), (req, res) => {
+    const { id } = req.params;
+    const staff = usersStore.find(u => (u.id === id || u.empID === id) && u.role !== 'CUSTOMER');
+    if (!staff) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy cán bộ' });
+    }
+    staff.isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : !staff.isActive;
+    staff.updatedAt = new Date().toISOString().split('T')[0];
+    res.json({ success: true, staff, message: `Tài khoản cán bộ hiện đang ở trạng thái: ${staff.isActive ? 'Hoạt động' : 'Tạm khóa'}` });
+  });
+
+  // ==========================================
+  // ROUTE: QUẢN TRỊ KHÁCH HÀNG (CUSTOMER) TRÊN UNIFIED DB
+  // ==========================================
   const handleGetCustomers = (req: any, res: any) => {
-    res.json({ success: true, customers: customersStore });
+    res.json({ success: true, customers: getCustomers() });
   };
   app.get('/api/admin/customers', handleGetCustomers);
   app.get('/api/customers', handleGetCustomers);
 
-  // Admin: Tạo tài khoản khách hàng mới từ Web Admin (/customers?tab=accounts)
   const handlePostCustomer = (req: AuthenticatedRequest, res: any) => {
     const { fullName, phoneNumber, email, password, address, province, isActive, initialHardwareId } = req.body;
 
@@ -244,9 +485,9 @@ export function createApp() {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPhone = phoneNumber.trim().replace(/[\s.-]/g, '');
 
-    const existing = customersStore.find(c => 
-      c.email.toLowerCase() === cleanEmail || 
-      c.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone
+    const existing = usersStore.find(u => 
+      u.email.toLowerCase() === cleanEmail || 
+      u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone
     );
 
     if (existing) {
@@ -256,13 +497,15 @@ export function createApp() {
     const newId = `USR-${Date.now().toString().slice(-6)}`;
     const hwId = initialHardwareId || `AT-DOOR-${newId}`;
 
-    const newCust = {
+    const newCust: UnifiedUser = {
       id: newId,
       fullName: fullName.trim(),
       email: cleanEmail,
       phoneNumber: phoneNumber.trim(),
       address: address ? address.trim() : 'Địa chỉ đang cập nhật',
       province: province || 'Hà Nội',
+      role: 'CUSTOMER',
+      roleTitle: 'Khách hàng',
       password: password || 'Austec123!@#',
       isActive: isActive !== false,
       registeredAt: new Date().toISOString().split('T')[0],
@@ -279,7 +522,7 @@ export function createApp() {
       ]
     };
 
-    customersStore.unshift(newCust);
+    usersStore.unshift(newCust);
 
     // Cấp quyền chủ sở hữu
     permissionsStore.push({
@@ -309,10 +552,9 @@ export function createApp() {
   app.post('/api/admin/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), handlePostCustomer);
   app.post('/api/customers', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), handlePostCustomer);
 
-  // Admin: Cập nhật trạng thái khóa/mở khóa tài khoản khách hàng
   app.put('/api/admin/customers/:id/status', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
     const id = req.params.id;
-    const cust = customersStore.find(c => c.id === id);
+    const cust = usersStore.find(u => u.id === id && u.role === 'CUSTOMER');
     if (!cust) {
       return res.status(404).json({ success: false, error: 'Không tìm thấy khách hàng' });
     }
@@ -360,7 +602,7 @@ export function createApp() {
     if (devices.length === 0) {
       const cust = customersStore.find(c => c.id === req.user!.id);
       if (cust && cust.devices && cust.devices.length > 0) {
-        devices = cust.devices.map(d => ({
+        devices = cust.devices.map((d: any) => ({
           hardwareId: d.hardwareId,
           macAddress: 'FC:F5:C4:88:23:91',
           customName: d.modelName,
@@ -860,41 +1102,115 @@ export function createApp() {
   // ==========================================
   // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC
   // ==========================================
+  // ==========================================
+  // ROUTE: CSKH HUB & LIVE CHAT 1-1 THỜI GIAN THỰC (ĐÚNG NGƯỜI - ĐÚNG CUỘC TRÒ CHUYỆN)
+  // ==========================================
+  // Lấy danh sách các cuộc trò chuyện đang hoạt động cho Web Admin
   app.get('/api/cskh/tickets', AuthService.authenticate, AuthService.requireRole(['ADMIN', 'CSKH']), (req, res) => {
-    res.json({ success: true, tickets: supportService.getAllOpenTickets() });
+    const rawTickets = supportService.getAllOpenTickets();
+    const tickets = rawTickets.map(t => {
+      const customer = usersStore.find(u => u.id === t.customerId);
+      const msgs = supportService.getMessagesByTicket(t.id);
+      const lastMsg = msgs.length > 0 ? msgs[msgs.length - 1] : null;
+
+      const formattedMessages = msgs.map(m => {
+        const d = new Date(m.createdAt);
+        const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return {
+          id: m.id,
+          ticketId: m.ticketId,
+          sender: m.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
+          senderRole: m.senderRole,
+          text: m.message,
+          message: m.message,
+          time: timeStr,
+          createdAt: m.createdAt,
+          hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
+          deviceSnapshot: m.deviceSnapshot,
+        };
+      });
+
+      return {
+        id: t.id,
+        customerId: t.customerId,
+        customerName: customer?.fullName || t.subject.replace('Kênh hỗ trợ 1-1 cho khách hàng ', '') || 'Khách hàng Austec',
+        customerPhone: customer?.phoneNumber || '---',
+        customerEmail: customer?.email || '',
+        hardwareId: t.hardwareId || 'AT-DOOR-88239A01',
+        deviceName: customer?.devices?.[0]?.modelName || 'Cửa cuốn Austec Titadoor A900 Super',
+        subject: t.subject,
+        status: t.status,
+        priority: t.priority,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        messages: formattedMessages,
+        lastMessage: lastMsg ? {
+          text: lastMsg.message,
+          sender: lastMsg.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
+          time: new Date(lastMsg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        } : undefined,
+        technicalSnapshot: {
+          model: customer?.devices?.[0]?.modelName || "Austec Titadoor A900 Super",
+          fwVersion: "v2.4.1",
+          rssi: -62,
+          battery: 98,
+          isOnline: true,
+          lastHeartbeat: "3 giây trước",
+          diagnostics: "Thiết bị hoạt động ổn định. Telemetry trực tuyến.",
+        }
+      };
+    });
+
+    res.json({ success: true, tickets });
   });
 
-  // Lấy hoặc khởi tạo ticket trò chuyện 1-1 cho khách hàng/thiết bị
+  // Lấy cuộc trò chuyện của đúng khách hàng đang truy cập (chỉ trả về tin nhắn nếu ĐÃ bắt đầu)
   app.get('/api/cskh/active-chat', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
     let customerId = req.query.customerId as string | undefined;
     const ticketId = req.query.ticketId as string | undefined;
-    const hardwareId = req.query.hardwareId as string | undefined;
 
     let ticket: any;
     if (ticketId) {
-      ticket = supportService.getAllOpenTickets().find(t => t.id === ticketId);
+      ticket = supportService.getTicketById(ticketId);
+      // Nếu là khách hàng thường, không cho phép đọc trộm ticket của khách hàng khác
+      if (ticket && req.user?.role === 'CUSTOMER' && customerId && ticket.customerId !== customerId) {
+        ticket = undefined;
+      }
     }
 
+    const targetCustomerId = customerId || req.user?.id;
+
+    if (!ticket && targetCustomerId) {
+      ticket = supportService.findActiveCustomerTicket(targetCustomerId);
+    }
+
+    // Nếu là Admin/CSKH truy cập tổng quan mà không truyền customerId hay ticketId: lấy ticket mới nhất
+    if (!ticket && !targetCustomerId && (req.user?.role === 'ADMIN' || req.user?.role === 'CSKH')) {
+      const allOpen = supportService.getAllOpenTickets();
+      if (allOpen.length > 0) {
+        ticket = allOpen[allOpen.length - 1];
+      }
+    }
+
+    // Nếu chưa có ticket hoặc chưa bắt đầu cuộc trò chuyện
     if (!ticket) {
-      if (!customerId) {
-        if (req.user?.role === 'CUSTOMER') {
-          customerId = req.user.id;
-        } else {
-          // Admin/CSKH: Tìm ticket mở gần nhất của khách hàng đang chat
-          const allOpen = supportService.getAllOpenTickets();
-          if (allOpen.length > 0) {
-            ticket = allOpen[allOpen.length - 1];
-          } else {
-            customerId = '00000000-0000-0000-0000-000000000001';
-          }
-        }
-      }
-      if (!ticket && customerId) {
-        ticket = supportService.getOrCreateCustomerTicket(customerId, hardwareId);
-      }
+      return res.json({
+        success: true,
+        hasActiveConversation: false,
+        ticket: null,
+        messages: []
+      });
     }
 
-    const rawMessages = ticket ? supportService.getMessagesByTicket(ticket.id) : [];
+    const rawMessages = supportService.getMessagesByTicket(ticket.id);
+    if (rawMessages.length === 0) {
+      return res.json({
+        success: true,
+        hasActiveConversation: false,
+        ticket,
+        messages: []
+      });
+    }
 
     // Chuẩn hóa định dạng tin nhắn cho cả Web Admin và Mobile App
     const messages = rawMessages.map(m => {
@@ -915,35 +1231,67 @@ export function createApp() {
       };
     });
 
-    res.json({ success: true, ticket, messages });
+    res.json({ success: true, hasActiveConversation: true, ticket, messages });
   });
 
+  // KHỞI TẠO CUỘC TRÒ CHUYỆN LẦN ĐẦU TỪ MOBILE (GỬI LỜI CHÀO & TỰ ĐỘNG PHẢN HỒI)
+  app.post('/api/cskh/conversations/start', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
+    const { customerId, customerName, hardwareId, message } = req.body;
+    const targetCustomerId = customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
+    const targetUser = usersStore.find(u => u.id === targetCustomerId);
+    const actualName = customerName || targetUser?.fullName || req.user?.fullName || 'Khách Hàng Austec';
+    const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
+    const actualHwId = hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
+
+    const result = await supportService.startConversation({
+      customerId: targetCustomerId,
+      customerName: actualName,
+      hardwareId: actualHwId,
+      message: actualMsg,
+    });
+
+    const formattedMessages = result.messages.map(m => {
+      const d = new Date(m.createdAt);
+      const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      const isCSKH = m.senderRole === 'CSKH';
+      return {
+        id: m.id,
+        ticketId: m.ticketId,
+        sender: isCSKH ? 'CSKH' : 'user',
+        senderRole: m.senderRole,
+        text: m.message,
+        message: m.message,
+        time: timeStr,
+        createdAt: m.createdAt,
+      };
+    });
+
+    res.json({
+      success: true,
+      hasActiveConversation: true,
+      ticket: result.ticket,
+      messages: formattedMessages
+    });
+  });
+
+  // GỬI TIN NHẮN TIẾP THEO TRONG CUỘC TRÒ CHUYỆN
   app.post('/api/cskh/active-chat/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
     const { message, text, attachmentUrls, customerId, hardwareId, sender, ticketId } = req.body;
     
     let ticket: any;
     if (ticketId) {
-      ticket = supportService.getAllOpenTickets().find(t => t.id === ticketId);
+      ticket = supportService.getTicketById(ticketId);
     }
 
+    const targetCustomerId = customerId || req.user?.id;
+    if (!ticket && targetCustomerId) {
+      ticket = supportService.findActiveCustomerTicket(targetCustomerId);
+    }
+
+    // Nếu vẫn chưa có ticket: tự tạo cho đúng khách hàng
     if (!ticket) {
-      let targetCustomerId = customerId;
-      if (!targetCustomerId) {
-        if (req.user?.role === 'CUSTOMER') {
-          targetCustomerId = req.user.id;
-        } else {
-          // Nếu Admin gửi không kèm ID khách, gắn vào ticket mở gần nhất của khách hàng
-          const allOpen = supportService.getAllOpenTickets();
-          if (allOpen.length > 0) {
-            ticket = allOpen[allOpen.length - 1];
-          } else {
-            targetCustomerId = '00000000-0000-0000-0000-000000000001';
-          }
-        }
-      }
-      if (!ticket && targetCustomerId) {
-        ticket = supportService.getOrCreateCustomerTicket(targetCustomerId, hardwareId);
-      }
+      const finalCustId = targetCustomerId || '00000000-0000-0000-0000-000000000001';
+      ticket = supportService.getOrCreateCustomerTicket(finalCustId, hardwareId);
     }
 
     const actualMessage = (message || text || '').toString().trim();
@@ -978,6 +1326,48 @@ export function createApp() {
     };
 
     res.json({ success: true, message: formattedMsg, ticketId: ticket.id });
+  });
+
+  app.post('/api/cskh/tickets/:id/messages', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
+    const ticketId = String(req.params.id);
+    const ticket = supportService.getTicketById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy cuộc trò chuyện' });
+    }
+
+    const { message, text, attachmentUrls, sender } = req.body;
+    const actualMessage = (message || text || '').toString().trim();
+    if (!actualMessage) {
+      return res.status(400).json({ success: false, error: 'Tin nhắn không được để trống' });
+    }
+
+    const isCSKH = sender === 'CSKH' || req.user?.role === 'CSKH' || req.user?.role === 'ADMIN';
+    const senderRole = isCSKH ? 'CSKH' : 'CUSTOMER';
+
+    const msg = await supportService.sendMessage({
+      ticketId: ticket.id,
+      senderId: req.user?.id || (isCSKH ? 'cskh-001' : ticket.customerId),
+      senderRole,
+      message: actualMessage,
+      attachmentUrls,
+    });
+
+    const d = new Date(msg.createdAt);
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+    res.json({
+      success: true,
+      message: {
+        id: msg.id,
+        ticketId: msg.ticketId,
+        sender: isCSKH ? 'CSKH' : 'user',
+        senderRole,
+        text: msg.message,
+        message: msg.message,
+        time: timeStr,
+        createdAt: msg.createdAt,
+      }
+    });
   });
 
   app.post('/api/cskh/tickets', AuthService.authenticate, (req: AuthenticatedRequest, res) => {

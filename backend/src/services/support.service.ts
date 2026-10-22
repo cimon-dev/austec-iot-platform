@@ -78,8 +78,20 @@ export class SupportService {
     return msg;
   }
 
+  public getTicketById(ticketId: string): SupportTicket | undefined {
+    return this.tickets.get(ticketId);
+  }
+
+  public findActiveCustomerTicket(customerId: string): SupportTicket | undefined {
+    return this.getTicketsByCustomer(customerId).find(t => t.status !== 'CLOSED');
+  }
+
+  public hasActiveMessages(ticketId: string): boolean {
+    return this.messages.some(m => m.ticketId === ticketId);
+  }
+
   public getOrCreateCustomerTicket(customerId: string, hardwareId?: string): SupportTicket {
-    const existing = this.getTicketsByCustomer(customerId).find(t => t.status !== 'CLOSED');
+    const existing = this.findActiveCustomerTicket(customerId);
     if (existing) {
       if (hardwareId && !existing.hardwareId) {
         existing.hardwareId = hardwareId;
@@ -93,6 +105,45 @@ export class SupportService {
       subject: `Kênh hỗ trợ trực tiếp cho khách hàng`,
       priority: 'NORMAL',
     });
+  }
+
+  public async startConversation(data: {
+    customerId: string;
+    customerName?: string;
+    hardwareId?: string;
+    message: string;
+  }): Promise<{ ticket: SupportTicket; messages: LiveChatMessage[] }> {
+    let ticket = this.findActiveCustomerTicket(data.customerId);
+    if (!ticket) {
+      ticket = this.createTicket({
+        customerId: data.customerId,
+        hardwareId: data.hardwareId || 'AT-DOOR-88239A01',
+        subject: `Kênh hỗ trợ 1-1 cho khách hàng ${data.customerName || data.customerId}`,
+        priority: 'NORMAL',
+      });
+    }
+
+    // 1. Tin nhắn khởi tạo từ khách hàng
+    const userMsg = await this.sendMessage({
+      ticketId: ticket.id,
+      senderId: data.customerId,
+      senderRole: 'CUSTOMER',
+      message: data.message,
+    });
+
+    // 2. Phản hồi chào mừng tức thì từ CSKH Austec
+    const greetingName = data.customerName ? `anh/chị ${data.customerName}` : 'Quý khách';
+    const cskhWelcomeMsg = await this.sendMessage({
+      ticketId: ticket.id,
+      senderId: 'cskh-001',
+      senderRole: 'CSKH',
+      message: `Dạ em chào ${greetingName}! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và kết nối từ xa với thiết bị của anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?`,
+    });
+
+    return {
+      ticket,
+      messages: this.getMessagesByTicket(ticket.id),
+    };
   }
 
   public getMessagesByTicket(ticketId: string): LiveChatMessage[] {

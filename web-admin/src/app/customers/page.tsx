@@ -1124,7 +1124,7 @@ function CustomersPageContent() {
               <div className="p-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/40">
                 <div className="min-w-0">
                   <div className="text-[10px] text-purple-600 dark:text-purple-400 font-mono tracking-wider uppercase font-bold">
-                    Hồ Sơ Khách Hàng App
+                    Hồ Sơ Khách Hàng
                   </div>
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate">{viewCustomer.fullName}</h2>
                 </div>

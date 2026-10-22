@@ -22,21 +22,25 @@ import { AccessDenied } from "../../../components/AccessDenied";
 import { Pagination } from "@/components/Pagination";
 
 interface AdminUser {
-  id: number;
+  id: string | number;
   empID: string;
   name: string;
+  fullName?: string;
   email: string;
   company: string;
   department: string;
   phone: string;
+  phoneNumber?: string;
   role: string;
+  systemRole?: string;
+  isActive?: boolean;
   updatedBy: string;
   updatedAt: string;
 }
 
 const INITIAL_ADMINS: AdminUser[] = [
   {
-    id: 1,
+    id: "admin-001",
     empID: "AUSTEC001",
     name: "AUSTEC Super Admin",
     email: "austec.admin@gmail.com",
@@ -48,7 +52,7 @@ const INITIAL_ADMINS: AdminUser[] = [
     updatedAt: "18/10/2026"
   },
   {
-    id: 2,
+    id: "admin-002",
     empID: "AUSTEC002",
     name: "Trần Minh Quang",
     email: "quang.tm@austec.vn",
@@ -60,7 +64,7 @@ const INITIAL_ADMINS: AdminUser[] = [
     updatedAt: "16/10/2026"
   },
   {
-    id: 3,
+    id: "cskh-001",
     empID: "HOANGCONG001",
     name: "Công ty Hoàng Công - CSKH",
     email: "luan.pham.264.95@gmail.com",
@@ -72,7 +76,7 @@ const INITIAL_ADMINS: AdminUser[] = [
     updatedAt: "12/10/2026"
   },
   {
-    id: 4,
+    id: "cskh-002",
     empID: "AUSTEC005",
     name: "Nguyễn Thu Hà",
     email: "ha.nt@austec.vn",
@@ -84,7 +88,7 @@ const INITIAL_ADMINS: AdminUser[] = [
     updatedAt: "10/10/2026"
   },
   {
-    id: 5,
+    id: "cskh-003",
     empID: "AUSTEC006",
     name: "Đặng Văn Hùng",
     email: "hung.dv@austec.vn",
@@ -94,66 +98,6 @@ const INITIAL_ADMINS: AdminUser[] = [
     role: "Kỹ Thuật Kho",
     updatedBy: "austec.admin@gmail.com",
     updatedAt: "08/10/2026"
-  },
-  {
-    id: 6,
-    empID: "AUSTEC007",
-    name: "Lê Kim Oanh",
-    email: "oanh.lk@austec.vn",
-    company: "AUSTEC",
-    department: "Tài Chính & Kế Toán",
-    phone: "0934 112 233",
-    role: "Administrator",
-    updatedBy: "austec.admin@gmail.com",
-    updatedAt: "05/10/2026"
-  },
-  {
-    id: 7,
-    empID: "AUSTEC008",
-    name: "Phạm Đức Nam",
-    email: "nam.pd@austec.vn",
-    company: "AUSTEC",
-    department: "Phòng Bảo Hành & Kỹ Thuật",
-    phone: "0978 990 011",
-    role: "Device Admin",
-    updatedBy: "austec.admin@gmail.com",
-    updatedAt: "04/10/2026"
-  },
-  {
-    id: 8,
-    empID: "AUSTEC009",
-    name: "Vũ Thúy Hằng",
-    email: "hang.vt@austec.vn",
-    company: "AUSTEC",
-    department: "Quản Lý Chất Lượng QA",
-    phone: "0966 334 455",
-    role: "Support Agent",
-    updatedBy: "austec.admin@gmail.com",
-    updatedAt: "02/10/2026"
-  },
-  {
-    id: 9,
-    empID: "HOANGCONG002",
-    name: "Bùi Tuấn Anh",
-    email: "anh.bt@hoangcong.vn",
-    company: "Hoàng Công Partner",
-    department: "Giám Sát Vận Hành",
-    phone: "0909 667 788",
-    role: "Rent Vehicle Admin",
-    updatedBy: "rent.vehicle@gmail.com",
-    updatedAt: "01/10/2026"
-  },
-  {
-    id: 10,
-    empID: "AUSTEC010",
-    name: "Hoàng Thị Lan",
-    email: "lan.ht@austec.vn",
-    company: "AUSTEC",
-    department: "Dịch Vụ Khách Hàng",
-    phone: "0982 556 677",
-    role: "CSKH Support",
-    updatedBy: "austec.admin@gmail.com",
-    updatedAt: "28/09/2026"
   }
 ];
 
@@ -198,20 +142,25 @@ export default function AdminManagementPage() {
 
   const [toast, setToast] = useState<string | null>(null);
 
-  // Load persisted admins from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("austec_admin_users");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setAdmins(parsed);
-          }
-        } catch (e) {}
-      }
+  const fetchStaff = () => {
+    fetch("http://localhost:4000/api/admin/staff", {
+      headers: { "Authorization": "Bearer austec-admin-super-token" }
+    })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success && Array.isArray(res.staff) && res.staff.length > 0) {
+          setAdmins(res.staff);
+        }
+      })
+      .catch(() => {});
+  };
 
-      // Sync role options from role management if present
+  // Nạp danh sách cán bộ quản trị thời gian thực từ CSDL thống nhất của Backend
+  useEffect(() => {
+    fetchStaff();
+
+    // Sync role options from role management if present
+    if (typeof window !== "undefined") {
       const savedRoles = localStorage.getItem("austec_user_roles");
       if (savedRoles) {
         try {
@@ -223,12 +172,6 @@ export default function AdminManagementPage() {
       }
     }
   }, []);
-
-  const persistAdmins = (updated: AdminUser[]) => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("austec_admin_users", JSON.stringify(updated));
-    }
-  };
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -289,51 +232,50 @@ export default function AdminManagementPage() {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email) return;
 
     if (editingAdmin) {
-      const updated = admins.map(a => a.id === editingAdmin.id ? {
-        ...a,
-        name: form.name,
-        company: form.company,
-        department: form.department,
-        phone: form.phone,
-        role: form.role,
-        updatedBy: "austec.admin@gmail.com",
-        updatedAt: new Date().toLocaleDateString("vi-VN")
-      } : a);
-      setAdmins(updated);
-      persistAdmins(updated);
-      showToast("Cập nhật thông tin cán bộ quản trị thành công!");
+      try {
+        await fetch(`http://localhost:4000/api/admin/staff/${editingAdmin.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer austec-admin-super-token"
+          },
+          body: JSON.stringify(form)
+        });
+        fetchStaff();
+        showToast("Cập nhật thông tin cán bộ quản trị thành công!");
+      } catch (_) {}
     } else {
-      const newAdmin: AdminUser = {
-        id: Date.now() % 10000,
-        empID: form.empID,
-        name: form.name,
-        email: form.email,
-        company: form.company,
-        department: form.department,
-        phone: form.phone,
-        role: form.role,
-        updatedBy: "austec.admin@gmail.com",
-        updatedAt: new Date().toLocaleDateString("vi-VN")
-      };
-      const updated = [newAdmin, ...admins];
-      setAdmins(updated);
-      persistAdmins(updated);
-      showToast(`Đã tạo thành công tài khoản cán bộ: ${newAdmin.name}`);
+      try {
+        await fetch("http://localhost:4000/api/admin/staff", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer austec-admin-super-token"
+          },
+          body: JSON.stringify(form)
+        });
+        fetchStaff();
+        showToast(`Đã tạo thành công tài khoản cán bộ: ${form.name}`);
+      } catch (_) {}
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: string | number) => {
     if (confirm("Bạn có chắc chắn muốn xóa tài khoản quản trị này?")) {
-      const remaining = admins.filter(a => a.id !== id);
-      setAdmins(remaining);
-      persistAdmins(remaining);
-      showToast("Đã xóa tài khoản quản trị thành công!");
+      try {
+        await fetch(`http://localhost:4000/api/admin/staff/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": "Bearer austec-admin-super-token" }
+        });
+        fetchStaff();
+        showToast("Đã xóa tài khoản quản trị thành công!");
+      } catch (_) {}
     }
   };
 

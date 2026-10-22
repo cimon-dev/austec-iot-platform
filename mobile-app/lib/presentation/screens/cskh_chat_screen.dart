@@ -34,23 +34,11 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
   final ScrollController _scrollController = ScrollController();
   Timer? _pollTimer;
 
-  final List<ChatMessage> _messages = [
-    ChatMessage(
-      sender: "cskh",
-      text: "Xin chào Quý khách! Trung tâm Chăm sóc Khách hàng Austec Smart Home hân hạnh hỗ trợ bạn.",
-      time: "20:45",
-    ),
-    ChatMessage(
-      sender: "user",
-      text: "Cửa cuốn mặt tiền nhà mình dạo này phản hồi hơi chậm, bạn kiểm tra giúp mình thông số bo mạch với.",
-      time: "20:46",
-    ),
-    ChatMessage(
-      sender: "cskh",
-      text: "Dạ vâng, em đã kết nối từ xa với thiết bị AT-DOOR-88239A01 của anh Đức rồi ạ! Em đã nhận được gói thông số kỹ thuật viễn thám.",
-      time: "20:47",
-    ),
-  ];
+  // Khởi đầu danh sách tin nhắn TRỐNG - chỉ có nút "Bắt đầu cuộc trò chuyện"
+  final List<ChatMessage> _messages = [];
+  bool _hasActiveConversation = false;
+  bool _isLoading = true;
+  bool _isStartingConversation = false;
 
   @override
   void initState() {
@@ -85,9 +73,10 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
+        final bool hasActive = data['hasActiveConversation'] == true;
         if (data['success'] == true && data['messages'] is List) {
           final List incoming = data['messages'];
-          if (incoming.length > _messages.length || _messages.isEmpty) {
+          if (incoming.isNotEmpty && hasActive) {
             final List<ChatMessage> updated = [];
             for (var m in incoming) {
               final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
@@ -102,18 +91,127 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
                 ));
               }
             }
-            if (mounted && updated.isNotEmpty) {
+            if (mounted) {
+              final bool shouldScroll = _messages.length != updated.length;
               setState(() {
                 _messages.clear();
                 _messages.addAll(updated);
+                _hasActiveConversation = true;
+                _isLoading = false;
               });
-              _scrollToBottom();
+              if (shouldScroll) {
+                _scrollToBottom();
+              }
+            }
+          } else {
+            // Chưa có tin nhắn hoặc chưa bắt đầu cuộc trò chuyện
+            if (mounted && (_hasActiveConversation || _messages.isNotEmpty || _isLoading)) {
+              setState(() {
+                _messages.clear();
+                _hasActiveConversation = false;
+                _isLoading = false;
+              });
             }
           }
         }
       }
     } catch (_) {
-      // Backend offline fallback - keeps existing client messages smoothly
+      // Backend offline fallback
+      if (mounted && _isLoading) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _startConversation() async {
+    if (_isStartingConversation) return;
+    setState(() {
+      _isStartingConversation = true;
+    });
+
+    try {
+      final token = AuthService().token ?? 'austec-customer-token';
+      final user = AuthService().currentUser;
+      final customerId = user?.id ?? '00000000-0000-0000-0000-000000000001';
+      final customerName = user?.fullName ?? 'Khách Hàng Austec';
+      final customerPhone = user?.phoneNumber ?? '0912 345 678';
+
+      // Thiết bị đầu tiên để đính kèm hardwareId nếu có
+      final devices = IoTGatewayClient().devices;
+      final hardwareId = devices.isNotEmpty ? devices.first.hardwareId : 'AT-DOOR-88239A01';
+
+      final res = await http.post(
+        Uri.parse('http://localhost:4000/api/cskh/conversations/start'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'customerId': customerId,
+          'customerName': customerName,
+          'customerPhone': customerPhone,
+          'hardwareId': hardwareId,
+          'message': 'Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.',
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['messages'] is List) {
+          final List incoming = data['messages'];
+          final List<ChatMessage> updated = [];
+          for (var m in incoming) {
+            final isCSKH = m['sender'] == 'CSKH' || m['senderRole'] == 'CSKH';
+            final textContent = (m['text'] ?? m['message'] ?? '').toString();
+            final timeContent = (m['time'] ?? 'Vừa xong').toString();
+            if (textContent.isNotEmpty) {
+              updated.add(ChatMessage(
+                sender: isCSKH ? 'cskh' : 'user',
+                text: textContent,
+                time: timeContent,
+                isTelemetrySnapshot: m['hasSnapshot'] == true,
+              ));
+            }
+          }
+          if (mounted) {
+            setState(() {
+              _messages.clear();
+              _messages.addAll(updated);
+              _hasActiveConversation = true;
+              _isStartingConversation = false;
+            });
+            _scrollToBottom();
+          }
+          return;
+        }
+      }
+      throw Exception('Khởi tạo cuộc trò chuyện không thành công');
+    } catch (_) {
+      // Offline fallback: Khởi tạo với 2 tin nhắn chào mừng để trải nghiệm không bị gián đoạn
+      if (mounted) {
+        final now = DateTime.now();
+        final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+        setState(() {
+          _messages.clear();
+          _messages.addAll([
+            ChatMessage(
+              sender: "user",
+              text: "Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.",
+              time: timeStr,
+            ),
+            ChatMessage(
+              sender: "cskh",
+              text: "Dạ em chào Quý khách! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và kết nối từ xa với thiết bị của bạn. Em có thể hỗ trợ gì cho bạn ạ?",
+              time: timeStr,
+            ),
+          ]);
+          _hasActiveConversation = true;
+          _isStartingConversation = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 
@@ -192,14 +290,17 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     _scrollToBottom();
 
     // Post to backend
+    final token = AuthService().token ?? 'austec-customer-token';
+    final customerId = AuthService().currentUser?.id;
     http.post(
       Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer austec-customer-token',
+        'Authorization': 'Bearer $token',
       },
       body: jsonEncode({
         'sender': 'CUSTOMER',
+        'customerId': customerId,
         'text': '[TELEMETRY]: Đã gửi gói viễn thám thiết bị ${device.hardwareId} (${device.modelName})',
       }),
     ).catchError((_) => http.Response('{}', 500));
@@ -226,6 +327,186 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     );
   }
 
+  Widget _buildStartConversationView() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Glowing Icon Ring
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.blueAccent.withOpacity(0.3),
+                    AppTheme.cyanAccent.withOpacity(0.2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(color: AppTheme.cyanAccent.withOpacity(0.6), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyanAccent.withOpacity(0.25),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.support_agent_rounded,
+                color: AppTheme.cyanAccent,
+                size: 44,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Headline
+            const Text(
+              "Trung Tâm Hỗ Trợ Kỹ Thuật Austec",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+
+            // Description
+            const Text(
+              "Kênh liên lạc 1-1 trực tiếp với đội ngũ kỹ sư & CSKH Austec Smart Home. Nhấn bắt đầu để khởi tạo phiên hỗ trợ và gửi viễn thám thiết bị.",
+              style: TextStyle(
+                color: AppTheme.textMuted,
+                fontSize: 12.5,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Feature Badges
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: AppTheme.glassBox(
+                color: AppTheme.surfaceGlass,
+                borderColor: AppTheme.cardBorder,
+                radius: 16,
+              ),
+              child: Column(
+                children: [
+                  _buildFeatureRow(
+                    Icons.bolt,
+                    AppTheme.cyanAccent,
+                    "Phản hồi siêu tốc",
+                    "Kỹ thuật viên tiếp nhận và phản hồi trong 60 giây",
+                  ),
+                  const Divider(color: AppTheme.cardBorder, height: 18),
+                  _buildFeatureRow(
+                    Icons.satellite_alt_rounded,
+                    AppTheme.purpleAccent,
+                    "Viễn thám bo mạch từ xa",
+                    "Đọc trạng thái pin, motor, tín hiệu sóng trực tiếp",
+                  ),
+                  const Divider(color: AppTheme.cardBorder, height: 18),
+                  _buildFeatureRow(
+                    Icons.verified_user_rounded,
+                    AppTheme.emeraldSuccess,
+                    "Bảo mật cuộc trò chuyện 1-1",
+                    "Đảm bảo an toàn thông tin và dữ liệu thiết bị",
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 26),
+
+            // Prominent Start Button
+            Container(
+              width: double.infinity,
+              height: 50,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppTheme.blueAccent, AppTheme.cyanAccent],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyanAccent.withOpacity(0.35),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                icon: _isStartingConversation
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 19),
+                label: Text(
+                  _isStartingConversation ? "Đang kết nối trung tâm CSKH..." : "Bắt đầu cuộc trò chuyện",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                onPressed: _isStartingConversation ? null : _startConversation,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureRow(IconData icon, Color color, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -237,28 +518,35 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     backgroundColor: AppTheme.blueAccent,
                     radius: 18,
                     child: Icon(Icons.support_agent, color: Colors.white, size: 20),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         "Kỹ Thuật Viên Hỗ Trợ 24/7",
                         style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
                       Row(
                         children: [
-                          Icon(Icons.circle, color: AppTheme.emeraldSuccess, size: 8),
-                          SizedBox(width: 4),
+                          Icon(
+                            Icons.circle,
+                            color: _hasActiveConversation ? AppTheme.emeraldSuccess : AppTheme.cyanAccent,
+                            size: 8,
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            "Đồng bộ Web Admin 1-1",
-                            style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11),
+                            _hasActiveConversation ? "Đồng bộ Web Admin 1-1" : "Sẵn sàng hỗ trợ",
+                            style: TextStyle(
+                              color: _hasActiveConversation ? AppTheme.emeraldSuccess : AppTheme.cyanAccent,
+                              fontSize: 11,
+                            ),
                           ),
                         ],
                       ),
@@ -281,108 +569,117 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
                     label: const Text("Gửi Phiếu", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     onPressed: _openSupportTicketForm,
                   ),
-                  const SizedBox(width: 6),
-                  IconButton(
-                    icon: const Icon(Icons.bolt, color: AppTheme.cyanAccent),
-                    tooltip: "Gửi viễn thám thiết bị",
-                    onPressed: _attachTelemetrySnapshot,
-                  ),
+                  if (_hasActiveConversation) ...[
+                    const SizedBox(width: 6),
+                    IconButton(
+                      icon: const Icon(Icons.bolt, color: AppTheme.cyanAccent),
+                      tooltip: "Gửi viễn thám thiết bị",
+                      onPressed: _attachTelemetrySnapshot,
+                    ),
+                  ],
                 ],
               ),
             ],
           ),
         ),
 
-        // Chat Messages List
+        // Body: Chuyển đổi linh hoạt giữa giao diện "Bắt đầu cuộc trò chuyện" và "Khung chat tin nhắn"
         Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.all(16),
-            itemCount: _messages.length,
-            itemBuilder: (context, index) {
-              final msg = _messages[index];
-              final isMe = msg.sender == "user";
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppTheme.cyanAccent),
+                )
+              : !_hasActiveConversation
+                  ? _buildStartConversationView()
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _messages[index];
+                        final isMe = msg.sender == "user";
 
-              if (msg.isTelemetrySnapshot && msg.telemetryData != null) {
-                return _buildTelemetrySnapshotBubble(msg.telemetryData!, msg.time);
-              }
+                        if (msg.isTelemetrySnapshot && msg.telemetryData != null) {
+                          return _buildTelemetrySnapshotBubble(msg.telemetryData!, msg.time);
+                        }
 
-              return Align(
-                alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-                  decoration: BoxDecoration(
-                    color: isMe ? AppTheme.blueAccent : AppTheme.surfaceGlass,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isMe ? AppTheme.cyanAccent.withOpacity(0.3) : AppTheme.cardBorder,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        msg.text,
-                        style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
-                      ),
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.bottomRight,
-                        child: Text(
-                          msg.time,
-                          style: TextStyle(
-                            color: isMe ? Colors.white70 : AppTheme.textMuted,
-                            fontSize: 10,
+                        return Align(
+                          alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+                            decoration: BoxDecoration(
+                              color: isMe ? AppTheme.blueAccent : AppTheme.surfaceGlass,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isMe ? AppTheme.cyanAccent.withOpacity(0.3) : AppTheme.cardBorder,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  msg.text,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+                                ),
+                                const SizedBox(height: 4),
+                                Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Text(
+                                    msg.time,
+                                    style: TextStyle(
+                                      color: isMe ? Colors.white70 : AppTheme.textMuted,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
+                        );
+                      },
+                    ),
         ),
 
-        // Input Bar
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: AppTheme.glassBox(radius: 0),
-          child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.bolt, color: AppTheme.cyanAccent),
-                onPressed: _attachTelemetrySnapshot,
-                tooltip: "Đính kèm viễn thám thiết bị",
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _textController,
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: "Nhập tin nhắn hỗ trợ kỹ thuật...",
-                    hintStyle: const TextStyle(color: AppTheme.textMuted),
-                    filled: true,
-                    fillColor: AppTheme.surface,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        // Bottom Input Bar: CHỈ hiển thị khi cuộc trò chuyện ĐÃ được bắt đầu
+        if (_hasActiveConversation)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: AppTheme.glassBox(radius: 0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.bolt, color: AppTheme.cyanAccent),
+                  onPressed: _attachTelemetrySnapshot,
+                  tooltip: "Đính kèm viễn thám thiết bị",
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _textController,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: "Nhập tin nhắn hỗ trợ kỹ thuật...",
+                      hintStyle: const TextStyle(color: AppTheme.textMuted),
+                      filled: true,
+                      fillColor: AppTheme.surface,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    onSubmitted: (_) => _sendUserMessage(),
                   ),
-                  onSubmitted: (_) => _sendUserMessage(),
                 ),
-              ),
-              const SizedBox(width: 8),
-              CircleAvatar(
-                backgroundColor: AppTheme.cyanAccent,
-                child: IconButton(
-                  icon: const Icon(Icons.send_rounded, color: Colors.black, size: 18),
-                  onPressed: _sendUserMessage,
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: AppTheme.cyanAccent,
+                  child: IconButton(
+                    icon: const Icon(Icons.send_rounded, color: Colors.black, size: 18),
+                    onPressed: _sendUserMessage,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

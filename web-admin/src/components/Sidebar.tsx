@@ -62,7 +62,7 @@ function SidebarNavigation({
   const userSubmodules = [
     { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin", icon: UserCheck },
     { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles", icon: KeyRound },
-    { label: language === "vi" ? "Khách hàng App" : "App Customers", href: "/customers?tab=accounts", icon: Users },
+    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts", icon: Users },
     { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix", icon: ShieldCheck },
   ];
 
