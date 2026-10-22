@@ -596,7 +596,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     subtitle: Text("Quản lý tài khoản được phép điều khiển", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.blueAccent),
                     onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FamilySharingScreen()));
+                      Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => FamilySharingScreen(
+                          initialDevice: widget.device,
+                          initialHardwareId: widget.device.hardwareId,
+                        ),
+                      ));
                     },
                   ),
                 ],

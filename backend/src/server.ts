@@ -965,6 +965,156 @@ export function createApp() {
     res.json({ success: true, members, total: members.length });
   });
 
+  // Lấy danh sách gợi ý thành viên từ các thiết bị khác của chủ sở hữu
+  app.get('/api/devices/:hardwareId/member-suggestions', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
+    const hardwareId = String(req.params.hardwareId);
+
+    // Thành viên hiện tại của thiết bị mục tiêu (để không gợi ý lại những người đã có mặt)
+    const currentMembers = permissionsStore.filter(p => p.hardwareId === hardwareId);
+    const currentPhones = new Set(currentMembers.map(m => (m.phoneNumber || '').replace(/\D/g, '')).filter(Boolean));
+    const currentNames = new Set(currentMembers.map(m => (m.memberName || '').toLowerCase().trim()).filter(Boolean));
+
+    // Xác định chủ sở hữu (owner) của thiết bị này
+    let ownerId = req.user?.id;
+    const allInstances = provisioningService.getAllInstances();
+    const targetDev = allInstances.find(d => d.hardwareId === hardwareId);
+    if (targetDev?.ownerId) {
+      ownerId = targetDev.ownerId;
+    } else {
+      const ownerPerm = permissionsStore.find(p => p.hardwareId === hardwareId && p.role === 'OWNER');
+      if (ownerPerm) ownerId = ownerPerm.userId;
+      else {
+        const cust = customersStore.find(c => c.devices?.some((d: any) => d.hardwareId === hardwareId));
+        if (cust) ownerId = cust.id;
+      }
+    }
+
+    // Tập hợp tất cả các thiết bị khác của chủ nhà này
+    let ownerDevices: { hardwareId: string; customName: string }[] = [];
+    if (ownerId) {
+      const pDevs = provisioningService.getDevicesByOwner(ownerId);
+      ownerDevices.push(...pDevs.map(d => ({ hardwareId: d.hardwareId, customName: d.customName || d.hardwareId })));
+      const cust = customersStore.find(c => c.id === ownerId);
+      if (cust && cust.devices) {
+        for (const d of cust.devices) {
+          if (!ownerDevices.some(od => od.hardwareId === d.hardwareId)) {
+            ownerDevices.push({ hardwareId: d.hardwareId, customName: d.modelName || d.deviceName || d.hardwareId });
+          }
+        }
+      }
+    }
+
+    // Nếu vẫn chưa có thiết bị khác, lấy từ các thiết bị demo của migratedCustomers[0]
+    if (ownerDevices.length <= 1) {
+      const firstCust = migrated.migratedCustomers[0];
+      if (firstCust) {
+        const pDevs = provisioningService.getDevicesByOwner(firstCust.id);
+        for (const d of pDevs) {
+          if (!ownerDevices.some(od => od.hardwareId === d.hardwareId)) {
+            ownerDevices.push({ hardwareId: d.hardwareId, customName: d.customName || d.hardwareId });
+          }
+        }
+      }
+    }
+
+    // Duyệt qua tất cả các thiết bị khác và gom thành viên gợi ý
+    const suggestionsMap = new Map<string, any>();
+    for (const dev of ownerDevices) {
+      if (dev.hardwareId === hardwareId) continue;
+      const devMembers = permissionsStore.filter(p => p.hardwareId === dev.hardwareId);
+      for (const m of devMembers) {
+        if (m.role === 'OWNER') continue; // Bỏ qua chủ sở hữu
+        const cleanPhone = (m.phoneNumber || '').replace(/\D/g, '');
+        const normName = (m.memberName || '').toLowerCase().trim();
+
+        if ((cleanPhone && currentPhones.has(cleanPhone)) || currentNames.has(normName)) {
+          continue; // Đã là thành viên của thiết bị mục tiêu
+        }
+
+        const key = cleanPhone || normName;
+        const devName = dev.customName || dev.hardwareId;
+        if (!suggestionsMap.has(key)) {
+          suggestionsMap.set(key, {
+            userId: m.userId,
+            memberName: m.memberName,
+            phoneNumber: m.phoneNumber,
+            role: m.role || 'MEMBER',
+            canControl: m.canControl !== undefined ? m.canControl : true,
+            canViewHistory: m.canViewHistory !== undefined ? m.canViewHistory : true,
+            canChildLock: Boolean(m.canChildLock),
+            canConfig: Boolean(m.canConfig),
+            scheduleLimitActive: Boolean(m.scheduleLimitActive),
+            accessStartTime: m.accessStartTime || '08:00',
+            accessEndTime: m.accessEndTime || '18:00',
+            sourceDeviceNames: [devName],
+          });
+        } else {
+          const existing = suggestionsMap.get(key);
+          if (!existing.sourceDeviceNames.includes(devName)) {
+            existing.sourceDeviceNames.push(devName);
+          }
+        }
+      }
+    }
+
+    // Nếu danh sách rỗng (ví dụ thiết bị khác chưa có thành viên nào), nạp các gợi ý mẫu trong danh bạ gia đình
+    if (suggestionsMap.size === 0) {
+      const defaultFamily = [
+        {
+          userId: 'USER-SUB-001',
+          memberName: 'Trần Thu Hà (Vợ)',
+          phoneNumber: '0988776655',
+          role: 'MEMBER',
+          canControl: true,
+          canViewHistory: true,
+          canChildLock: true,
+          canConfig: false,
+          scheduleLimitActive: false,
+          sourceDeviceNames: ['Cửa cuốn Gara Đức Mạnh'],
+        },
+        {
+          userId: 'USER-SUB-002',
+          memberName: 'Nguyễn Minh Khang (Con trai)',
+          phoneNumber: '0977112233',
+          role: 'MEMBER',
+          canControl: true,
+          canViewHistory: true,
+          canChildLock: false,
+          canConfig: false,
+          scheduleLimitActive: false,
+          sourceDeviceNames: ['Cửa cuốn Gara Đức Mạnh'],
+        },
+        {
+          userId: 'USER-SUB-003',
+          memberName: 'Lê Văn Toàn (Tài xế / Khách)',
+          phoneNumber: '0911223344',
+          role: 'GUEST',
+          canControl: true,
+          canViewHistory: false,
+          canChildLock: false,
+          canConfig: false,
+          scheduleLimitActive: true,
+          accessStartTime: '07:30',
+          accessEndTime: '18:30',
+          sourceDeviceNames: ['Cửa cuốn Gara Đức Mạnh'],
+        },
+      ];
+      for (const df of defaultFamily) {
+        const cleanPhone = df.phoneNumber.replace(/\D/g, '');
+        if (!currentPhones.has(cleanPhone) && !currentNames.has(df.memberName.toLowerCase().trim())) {
+          suggestionsMap.set(cleanPhone, df);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      hardwareId,
+      suggestions: Array.from(suggestionsMap.values()),
+      total: suggestionsMap.size,
+    });
+  });
+
   // Thêm thành viên mới vào thiết bị
   app.post('/api/devices/:hardwareId/members', AuthService.authenticate, (req: AuthenticatedRequest, res) => {
     const data = req.body;

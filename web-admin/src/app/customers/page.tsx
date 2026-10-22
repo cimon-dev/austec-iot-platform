@@ -32,7 +32,8 @@ import {
   Layers,
   DoorClosed,
   Video,
-  Battery
+  Battery,
+  Sparkles
 } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
@@ -778,6 +779,53 @@ function CustomersPageContent() {
     if (!currentSelectedOwner) return null;
     return currentSelectedOwner.devices.find(d => d.hardwareId === selectedHardwareId) || currentSelectedOwner.devices[0] || null;
   }, [currentSelectedOwner, selectedHardwareId]);
+
+  // Gợi ý thành viên từ các thiết bị khác của chủ sở hữu
+  const suggestedMembersFromOtherDevices = useMemo(() => {
+    if (!currentSelectedOwner || !currentSelectedDevice) return [];
+    const currentHwId = currentSelectedDevice.hardwareId;
+    const currentMembers = currentSelectedDevice.members || [];
+    const currentPhones = new Set(currentMembers.map(m => (m.phoneNumber || "").replace(/\D/g, "")));
+    const currentNames = new Set(currentMembers.map(m => (m.memberName || "").toLowerCase().trim()));
+
+    const suggestions: {
+      memberName: string;
+      phoneNumber: string;
+      role: "MEMBER" | "GUEST" | "TECH";
+      sourceDeviceName: string;
+      canControl: boolean;
+      canViewHistory: boolean;
+      canChildLock: boolean;
+      canConfig: boolean;
+      scheduleLimitActive: boolean;
+    }[] = [];
+
+    for (const dev of currentSelectedOwner.devices) {
+      if (dev.hardwareId === currentHwId) continue;
+      for (const m of (dev.members || [])) {
+        if ((m.role as string) === "OWNER") continue;
+        const cleanPhone = (m.phoneNumber || "").replace(/\D/g, "");
+        const normName = (m.memberName || "").toLowerCase().trim();
+        if ((cleanPhone && currentPhones.has(cleanPhone)) || currentNames.has(normName)) {
+          continue;
+        }
+        if (!suggestions.some(s => s.phoneNumber === m.phoneNumber)) {
+          suggestions.push({
+            memberName: m.memberName,
+            phoneNumber: m.phoneNumber,
+            role: m.role as any,
+            sourceDeviceName: dev.deviceName || dev.hardwareId,
+            canControl: m.canControl,
+            canViewHistory: m.canViewHistory,
+            canChildLock: m.canChildLock,
+            canConfig: m.canConfig,
+            scheduleLimitActive: m.scheduleLimitActive,
+          });
+        }
+      }
+    }
+    return suggestions;
+  }, [currentSelectedOwner, currentSelectedDevice]);
 
   // When owner changes, auto-select first device
   const handleSelectOwner = (ownerId: string) => {
@@ -1542,6 +1590,41 @@ function CustomersPageContent() {
               <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 Thiết bị nhận phân quyền: <strong className="text-cyan-600 dark:text-cyan-400 font-mono">{currentSelectedDevice?.hardwareId}</strong> ({currentSelectedDevice?.deviceName})
               </div>
+
+              {suggestedMembersFromOtherDevices.length > 0 && (
+                <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
+                  <div className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1.5 mb-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Gợi ý từ các thiết bị khác của chủ nhà ({suggestedMembersFromOtherDevices.length}):</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {suggestedMembersFromOtherDevices.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setNewMemberForm({
+                            memberName: sug.memberName,
+                            phoneNumber: sug.phoneNumber,
+                            role: sug.role,
+                            canControl: sug.canControl,
+                            canViewHistory: sug.canViewHistory,
+                            canChildLock: sug.canChildLock,
+                            canConfig: sug.canConfig,
+                            scheduleLimitActive: sug.scheduleLimitActive,
+                            accessStartTime: "08:00",
+                            accessEndTime: "18:00",
+                          });
+                        }}
+                        className="px-2 py-1 rounded bg-white dark:bg-slate-900 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500 hover:text-white text-[10.5px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                      >
+                        <span>+ {sug.memberName}</span>
+                        <span className="text-[9px] opacity-75">({sug.sourceDeviceName})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
