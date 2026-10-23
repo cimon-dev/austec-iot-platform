@@ -327,6 +327,8 @@ export class PostgresService {
         crypto_signature VARCHAR(255),
         created_at VARCHAR(50)
       );
+      ALTER TABLE blackbox_logs ADD COLUMN IF NOT EXISTS actor_name VARCHAR(255);
+      ALTER TABLE blackbox_logs ADD COLUMN IF NOT EXISTS crypto_signature VARCHAR(255);
 
       -- 17. BẢNG VAI TRÒ HỆ THỐNG (SYSTEM ROLES)
       CREATE TABLE IF NOT EXISTS system_roles (
