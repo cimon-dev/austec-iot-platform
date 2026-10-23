@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
@@ -34,25 +34,45 @@ export default function DashboardPage() {
   const { t, language } = useLanguage();
   const { canView } = usePermissions();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    total: 7,
+    online: 6,
+    offline: 1,
+    inStock: 2,
+    onlinePct: "85.7%",
+    offlinePct: "14.3%",
+    inStockPct: "28.6%",
+  });
 
-  const formatNum = (num: number) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const formatNum = (num: number) => (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 500);
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const res = await fetch("http://localhost:4000/api/dashboard/stats", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setStats(data.stats);
+      }
+    } catch (e) {
+      console.warn("Lỗi đồng bộ thống kê:", e);
+    }
   };
 
-  // Device fleet numbers: ON / OFF / TỒN KHO
-  const stats = {
-    total: 10950,
-    online: 10315,
-    offline: 95,
-    inStock: 540,
-    onlinePct: "94.2%",
-    offlinePct: "0.8%",
-    inStockPct: "5.0%",
+  useEffect(() => {
+    fetchStats();
+    const timer = setInterval(fetchStats, 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchStats();
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 400);
   };
 
   // RBAC Gating
@@ -203,7 +223,7 @@ export default function DashboardPage() {
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                   {/* Background Track */}
                   <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-slate-800" />
-                  {/* Online Segment: 94.2% of 289 = 272.2 */}
+                  {/* Online Segment */}
                   <circle
                     cx="60"
                     cy="60"
@@ -211,11 +231,11 @@ export default function DashboardPage() {
                     fill="none"
                     stroke="#10b981"
                     strokeWidth="12"
-                    strokeDasharray="272.2 289"
+                    strokeDasharray={`${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)} 289`}
                     strokeDashoffset="0"
                     className="transition-all duration-700"
                   />
-                  {/* Stock Segment: 5.0% of 289 = 14.5 */}
+                  {/* Stock Segment */}
                   <circle
                     cx="60"
                     cy="60"
@@ -223,11 +243,11 @@ export default function DashboardPage() {
                     fill="none"
                     stroke="#0284c7"
                     strokeWidth="12"
-                    strokeDasharray="14.5 289"
-                    strokeDashoffset="-272.2"
+                    strokeDasharray={`${((parseFloat(stats.inStockPct) || 10) * 2.89).toFixed(1)} 289`}
+                    strokeDashoffset={`-${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)}`}
                     className="transition-all duration-700"
                   />
-                  {/* Offline Segment: 0.8% of 289 = 2.3 */}
+                  {/* Offline Segment */}
                   <circle
                     cx="60"
                     cy="60"
@@ -235,14 +255,14 @@ export default function DashboardPage() {
                     fill="none"
                     stroke="#f43f5e"
                     strokeWidth="12"
-                    strokeDasharray="2.3 289"
-                    strokeDashoffset="-286.7"
+                    strokeDasharray={`${((parseFloat(stats.offlinePct) || 5) * 2.89).toFixed(1)} 289`}
+                    strokeDashoffset={`-${(((parseFloat(stats.onlinePct) || 85) + (parseFloat(stats.inStockPct) || 10)) * 2.89).toFixed(1)}`}
                     className="transition-all duration-700"
                   />
                 </svg>
                 {/* Center Value */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-bold font-mono text-slate-900 dark:text-white leading-none">94.2%</span>
+                  <span className="text-xs font-bold font-mono text-slate-900 dark:text-white leading-none">{stats.onlinePct}</span>
                   <span className="text-[9px] text-slate-400 mt-0.5 font-medium">Online</span>
                 </div>
               </div>
@@ -254,21 +274,21 @@ export default function DashboardPage() {
                     <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
                     <span className="text-slate-600 dark:text-slate-300">Online</span>
                   </div>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">10,315 ({stats.onlinePct})</span>
+                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatNum(stats.online)} ({stats.onlinePct})</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
                     <span className="text-slate-600 dark:text-slate-300">Tồn kho</span>
                   </div>
-                  <span className="font-mono font-bold text-sky-600 dark:text-sky-400">540 ({stats.inStockPct})</span>
+                  <span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatNum(stats.inStock)} ({stats.inStockPct})</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
                     <span className="text-slate-600 dark:text-slate-300">Offline</span>
                   </div>
-                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400">95 ({stats.offlinePct})</span>
+                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
                 </div>
               </div>
             </div>

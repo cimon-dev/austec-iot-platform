@@ -1,6 +1,30 @@
 {
   "users": [
     {
+      "id": "USR-805862",
+      "fullName": "test",
+      "email": "test@gmail.com",
+      "phoneNumber": "0944123123",
+      "address": "Vạn Phcus",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "123456",
+      "isActive": true,
+      "registeredAt": "2026-10-22",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-USR-805862",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-10-22 09:20",
+          "warrantyUntil": "2028-10-22",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
       "id": "admin-001",
       "empID": "AUSTEC001",
       "fullName": "AUSTEC Super Admin",
@@ -403,6 +427,31 @@
         false
       ],
       "createdAt": "2026-09-15T09:00:00Z"
+    },
+    {
+      "id": "PERM-USR-805862-OWNER",
+      "hardwareId": "AT-DOOR-USR-805862",
+      "userId": "USR-805862",
+      "memberName": "test (Chủ hộ)",
+      "phoneNumber": "0944123123",
+      "role": "OWNER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": true,
+      "scheduleLimitActive": false,
+      "accessStartTime": "00:00",
+      "accessEndTime": "23:59",
+      "accessDays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "createdAt": "2026-10-22T09:20:05.862Z"
     }
   ],
   "requests": [
@@ -624,127 +673,97 @@
       "updatedAt": "2026-10-21T00:00:00Z"
     }
   ],
-  "supportTickets": [],
-  "supportMessages": [],
-  "lastSavedAt": "2026-10-22T07:17:26.943Z",
-  "version": "1.0",
-  "deviceInventory": [
+  "supportTickets": [
     {
-      "id": "10000000-0000-0000-0000-000000000001",
-      "hardwareId": "AT-DOOR-88239A01",
-      "macAddress": "FC:F5:C4:88:23:91",
-      "modelId": 1,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-DOOR-88239A01_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
+      "id": "ticket-1792660838908",
+      "customerId": "USR-805862",
+      "hardwareId": "AT-DOOR-USR-805862",
+      "status": "OPEN",
+      "priority": "NORMAL",
+      "subject": "Kênh hỗ trợ 1-1 cho khách hàng test (Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ)",
+      "createdAt": "2026-10-22T09:20:38.908Z",
+      "updatedAt": "2026-10-22T09:20:55.997Z",
+      "selectedDevice": {
+        "isOwned": false,
+        "hardwareId": null,
+        "deviceName": "Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ",
+        "modelName": "UPS Pro Sine-48H",
+        "categoryTag": "NGUỒN & PHỤ KIỆN",
+        "specs": {
+          "Công suất": "1000VA / 800W",
+          "Thời gian lưu": "48 giờ chờ / 20 lần đóng mở"
+        },
+        "imageUrl": "https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=600&auto=format&fit=crop&q=80",
+        "price": 4500000
+      }
+    }
+  ],
+  "supportMessages": [
+    {
+      "id": 1,
+      "ticketId": "ticket-1792660838908",
+      "senderId": "USR-805862",
+      "senderRole": "CUSTOMER",
+      "message": "Xin chào Trung tâm CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ.",
+      "attachmentUrls": [],
+      "selectedDevice": {
+        "isOwned": false,
+        "hardwareId": null,
+        "deviceName": "Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ",
+        "modelName": "UPS Pro Sine-48H",
+        "categoryTag": "NGUỒN & PHỤ KIỆN",
+        "specs": {
+          "Công suất": "1000VA / 800W",
+          "Thời gian lưu": "48 giờ chờ / 20 lần đóng mở"
+        },
+        "imageUrl": "https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=600&auto=format&fit=crop&q=80",
+        "price": 4500000
+      },
+      "deviceSnapshot": {},
+      "createdAt": "2026-10-22T09:20:38.908Z"
     },
     {
-      "id": "10000000-0000-0000-0000-000000000002",
-      "hardwareId": "AT-LOCK-77124B02",
-      "macAddress": "FC:F5:C4:77:12:42",
-      "modelId": 2,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-LOCK-77124B02_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
+      "id": 2,
+      "ticketId": "ticket-1792660838908",
+      "senderId": "cskh-001",
+      "senderRole": "CSKH",
+      "message": "Dạ em chào anh/chị test! Kỹ thuật viên Austec đã tiếp nhận yêu cầu và thiết bị Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ và kết nối trực tuyến với anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-10-22T09:20:38.909Z"
     },
     {
-      "id": "10000000-0000-0000-0000-000000000003",
-      "hardwareId": "AT-UPS-99011C03",
-      "macAddress": "FC:F5:C4:99:01:13",
-      "modelId": 3,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-UPS-99011C03_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
+      "id": 3,
+      "ticketId": "ticket-1792660838908",
+      "senderId": "USR-805862",
+      "senderRole": "CUSTOMER",
+      "message": "xin giá",
+      "attachmentUrls": [],
+      "selectedDevice": {
+        "isOwned": false,
+        "hardwareId": null,
+        "deviceName": "Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ",
+        "modelName": "UPS Pro Sine-48H",
+        "categoryTag": "NGUỒN & PHỤ KIỆN",
+        "specs": {
+          "Công suất": "1000VA / 800W",
+          "Thời gian lưu": "48 giờ chờ / 20 lần đóng mở"
+        },
+        "imageUrl": "https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=600&auto=format&fit=crop&q=80",
+        "price": 4500000
+      },
+      "deviceSnapshot": {},
+      "createdAt": "2026-10-22T09:20:47.495Z"
     },
     {
-      "id": "10000000-0000-0000-0000-000000000004",
-      "hardwareId": "AT-DOOR-88239A04",
-      "macAddress": "FC:F5:C4:88:23:94",
-      "modelId": 1,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-DOOR-88239A04_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000005",
-      "hardwareId": "AT-DOOR-88239A05",
-      "macAddress": "FC:F5:C4:88:23:95",
-      "modelId": 1,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-DOOR-88239A05_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000006",
-      "hardwareId": "AT-DOOR-88239A06",
-      "macAddress": "FC:F5:C4:88:23:96",
-      "modelId": 1,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-DOOR-88239A06_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000007",
-      "hardwareId": "AT-CAM-00109A01",
-      "macAddress": "FC:F5:C4:11:22:33",
-      "modelId": 4,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-CAM-00109A01_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000008",
-      "hardwareId": "AT-DOOR-88239A99",
-      "macAddress": "FC:F5:C4:88:23:99",
-      "modelId": 1,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "IN_WAREHOUSE",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-DOOR-88239A99_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000009",
-      "hardwareId": "AT-LOCK-77124B99",
-      "macAddress": "FC:F5:C4:77:12:99",
-      "modelId": 2,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "IN_WAREHOUSE",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-LOCK-77124B99_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
+      "id": 4,
+      "ticketId": "ticket-1792660838908",
+      "senderId": "cskh-admin",
+      "senderRole": "CSKH",
+      "message": "4.500.000 đ",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-10-22T09:20:55.997Z"
     }
   ],
   "deviceInstances": [
@@ -983,5 +1002,127 @@
       "addressDisplay": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội",
       "createdAt": "2026-09-01T00:00:00Z"
     }
-  ]
+  ],
+  "deviceInventory": [
+    {
+      "id": "10000000-0000-0000-0000-000000000001",
+      "hardwareId": "AT-DOOR-88239A01",
+      "macAddress": "FC:F5:C4:88:23:91",
+      "modelId": 1,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-DOOR-88239A01_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000002",
+      "hardwareId": "AT-LOCK-77124B02",
+      "macAddress": "FC:F5:C4:77:12:42",
+      "modelId": 2,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-LOCK-77124B02_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000003",
+      "hardwareId": "AT-UPS-99011C03",
+      "macAddress": "FC:F5:C4:99:01:13",
+      "modelId": 3,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-UPS-99011C03_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000004",
+      "hardwareId": "AT-DOOR-88239A04",
+      "macAddress": "FC:F5:C4:88:23:94",
+      "modelId": 1,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-DOOR-88239A04_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000005",
+      "hardwareId": "AT-DOOR-88239A05",
+      "macAddress": "FC:F5:C4:88:23:95",
+      "modelId": 1,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-DOOR-88239A05_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000006",
+      "hardwareId": "AT-DOOR-88239A06",
+      "macAddress": "FC:F5:C4:88:23:96",
+      "modelId": 1,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-DOOR-88239A06_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000007",
+      "hardwareId": "AT-CAM-00109A01",
+      "macAddress": "FC:F5:C4:11:22:33",
+      "modelId": 4,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "ACTIVATED",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-CAM-00109A01_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000008",
+      "hardwareId": "AT-DOOR-88239A99",
+      "macAddress": "FC:F5:C4:88:23:99",
+      "modelId": 1,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "IN_WAREHOUSE",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-DOOR-88239A99_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    },
+    {
+      "id": "10000000-0000-0000-0000-000000000009",
+      "hardwareId": "AT-LOCK-77124B99",
+      "macAddress": "FC:F5:C4:77:12:99",
+      "modelId": 2,
+      "batchNumber": "LOT-2026-Q3-01",
+      "supplier": "Austec Global Factory",
+      "status": "IN_WAREHOUSE",
+      "producedAt": "2026-08-15",
+      "warrantyMonths": 24,
+      "qrCodeHash": "HASH_AT-LOCK-77124B99_SECRET_2026",
+      "createdAt": "2026-08-15T00:00:00Z"
+    }
+  ],
+  "blackboxLogs": [],
+  "lastSavedAt": "2026-10-22T09:20:56.248Z",
+  "version": "1.0"
 }

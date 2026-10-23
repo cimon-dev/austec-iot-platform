@@ -233,6 +233,7 @@ export default function BlackboxPage() {
   const { canView } = usePermissions();
 
   const [logs, setLogs] = useState<BlackboxLogEntry[]>(MOCK_BLACKBOX_LOGS);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchHardwareId, setSearchHardwareId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
@@ -242,6 +243,50 @@ export default function BlackboxPage() {
   const [logPageSize, setLogPageSize] = useState(10);
   const [mobileTab, setMobileTab] = useState<"logs" | "details">("logs");
   const [toast, setToast] = useState<{ message: string; type: "success" | "warning" } | null>(null);
+
+  const fetchLogs = async () => {
+    setIsRefreshing(true);
+    try {
+      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const res = await fetch("http://localhost:4000/api/blackbox/logs?limit=200", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.logs) && data.logs.length > 0) {
+        const mapped: BlackboxLogEntry[] = data.logs.map((l: any) => ({
+          id: l.id || `BBX-${Math.floor(100000 + Math.random() * 900000)}`,
+          hardwareId: l.hardwareId || l.hardware_id,
+          modelName: l.modelName || "Austec Smart Gateway",
+          commandType: (l.commandType || l.actionType || "OPEN") as any,
+          payload: l.payload || l.payloadSent || {},
+          userId: l.actorId || l.userId || "USR-001",
+          userEmail: l.actorName || l.userEmail || "austec.admin@gmail.com",
+          userRole: (l.actorRole || l.userRole || "ADMIN") as any,
+          clientIp: l.actorIp || l.clientIp || "127.0.0.1",
+          deviceFingerprint: l.deviceFingerprint || "Austec Web Console (Chrome/Windows)",
+          timestamp: l.timestamp || l.createdAt || new Date().toISOString(),
+          ackTimestamp: l.ackTimestamp,
+          latencyMs: l.latencyMs || 120,
+          status: l.status || (l.ackStatus === "SUCCESS" ? "ACKNOWLEDGED" : "ACKNOWLEDGED"),
+          cryptoSignature: l.cryptoSignature || "sha256-" + (l.id || "verified"),
+        }));
+        setLogs(mapped);
+        if (!selectedLog && mapped.length > 0) {
+          setSelectedLog(mapped[0]);
+        }
+      }
+    } catch (e) {
+      console.warn("Lỗi tải nhật ký hộp đen:", e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const showToast = (message: string, type: "success" | "warning" = "success") => {
     setToast({ message, type });
@@ -383,15 +428,28 @@ export default function BlackboxPage() {
           </div>
         </div>
 
-        <button 
-          type="button"
-          onClick={handleExportLegalReport}
-          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold border border-slate-800 dark:border-slate-700 transition-all shadow-xs cursor-pointer shrink-0 w-full sm:w-auto"
-          title="Tải file Excel báo cáo pháp lý đầy đủ 100% kèm chuỗi Merkle Root"
-        >
-          <Download className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{language === "vi" ? "Xuất báo cáo pháp lý (.xlsx)" : "Export Legal Audit (.xlsx)"}</span>
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button 
+            type="button"
+            onClick={fetchLogs}
+            disabled={isRefreshing}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-800 transition-all shadow-xs cursor-pointer shrink-0"
+            title="Làm mới danh sách từ cơ sở dữ liệu PostgreSQL"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-cyan-500" : "text-slate-400"}`} />
+            <span>{isRefreshing ? "Đang tải..." : "Làm mới"}</span>
+          </button>
+
+          <button 
+            type="button"
+            onClick={handleExportLegalReport}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white text-xs font-semibold border border-slate-800 dark:border-slate-700 transition-all shadow-xs cursor-pointer shrink-0"
+            title="Tải file Excel báo cáo pháp lý đầy đủ 100% kèm chuỗi Merkle Root"
+          >
+            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{language === "vi" ? "Xuất báo cáo pháp lý (.xlsx)" : "Export Legal Audit (.xlsx)"}</span>
+          </button>
+        </div>
       </div>
 
       {/* 2. Compact 4 KPI Cards */}

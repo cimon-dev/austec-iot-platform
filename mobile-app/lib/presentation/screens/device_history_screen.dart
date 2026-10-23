@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
 import '../../core/models/device_model.dart';
 
@@ -14,6 +16,70 @@ class DeviceHistoryScreen extends StatefulWidget {
 class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
   DateTime? _selectedDate;
   int _selectedFilterCode = 0; // 0: Tất cả, 1: Mở, 2: Đóng, 3: Dừng
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLiveHistory();
+  }
+
+  Future<void> _fetchLiveHistory() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await http.get(
+        Uri.parse('http://localhost:4000/api/devices/${widget.device.hardwareId}/history'),
+        headers: {'Authorization': 'Bearer austec-customer-token'},
+      ).timeout(const Duration(seconds: 3));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['logs'] is List) {
+          final List list = data['logs'];
+          if (list.isNotEmpty && mounted) {
+            setState(() {
+              for (var item in list) {
+                final act = (item['actionType'] ?? item['commandType'] ?? 'OPEN').toString().toUpperCase();
+                int code = 1;
+                String actName = "Mở cửa";
+                if (act.contains("CLOSE")) {
+                  code = 2;
+                  actName = "Đóng cửa";
+                } else if (act.contains("STOP")) {
+                  code = 3;
+                  actName = "Dừng cửa";
+                } else if (act.contains("LOCK")) {
+                  code = 4;
+                  actName = "Khóa khẩn cấp";
+                }
+
+                final rawTime = item['timestamp']?.toString() ?? DateTime.now().toIso8601String();
+                final dt = DateTime.tryParse(rawTime) ?? DateTime.now();
+                final timeFormatted = "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+
+                if (!widget.device.auditLogs.any((l) => l.time == timeFormatted)) {
+                  widget.device.auditLogs.insert(
+                    0,
+                    AuditLog(
+                      time: timeFormatted,
+                      action: actName,
+                      actionCode: code,
+                      triggeredBy: item['actorName']?.toString() ?? "Nguyễn Mạnh Đức",
+                      deviceCode: widget.device.hardwareId,
+                    ),
+                  );
+                }
+              }
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // offline
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   void _openDatePicker() async {
     final picked = await showDatePicker(
@@ -103,6 +169,23 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                   _selectedFilterCode = 0;
                 });
               },
+            ),
+          if (_isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.refresh, color: textCol, size: 20),
+              tooltip: "Đồng bộ từ CSDL",
+              onPressed: _fetchLiveHistory,
             ),
           const SizedBox(width: 4),
         ],

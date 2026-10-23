@@ -127,23 +127,60 @@ export default function RolesManagementPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Load persisted roles from localStorage on mount
+  // Load persisted roles from PostgreSQL backend API on mount
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("austec_user_roles");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setRoles(parsed);
-            setSelectedRoleId(parsed[0].id);
-            setLastSavedTime("Đã đồng bộ từ CSDL");
+    const fetchRoles = async () => {
+      try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+        const res = await fetch("http://localhost:4000/api/admin/roles", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.roles) && data.roles.length > 0) {
+          const mappedRoles: RoleItem[] = data.roles.map((r: any) => ({
+            id: r.id,
+            name: r.roleName || r.name,
+            userCount: r.userCount || 0,
+            isSystem: !!r.isSystem,
+            permissions: Array.isArray(r.permissions) && r.permissions.length > 0
+              ? r.permissions.map((p: any) => ({
+                  id: p.moduleId || p.id,
+                  name: p.moduleName || p.name,
+                  create: !!(p.canCreate ?? p.create),
+                  update: !!(p.canUpdate ?? p.update),
+                  delete: !!(p.canDelete ?? p.delete),
+                  view: !!(p.canView ?? p.view),
+                  all: !!((p.canCreate ?? p.create) && (p.canUpdate ?? p.update) && (p.canDelete ?? p.delete) && (p.canView ?? p.view)),
+                }))
+              : DEFAULT_MODULES,
+          }));
+          setRoles(mappedRoles);
+          setSelectedRoleId(mappedRoles[0].id);
+          setLastSavedTime("Đã đồng bộ từ PostgreSQL");
+          return;
+        }
+      } catch (err) {
+        console.warn("Backend roles API unavailable, using local cache:", err);
+      }
+
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("austec_user_roles");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setRoles(parsed);
+              setSelectedRoleId(parsed[0].id);
+              setLastSavedTime("Đã đồng bộ từ bộ nhớ tạm");
+            }
+          } catch (e) {
+            console.error("Failed to parse saved roles", e);
           }
-        } catch (e) {
-          console.error("Failed to parse saved roles", e);
         }
       }
-    }
+    };
+
+    fetchRoles();
   }, []);
 
   // Helper to persist roles to localStorage and broadcast event
@@ -221,16 +258,45 @@ export default function RolesManagementPage() {
     persistRoles(updatedRoles);
   };
 
-  const handleSaveRole = (e: React.FormEvent) => {
+  const handleSaveRole = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`http://localhost:4000/api/admin/roles/${selectedRole.id}/permissions`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          permissions: selectedRole.permissions.map(p => ({
+            moduleId: p.id,
+            moduleName: p.name,
+            canView: p.view,
+            canCreate: p.create,
+            canUpdate: p.update,
+            canDelete: p.delete,
+          }))
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        persistRoles(roles);
+        const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        setLastSavedTime(`${timeStr} (PostgreSQL)`);
+        showToast(`Đã lưu ma trận phân quyền vai trò "${selectedRole.name}" vào PostgreSQL thành công!`);
+      } else {
+        showToast(data.error || "Lỗi lưu ma trận phân quyền", "warning");
+      }
+    } catch {
       persistRoles(roles);
-      setIsSaving(false);
       const timeStr = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       setLastSavedTime(timeStr);
-      showToast(`Đã lưu thành công ma trận phân quyền cho vai trò "${selectedRole.name}" vào cơ sở dữ liệu!`);
-    }, 250);
+      showToast(`Đã lưu ma trận phân quyền vào bộ nhớ tạm thành công!`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteRole = (id: number) => {

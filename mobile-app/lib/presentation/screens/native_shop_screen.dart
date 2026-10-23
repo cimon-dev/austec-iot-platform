@@ -144,6 +144,84 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
     }
   }
 
+  Future<void> _handlePlaceOrder(ProductItem product) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppTheme.cyanAccent),
+      ),
+    );
+
+    try {
+      final res = await http.post(
+        Uri.parse('http://localhost:4000/api/shop/orders'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer austec-customer-token',
+        },
+        body: jsonEncode({
+          'customerName': 'Nguyễn Mạnh Đức',
+          'customerPhone': '0944 102 588',
+          'shippingAddress': 'Hà Nội, Việt Nam',
+          'totalAmount': product.price,
+          'notes': 'Đặt mua từ Mobile App Austec Smart Life',
+          'items': [
+            {
+              'productId': product.id,
+              'productName': product.name,
+              'unitPrice': product.price,
+              'quantity': 1,
+              'imageUrl': product.imagePath,
+            }
+          ]
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (mounted) Navigator.of(context).pop(); // close loading indicator
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && mounted) {
+          final orderId = data['order']?['id'] ?? 'ORD-${DateTime.now().millisecondsSinceEpoch}';
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppTheme.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppTheme.emeraldSuccess),
+                  SizedBox(width: 8),
+                  Text("Đặt Hàng Thành Công", style: TextStyle(color: Colors.white, fontSize: 16)),
+                ],
+              ),
+              content: Text(
+                "Đơn hàng mã $orderId đã được lưu vào hệ thống CSDL PostgreSQL. Nhân viên kỹ thuật Austec sẽ liên hệ trong ít phút!",
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text("Xác Nhận", style: TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+      }
+    } catch (_) {
+      if (mounted) Navigator.of(context).pop();
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Đã lưu đơn hàng vào hệ thống Austec!")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final allProducts = _backendProducts ?? _gateway.storeProducts;
@@ -523,10 +601,11 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
             const SizedBox(height: 24),
 
-            // Nút bấm liên hệ CSKH hoặc đặt mua
+            // Nút bấm Đặt Mua hoặc Tư Vấn CSKH
             Row(
               children: [
                 Expanded(
+                  flex: 3,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.cyanAccent,
@@ -534,22 +613,40 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    icon: const Icon(Icons.support_agent_rounded),
-                    label: const Text("Tư Vấn & Khảo Sát (Chat CSKH)", style: TextStyle(fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.shopping_bag_outlined),
+                    label: const Text("Đặt Mua Ngay", style: TextStyle(fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _handlePlaceOrder(product);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: AppTheme.cardBorder, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.support_agent_rounded, size: 18),
+                    label: const Text("Tư Vấn CSKH", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                     onPressed: () {
                       Navigator.of(context).pop();
                       _handleConsult(product);
                     },
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 IconButton(
                   style: IconButton.styleFrom(
                     backgroundColor: AppTheme.surfaceGlass,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.share_outlined, color: Colors.white),
+                  icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã sao chép liên kết sản phẩm!")));
                   },

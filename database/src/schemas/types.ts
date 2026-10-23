@@ -441,3 +441,71 @@ export const CustomerSupportRequestValidator = z.object({
   status: z.enum(['OPEN', 'PROCESSING', 'RESOLVED', 'CLOSED']).default('OPEN'),
   adminResponse: z.string().optional(),
 });
+
+/**
+ * 13. SYSTEM ROLE & ROLE PERMISSIONS (Phân quyền vai trò quản trị động)
+ */
+export interface SystemRole {
+  id: number;
+  roleCode: string;
+  roleName: string;
+  description?: string;
+  isSystem: boolean;
+  userCount?: number;
+  permissions?: RolePermission[];
+  createdAt: string;
+}
+
+export interface RolePermission {
+  id?: number;
+  roleId: number;
+  moduleId: string;
+  moduleName: string;
+  canView: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+  canAll: boolean;
+}
+
+/**
+ * 14. ORDER & ORDER ITEMS (Đơn đặt hàng từ gian hàng Mobile App)
+ */
+export type OrderStatus = 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'COMPLETED' | 'CANCELLED';
+
+export interface OrderItem {
+  id?: number;
+  orderId?: string;
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  imageUrl?: string;
+}
+
+export interface Order {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  shippingAddress: string;
+  totalAmount: number;
+  status: OrderStatus;
+  notes?: string;
+  items: OrderItem[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * 15. RF REMOTE (Quản lý tay remote RF cửa cuốn)
+ */
+export interface RfRemote {
+  id?: number;
+  hardwareId: string;
+  remoteCode: string;
+  remoteName: string;
+  pairedAt: string;
+  isBlocked: boolean;
+}
+

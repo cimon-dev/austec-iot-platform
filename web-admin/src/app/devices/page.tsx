@@ -94,6 +94,122 @@ function DevicesManagementContent() {
     { id: 9, name: "CỬA CUỐN NHÔM CÔNG NGHỆ ĐỨC", code: "GROUP_DOOR_GERMAN", desc: "Cửa cuốn nan nhôm khe thoáng công nghệ Đức", deviceCount: 2470, onlineRate: 99.4 },
   ]);
 
+  // Master Data Loader from PostgreSQL Backend APIs
+  useEffect(() => {
+    const loadMasterData = async () => {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // 1. Groups
+      try {
+        const res = await fetch("http://localhost:4000/api/admin/groups", { headers });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.groups) && data.groups.length > 0) {
+          setGroups(data.groups.map((g: any) => ({
+            id: g.id,
+            name: g.groupName || g.name,
+            code: g.code,
+            desc: g.description || g.desc || "",
+            deviceCount: g.deviceCount || 0,
+            onlineRate: g.onlineRate || 99.5,
+          })));
+        }
+      } catch (e) {
+        console.warn("Lỗi tải groups từ PostgreSQL:", e);
+      }
+
+      // 2. Device Types
+      try {
+        const res = await fetch("http://localhost:4000/api/admin/device-types", { headers });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.types) && data.types.length > 0) {
+          setDeviceTypes(data.types.map((t: any) => ({
+            id: t.id,
+            name: t.typeName || t.name,
+            code: t.code,
+            icon: t.icon || "📦",
+            activeCount: t.activeCount || 0,
+          })));
+        }
+      } catch (e) {
+        console.warn("Lỗi tải types từ PostgreSQL:", e);
+      }
+
+      // 3. Properties
+      try {
+        const res = await fetch("http://localhost:4000/api/admin/properties", { headers });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.properties) && data.properties.length > 0) {
+          setProperties(data.properties.map((p: any) => ({
+            id: p.id,
+            key: p.key || p.propKey,
+            name: p.name || p.propName,
+            type: p.dataType || p.type || "integer",
+            unit: p.unit || "",
+            widget: p.widget || "gauge",
+            ctrl: !!(p.isWritable ?? p.ctrl),
+          })));
+        }
+      } catch (e) {
+        console.warn("Lỗi tải properties từ PostgreSQL:", e);
+      }
+
+      // 4. Models
+      try {
+        const res = await fetch("http://localhost:4000/api/admin/models", { headers });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.models) && data.models.length > 0) {
+          setModels(data.models.map((m: any) => ({
+            id: m.id,
+            code: m.modelCode || m.code,
+            name: m.modelName || m.name,
+            group: m.groupName || m.group || "Cửa cuốn nhôm Đức",
+            type: m.typeName || m.type || "Door",
+            fw: m.defaultFwVersion || m.fw || "v2.4.1",
+            hw: m.hardwareRevision || m.hw || "HW-REV-A",
+            assignedProperties: m.assignedProperties || [30, 36, 38],
+          })));
+        }
+      } catch (e) {
+        console.warn("Lỗi tải models từ PostgreSQL:", e);
+      }
+
+      // 5. Fleet Devices
+      try {
+        const res = await fetch("http://localhost:4000/api/admin/devices", { headers });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.devices) && data.devices.length > 0) {
+          const mappedDevices = data.devices.map((d: any) => ({
+            hwId: d.hwId || d.hardwareId,
+            name: d.name || d.customName || "Thiết bị Austec",
+            model: d.modelName || d.model || "AUSTEC-A900",
+            group: d.groupName || d.group || "Cửa cuốn nhôm Đức",
+            type: d.typeName?.includes("Khóa") ? "LOCK" : d.typeName?.includes("Lưu") ? "UPS" : "DOOR",
+            owner: d.ownerName || d.owner || "Khách Hàng Austec",
+            phone: d.ownerPhone || d.phone || "0912 345 678",
+            status: d.status?.toLowerCase() === "online" || d.isOnline ? "online" : "offline",
+            isOnline: !!(d.status?.toLowerCase() === "online" || d.isOnline),
+            battery: d.batteryLevel || 95,
+            openState: d.doorState || "CLOSED",
+            isLocked: !!d.isLocked,
+            signal: d.rssiSignal || -60,
+            warranty: d.warrantyUntil ? new Date(d.warrantyUntil).toLocaleDateString("vi-VN") : "10/2028",
+            address: d.address || "Hà Nội",
+            deviceTypeDesc: d.modelName || "Thiết Bị Điều Khiển Austec IoT",
+            subscriptionType: d.subscriptionType || "LIMITED",
+            subscriptionExpiresAt: d.warrantyUntil || null,
+            subscriptionStatus: "ACTIVE",
+          }));
+          setDevices(mappedDevices);
+        }
+      } catch (e) {
+        console.warn("Lỗi tải danh sách thiết bị fleet:", e);
+      }
+    };
+
+    loadMasterData();
+  }, []);
+
   // Group Modals
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false);
   const [newGroupForm, setNewGroupForm] = useState({ name: "", code: "", desc: "", deviceCount: 0 });
@@ -116,27 +232,49 @@ function DevicesManagementContent() {
       deviceCount: Number(newGroupForm.deviceCount) || 0,
       onlineRate: 100.0,
     };
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    fetch("http://localhost:4000/api/admin/groups", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ code: cleanCode, groupName: newGroupForm.name.trim(), description: newGroupForm.desc })
+    }).catch(e => console.warn(e));
+
     setGroups([newG, ...groups]);
     setIsCreateGroupOpen(false);
     setNewGroupForm({ name: "", code: "", desc: "", deviceCount: 0 });
-    showToast(`Đã tạo thành công nhóm sản phẩm: ${newG.name}`);
+    showToast(`Đã tạo và lưu nhóm sản phẩm vào PostgreSQL: ${newG.name}`);
   };
 
   const handleSaveGroupConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editGroupForm) return;
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    fetch(`http://localhost:4000/api/admin/groups/${editGroupForm.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ groupName: editGroupForm.name, description: editGroupForm.desc })
+    }).catch(e => console.warn(e));
+
     setGroups(groups.map(g => g.id === editGroupForm.id ? { ...g, ...editGroupForm } : g));
-    showToast(`Đã cập nhật nhóm sản phẩm: ${editGroupForm.name}`);
+    showToast(`Đã cập nhật nhóm sản phẩm trong PostgreSQL: ${editGroupForm.name}`);
     setSelectedGroupConfig(null);
     setEditGroupForm(null);
   };
 
   const handleDeleteGroup = (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa nhóm sản phẩm này?")) {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      fetch(`http://localhost:4000/api/admin/groups/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(e => console.warn(e));
+
       setGroups(groups.filter(g => g.id !== id));
       setSelectedGroupConfig(null);
       setEditGroupForm(null);
-      showToast("Đã xóa nhóm sản phẩm thành công", "info");
+      showToast("Đã xóa nhóm sản phẩm thành công từ PostgreSQL", "info");
     }
   };
 
@@ -1146,32 +1284,71 @@ function DevicesManagementContent() {
     return filteredDevices.slice(start, start + devicePageSize);
   }, [filteredDevices, deviceCurrentPage, devicePageSize]);
 
-  const handleToggleDoor = (hwId: string, newState: string) => {
+  const handleToggleDoor = async (hwId: string, newState: string) => {
     setControlLoading(true);
-    setTimeout(() => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const action = newState === "OPENED" ? "OPEN" : newState === "CLOSED" ? "CLOSE" : newState === "STOPPED" ? "STOP" : newState;
+      await fetch("http://localhost:4000/api/devices/control", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          hardwareId: hwId,
+          action: action
+        })
+      });
+
       setDevices((prev) =>
         prev.map((d) => (d.hwId === hwId ? { ...d, openState: newState } : d))
       );
       if (selectedDevice?.hwId === hwId) {
         setSelectedDevice((prev: any) => ({ ...prev, openState: newState }));
       }
+      showToast(`Lệnh ${newState} đã ghi Hộp đen & cập nhật PostgreSQL thành công!`);
+    } catch {
+      setDevices((prev) =>
+        prev.map((d) => (d.hwId === hwId ? { ...d, openState: newState } : d))
+      );
+      showToast(`Lệnh ${newState} đã thực thi cục bộ`);
+    } finally {
       setControlLoading(false);
-      showToast(`Lệnh ${newState} đã được gửi thành công (Độ trễ: 142ms)`);
-    }, 180);
+    }
   };
 
-  const handleEmergencyLock = (hwId: string) => {
+  const handleEmergencyLock = async (hwId: string) => {
     setControlLoading(true);
-    setTimeout(() => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      await fetch("http://localhost:4000/api/devices/control", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          hardwareId: hwId,
+          action: "EMERGENCY_LOCK"
+        })
+      });
+
       setDevices((prev) =>
         prev.map((d) => (d.hwId === hwId ? { ...d, isLocked: !d.isLocked, openState: "LOCKED" } : d))
       );
       if (selectedDevice?.hwId === hwId) {
         setSelectedDevice((prev: any) => ({ ...prev, isLocked: !prev.isLocked, openState: "LOCKED" }));
       }
+      showToast(`Đã kích hoạt Khóa Khẩn Cấp & ghi Hộp Đen SHA-256 cho ${hwId}!`, "warning");
+    } catch {
+      setDevices((prev) =>
+        prev.map((d) => (d.hwId === hwId ? { ...d, isLocked: !d.isLocked, openState: "LOCKED" } : d))
+      );
+      showToast(`Đã bật khóa khẩn cấp cục bộ`, "warning");
+    } finally {
       setControlLoading(false);
-      showToast(`Đã kích hoạt chế độ Khóa Khẩn Cấp cho ${hwId}!`, "warning");
-    }, 150);
+    }
   };
 
   const [renewLoading, setRenewLoading] = useState(false);

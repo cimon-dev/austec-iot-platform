@@ -21,9 +21,11 @@ async function main() {
     process.exit(1);
   }
 
-  // 1. Tạo toàn bộ 9 bảng quan hệ
+  // 1. Tạo toàn bộ 18 bảng quan hệ
   console.log('1. Đang tạo các bảng trong PostgreSQL...');
   await pgService.initTables();
+  console.log('1b. Đang nạp seed metadata ban đầu vào PostgreSQL...');
+  await pgService.seedInitialMetadata();
 
   // 2. Đọc dữ liệu từ file austec_database.json
   const dataPath = path.resolve(process.cwd(), '../data/austec_database.json');

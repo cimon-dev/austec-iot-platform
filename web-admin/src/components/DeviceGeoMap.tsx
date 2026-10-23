@@ -302,6 +302,7 @@ export function DeviceGeoMap() {
   const leafletLibRef = useRef<any>(null);
 
   const [mapStyle, setMapStyle] = useState<"google" | "satellite" | "osm">("google");
+  const [deviceList, setDeviceList] = useState<DeviceGeoLocation[]>(SAMPLE_GEO_DEVICES);
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchFilter, setSearchFilter] = useState<string>("");
@@ -309,6 +310,51 @@ export function DeviceGeoMap() {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobileMapTab, setMobileMapTab] = useState<"map" | "inspector">("map");
+
+  // Fetch live PostgreSQL devices
+  useEffect(() => {
+    const fetchLiveDevices = async () => {
+      try {
+        const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+        const res = await fetch("http://localhost:4000/api/admin/devices", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.devices) && data.devices.length > 0) {
+          const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any, idx: number) => {
+            const fallback = SAMPLE_GEO_DEVICES[idx % SAMPLE_GEO_DEVICES.length];
+            return {
+              hardwareId: d.hardwareId || d.hwId,
+              serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId}`,
+              deviceName: d.name || d.customName || 'Thiết bị Austec',
+              deviceType: (d.typeName?.includes('Khóa') ? 'Khóa thông minh' : d.typeName?.includes('Lưu điện') ? 'Bộ lưu điện' : 'Cửa cuốn') as any,
+              modelName: d.modelName || 'Austec Smart Series',
+              status: d.status || (d.isOnline ? 'ONLINE' : 'OFFLINE'),
+              ownerName: d.ownerName || 'Nguyễn Mạnh Đức',
+              phoneNumber: d.ownerPhone || '0912 345 678',
+              lat: d.lat || fallback.lat,
+              lng: d.lng || fallback.lng,
+              streetAddress: d.address || fallback.streetAddress,
+              ward: fallback.ward,
+              district: fallback.district,
+              province: d.province || fallback.province,
+              formattedAddress: d.address || fallback.formattedAddress,
+              lastTelemetryAt: d.lastHeartbeat ? new Date(d.lastHeartbeat).toLocaleTimeString() : fallback.lastTelemetryAt,
+              batteryLevel: d.batteryLevel || fallback.batteryLevel,
+              signalDbm: d.rssiSignal || fallback.signalDbm,
+            };
+          });
+          setDeviceList(geoMapped);
+          if (geoMapped.length > 0) {
+            setSelectedDevice(geoMapped[0]);
+          }
+        }
+      } catch (e) {
+        console.warn("Lỗi tải danh sách thiết bị trên bản đồ:", e);
+      }
+    };
+    fetchLiveDevices();
+  }, []);
 
   // Re-fit Leaflet map bounds when toggling fullscreen dialog mode
   useEffect(() => {
@@ -370,7 +416,7 @@ export function DeviceGeoMap() {
   };
 
   // Filtered devices
-  const filteredDevices = SAMPLE_GEO_DEVICES.filter((d) => {
+  const filteredDevices = deviceList.filter((d) => {
     const matchProvince = selectedProvince === "ALL" || d.province === selectedProvince;
     const matchStatus = selectedStatus === "ALL" || d.status === selectedStatus;
     const q = searchFilter.toLowerCase().trim();

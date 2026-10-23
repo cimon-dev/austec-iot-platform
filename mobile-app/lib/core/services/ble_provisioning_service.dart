@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../models/device_model.dart';
 import 'iot_gateway_client.dart';
 
@@ -95,15 +97,40 @@ class BleProvisioningService {
     await Future.delayed(const Duration(milliseconds: 700));
 
     // Step 3: Cloud Verification & Inventory Check
-    onProgress("Đang xác thực xuất xưởng & đăng ký lên Cloud Broker...", 0.75);
-    await Future.delayed(const Duration(milliseconds: 800));
+    onProgress("Đang xác thực xuất xưởng & đăng ký lên Cloud PostgreSQL...", 0.75);
+    String warrantyUntil = "2028-10-22";
+    String warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '')}-24M";
+
+    try {
+      final res = await http.post(
+        Uri.parse('http://localhost:4000/api/devices/pair'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer austec-customer-token',
+        },
+        body: jsonEncode({
+          'hardwareId': targetDevice.hardwareId,
+          'customName': "${targetDevice.modelName} (Mới ghép)",
+          'wifiSsid': wifiSsid,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true) {
+          if (data['device'] != null && data['device']['warrantyExpiresAt'] != null) {
+            warrantyUntil = data['device']['warrantyExpiresAt'].toString().substring(0, 10);
+          }
+        }
+      }
+    } catch (_) {
+      // offline fallback
+      await Future.delayed(const Duration(milliseconds: 600));
+    }
 
     // Step 4: Warranty Activation
     onProgress("Kích hoạt bảo hành điện tử chính hãng 24 tháng...", 0.95);
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    final warrantyUntil = "2028-10-17";
-    final warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '')}-24M";
+    await Future.delayed(const Duration(milliseconds: 300));
 
     // Add device to local list
     final newDevice = DeviceItem(
