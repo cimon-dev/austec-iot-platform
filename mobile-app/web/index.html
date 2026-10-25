@@ -68,6 +68,36 @@
             resolve(JSON.stringify({ supported: true, success: false, error: (err && err.message) ? err.message : 'Cancelled' }));
           });
         });
+      },
+      sendBleOnboardPayload: function(payloadString) {
+        return new Promise(function(resolve) {
+          if (!navigator || !navigator.bluetooth || !navigator.bluetooth.requestDevice) {
+            resolve(JSON.stringify({ supported: false, success: false, error: 'Web Bluetooth không hỗ trợ trên trình duyệt này' }));
+            return;
+          }
+          var SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+          var RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+          
+          navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [SERVICE_UUID]
+          }).then(function(device) {
+            return device.gatt.connect();
+          }).then(function(server) {
+            return server.getPrimaryService(SERVICE_UUID);
+          }).then(function(service) {
+            return service.getCharacteristic(RX_UUID);
+          }).then(function(characteristic) {
+            var encoder = new TextEncoder();
+            var data = encoder.encode(payloadString);
+            return characteristic.writeValue(data);
+          }).then(function() {
+            resolve(JSON.stringify({ success: true, message: 'Đã truyền gói tin onboard thành công qua BLE!' }));
+          }).catch(function(err) {
+            console.warn('[WebBLE] Lỗi ghi Characteristic BLE:', err);
+            resolve(JSON.stringify({ success: false, error: (err && err.message) ? err.message : 'Lỗi kết nối BLE' }));
+          });
+        });
       }
     };
   </script>

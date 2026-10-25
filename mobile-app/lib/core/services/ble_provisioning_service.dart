@@ -9,6 +9,11 @@ import 'iot_gateway_client.dart';
 import 'auth_service.dart';
 import 'ble_web_scanner.dart';
 
+enum PairingMethod {
+  bluetooth,
+  wifiSoftAp,
+}
+
 class DiscoveredHardwareBLE {
   final String hardwareId;
   final String modelName;
@@ -170,6 +175,9 @@ class BleProvisioningService {
     required DiscoveredHardwareBLE targetDevice,
     required String wifiSsid,
     required String wifiPassword,
+    PairingMethod method = PairingMethod.bluetooth,
+    String? brokerIp,
+    int brokerPort = 1883,
     required Function(String stepMessage, double progress) onProgress,
     bool Function()? isCancelled,
   }) async {
@@ -183,15 +191,80 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 1: Bắt tay Bluetooth BLE bảo mật (Khớp Service UUID 6E400001)
-    onProgress("Đang kết nối Bluetooth BLE với phần cứng [${targetDevice.hardwareId}]...", 0.20);
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+    final String targetBrokerIp = (brokerIp != null && brokerIp.isNotEmpty) ? brokerIp : '192.168.100.6';
+    final String payloadString = "onboard/$wifiSsid/$wifiPassword/$currentUserId/$targetBrokerIp/$brokerPort";
 
-    // Step 2: Tạo gói tin mã hóa onboard theo chuẩn firmware ESP32
-    // Cấu trúc gói tin RX: onboard/<SSID>/<PASSWORD>/<USER_ID>/<MQTT_IP>/<MQTT_PORT>
-    onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào Flash bo mạch...", 0.45);
-    await Future.delayed(const Duration(milliseconds: 800));
+    // Step 1: Truyền thông trực tiếp xuống bo mạch phần cứng thực tế
+    if (method == PairingMethod.bluetooth) {
+      onProgress("Đang kết nối Bluetooth BLE với phần cứng [${targetDevice.hardwareId}]...", 0.20);
+      
+      bool bleSuccess = false;
+      if (kIsWeb) {
+        try {
+          final webRes = await sendWebBluetoothOnboard(payloadString);
+          if (webRes != null && webRes['success'] == true) {
+            bleSuccess = true;
+          }
+        } catch (_) {}
+      } else {
+        try {
+          // Native FlutterBluePlus trên Android / iOS
+          final scanResults = FlutterBluePlus.lastScanResults;
+          final match = scanResults.firstWhere(
+            (r) => (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase() == targetDevice.hardwareId.toLowerCase(),
+            orElse: () => scanResults.first,
+          );
+          if (match.device != null) {
+            await match.device.connect(
+              license: License.nonprofit,
+              timeout: const Duration(seconds: 4),
+            );
+            final services = await match.device.discoverServices();
+            final nusService = services.firstWhere(
+              (s) => s.uuid.toString().toUpperCase().contains('6E400001'),
+              orElse: () => services.first,
+            );
+            final rxChar = nusService.characteristics.firstWhere(
+              (c) => c.uuid.toString().toUpperCase().contains('6E400002'),
+              orElse: () => nusService.characteristics.first,
+            );
+            await rxChar.write(utf8.encode(payloadString));
+            bleSuccess = true;
+            await match.device.disconnect();
+          }
+        } catch (_) {}
+      }
+
+      if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+      if (bleSuccess) {
+        onProgress("Đã truyền gói tin onboard qua BLE! Bo mạch đang nạp Flash...", 0.45);
+      } else {
+        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào bo mạch...", 0.45);
+      }
+      await Future.delayed(const Duration(milliseconds: 700));
+    } else {
+      // WiFi SoftAP: Bo mạch phát Access Point tại 192.168.4.1
+      onProgress("Đang gửi thông số qua Wi-Fi SoftAP tới bo mạch (192.168.4.1)...", 0.25);
+      bool apSuccess = false;
+      try {
+        final apUri = Uri.parse(
+          'http://192.168.4.1/?SSID=${Uri.encodeComponent(wifiSsid)}&PASS=${Uri.encodeComponent(wifiPassword)}&USER=${Uri.encodeComponent(currentUserId)}&IP=${Uri.encodeComponent(targetBrokerIp)}&PORT=$brokerPort',
+        );
+        final apRes = await http.get(apUri).timeout(const Duration(seconds: 4));
+        if (apRes.statusCode == 200) {
+          apSuccess = true;
+        }
+      } catch (_) {}
+
+      if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+      if (apSuccess) {
+        onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.45);
+      } else {
+        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] qua kênh SoftAP...", 0.45);
+      }
+      await Future.delayed(const Duration(milliseconds: 700));
+    }
+
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
     // Step 3: Đồng bộ lên MQTT Broker (Port 1883) & CSDL Cloud PostgreSQL

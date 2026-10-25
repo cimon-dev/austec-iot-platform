@@ -9,6 +9,7 @@ external AustecWebBle? get austecWebBle;
 extension type AustecWebBle(JSObject _) implements JSObject {
   external bool isSupported();
   external JSPromise<JSString> requestDevice();
+  external JSPromise<JSString> sendBleOnboardPayload(JSString payload);
 }
 
 bool isWebBluetoothSupported() {
@@ -33,4 +34,18 @@ Future<Map<String, dynamic>?> scanWebBluetooth() async {
     // ignore
   }
   return null;
+}
+
+Future<Map<String, dynamic>?> sendWebBluetoothOnboard(String payload) async {
+  try {
+    final bleObj = austecWebBle;
+    if (bleObj != null) {
+      final jsString = await bleObj.sendBleOnboardPayload(payload.toJS).toDart;
+      final parsed = jsonDecode(jsString.toDart) as Map<String, dynamic>;
+      return parsed;
+    }
+  } catch (e) {
+    return {'success': false, 'error': e.toString()};
+  }
+  return {'success': false, 'error': 'Web Bluetooth không khả dụng'};
 }

@@ -31,6 +31,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   String _currentWifiSignal = "";
   List<String> _availableNetworks = [];
 
+  // Lựa chọn phương thức ghép nối (Bluetooth BLE hoặc WiFi SoftAP)
+  PairingMethod _selectedMethod = PairingMethod.bluetooth;
+  String _brokerIp = "192.168.100.6";
+  int _brokerPort = 1883;
+
   // Form controllers (không fix cứng dữ liệu mẫu)
   final TextEditingController _qrCodeController = TextEditingController();
   final TextEditingController _ssidController = TextEditingController();
@@ -114,6 +119,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           final band = (data['band'] ?? '2.4 GHz').toString();
           final signal = (data['signal'] ?? '').toString();
           final networks = (data['networks'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final bIp = (data['brokerIp'] ?? '192.168.100.6').toString();
+          final bPort = (data['brokerPort'] as num?)?.toInt() ?? 1883;
 
           if (mounted) {
             setState(() {
@@ -122,6 +129,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               _currentWifiBand = band;
               _currentWifiSignal = signal;
               _availableNetworks = networks;
+              _brokerIp = bIp;
+              _brokerPort = bPort;
               if (_ssidController.text.isEmpty && ssid.isNotEmpty) {
                 _ssidController.text = ssid;
               }
@@ -342,6 +351,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 targetDevice: _selectedDevice!,
                 wifiSsid: _ssidController.text.trim(),
                 wifiPassword: _passwordController.text,
+                method: _selectedMethod,
+                brokerIp: _brokerIp,
+                brokerPort: _brokerPort,
                 isCancelled: () => !_isProvisioning,
                 onProgress: (step, progress) {
                   if (mounted && _isProvisioning) {
@@ -839,6 +851,186 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               ),
             ),
 
+            // =======================================================
+            // LỰA CHỌN PHƯƠNG THỨC KẾT NỐI (2 BUTTONS CHO 2 LỰA CHỌN)
+            // =======================================================
+            _buildSectionHeader("Phương Thức Ghép Nối Thiết Bị", Icons.tune_rounded),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                // BUTTON 1: KẾT NỐI BLUETOOTH BLE
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () {
+                      setState(() {
+                        _selectedMethod = PairingMethod.bluetooth;
+                        _startContinuousBleScanning();
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      decoration: BoxDecoration(
+                        gradient: _selectedMethod == PairingMethod.bluetooth
+                            ? LinearGradient(
+                                colors: [
+                                  AppTheme.cyanAccent.withValues(alpha: 0.25),
+                                  AppTheme.blueAccent.withValues(alpha: 0.15),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: _selectedMethod == PairingMethod.bluetooth
+                            ? null
+                            : AppTheme.surface.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedMethod == PairingMethod.bluetooth
+                              ? AppTheme.cyanAccent
+                              : Colors.white.withValues(alpha: 0.08),
+                          width: _selectedMethod == PairingMethod.bluetooth ? 2 : 1,
+                        ),
+                        boxShadow: _selectedMethod == PairingMethod.bluetooth
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.cyanAccent.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.bluetooth_audio_rounded,
+                            color: _selectedMethod == PairingMethod.bluetooth
+                                ? AppTheme.cyanAccent
+                                : Colors.white60,
+                            size: 26,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "KẾT NỐI BLUETOOTH",
+                            style: TextStyle(
+                              color: _selectedMethod == PairingMethod.bluetooth
+                                  ? Colors.white
+                                  : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Quét sóng BLE không dây",
+                            style: TextStyle(
+                              color: _selectedMethod == PairingMethod.bluetooth
+                                  ? AppTheme.cyanAccent
+                                  : AppTheme.textMuted,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // BUTTON 2: KẾT NỐI WIFI SOFTAP
+                Expanded(
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () {
+                      setState(() {
+                        _selectedMethod = PairingMethod.wifiSoftAp;
+                        if (_selectedDevice == null) {
+                          final devId = _qrCodeController.text.trim().isNotEmpty
+                              ? _qrCodeController.text.trim()
+                              : 'amtuong1994';
+                          _selectedDevice = DiscoveredHardwareBLE(
+                            hardwareId: devId,
+                            modelName: "Cửa Cuốn Austec ECO ($devId)",
+                            category: DeviceCategory.rollerDoor,
+                            rssi: -40,
+                            bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                            isRealHardware: true,
+                          );
+                        }
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      decoration: BoxDecoration(
+                        gradient: _selectedMethod == PairingMethod.wifiSoftAp
+                            ? LinearGradient(
+                                colors: [
+                                  AppTheme.emeraldSuccess.withValues(alpha: 0.25),
+                                  Colors.teal.withValues(alpha: 0.15),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: _selectedMethod == PairingMethod.wifiSoftAp
+                            ? null
+                            : AppTheme.surface.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedMethod == PairingMethod.wifiSoftAp
+                              ? AppTheme.emeraldSuccess
+                              : Colors.white.withValues(alpha: 0.08),
+                          width: _selectedMethod == PairingMethod.wifiSoftAp ? 2 : 1,
+                        ),
+                        boxShadow: _selectedMethod == PairingMethod.wifiSoftAp
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.emeraldSuccess.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  spreadRadius: 1,
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.wifi_tethering_rounded,
+                            color: _selectedMethod == PairingMethod.wifiSoftAp
+                                ? AppTheme.emeraldSuccess
+                                : Colors.white60,
+                            size: 26,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "KẾT NỐI WIFI",
+                            style: TextStyle(
+                              color: _selectedMethod == PairingMethod.wifiSoftAp
+                                  ? Colors.white
+                                  : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            "Điểm phát 192.168.4.1",
+                            style: TextStyle(
+                              color: _selectedMethod == PairingMethod.wifiSoftAp
+                                  ? AppTheme.emeraldSuccess
+                                  : AppTheme.textMuted,
+                              fontSize: 9.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
             // BƯỚC 1: QUÉT MÃ QR HOẶC NHẬP HARDWARE ID THỰC TẾ
             _buildSectionHeader("1. Quét Mã QR Hoặc Nhập Hardware ID Bo Mạch", Icons.qr_code_2),
             const SizedBox(height: 10),
@@ -903,11 +1095,93 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
             const SizedBox(height: 24),
 
-            // BƯỚC 2: QUÉT SÓNG BLUETOOTH BLE THỰC TẾ
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionHeader("2. Quét Sóng Bluetooth BLE Thực Tế", Icons.bluetooth_searching),
+            if (_selectedMethod == PairingMethod.wifiSoftAp) ...[
+              _buildSectionHeader("2. Kết Nối Vào Điểm Phát Wi-Fi Của Bo Mạch", Icons.wifi_tethering_rounded),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppTheme.emeraldSuccess.withValues(alpha: 0.12),
+                      Colors.black45,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.emeraldSuccess.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.router_rounded, color: AppTheme.emeraldSuccess, size: 18),
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            "Điểm Phát Wi-Fi SoftAP Bo Mạch (192.168.4.1)",
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "• Bo mạch ESP32 khi cấp nguồn sẽ phát một mạng Wi-Fi tên theo Hardware ID (ví dụ: 'amtuong1994' hoặc 'amtuong...').\n"
+                      "• Hãy vào phần Cài đặt Wi-Fi trên máy của bạn và kết nối vào mạng này (mạng mở, không mật khẩu).\n"
+                      "• Sau khi kết nối vào Wi-Fi của mạch, cấu hình Wi-Fi gia đình ở Bước 3 sẽ được truyền thẳng xuống bộ nhớ Flash của chip qua cổng 192.168.4.1.",
+                      style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.55),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.wifi_rounded, color: AppTheme.emeraldSuccess, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                "Mạng bo mạch: ${_selectedDevice?.hardwareId ?? (_qrCodeController.text.isNotEmpty ? _qrCodeController.text.trim() : 'amtuong1994')}",
+                                style: const TextStyle(color: Colors.white, fontSize: 11.5, fontFamily: "monospace", fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.emeraldSuccess.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text("IP: 192.168.4.1", style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              // BƯỚC 2: QUÉT SÓNG BLUETOOTH BLE THỰC TẾ
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildSectionHeader("2. Quét Sóng Bluetooth BLE Thực Tế", Icons.bluetooth_searching),
                 InkWell(
                   onTap: () {
                     _startBleScan(_qrCodeController.text.trim(), true);
@@ -1057,6 +1331,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   );
                 }).toList(),
               ),
+            ],
 
             const SizedBox(height: 24),
 
@@ -1243,7 +1518,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                             ? "Đang Tiến Hành Ghép Nối..."
                             : (_selectedDevice == null
                                 ? "Vui lòng chọn 1 thiết bị ở trên"
-                                : "Bắt Đầu Ghép Nối & Kích Hoạt Bảo Hành 24T"),
+                                : (_selectedMethod == PairingMethod.bluetooth
+                                    ? "Bắt Đầu Ghép Nối Qua Bluetooth BLE"
+                                    : "Bắt Đầu Ghép Nối Qua WiFi SoftAP (192.168.4.1)")),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
                       ),
                     ),

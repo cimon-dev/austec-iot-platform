@@ -980,6 +980,20 @@ export function createApp() {
       });
     }
 
+    // Phát lệnh thực tế xuống bo mạch ESP32 qua EMQX MQTT Broker (Port 1883)
+    let actionNumber = '3';
+    if (cmd.includes('OPEN')) actionNumber = '1';
+    else if (cmd.includes('CLOSE')) actionNumber = '2';
+    else if (cmd.includes('STOP')) actionNumber = '3';
+    else if (cmd.includes('RF_SETUP')) actionNumber = '11';
+    else if (cmd.includes('RF_CLEAR')) actionNumber = '12';
+
+    try {
+      await mqttGateway.publishAction(req.user!.id, hardwareId, actionNumber);
+    } catch (mqttErr: any) {
+      console.warn('[Server] MQTT Publish warning:', mqttErr.message);
+    }
+
     // Phát broadcast WebSocket tức thời tới Mobile App và Web Admin
     broadcastToCustomer(req.user!.id, {
       type: 'DEVICE_STATE_CHANGED',
@@ -2609,6 +2623,8 @@ export function createApp() {
         signal: data.signal,
         networks: data.networks,
         networkDetails: data.networkDetails,
+        brokerIp: '192.168.100.6',
+        brokerPort: 1883,
       });
     } catch (e: any) {
       res.json({
@@ -2618,6 +2634,8 @@ export function createApp() {
         signal: '90%',
         networks: ['Manh Duc', 'Manh Duc_5G'],
         networkDetails: [{ ssid: 'Manh Duc', signal: '90%', band: '2.4 GHz' }],
+        brokerIp: '192.168.100.6',
+        brokerPort: 1883,
       });
     }
   });
