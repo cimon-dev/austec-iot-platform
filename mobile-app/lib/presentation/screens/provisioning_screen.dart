@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
 import '../../core/constants/api_config.dart';
@@ -23,6 +25,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   List<DiscoveredHardwareBLE> _discoveredDevices = [];
   DiscoveredHardwareBLE? _selectedDevice;
   Timer? _autoDiscoveryTimer;
+  BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
+  StreamSubscription? _adapterStateSub;
+  StreamSubscription<List<ScanResult>>? _scanResultSub;
 
   // Wi-Fi dò tìm thực tế (100% sóng thực trong không trung, không lấy lịch sử)
   bool _isScanningWifi = false;
@@ -53,13 +58,25 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     // 1. Tự động nhận diện mạng Wi-Fi thực tế của thiết bị
     _detectCurrentWifi();
 
-    // 2. Mặc định vào ghép nối: TỰ ĐỘNG BẬT DÒ QUÉT SÓNG THỰC TẾ LIÊN TỤC VỚI ĐỘ NHẠY CAO
+    // 2. Theo dõi trạng thái Bluetooth trên máy thật
+    if (!kIsWeb) {
+      _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
+        if (mounted) setState(() => _adapterState = state);
+      });
+    }
+
+    // 3. Mặc định vào ghép nối: TỰ ĐỘNG BẬT DÒ QUÉT SÓNG THỰC TẾ LIÊN TỤC VỚI ĐỘ NHẠY CAO
     _startContinuousBleScanning();
   }
 
   @override
   void dispose() {
     _autoDiscoveryTimer?.cancel();
+    _scanResultSub?.cancel();
+    _adapterStateSub?.cancel();
+    if (!kIsWeb) {
+      FlutterBluePlus.stopScan();
+    }
     _qrCodeController.dispose();
     _ssidController.dispose();
     _passwordController.dispose();
@@ -70,18 +87,97 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void _startContinuousBleScanning() {
     _autoDiscoveryTimer?.cancel();
     _isScanning = true;
-    _runSingleScanCycle();
 
-    // Chu kỳ quét 2.5s để cập nhật thời gian thực
-    _autoDiscoveryTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
-      if (!mounted) {
-        timer.cancel();
+    if (!kIsWeb) {
+      _setupNativeScanStream();
+    } else {
+      _runSingleScanCycle();
+      _autoDiscoveryTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
+        if (!mounted) {
+          timer.cancel();
+          return;
+        }
+        if (!_isProvisioning) {
+          _runSingleScanCycle();
+        }
+      });
+    }
+  }
+
+  void _setupNativeScanStream() async {
+    _scanResultSub?.cancel();
+    try {
+      final state = await FlutterBluePlus.adapterState.first;
+      if (mounted) setState(() => _adapterState = state);
+      if (state != BluetoothAdapterState.on) {
+        if (mounted) setState(() => _isScanning = false);
         return;
       }
-      if (!_isProvisioning) {
-        _runSingleScanCycle();
+
+      _scanResultSub = FlutterBluePlus.scanResults.listen((results) {
+        _processNativeScanResults(results);
+      });
+
+      if (!FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.startScan(
+          timeout: const Duration(seconds: 60),
+          androidUsesFineLocation: false,
+        );
       }
-    });
+    } catch (e) {
+      debugPrint("Setup native scan stream error: $e");
+    }
+  }
+
+  void _processNativeScanResults(List<ScanResult> results) {
+    if (!mounted) return;
+    final targetId = _qrCodeController.text.trim();
+    final List<DiscoveredHardwareBLE> list = List.from(_discoveredDevices);
+    bool changed = false;
+
+    for (final r in results) {
+      final adv = r.advertisementData;
+      final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
+      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
+
+      final bool isAustecService = serviceUuids.any((u) => u.contains('6e400001'));
+      final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
+                                rawName.toLowerCase().contains('austec') ||
+                                rawName.toLowerCase().contains('esp') ||
+                                rawName.toLowerCase().contains('cuacuon');
+      final bool isTargetMatch = targetId.isNotEmpty &&
+          (rawName.toLowerCase() == targetId.toLowerCase() ||
+           r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
+
+      if (isAustecService || isAustecName || isTargetMatch) {
+        final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : 'amtuong1994');
+        final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
+        final newDev = DiscoveredHardwareBLE(
+          hardwareId: devId,
+          modelName: "Cửa Cuốn Austec ($devId - Bluetooth Thực)",
+          category: DeviceCategory.rollerDoor,
+          rssi: r.rssi,
+          bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+          isRealHardware: true,
+          nativeDevice: r.device,
+        );
+        if (idx >= 0) {
+          list[idx] = newDev;
+        } else {
+          list.add(newDev);
+          changed = true;
+        }
+      }
+    }
+
+    if (changed || list.length != _discoveredDevices.length) {
+      setState(() {
+        _discoveredDevices = list;
+        if (_selectedDevice == null && list.isNotEmpty) {
+          _selectedDevice = list.first;
+        }
+      });
+    }
   }
 
   Future<void> _runSingleScanCycle() async {
@@ -159,6 +255,16 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       _isScanning = true;
     });
 
+    if (!kIsWeb) {
+      try {
+        await FlutterBluePlus.stopScan();
+        await FlutterBluePlus.startScan(
+          timeout: const Duration(seconds: 45),
+          androidUsesFineLocation: false,
+        );
+      } catch (_) {}
+    }
+
     final devices = await _bleService.scanForHardwareDevices(
       targetHardwareId: targetId,
       triggerWebBle: triggerWebBle,
@@ -167,9 +273,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (mounted) {
       setState(() {
         _isScanning = false;
-        _discoveredDevices = devices;
-        if (devices.isNotEmpty && _selectedDevice == null) {
-          _selectedDevice = devices.first;
+        for (final d in devices) {
+          if (!_discoveredDevices.any((x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase())) {
+            _discoveredDevices.add(d);
+          }
+        }
+        if (_discoveredDevices.isNotEmpty && _selectedDevice == null) {
+          _selectedDevice = _discoveredDevices.first;
         }
       });
     }
@@ -1179,36 +1289,73 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             ] else ...[
               // BƯỚC 2: QUÉT SÓNG BLUETOOTH BLE THỰC TẾ
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildSectionHeader("2. Quét Sóng Bluetooth BLE Thực Tế", Icons.bluetooth_searching),
-                InkWell(
-                  onTap: () {
-                    _startBleScan(_qrCodeController.text.trim(), true);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.bluetooth_audio_rounded, size: 14, color: AppTheme.cyanAccent),
-                        SizedBox(width: 4),
-                        Text(
-                          "Bật Dò Sóng BLE",
-                          style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                  Expanded(
+                    child: _buildSectionHeader("2. Quét Sóng Bluetooth BLE", Icons.bluetooth_searching),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      _startBleScan(_qrCodeController.text.trim(), true);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isScanning)
+                            const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
+                          else
+                            const Icon(Icons.refresh_rounded, size: 14, color: AppTheme.cyanAccent),
+                          const SizedBox(width: 4),
+                          Text(
+                            _isScanning ? "Đang dò..." : "Quét Lại BLE",
+                            style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (!kIsWeb && _adapterState == BluetoothAdapterState.off)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.amberWarning, width: 1.5),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.bluetooth_disabled_rounded, color: AppTheme.amberWarning, size: 24),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Bluetooth trên iPhone đang TẮT!",
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              "Vui lòng vuốt mở Control Center hoặc vào Cài đặt để BẬT Bluetooth.",
+                              style: TextStyle(color: Colors.white70, fontSize: 10.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
             if (_discoveredDevices.isEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
@@ -1335,8 +1482,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
             const SizedBox(height: 24),
 
-            // BƯỚC 3: CẤU HÌNH WI-FI GIA ĐÌNH (CÓ TỰ ĐỘNG DÒ TÌM & GỢI Ý MẠNG ĐANG DÙNG)
-            _buildSectionHeader("3. Cấu Hình Wi-Fi (Tự Động Dò Tìm Mạng Đang Sử Dụng)", Icons.wifi),
+            // BƯỚC 3: CẤU HÌNH WI-FI CHO BO MẠCH
+            _buildSectionHeader("3. Cấu Hình Wi-Fi Cho Bo Mạch", Icons.wifi),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
@@ -1398,13 +1545,18 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        "Tên mạng Wi-Fi gia đình (SSID):",
-                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                      const Expanded(
+                        child: Text(
+                          "Tên mạng Wi-Fi gia đình (SSID):",
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       InkWell(
                         onTap: _detectCurrentWifi,
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.refresh_rounded, size: 14, color: AppTheme.cyanAccent),
                             const SizedBox(width: 4),
@@ -1536,15 +1688,20 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, color: AppTheme.cyanAccent, size: 20),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
+        Flexible(
+          child: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

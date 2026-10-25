@@ -21,6 +21,7 @@ class DiscoveredHardwareBLE {
   final int rssi; // Signal strength dBm
   final String bleUuid;
   final bool isRealHardware;
+  final BluetoothDevice? nativeDevice;
 
   DiscoveredHardwareBLE({
     required this.hardwareId,
@@ -29,6 +30,7 @@ class DiscoveredHardwareBLE {
     required this.rssi,
     required this.bleUuid,
     this.isRealHardware = true,
+    this.nativeDevice,
   });
 }
 
@@ -77,33 +79,52 @@ class BleProvisioningService {
     // 0. Quét sóng Bluetooth Native phần cứng (Dành cho iPhone iOS & Android thực tế)
     if (!kIsWeb) {
       try {
-        if (!FlutterBluePlus.isScanningNow) {
-          FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-        }
-        final results = FlutterBluePlus.lastScanResults;
-        for (final r in results) {
-          final name = r.device.platformName.isNotEmpty
-              ? r.device.platformName
-              : r.advertisementData.advName;
-          if (name.isNotEmpty &&
-              (name.toLowerCase().contains('amtuong') ||
-               name.toLowerCase().contains('austec') ||
-               name.toLowerCase().contains('esp') ||
-               (targetHardwareId != null && name.toLowerCase() == targetHardwareId.toLowerCase()))) {
-            final exists = discovered.any((d) => d.hardwareId.toLowerCase() == name.toLowerCase());
-            if (!exists) {
-              discovered.add(DiscoveredHardwareBLE(
-                hardwareId: name,
-                modelName: "Cửa Cuốn Austec ($name - Bluetooth Thực)",
-                category: DeviceCategory.rollerDoor,
-                rssi: r.rssi,
-                bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
-                isRealHardware: true,
-              ));
+        final adapterState = await FlutterBluePlus.adapterState.first;
+        if (adapterState == BluetoothAdapterState.on) {
+          if (!FlutterBluePlus.isScanningNow) {
+            await FlutterBluePlus.startScan(
+              timeout: const Duration(seconds: 4),
+              androidUsesFineLocation: false,
+            );
+          }
+          // Chờ một nhịp để CoreBluetooth / Android Bluetooth stack bắt được packet
+          await Future.delayed(const Duration(milliseconds: 1000));
+          final results = FlutterBluePlus.lastScanResults;
+          for (final r in results) {
+            final adv = r.advertisementData;
+            final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
+            final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
+
+            final bool isAustecService = serviceUuids.any((u) => u.contains('6e400001'));
+            final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
+                                      rawName.toLowerCase().contains('austec') ||
+                                      rawName.toLowerCase().contains('esp') ||
+                                      rawName.toLowerCase().contains('cuacuon');
+            final bool isTargetMatch = targetHardwareId != null &&
+                targetHardwareId.trim().isNotEmpty &&
+                (rawName.toLowerCase() == targetHardwareId.trim().toLowerCase() ||
+                 r.device.remoteId.str.toLowerCase() == targetHardwareId.trim().toLowerCase());
+
+            if (isAustecService || isAustecName || isTargetMatch) {
+              final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : 'amtuong1994');
+              final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
+              if (!exists) {
+                discovered.add(DiscoveredHardwareBLE(
+                  hardwareId: devId,
+                  modelName: "Cửa Cuốn Austec ($devId - Bluetooth Thực)",
+                  category: DeviceCategory.rollerDoor,
+                  rssi: r.rssi,
+                  bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                  isRealHardware: true,
+                  nativeDevice: r.device,
+                ));
+              }
             }
           }
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint("Scan native BLE error: $e");
+      }
     }
 
     // 1. Quét phần cứng thực tế qua API sóng trực tiếp từ Gateway / Backend
@@ -209,17 +230,28 @@ class BleProvisioningService {
       } else {
         try {
           // Native FlutterBluePlus trên Android / iOS
-          final scanResults = FlutterBluePlus.lastScanResults;
-          final match = scanResults.firstWhere(
-            (r) => (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase() == targetDevice.hardwareId.toLowerCase(),
-            orElse: () => scanResults.first,
-          );
-          if (match.device != null) {
-            await match.device.connect(
+          BluetoothDevice? devToConnect = targetDevice.nativeDevice;
+          if (devToConnect == null) {
+            final scanResults = FlutterBluePlus.lastScanResults;
+            if (scanResults.isNotEmpty) {
+              final match = scanResults.firstWhere(
+                (r) {
+                  final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+                  return n == targetDevice.hardwareId.toLowerCase() ||
+                         r.advertisementData.serviceUuids.any((u) => u.toString().toLowerCase().contains('6e400001'));
+                },
+                orElse: () => scanResults.first,
+              );
+              devToConnect = match.device;
+            }
+          }
+
+          if (devToConnect != null) {
+            await devToConnect.connect(
               license: License.nonprofit,
-              timeout: const Duration(seconds: 4),
+              timeout: const Duration(seconds: 8),
             );
-            final services = await match.device.discoverServices();
+            final services = await devToConnect.discoverServices();
             final nusService = services.firstWhere(
               (s) => s.uuid.toString().toUpperCase().contains('6E400001'),
               orElse: () => services.first,
@@ -230,9 +262,12 @@ class BleProvisioningService {
             );
             await rxChar.write(utf8.encode(payloadString));
             bleSuccess = true;
-            await match.device.disconnect();
+            await Future.delayed(const Duration(milliseconds: 600));
+            await devToConnect.disconnect();
           }
-        } catch (_) {}
+        } catch (e) {
+          debugPrint("BLE native provision error: $e");
+        }
       }
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
