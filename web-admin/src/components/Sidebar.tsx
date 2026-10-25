@@ -28,6 +28,8 @@ import {
   UserCheck,
   KeyRound,
   ShoppingBag,
+  UploadCloud,
+  BookOpen,
   X
 } from "lucide-react";
 
@@ -57,6 +59,8 @@ function SidebarNavigation({
     { id: "models", label: language === "vi" ? "4. Mẫu thương phẩm" : "4. Device Models", href: "/devices?tab=models", icon: Box },
     { id: "import", label: language === "vi" ? "5. Nhập kho & Tem QR" : "5. Excel & QR Decals", href: "/devices?tab=import", icon: FileSpreadsheet },
     { id: "list", label: language === "vi" ? "6. Danh sách thiết bị" : "6. Device Inventory", href: "/devices?tab=list", icon: Radio },
+    { id: "firmware", label: language === "vi" ? "7. Quản lý Firmware & OTA" : "7. Firmware & OTA", href: "/devices/firmware", icon: UploadCloud },
+    { id: "pairing", label: language === "vi" ? "8. Lab Ghép Nối & Test ESP32" : "8. Hardware Lab & Test", href: "/devices/pairing-lab", icon: Radio },
   ];
 
   const userSubmodules = [
@@ -300,6 +304,28 @@ function SidebarNavigation({
                 {!isCollapsed && (
                   <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 font-mono">
                     SYNC
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {canView("mod_dev") && (
+              <Link
+                href="/guides"
+                onClick={onNavigate}
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  pathname.startsWith("/guides")
+                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/guides") ? "text-emerald-400" : "text-slate-500"}`} />
+                  {!isCollapsed && <span className="truncate">{language === "vi" ? "Hướng Dẫn Lắp Đặt & Reset" : "Install & Reset Manuals"}</span>}
+                </div>
+                {!isCollapsed && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-mono">
+                    VIDEO
                   </span>
                 )}
               </Link>

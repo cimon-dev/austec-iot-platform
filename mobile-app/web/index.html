@@ -41,6 +41,36 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    window.austecWebBle = {
+      isSupported: function() {
+        return !!(navigator && navigator.bluetooth && typeof navigator.bluetooth.requestDevice === 'function');
+      },
+      requestDevice: function() {
+        return new Promise(function(resolve) {
+          if (!navigator || !navigator.bluetooth || !navigator.bluetooth.requestDevice) {
+            resolve(JSON.stringify({ supported: false, error: 'Web Bluetooth không hỗ trợ trên trình duyệt này' }));
+            return;
+          }
+          navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
+          }).then(function(device) {
+            resolve(JSON.stringify({
+              supported: true,
+              success: true,
+              id: device.id,
+              name: device.name || 'amtuong1994',
+              hardwareId: device.name || 'amtuong1994'
+            }));
+          }).catch(function(err) {
+            console.warn('[WebBLE] Lỗi hoặc người dùng hủy:', err);
+            resolve(JSON.stringify({ supported: true, success: false, error: (err && err.message) ? err.message : 'Cancelled' }));
+          });
+        });
+      }
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getApiBaseUrl } from "./apiConfig";
 
 export interface AuthUser {
   id: string;
@@ -93,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const assignedRole = role || (identifier.includes("cskh") ? "CSKH" : identifier.includes("admin") ? "ADMIN" : "ADMIN");
 
     try {
-      const res = await fetch("http://localhost:4000/api/auth/login", {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password, role: assignedRole }),

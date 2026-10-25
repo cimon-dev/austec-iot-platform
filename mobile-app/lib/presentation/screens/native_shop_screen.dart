@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
+import '../../core/constants/api_config.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/iot_gateway_client.dart';
+import '../../core/services/auth_service.dart';
 import 'cskh_chat_screen.dart';
 
 class NativeShopScreen extends StatefulWidget {
@@ -41,7 +43,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
   Future<void> _fetchProductsFromBackend() async {
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:4000/api/shop/products'),
+        Uri.parse('${ApiConfig.baseUrl}/api/shop/products'),
         headers: {'Authorization': 'Bearer austec-customer-token'},
       ).timeout(const Duration(seconds: 3));
 
@@ -153,17 +155,19 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
       ),
     );
 
+    final curUser = AuthService().currentUser;
+    final authToken = AuthService().token ?? 'austec-customer-token';
     try {
       final res = await http.post(
-        Uri.parse('http://localhost:4000/api/shop/orders'),
+        Uri.parse('${ApiConfig.baseUrl}/api/shop/orders'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer austec-customer-token',
+          'Authorization': 'Bearer $authToken',
         },
         body: jsonEncode({
-          'customerName': 'Nguyễn Mạnh Đức',
-          'customerPhone': '0944 102 588',
-          'shippingAddress': 'Hà Nội, Việt Nam',
+          'customerName': curUser?.fullName ?? 'Khách hàng',
+          'customerPhone': curUser?.phoneNumber ?? '0944 102 588',
+          'shippingAddress': curUser?.address ?? 'Hà Nội, Việt Nam',
           'totalAmount': product.price,
           'notes': 'Đặt mua từ Mobile App Austec Smart Life',
           'items': [

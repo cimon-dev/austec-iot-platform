@@ -447,7 +447,74 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
             ],
           ),
 
-          const SizedBox(height: 12),
+          // DẢI THÔNG TIN QUẢN TRỊ: TRẠNG THÁI ON/OFF, AI SỞ HỮU, NGÀY GIA HẠN/BẢO HÀNH
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.surface.withValues(alpha: 0.6) : AppTheme.lightBackground,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 1. Trạng thái ON / OFF
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: device.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      device.isOnline ? "ON" : "OFF",
+                      style: TextStyle(
+                        color: device.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                // 2. Ai sở hữu
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline_rounded, size: 13, color: AppTheme.cyanAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      device.ownerName,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                // 3. Ngày gia hạn / bảo hành
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded, size: 12, color: AppTheme.amberWarning),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Hạn: ${device.warrantyUntil.length >= 10 ? device.warrantyUntil.substring(0, 10) : device.warrantyUntil}",
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 8),
           Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
           const SizedBox(height: 12),
 

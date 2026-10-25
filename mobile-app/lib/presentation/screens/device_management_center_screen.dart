@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_theme.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/iot_gateway_client.dart';
+import '../../core/services/auth_service.dart';
 import 'device_settings_screen.dart';
 import 'roller_door_control_screen.dart';
 import 'device_detail_screen.dart';
@@ -285,36 +286,46 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                  child: Builder(builder: (context) {
+                      final currentUser = AuthService().currentUser;
+                      final currentUserName = (currentUser != null && currentUser.fullName.isNotEmpty)
+                          ? currentUser.fullName
+                          : (currentUser?.email.isNotEmpty == true ? currentUser!.email : 'Khách Hàng Austec');
+                      final currentUserPhone = (currentUser != null && currentUser.phoneNumber.isNotEmpty)
+                          ? currentUser.phoneNumber
+                          : '0988.xxx.888';
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            "Nguyễn Mạnh Đức",
-                            style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              Text(
+                                currentUserName,
+                                style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  "CHỦ SỞ HỮU",
+                                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              "CHỦ SỞ HỮU",
-                              style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9, fontWeight: FontWeight.bold),
-                            ),
+                          const SizedBox(height: 3),
+                          Text(
+                            "Tài khoản: ${currentUser?.email ?? 'austec.user'} • SĐT: $currentUserPhone",
+                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        "Austec ID: AST-88992 • SĐT: 0988.xxx.888",
-                        style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11),
-                      ),
-                    ],
-                  ),
+                      );
+                    }),
                 ),
               ],
             ),
@@ -594,7 +605,70 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          // Dải thông tin quản trị: Trạng thái ON/OFF, Ai sở hữu, Ngày gia hạn/Bảo hành
+          Container(
+            margin: const EdgeInsets.only(top: 8, bottom: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.surface.withValues(alpha: 0.5) : AppTheme.lightBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: dev.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      dev.isOnline ? "ON" : "OFF",
+                      style: TextStyle(
+                        color: dev.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline_rounded, size: 12, color: AppTheme.cyanAccent),
+                    const SizedBox(width: 3),
+                    Text(
+                      dev.ownerName,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded, size: 11, color: AppTheme.amberWarning),
+                    const SizedBox(width: 3),
+                    Text(
+                      "Hạn: ${dev.warrantyUntil.length >= 10 ? dev.warrantyUntil.substring(0, 10) : dev.warrantyUntil}",
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                        fontSize: 9.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
           const Divider(height: 1),
           const SizedBox(height: 8),
 
@@ -603,8 +677,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Bảo hành: ${dev.warrantyUntil}",
-                style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 10.5),
+                "Gói: ${dev.subscriptionStatus == 'ACTIVE' ? '24 Tháng' : 'Hết hạn'}",
+                style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 10),
               ),
               Row(
                 children: [

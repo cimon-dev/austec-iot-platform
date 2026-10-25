@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/device_model.dart';
 import '../constants/app_theme.dart';
+import '../constants/api_config.dart';
+import 'auth_service.dart';
 
 class CommandResult {
   final bool success;
@@ -185,7 +187,7 @@ class IoTGatewayClient {
       roomName: "Cửa đại sảnh",
       isLocked: true,
       batteryPercent: 89,
-      lastUnlockUser: "Nguyễn Mạnh Đức (Vân tay)",
+      lastUnlockUser: "Vân tay chủ nhà",
     ),
 
     // 5. Data Analytics
@@ -248,7 +250,12 @@ class IoTGatewayClient {
   }
 
   void addDevice(DeviceItem device) {
-    _devices.add(device);
+    final idx = _devices.indexWhere((d) => d.hardwareId == device.hardwareId);
+    if (idx >= 0) {
+      _devices[idx] = device;
+    } else {
+      _devices.insert(0, device);
+    }
   }
 
   void removeDevice(String hardwareId) {
@@ -269,7 +276,7 @@ class IoTGatewayClient {
     try {
       final authToken = token ?? 'austec-customer-token';
       final res = await http.get(
-        Uri.parse('http://localhost:4000/api/devices/my'),
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/my'),
         headers: {'Authorization': 'Bearer $authToken'},
       ).timeout(const Duration(seconds: 3));
 
@@ -313,14 +320,24 @@ class IoTGatewayClient {
                 positionPercent: pos,
                 batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,
                 motorCurrentA: (props['motor_current'] as num?)?.toDouble() ?? 2.4,
+                ownerName: (d['ownerName'] ?? (AuthService().currentUser?.fullName ?? 'Chủ sở hữu')).toString(),
+                warrantyUntil: (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().length >= 10
+                    ? (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().substring(0, 10)
+                    : '2028-10-23',
                 subscriptionType: (d['subscriptionType'] ?? 'LIMITED').toString(),
-                subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-22').toString(),
+                subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-23').toString(),
                 subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
               ));
             }
             if (parsed.isNotEmpty) {
-              _devices.clear();
-              _devices.addAll(parsed);
+              for (final p in parsed) {
+                final existingIdx = _devices.indexWhere((x) => x.hardwareId == p.hardwareId);
+                if (existingIdx >= 0) {
+                  _devices[existingIdx] = p;
+                } else {
+                  _devices.insert(0, p);
+                }
+              }
             }
           }
         }
@@ -349,7 +366,7 @@ class IoTGatewayClient {
                   : action;
 
       final res = await http.post(
-        Uri.parse('http://localhost:4000/api/devices/control'),
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer austec-customer-token',
@@ -384,13 +401,14 @@ class IoTGatewayClient {
         device.positionPercent = 100;
         device.isMoving = false;
         device.movingDirection = 'stop';
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
           AuditLog(
             time: nowStr,
             action: "Mở cửa",
             actionCode: 1,
-            triggeredBy: "Nguyễn Mạnh Đức",
+            triggeredBy: currentActor,
             deviceCode: device.hardwareId,
           ),
         );
@@ -398,26 +416,28 @@ class IoTGatewayClient {
         device.positionPercent = 0;
         device.isMoving = false;
         device.movingDirection = 'stop';
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
           AuditLog(
             time: nowStr,
             action: "Đóng cửa",
             actionCode: 2,
-            triggeredBy: "Nguyễn Mạnh Đức",
+            triggeredBy: currentActor,
             deviceCode: device.hardwareId,
           ),
         );
       } else if (action == "STOP_DOOR") {
         device.isMoving = false;
         device.movingDirection = 'stop';
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
           AuditLog(
             time: nowStr,
             action: "Dừng cửa",
             actionCode: 3,
-            triggeredBy: "Nguyễn Mạnh Đức",
+            triggeredBy: currentActor,
             deviceCode: device.hardwareId,
           ),
         );

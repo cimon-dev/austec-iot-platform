@@ -682,19 +682,21 @@
       "priority": "NORMAL",
       "subject": "Kênh hỗ trợ 1-1 cho khách hàng test (Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ)",
       "createdAt": "2026-10-22T09:20:38.908Z",
-      "updatedAt": "2026-10-22T09:20:55.997Z",
+      "updatedAt": "2026-10-24T11:50:30.481Z",
       "selectedDevice": {
         "isOwned": false,
         "hardwareId": null,
-        "deviceName": "Bộ Lưu Điện UPS Austec Sine Chuẩn 48 Giờ",
-        "modelName": "UPS Pro Sine-48H",
-        "categoryTag": "NGUỒN & PHỤ KIỆN",
+        "deviceName": "Cửa Cuốn Khe Thoáng Austec AluDoor X-Series Siêu Êm",
+        "modelName": "Austec AluDoor X-100",
+        "categoryTag": "CỬA CUỐN THÔNG MINH",
         "specs": {
-          "Công suất": "1000VA / 800W",
-          "Thời gian lưu": "48 giờ chờ / 20 lần đóng mở"
+          "Công suất": "850W Turbo Inverter",
+          "Tải trọng": "1200 kg",
+          "Vật liệu": "Hợp kim nhôm 6063-T5 AkzoNobel",
+          "Tiêu chuẩn": "IP65"
         },
-        "imageUrl": "https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=600&auto=format&fit=crop&q=80",
-        "price": 4500000
+        "imageUrl": "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+        "price": 19500000
       }
     }
   ],
@@ -1123,6 +1125,6 @@
     }
   ],
   "blackboxLogs": [],
-  "lastSavedAt": "2026-10-22T09:20:56.248Z",
+  "lastSavedAt": "2026-10-24T11:50:30.738Z",
   "version": "1.0"
 }

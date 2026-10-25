@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
+import '../../core/constants/api_config.dart';
 import '../../core/services/auth_service.dart';
 
 class CustomerSupportTicketItem {
@@ -85,12 +85,11 @@ class _CustomerSupportTicketsScreenState extends State<CustomerSupportTicketsScr
 
   Future<void> _fetchMyTickets() async {
     setState(() => _isLoading = true);
-    final host = kIsWeb ? 'localhost' : '10.0.2.2';
     final token = AuthService().token ?? 'austec-customer-token';
 
     try {
       final res = await http.get(
-        Uri.parse('http://$host:4000/api/cskh/requests'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cskh/requests'),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 4));
 
@@ -129,10 +128,10 @@ class _CustomerSupportTicketsScreenState extends State<CustomerSupportTicketsScr
         _tickets = [
           CustomerSupportTicketItem(
             id: "REQ-1001",
-            customerId: "USR-008712",
-            customerName: "Nguyễn Mạnh Đức",
-            customerPhone: "0944 102 588",
-            hardwareId: "AT-DOOR-88239A01",
+            customerId: AuthService().currentUser?.id ?? "USR-008712",
+            customerName: AuthService().currentUser?.fullName ?? "Khách hàng",
+            customerPhone: AuthService().currentUser?.phoneNumber ?? "0944 102 588",
+            hardwareId: "amtuong1994",
             deviceName: "Cửa cuốn Gara Đức Mạnh",
             requestType: "TECHNICAL",
             description: "Cửa cuốn khi bấm đóng từ xa thỉnh thoảng khựng lại 1-2 giây rồi mới tiếp tục đóng hết hành trình. Nhờ kỹ thuật kiểm tra log motor và sensor chống xô.",

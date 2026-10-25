@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
+import '../constants/api_config.dart';
+
 class AuthResult {
   final bool success;
   final String? message;
@@ -20,7 +22,7 @@ class AuthService {
 
   static const String _tokenKey = 'austec_auth_token';
   static const String _userKey = 'austec_user_profile';
-  static const String _baseUrl = 'http://localhost:4000';
+  static String get _baseUrl => ApiConfig.baseUrl;
 
   UserModel? _currentUser;
   String? _token;

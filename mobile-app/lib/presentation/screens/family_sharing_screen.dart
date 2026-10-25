@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
+import '../../core/constants/api_config.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/iot_gateway_client.dart';
@@ -210,7 +211,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
     try {
       // 1. Tải danh sách thành viên đang có của thiết bị này
       final membersRes = await http.get(
-        Uri.parse('http://localhost:4000/api/devices/$hardwareId/members'),
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId/members'),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 4));
 
@@ -226,7 +227,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
       // 2. Tải danh sách gợi ý thành viên từ các thiết bị khác của chủ sở hữu
       final suggestionsRes = await http.get(
-        Uri.parse('http://localhost:4000/api/devices/$hardwareId/member-suggestions'),
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId/member-suggestions'),
         headers: {'Authorization': 'Bearer $token'},
       ).timeout(const Duration(seconds: 4));
 
@@ -264,13 +265,18 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
   }
 
   List<MemberPermission> _getOfflineFallbackMembers(String hwId) {
+    final curUser = AuthService().currentUser;
+    final ownerName = (curUser != null && curUser.fullName.isNotEmpty)
+        ? "${curUser.fullName} (Chủ nhà)"
+        : "Chủ nhà";
+    final ownerPhone = curUser?.phoneNumber ?? "0944102588";
     return [
       MemberPermission(
         id: "PERM-01",
         hardwareId: hwId,
-        userId: "USER-OWNER",
-        memberName: "Nguyễn Mạnh Đức (Chủ nhà)",
-        phoneNumber: "0944102588",
+        userId: curUser?.id ?? "USER-OWNER",
+        memberName: ownerName,
+        phoneNumber: ownerPhone,
         role: "OWNER",
         canControl: true,
         canViewHistory: true,
@@ -353,7 +359,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
           try {
             await http.post(
-              Uri.parse('http://localhost:4000/api/devices/${_selectedDevice!.hardwareId}/members'),
+              Uri.parse('${ApiConfig.baseUrl}/api/devices/${_selectedDevice!.hardwareId}/members'),
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer $token',
@@ -412,7 +418,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
           try {
             await http.put(
-              Uri.parse('http://localhost:4000/api/devices/${_selectedDevice!.hardwareId}/members/${updated.id}'),
+              Uri.parse('${ApiConfig.baseUrl}/api/devices/${_selectedDevice!.hardwareId}/members/${updated.id}'),
               headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer $token',
@@ -482,7 +488,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
               try {
                 await http.delete(
-                  Uri.parse('http://localhost:4000/api/devices/${_selectedDevice!.hardwareId}/members/${member.id}'),
+                  Uri.parse('${ApiConfig.baseUrl}/api/devices/${_selectedDevice!.hardwareId}/members/${member.id}'),
                   headers: {'Authorization': 'Bearer $token'},
                 );
               } catch (_) {}

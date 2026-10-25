@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../core/constants/app_theme.dart';
+import '../../core/constants/api_config.dart';
 import '../../core/models/device_model.dart';
+import '../../core/services/auth_service.dart';
 
 class DeviceHistoryScreen extends StatefulWidget {
   final DeviceItem device;
@@ -28,7 +30,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
     setState(() => _isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('http://localhost:4000/api/devices/${widget.device.hardwareId}/history'),
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/${widget.device.hardwareId}/history'),
         headers: {'Authorization': 'Bearer austec-customer-token'},
       ).timeout(const Duration(seconds: 3));
 
@@ -64,7 +66,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                       time: timeFormatted,
                       action: actName,
                       actionCode: code,
-                      triggeredBy: item['actorName']?.toString() ?? "Nguyễn Mạnh Đức",
+                      triggeredBy: item['actorName']?.toString() ?? (AuthService().currentUser?.fullName ?? "Người dùng"),
                       deviceCode: widget.device.hardwareId,
                     ),
                   );

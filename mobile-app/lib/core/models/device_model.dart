@@ -68,6 +68,7 @@ class DeviceItem {
   final String warrantyUntil;
   final String warrantyCode;
   final FamilyRole userRole;
+  String ownerName;
 
   // Gói dịch vụ & Hạn sử dụng (Mặc định 12 tháng khi KH)
   String subscriptionType; // 'LIMITED' hoặc 'PERPETUAL'
@@ -140,6 +141,7 @@ class DeviceItem {
     this.warrantyUntil = "2028-10-21",
     this.warrantyCode = "EW-AUSTEC-24M",
     this.userRole = FamilyRole.owner,
+    this.ownerName = "Chủ sở hữu",
     this.subscriptionType = 'LIMITED',
     this.subscriptionExpiresAt = '2027-10-21T00:00:00.000Z',
     this.subscriptionStatus = 'ACTIVE',
@@ -175,7 +177,7 @@ class DeviceItem {
     this.currentPowerKw = 3.46,
     this.aiStatus = "AI Core Active",
     this.isLocked = true,
-    this.lastUnlockUser = "Nguyễn Mạnh Đức (Vân tay)",
+    this.lastUnlockUser = "Vân tay chủ nhà",
     List<AuditLog>? auditLogs,
   })  : accessDays = accessDays ?? [true, true, true, true, true, false, false],
         subChannels = subChannels ?? [true, false, true, true],
@@ -185,35 +187,35 @@ class DeviceItem {
                 time: "21/10/2026 15:38:23",
                 action: "Dừng cửa",
                 actionCode: 3,
-                triggeredBy: "Nguyễn Mạnh Đức",
+                triggeredBy: "Chủ sở hữu",
                 deviceCode: "amtuong1834",
               ),
               const AuditLog(
                 time: "21/10/2026 15:38:04",
                 action: "Đóng cửa",
                 actionCode: 2,
-                triggeredBy: "Nguyễn Mạnh Đức",
+                triggeredBy: "Chủ sở hữu",
                 deviceCode: "amtuong1834",
               ),
               const AuditLog(
                 time: "21/10/2026 15:35:11",
                 action: "Mở cửa",
                 actionCode: 1,
-                triggeredBy: "Nguyễn Mạnh Đức",
+                triggeredBy: "Chủ sở hữu",
                 deviceCode: "amtuong1834",
               ),
               const AuditLog(
                 time: "21/10/2026 15:34:23",
                 action: "Đóng cửa",
                 actionCode: 2,
-                triggeredBy: "Nguyễn Mạnh Đức",
+                triggeredBy: "Chủ sở hữu",
                 deviceCode: "amtuong1834",
               ),
               const AuditLog(
                 time: "15/10/2026 20:16:18",
                 action: "Dừng cửa",
                 actionCode: 3,
-                triggeredBy: "Nguyễn Mạnh Đức",
+                triggeredBy: "Chủ sở hữu",
                 deviceCode: "amtuong1834",
               ),
             ];

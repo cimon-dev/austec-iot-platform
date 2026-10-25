@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { usePermissions } from "@/context/PermissionContext";
 import { AccessDenied } from "@/components/AccessDenied";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 // Deterministic number formatter to avoid SSR/Client locale hydration mismatch (1,200 vs 1.200)
 const formatNum = (num: number) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -97,12 +98,13 @@ function DevicesManagementContent() {
   // Master Data Loader from PostgreSQL Backend APIs
   useEffect(() => {
     const loadMasterData = async () => {
+      const apiBase = getApiBaseUrl();
       const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
       const headers = { Authorization: `Bearer ${token}` };
 
       // 1. Groups
       try {
-        const res = await fetch("http://localhost:4000/api/admin/groups", { headers });
+        const res = await fetch(`${apiBase}/api/admin/groups`, { headers });
         const data = await res.json();
         if (data.success && Array.isArray(data.groups) && data.groups.length > 0) {
           setGroups(data.groups.map((g: any) => ({
@@ -120,7 +122,7 @@ function DevicesManagementContent() {
 
       // 2. Device Types
       try {
-        const res = await fetch("http://localhost:4000/api/admin/device-types", { headers });
+        const res = await fetch(`${apiBase}/api/admin/device-types`, { headers });
         const data = await res.json();
         if (data.success && Array.isArray(data.types) && data.types.length > 0) {
           setDeviceTypes(data.types.map((t: any) => ({
@@ -137,17 +139,17 @@ function DevicesManagementContent() {
 
       // 3. Properties
       try {
-        const res = await fetch("http://localhost:4000/api/admin/properties", { headers });
+        const res = await fetch(`${apiBase}/api/admin/properties`, { headers });
         const data = await res.json();
         if (data.success && Array.isArray(data.properties) && data.properties.length > 0) {
           setProperties(data.properties.map((p: any) => ({
             id: p.id,
-            key: p.key || p.propKey,
-            name: p.name || p.propName,
+            key: p.key || p.propertyKey || p.propKey || "",
+            name: p.name || p.displayName || p.propName || "",
             type: p.dataType || p.type || "integer",
             unit: p.unit || "",
-            widget: p.widget || "gauge",
-            ctrl: !!(p.isWritable ?? p.ctrl),
+            widget: p.widget || p.uiWidgetType || "gauge",
+            ctrl: !!(p.isControllable ?? p.isWritable ?? p.ctrl),
           })));
         }
       } catch (e) {
@@ -156,7 +158,7 @@ function DevicesManagementContent() {
 
       // 4. Models
       try {
-        const res = await fetch("http://localhost:4000/api/admin/models", { headers });
+        const res = await fetch(`${apiBase}/api/admin/models`, { headers });
         const data = await res.json();
         if (data.success && Array.isArray(data.models) && data.models.length > 0) {
           setModels(data.models.map((m: any) => ({
@@ -176,7 +178,7 @@ function DevicesManagementContent() {
 
       // 5. Fleet Devices
       try {
-        const res = await fetch("http://localhost:4000/api/admin/devices", { headers });
+        const res = await fetch(`${apiBase}/api/admin/devices`, { headers });
         const data = await res.json();
         if (data.success && Array.isArray(data.devices) && data.devices.length > 0) {
           const mappedDevices = data.devices.map((d: any) => ({
@@ -234,7 +236,7 @@ function DevicesManagementContent() {
     };
 
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-    fetch("http://localhost:4000/api/admin/groups", {
+    fetch(`${getApiBaseUrl()}/api/admin/groups`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ code: cleanCode, groupName: newGroupForm.name.trim(), description: newGroupForm.desc })
@@ -251,7 +253,7 @@ function DevicesManagementContent() {
     if (!editGroupForm) return;
 
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-    fetch(`http://localhost:4000/api/admin/groups/${editGroupForm.id}`, {
+    fetch(`${getApiBaseUrl()}/api/admin/groups/${editGroupForm.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ groupName: editGroupForm.name, description: editGroupForm.desc })
@@ -266,7 +268,7 @@ function DevicesManagementContent() {
   const handleDeleteGroup = (id: number) => {
     if (confirm("Bạn có chắc chắn muốn xóa nhóm sản phẩm này?")) {
       const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-      fetch(`http://localhost:4000/api/admin/groups/${id}`, {
+      fetch(`${getApiBaseUrl()}/api/admin/groups/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       }).catch(e => console.warn(e));
@@ -1289,7 +1291,7 @@ function DevicesManagementContent() {
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
       const action = newState === "OPENED" ? "OPEN" : newState === "CLOSED" ? "CLOSE" : newState === "STOPPED" ? "STOP" : newState;
-      await fetch("http://localhost:4000/api/devices/control", {
+      await fetch(`${getApiBaseUrl()}/api/devices/control`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1322,7 +1324,7 @@ function DevicesManagementContent() {
     setControlLoading(true);
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-      await fetch("http://localhost:4000/api/devices/control", {
+      await fetch(`${getApiBaseUrl()}/api/devices/control`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1356,7 +1358,7 @@ function DevicesManagementContent() {
   const handleRenewDevice = async (hwId: string, months: number, isPerpetual: boolean) => {
     setRenewLoading(true);
     try {
-      await fetch(`http://localhost:4000/api/devices/${hwId}/renew`, {
+      await fetch(`${getApiBaseUrl()}/api/devices/${hwId}/renew`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1742,17 +1744,40 @@ function DevicesManagementContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     if (newProp.key && newProp.name) {
                       const cleanKey = newProp.key.trim().toLowerCase();
-                      if (properties.some(p => p.key.trim().toLowerCase() === cleanKey)) {
+                      if (properties.some(p => p.key && p.key.trim().toLowerCase() === cleanKey)) {
                         alert(`Mã thuộc tính (Key) "${cleanKey}" đã tồn tại trong Schema! Vui lòng chọn key khác.`);
                         return;
                       }
-                      setProperties((prev) => [
-                        ...prev,
-                        { id: Date.now(), ...newProp, key: cleanKey, name: newProp.name.trim() } as any,
-                      ]);
+                      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+                      const propItem = {
+                        id: Date.now(),
+                        ...newProp,
+                        key: cleanKey,
+                        name: newProp.name.trim(),
+                        propertyKey: cleanKey,
+                        displayName: newProp.name.trim(),
+                        dataType: newProp.type,
+                        uiWidgetType: newProp.widget,
+                        isControllable: newProp.ctrl,
+                      };
+                      setProperties((prev) => [...prev, propItem as any]);
+
+                      fetch(`${getApiBaseUrl()}/api/admin/properties`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                        body: JSON.stringify({
+                          propertyKey: cleanKey,
+                          displayName: newProp.name.trim(),
+                          dataType: newProp.type,
+                          unit: newProp.unit || "",
+                          uiWidgetType: newProp.widget,
+                          isControllable: newProp.ctrl,
+                        }),
+                      }).catch(e => console.warn("Lỗi lưu property vào backend:", e));
+
                       setShowAddProp(false);
                       setNewProp({ key: "", name: "", type: "integer", unit: "", widget: "gauge", ctrl: false });
                       showToast(`Đã lưu thuộc tính mới: ${newProp.name}`);

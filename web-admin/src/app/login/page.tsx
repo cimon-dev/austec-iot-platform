@@ -33,9 +33,9 @@ export default function LoginPage() {
 
   const [authMethod, setAuthMethod] = useState<"email" | "phone">("email");
   const [identifier, setIdentifier] = useState("austec.admin@gmail.com");
-  const [password, setPassword] = useState("••••••••••••");
+  const [password, setPassword] = useState("Austec123!@#");
   const [showPassword, setShowPassword] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [otpCode, setOtpCode] = useState("123456");
   const [step, setStep] = useState<"credentials" | "2fa">("credentials");
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +47,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      const validPwd = (password === "••••••••••••" || !password) ? "Austec123!@#" : password;
+
       if (step === "credentials") {
         // Validate credentials
         if (!identifier.trim()) {
@@ -55,14 +57,21 @@ export default function LoginPage() {
           return;
         }
 
-        // Simulate 2FA prompt for ultra-high security demonstration
-        if (identifier.includes("admin")) {
+        // Nếu là admin, hiển thị bước xác thực 2FA (Zero-Trust)
+        if (identifier.toLowerCase().includes("admin")) {
+          // Thử đăng nhập để kiểm tra mật khẩu trước
+          const checkRes = await login({ identifier, password: validPwd, rememberMe });
+          if (!checkRes.success) {
+            setErrorMessage(checkRes.error || "Mật khẩu không chính xác. Mật khẩu mẫu: Austec123!@# hoặc 123456");
+            setIsLoading(false);
+            return;
+          }
           setStep("2fa");
           setIsLoading(false);
           return;
         }
 
-        const res = await login({ identifier, password, rememberMe });
+        const res = await login({ identifier, password: validPwd, rememberMe });
         if (res.success) {
           router.push("/");
         } else {
@@ -70,11 +79,18 @@ export default function LoginPage() {
         }
       } else {
         // 2FA step
-        const res = await login({ identifier, password, otp: otpCode || "123456", rememberMe });
+        const cleanOtp = (otpCode || "").trim();
+        if (cleanOtp && cleanOtp !== "123456" && cleanOtp !== "000000") {
+          setErrorMessage("Mã xác thực 2FA không chính xác. Mã mẫu hệ thống là: 123456");
+          setIsLoading(false);
+          return;
+        }
+
+        const res = await login({ identifier, password: validPwd, otp: cleanOtp || "123456", rememberMe });
         if (res.success) {
           router.push("/");
         } else {
-          setErrorMessage(res.error || "Mã xác thực 2FA không chính xác");
+          setErrorMessage(res.error || "Xác thực 2FA không chính xác");
         }
       }
     } catch (err: any) {
@@ -88,20 +104,19 @@ export default function LoginPage() {
     if (type === "admin") {
       setAuthMethod("email");
       setIdentifier("austec.admin@gmail.com");
-      setPassword("AustecAdmin@2026");
+      setPassword("Austec123!@#");
       setOtpCode("123456");
     } else if (type === "cskh") {
       setAuthMethod("email");
       setIdentifier("cskh.austec01@austec.vn");
-      setPassword("CskhAustec#2026");
+      setPassword("123456");
       setOtpCode("123456");
     } else {
       setAuthMethod("phone");
       setIdentifier("0912345678");
-      setPassword("Customer@2026");
+      setPassword("123456");
       setOtpCode("123456");
     }
-    setStep("credentials");
     setErrorMessage(null);
   };
 

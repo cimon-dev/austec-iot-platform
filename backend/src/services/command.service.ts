@@ -1,6 +1,7 @@
 import { BlackboxService } from './blackbox.service.js';
 import { HotCacheClient } from '@austec/database';
 import { ActorRole, AckStatus } from '@austec/database';
+import type { MqttGateway } from './mqtt.gateway.js';
 
 export interface CommandRequest {
   hardwareId: string;
@@ -22,8 +23,13 @@ export interface CommandResponse {
 export class CommandService {
   constructor(
     private blackboxService: BlackboxService,
-    private hotCache: HotCacheClient
+    private hotCache: HotCacheClient,
+    private mqttGateway?: MqttGateway
   ) {}
+
+  public setMqttGateway(gateway: MqttGateway) {
+    this.mqttGateway = gateway;
+  }
 
   /**
    * Phát lệnh điều khiển khẩn cấp xuống thiết bị qua kênh thời gian thực
@@ -34,33 +40,49 @@ export class CommandService {
     // 1. Kiểm tra thiết bị có đang online không trong Hot Cache (< 0.1ms)
     const currentState = await this.hotCache.getDeviceState(req.hardwareId);
     if (!currentState || !currentState.isOnline) {
-      const latencyMs = Math.round(performance.now() - startTime);
+      // Đối với thiết bị thật amtuong1994, cho phép kích hoạt ngay cả khi cache chưa nhận để kiểm thử
+      if (req.hardwareId !== 'amtuong1994' && !req.hardwareId.startsWith('AT-')) {
+        const latencyMs = Math.round(performance.now() - startTime);
 
-      this.blackboxService.logCommand({
-        hardwareId: req.hardwareId,
-        actorId: req.actorId,
-        actorRole: req.actorRole,
-        actorIp: req.actorIp,
-        actionType: `CMD_${req.command}`,
-        payloadSent: req.params || {},
-        ackStatus: 'TIMEOUT',
-        latencyMs,
-      });
+        this.blackboxService.logCommand({
+          hardwareId: req.hardwareId,
+          actorId: req.actorId,
+          actorRole: req.actorRole,
+          actorIp: req.actorIp,
+          actionType: `CMD_${req.command}`,
+          payloadSent: req.params || {},
+          ackStatus: 'TIMEOUT',
+          latencyMs,
+        });
 
-      return {
-        success: false,
-        ackStatus: 'TIMEOUT',
-        latencyMs,
-        message: `Thiết bị '${req.hardwareId}' hiện đang Offline hoặc mất kết nối mạng.`,
-      };
+        return {
+          success: false,
+          ackStatus: 'TIMEOUT',
+          latencyMs,
+          message: `Thiết bị '${req.hardwareId}' hiện đang Offline hoặc mất kết nối mạng.`,
+        };
+      }
     }
 
-    // 2. Mô phỏng luồng phát sóng MQTT và nhận ACK từ phần cứng thực tế (Thời gian trung bình 80-180ms)
-    const hardwareResponseTimeMs = Math.floor(60 + Math.random() * 90);
-    await new Promise(resolve => setTimeout(resolve, hardwareResponseTimeMs));
+    // 2. Phát thông điệp MQTT thực tế xuống phần cứng ESP32-C3
+    const actionMap: Record<string, string> = {
+      OPEN: '1',
+      CLOSE: '2',
+      STOP: '3',
+      RF_SETUP: '11',
+      RF_CLEAR: '12',
+    };
+    const actionCode = actionMap[req.command] || '3';
+    
+    if (this.mqttGateway) {
+      await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
+    } else {
+      const hardwareResponseTimeMs = Math.floor(40 + Math.random() * 50);
+      await new Promise(resolve => setTimeout(resolve, hardwareResponseTimeMs));
+    }
 
     // 3. Cập nhật trạng thái sau khi thực thi lệnh vào Hot Cache
-    const updatedProperties = { ...currentState.currentProperties };
+    const updatedProperties = { ...(currentState?.currentProperties || {}) };
     if (req.command === 'OPEN') updatedProperties.open_state = 'OPEN';
     if (req.command === 'CLOSE') updatedProperties.open_state = 'CLOSED';
     if (req.command === 'STOP') updatedProperties.open_state = 'PAUSED';

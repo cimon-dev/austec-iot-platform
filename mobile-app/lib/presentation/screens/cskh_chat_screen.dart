@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../core/constants/app_theme.dart';
+import '../../core/constants/api_config.dart';
 import '../../core/models/device_model.dart';
 import '../../core/services/iot_gateway_client.dart';
 import '../../core/services/auth_service.dart';
@@ -238,8 +239,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
 
   void _connectWebSocket() {
     try {
-      final host = kIsWeb ? 'localhost' : '10.0.2.2';
-      final wsUri = Uri.parse('ws://$host:4000/ws/chat');
+      final wsUri = Uri.parse(ApiConfig.wsChatUrl);
       _wsChannel = WebSocketChannel.connect(wsUri);
 
       final user = AuthService().currentUser;
@@ -419,8 +419,8 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       final token = AuthService().token ?? 'austec-customer-token';
       final customerId = AuthService().currentUser?.id;
       final uri = customerId != null 
-          ? Uri.parse('http://localhost:4000/api/cskh/active-chat?customerId=$customerId')
-          : Uri.parse('http://localhost:4000/api/cskh/active-chat');
+          ? Uri.parse('${ApiConfig.baseUrl}/api/cskh/active-chat?customerId=$customerId')
+          : Uri.parse('${ApiConfig.baseUrl}/api/cskh/active-chat');
 
       final res = await http.get(
         uri,
@@ -490,7 +490,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     // 2. Call REST endpoint ONLY when WebSocket is not connected
     try {
       final res = await http.post(
-        Uri.parse('http://localhost:4000/api/cskh/conversations/start'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cskh/conversations/start'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -592,7 +592,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       // Call REST fallback ONLY when WebSocket is not connected
       final token = AuthService().token ?? 'austec-customer-token';
       http.post(
-        Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cskh/active-chat/messages'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -653,7 +653,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
     } else {
       final token = AuthService().token ?? 'austec-customer-token';
       http.post(
-        Uri.parse('http://localhost:4000/api/cskh/active-chat/messages'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cskh/active-chat/messages'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -1897,7 +1897,7 @@ class _SupportTicketFormSheetState extends State<_SupportTicketFormSheet> {
     try {
       final token = AuthService().token ?? 'austec-customer-token';
       await http.post(
-        Uri.parse('http://localhost:4000/api/cskh/requests'),
+        Uri.parse('${ApiConfig.baseUrl}/api/cskh/requests'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
