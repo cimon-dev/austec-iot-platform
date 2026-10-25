@@ -79,18 +79,8 @@ class BleProvisioningService {
     // 0. Quét sóng Bluetooth Native phần cứng (Dành cho iPhone iOS & Android thực tế)
     if (!kIsWeb) {
       try {
-        final adapterState = await FlutterBluePlus.adapterState.first;
-        if (adapterState == BluetoothAdapterState.on) {
-          if (!FlutterBluePlus.isScanningNow) {
-            await FlutterBluePlus.startScan(
-              timeout: const Duration(seconds: 4),
-              androidUsesFineLocation: false,
-            );
-          }
-          // Chờ một nhịp để CoreBluetooth / Android Bluetooth stack bắt được packet
-          await Future.delayed(const Duration(milliseconds: 1000));
-          final results = FlutterBluePlus.lastScanResults;
-          for (final r in results) {
+        final results = FlutterBluePlus.lastScanResults;
+        for (final r in results) {
             final adv = r.advertisementData;
             final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
             final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
@@ -121,7 +111,6 @@ class BleProvisioningService {
               }
             }
           }
-        }
       } catch (e) {
         debugPrint("Scan native BLE error: $e");
       }

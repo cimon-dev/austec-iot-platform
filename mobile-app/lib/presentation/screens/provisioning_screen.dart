@@ -58,15 +58,20 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     // 1. Tự động nhận diện mạng Wi-Fi thực tế của thiết bị
     _detectCurrentWifi();
 
-    // 2. Theo dõi trạng thái Bluetooth trên máy thật
+    // 2. Theo dõi trạng thái Bluetooth trên máy thật: Khi CoreBluetooth sẵn sàng (ON) mới bắt đầu quét
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
-        if (mounted) setState(() => _adapterState = state);
+        if (!mounted) return;
+        setState(() => _adapterState = state);
+        if (state == BluetoothAdapterState.on) {
+          _safeStartNativeScanning();
+        } else {
+          setState(() => _isScanning = false);
+        }
       });
+    } else {
+      _startContinuousBleScanning();
     }
-
-    // 3. Mặc định vào ghép nối: TỰ ĐỘNG BẬT DÒ QUÉT SÓNG THỰC TẾ LIÊN TỤC VỚI ĐỘ NHẠY CAO
-    _startContinuousBleScanning();
   }
 
   @override
@@ -75,7 +80,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     _scanResultSub?.cancel();
     _adapterStateSub?.cancel();
     if (!kIsWeb) {
-      FlutterBluePlus.stopScan();
+      try {
+        FlutterBluePlus.stopScan();
+      } catch (_) {}
     }
     _qrCodeController.dispose();
     _ssidController.dispose();
@@ -83,50 +90,44 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     super.dispose();
   }
 
-  /// Dò tìm sóng Bluetooth & Phần cứng liên tục: phát hiện ngay lập tức khi thiết bị bật nguồn
-  void _startContinuousBleScanning() {
-    _autoDiscoveryTimer?.cancel();
-    _isScanning = true;
+  /// Khởi động luồng quét Bluetooth Native an toàn (chỉ khi adapterState == on)
+  void _safeStartNativeScanning() async {
+    if (kIsWeb) return;
+    if (_adapterState != BluetoothAdapterState.on) return;
 
-    if (!kIsWeb) {
-      _setupNativeScanStream();
-    } else {
-      _runSingleScanCycle();
-      _autoDiscoveryTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
-        if (!mounted) {
-          timer.cancel();
-          return;
-        }
-        if (!_isProvisioning) {
-          _runSingleScanCycle();
-        }
-      });
-    }
-  }
-
-  void _setupNativeScanStream() async {
     _scanResultSub?.cancel();
+    _scanResultSub = FlutterBluePlus.scanResults.listen((results) {
+      _processNativeScanResults(results);
+    });
+
     try {
-      final state = await FlutterBluePlus.adapterState.first;
-      if (mounted) setState(() => _adapterState = state);
-      if (state != BluetoothAdapterState.on) {
-        if (mounted) setState(() => _isScanning = false);
-        return;
-      }
-
-      _scanResultSub = FlutterBluePlus.scanResults.listen((results) {
-        _processNativeScanResults(results);
-      });
-
       if (!FlutterBluePlus.isScanningNow) {
+        setState(() => _isScanning = true);
         await FlutterBluePlus.startScan(
           timeout: const Duration(seconds: 60),
           androidUsesFineLocation: false,
         );
       }
     } catch (e) {
-      debugPrint("Setup native scan stream error: $e");
+      debugPrint("Safe startScan error: $e");
+      if (mounted) setState(() => _isScanning = false);
     }
+  }
+
+  /// Dò tìm sóng Bluetooth & Phần cứng trên Web (dùng polling Timer an toàn)
+  void _startContinuousBleScanning() {
+    _autoDiscoveryTimer?.cancel();
+    _isScanning = true;
+    _runSingleScanCycle();
+    _autoDiscoveryTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (!_isProvisioning) {
+        _runSingleScanCycle();
+      }
+    });
   }
 
   void _processNativeScanResults(List<ScanResult> results) {
@@ -251,37 +252,51 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
   /// Dò tìm sóng Bluetooth BLE phần cứng thực tế (khi người dùng bấm nút)
   void _startBleScan([String? targetId, bool triggerWebBle = false]) async {
-    setState(() {
-      _isScanning = true;
-    });
-
     if (!kIsWeb) {
+      if (_adapterState != BluetoothAdapterState.on) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Bluetooth trên iPhone đang tắt. Vui lòng bật Bluetooth để quét."),
+            backgroundColor: AppTheme.amberWarning,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      setState(() => _isScanning = true);
       try {
-        await FlutterBluePlus.stopScan();
+        if (FlutterBluePlus.isScanningNow) {
+          await FlutterBluePlus.stopScan();
+        }
         await FlutterBluePlus.startScan(
           timeout: const Duration(seconds: 45),
           androidUsesFineLocation: false,
         );
-      } catch (_) {}
-    }
+      } catch (e) {
+        debugPrint("Manual startScan error: $e");
+      }
+      if (mounted) setState(() => _isScanning = false);
+    } else {
+      setState(() => _isScanning = true);
+      final devices = await _bleService.scanForHardwareDevices(
+        targetHardwareId: targetId,
+        triggerWebBle: triggerWebBle,
+      );
 
-    final devices = await _bleService.scanForHardwareDevices(
-      targetHardwareId: targetId,
-      triggerWebBle: triggerWebBle,
-    );
-
-    if (mounted) {
-      setState(() {
-        _isScanning = false;
-        for (final d in devices) {
-          if (!_discoveredDevices.any((x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase())) {
-            _discoveredDevices.add(d);
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          for (final d in devices) {
+            if (!_discoveredDevices.any((x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase())) {
+              _discoveredDevices.add(d);
+            }
           }
-        }
-        if (_discoveredDevices.isNotEmpty && _selectedDevice == null) {
-          _selectedDevice = _discoveredDevices.first;
-        }
-      });
+          if (_discoveredDevices.isNotEmpty && _selectedDevice == null) {
+            _selectedDevice = _discoveredDevices.first;
+          }
+        });
+      }
     }
   }
 
