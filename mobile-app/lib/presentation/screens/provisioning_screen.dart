@@ -69,6 +69,15 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           setState(() => _isScanning = false);
         }
       });
+
+      // Kiểm tra ngay trạng thái hiện tại (nếu Bluetooth đã ON sẵn)
+      FlutterBluePlus.adapterState.first.then((state) {
+        if (!mounted) return;
+        setState(() => _adapterState = state);
+        if (state == BluetoothAdapterState.on) {
+          _safeStartNativeScanning();
+        }
+      }).catchError((_) {});
     } else {
       _startContinuousBleScanning();
     }
