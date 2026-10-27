@@ -3,6 +3,8 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
+    "build": "npm run build --prefix web-admin",
+    "start": "npm run start --prefix web-admin",
     "build:backend": "cd database && npm install --include=dev && npm run build && cd ../backend && npm install --include=dev && npm run build",
     "start:backend": "node backend/dist/server.js"
   }
