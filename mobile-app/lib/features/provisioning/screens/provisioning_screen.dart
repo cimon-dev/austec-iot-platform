@@ -58,19 +58,20 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         if (!mounted) return;
         setState(() => _adapterState = state);
         if (state == BluetoothAdapterState.on) {
-          _safeStartNativeScanning();
+          _triggerScan();
         } else {
           setState(() => _isScanning = false);
         }
       });
 
+      // Kiểm tra trạng thái hiện tại và kích hoạt quét ngay
       FlutterBluePlus.adapterState.first.then((state) {
         if (!mounted) return;
         setState(() => _adapterState = state);
-        if (state == BluetoothAdapterState.on) {
-          _safeStartNativeScanning();
-        }
-      }).catchError((_) {});
+        _triggerScan();
+      }).catchError((_) {
+        _triggerScan();
+      });
     } else {
       _startContinuousBleScanning();
     }
@@ -92,25 +93,59 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     super.dispose();
   }
 
-  void _safeStartNativeScanning() async {
-    if (kIsWeb || _adapterState != BluetoothAdapterState.on) return;
+  Future<void> _triggerScan() async {
+    if (_isScanning) return;
+    setState(() => _isScanning = true);
 
-    _scanResultSub?.cancel();
-    _scanResultSub = FlutterBluePlus.scanResults.listen((results) {
-      _processNativeScanResults(results);
-    });
-
-    try {
-      if (!FlutterBluePlus.isScanningNow) {
-        setState(() => _isScanning = true);
-        await FlutterBluePlus.startScan(
-          timeout: const Duration(seconds: 60),
-          androidUsesFineLocation: false,
-        );
+    if (kIsWeb) {
+      final devs = await _bleService.scanForHardwareDevices(triggerWebBle: true);
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          _mergeDevices(devs);
+        });
       }
+      return;
+    }
+
+    // Native Flutter trên iOS / Android
+    try {
+      if (FlutterBluePlus.isScanningNow) {
+        await FlutterBluePlus.stopScan();
+      }
+
+      _scanResultSub?.cancel();
+      _scanResultSub = FlutterBluePlus.scanResults.listen(_processNativeScanResults);
+
+      await FlutterBluePlus.startScan(
+        timeout: const Duration(seconds: 15),
+        androidUsesFineLocation: false,
+      );
     } catch (e) {
-      debugPrint("Safe startScan error: $e");
-      if (mounted) setState(() => _isScanning = false);
+      debugPrint("Native startScan error: $e");
+    } finally {
+      // Dò thêm thiết bị qua Gateway / SoftAP Wi-Fi đồng thời
+      final devs = await _bleService.scanForHardwareDevices(triggerWebBle: false);
+      if (mounted) {
+        setState(() {
+          _isScanning = false;
+          _mergeDevices(devs);
+        });
+      }
+    }
+  }
+
+  void _mergeDevices(List<DiscoveredHardwareBLE> incoming) {
+    for (final d in incoming) {
+      final idx = _discoveredDevices.indexWhere((x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase());
+      if (idx >= 0) {
+        _discoveredDevices[idx] = d;
+      } else {
+        _discoveredDevices.add(d);
+      }
+    }
+    if (_selectedDevice == null && _discoveredDevices.isNotEmpty) {
+      _selectedDevice = _discoveredDevices.first;
     }
   }
 
@@ -138,33 +173,42 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     for (final r in results) {
       final adv = r.advertisementData;
       final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
-      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
+      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase().replaceAll('-', '')).toList();
 
       final bool isAustecService = serviceUuids.any((u) => u.contains('6e400001'));
       final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
                                 rawName.toLowerCase().contains('austec') ||
                                 rawName.toLowerCase().contains('esp') ||
-                                rawName.toLowerCase().contains('cuacuon');
+                                rawName.toLowerCase().contains('cuacuon') ||
+                                rawName.toLowerCase().contains('door');
       final bool isTargetMatch = targetId.isNotEmpty &&
           (rawName.toLowerCase() == targetId.toLowerCase() ||
            r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
 
-      if (isAustecService || isAustecName || isTargetMatch) {
+      final bool isAustec = isAustecService || isAustecName || isTargetMatch;
+      // Chấp nhận mọi thiết bị Austec/ESP32 hoặc thiết bị BLE có tên xung quanh
+      if (isAustec || rawName.isNotEmpty) {
         final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
         final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
         final newDev = DiscoveredHardwareBLE(
           hardwareId: devId,
-          modelName: "Cửa Cuốn Austec ($devId - Bluetooth Thực)",
+          modelName: isAustec
+              ? "Cửa Cuốn Austec ($devId - Bluetooth Thực)"
+              : "Thiết Bị BLE ($devId)",
           category: DeviceCategory.rollerDoor,
           rssi: r.rssi,
-          bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+          bleUuid: isAustecService ? "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" : "",
           isRealHardware: true,
           nativeDevice: r.device,
         );
         if (idx >= 0) {
           list[idx] = newDev;
         } else {
-          list.add(newDev);
+          if (isAustec) {
+            list.insert(0, newDev);
+          } else {
+            list.add(newDev);
+          }
           changed = true;
         }
       }
@@ -190,10 +234,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (mounted) {
       setState(() {
         _isScanning = false;
-        _discoveredDevices = devices;
-        if (devices.isNotEmpty && _selectedDevice == null) {
-          _selectedDevice = devices.first;
-        }
+        _mergeDevices(devices);
       });
     }
   }
@@ -343,47 +384,94 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("THIẾT BỊ BLE TÌM THẤY", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (_isScanning)
-                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
-                    if (kIsWeb) ...[
-                      const SizedBox(width: 8),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () async {
-                          setState(() => _isScanning = true);
-                          final devs = await _bleService.scanForHardwareDevices(triggerWebBle: true);
-                          if (mounted) {
-                            setState(() {
-                              _isScanning = false;
-                              _discoveredDevices = devs;
-                              if (devs.isNotEmpty && _selectedDevice == null) {
-                                _selectedDevice = devs.first;
-                              }
-                            });
-                          }
-                        },
-                        icon: const Icon(Icons.bluetooth_searching, size: 14, color: AppTheme.cyanAccent),
-                        label: const Text("Quét BLE Web", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11)),
-                      ),
-                    ],
-                  ],
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: _isScanning ? null : _triggerScan,
+                  icon: _isScanning
+                      ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
+                      : const Icon(Icons.refresh, size: 14, color: AppTheme.cyanAccent),
+                  label: Text(
+                    _isScanning ? "Đang quét..." : "Quét Lại BLE",
+                    style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
+
+            // Banner cảnh báo trạng thái Bluetooth trên điện thoại
+            if (!kIsWeb && _adapterState == BluetoothAdapterState.off)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.amberWarning),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.bluetooth_disabled, color: AppTheme.amberWarning, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Bluetooth trên điện thoại đang TẮT. Vui lòng bật Bluetooth trong phần Cài đặt máy (không chỉ vuốt Control Center).",
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            if (!kIsWeb && _adapterState == BluetoothAdapterState.unauthorized)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.roseDanger.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.roseDanger),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.security, color: AppTheme.roseDanger, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Ứng dụng chưa được cấp quyền Bluetooth. Vui lòng vào Cài đặt -> Austec -> Bật quyền Bluetooth.",
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             if (_discoveredDevices.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
                 decoration: AppTheme.glassBox(radius: 12),
-                child: const Text("Đang dò tìm sóng Bluetooth thiết bị Austec gần bạn...", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isScanning
+                          ? "Đang dò tìm sóng Bluetooth thiết bị Austec gần bạn..."
+                          : "Chưa bắt được sóng Bluetooth nào gần bạn.",
+                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      "Mẹo: Hãy chắc chắn bo mạch ESP32 đã cấp nguồn. Nếu là thiết bị mới hoặc vừa reset (giữ nút 10 giây), bo mạch sẽ phát sóng liên tục.",
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                ),
               )
             else
               Column(

@@ -76,22 +76,26 @@ class BleProvisioningService {
             final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
                                       rawName.toLowerCase().contains('austec') ||
                                       rawName.toLowerCase().contains('esp') ||
-                                      rawName.toLowerCase().contains('cuacuon');
+                                      rawName.toLowerCase().contains('cuacuon') ||
+                                      rawName.toLowerCase().contains('door');
             final bool isTargetMatch = targetHardwareId != null &&
                 targetHardwareId.trim().isNotEmpty &&
                 (rawName.toLowerCase() == targetHardwareId.trim().toLowerCase() ||
                  r.device.remoteId.str.toLowerCase() == targetHardwareId.trim().toLowerCase());
 
-            if (isAustecService || isAustecName || isTargetMatch) {
+            final bool isAustec = isAustecService || isAustecName || isTargetMatch;
+            if (isAustec || rawName.isNotEmpty) {
               final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : r.device.remoteId.str);
               final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
               if (!exists) {
                 discovered.add(DiscoveredHardwareBLE(
                   hardwareId: devId,
-                  modelName: "Cửa Cuốn Austec ($devId - Bluetooth Thực)",
+                  modelName: isAustec
+                      ? "Cửa Cuốn Austec ($devId - Bluetooth Thực)"
+                      : "Thiết Bị BLE ($devId)",
                   category: DeviceCategory.rollerDoor,
                   rssi: r.rssi,
-                  bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                  bleUuid: isAustecService ? "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" : "",
                   isRealHardware: true,
                   nativeDevice: r.device,
                 ));
