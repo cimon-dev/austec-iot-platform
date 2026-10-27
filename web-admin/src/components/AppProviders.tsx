@@ -7,13 +7,18 @@ import { SidebarProvider } from "../context/SidebarContext";
 import { AuthProvider } from "../context/AuthContext";
 import { PermissionProvider } from "../context/PermissionContext";
 
+import { Toaster } from "sonner";
+
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <LanguageProvider>
         <SidebarProvider>
           <AuthProvider>
-            <PermissionProvider>{children}</PermissionProvider>
+            <PermissionProvider>
+              {children}
+              <Toaster position="top-right" richColors closeButton expand={false} />
+            </PermissionProvider>
           </AuthProvider>
         </SidebarProvider>
       </LanguageProvider>

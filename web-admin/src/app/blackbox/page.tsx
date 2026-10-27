@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { CheckCircle2, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
+import { toast } from "sonner";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
@@ -16,85 +17,25 @@ import {
   BlackboxDetailPanel,
 } from "./components";
 
-const FALLBACK_LOGS: BlackboxLogEntry[] = [
-  {
-    id: "BBX-998241",
-    hardwareId: "AT-DOOR-88239A",
-    modelName: "Austec Titadoor A900 Super",
-    commandType: "OPEN",
-    payload: { target_position: 100, speed: "normal", source: "mobile_quick_sheet" },
-    userId: "USR-001928",
-    userEmail: "nguyen.vannam@gmail.com",
-    userRole: "CUSTOMER",
-    clientIp: "118.70.192.45",
-    deviceFingerprint: "iPhone 15 Pro Max (iOS 18.2, App v2.4.1)",
-    timestamp: "2026-10-17 21:04:12.348",
-    ackTimestamp: "2026-10-17 21:04:12.492",
-    latencyMs: 144,
-    status: "ACKNOWLEDGED",
-    cryptoSignature: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  },
-  {
-    id: "BBX-998240",
-    hardwareId: "AT-DOOR-88239A",
-    modelName: "Austec Titadoor A900 Super",
-    commandType: "STOP",
-    payload: { current_position: 45, emergency: false },
-    userId: "USR-001928",
-    userEmail: "nguyen.vannam@gmail.com",
-    userRole: "CUSTOMER",
-    clientIp: "118.70.192.45",
-    deviceFingerprint: "iPhone 15 Pro Max (iOS 18.2, App v2.4.1)",
-    timestamp: "2026-10-17 21:04:15.110",
-    ackTimestamp: "2026-10-17 21:04:15.228",
-    latencyMs: 118,
-    status: "ACKNOWLEDGED",
-    cryptoSignature: "f42a78129c54098bc19d67b2d56108e43491901a884efb3874628203c4f901a1",
-  },
-  {
-    id: "BBX-998239",
-    hardwareId: "MS-LOCK-99120B",
-    modelName: "Khóa Masaru Titan X1",
-    commandType: "TRANSFER",
-    payload: { new_owner: "tran.thanhhoa@gmail.com", transfer_otp: "983214" },
-    userId: "USR-004312",
-    userEmail: "le.vanthanh@gmail.com",
-    userRole: "CUSTOMER",
-    clientIp: "14.232.18.99",
-    deviceFingerprint: "Samsung Galaxy S24 Ultra (Android 15)",
-    timestamp: "2026-10-17 20:58:04.912",
-    ackTimestamp: "2026-10-17 20:58:05.104",
-    latencyMs: 192,
-    status: "ACKNOWLEDGED",
-    cryptoSignature: "9c82410a8b924716bca10e4785f7236173b98401a89cfa7492a54829104fa85c",
-  },
-];
-
 export default function BlackboxPage() {
   const { language } = useLanguage();
   const { canView } = usePermissions();
 
-  const [logs, setLogs] = useState<BlackboxLogEntry[]>(FALLBACK_LOGS);
+  const [logs, setLogs] = useState<BlackboxLogEntry[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchHardwareId, setSearchHardwareId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
-  const [selectedLog, setSelectedLog] = useState<BlackboxLogEntry | null>(FALLBACK_LOGS[0]);
+  const [selectedLog, setSelectedLog] = useState<BlackboxLogEntry | null>(null);
   const [logPage, setLogPage] = useState(1);
   const [logPageSize, setLogPageSize] = useState(10);
   const [mobileTab, setMobileTab] = useState<"logs" | "details">("logs");
-  const [toast, setToast] = useState<{ message: string; type: "success" | "warning" } | null>(null);
-
-  const showToast = useCallback((message: string, type: "success" | "warning" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3500);
-  }, []);
 
   const fetchLogs = useCallback(async () => {
     setIsRefreshing(true);
     try {
       const data = await blackboxService.getLogs({ limit: 200 });
-      if (data.logs && data.logs.length > 0) {
+      if (data.logs && Array.isArray(data.logs)) {
         const mapped: BlackboxLogEntry[] = data.logs.map((l: any) => ({
           id: l.id || `BBX-${Math.floor(100000 + Math.random() * 900000)}`,
           hardwareId: l.hardwareId || l.hardware_id || "AT-GW-01",
@@ -118,7 +59,7 @@ export default function BlackboxPage() {
         }
       }
     } catch (e) {
-      console.warn("Lỗi tải nhật ký hộp đen:", e);
+      console.warn("Lỗi tải nhật ký hộp đen từ PostgreSQL:", e);
     } finally {
       setIsRefreshing(false);
     }
@@ -133,14 +74,13 @@ export default function BlackboxPage() {
   const handleExport = () => {
     try {
       const fileName = exportLegalReport(filteredLogs, language);
-      showToast(
+      toast.success(
         language === "vi"
           ? `Đã xuất thành công file Báo Cáo Pháp Lý Kiểm Toán: ${fileName}`
-          : `Successfully exported Legal Audit Report: ${fileName}`,
-        "success"
+          : `Successfully exported Legal Audit Report: ${fileName}`
       );
     } catch (err: any) {
-      showToast(`Lỗi xuất file: ${err?.message || "Không thể tạo file Excel"}`, "warning");
+      toast.error(`Lỗi xuất file: ${err?.message || "Không thể tạo file Excel"}`);
     }
   };
 
@@ -172,20 +112,6 @@ export default function BlackboxPage() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2.5 overflow-hidden">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom duration-200 ${
-            toast.type === "success"
-              ? "bg-emerald-950/90 text-emerald-300 border-emerald-500/40"
-              : "bg-amber-950/90 text-amber-300 border-amber-500/40"
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* Header */}
       <BlackboxHeader
         language={language}

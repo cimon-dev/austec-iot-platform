@@ -668,6 +668,19 @@ export class DevicesRepository {
     }
   }
 
+  public async createDevicesBatch(items: any[]): Promise<{ count: number; devices: any[] }> {
+    const created: any[] = [];
+    for (const item of items) {
+      try {
+        const dev = await this.createDevice(item);
+        created.push(dev);
+      } catch (err: any) {
+        console.warn(`[DevicesRepository] createDevicesBatch item error (${item.hwId || item.hardwareId}):`, err.message);
+      }
+    }
+    return { count: created.length, devices: created };
+  }
+
   public async updateDevice(hardwareId: string, data: any): Promise<any> {
     const hwId = hardwareId.trim().toUpperCase();
     const name = data.name || data.customName;

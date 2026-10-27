@@ -44,6 +44,7 @@ export function createDevicesRouter(
   // Devices & Inventory
   router.get('/admin/devices', authenticate, controller.getDevices);
   router.post('/admin/devices', authenticate, requireRole(['ADMIN']), controller.createDevice);
+  router.post('/admin/devices/batch', authenticate, requireRole(['ADMIN']), controller.createDevicesBatch);
   router.put('/admin/devices/:hardwareId', authenticate, requireRole(['ADMIN']), controller.updateDevice);
   router.delete('/admin/devices/:hardwareId', authenticate, requireRole(['ADMIN']), controller.deleteDevice);
 

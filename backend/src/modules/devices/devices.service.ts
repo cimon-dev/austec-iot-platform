@@ -125,6 +125,18 @@ export class DevicesService {
     return await this.repo.createDevice(v);
   }
 
+  public async createDevicesBatch(rawList: unknown[]) {
+    if (!Array.isArray(rawList)) return { count: 0, devices: [] };
+    const validItems = rawList.map(item => {
+      try {
+        return CreateDeviceSchema.parse(item);
+      } catch {
+        return item;
+      }
+    });
+    return await this.repo.createDevicesBatch(validItems);
+  }
+
   public async updateDevice(hardwareId: string, raw: unknown) {
     return await this.repo.updateDevice(hardwareId, raw as any);
   }

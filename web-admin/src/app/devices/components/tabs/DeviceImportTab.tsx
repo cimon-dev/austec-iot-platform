@@ -9,15 +9,17 @@ import {
   UploadCloud, 
   CheckCircle2, 
   AlertCircle, 
-  Check 
+  Check,
+  Loader2
 } from "lucide-react";
+import { toast } from "sonner";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface DeviceImportTabProps {
   devices: any[];
   onImportSuccess: (newDevices: any[]) => void;
   switchTab: (tab: string) => void;
   canCreate: boolean;
-  showToast: (message: string, type?: "success" | "info" | "warning" | "error") => void;
 }
 
 const formatNum = (num: number) => num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -27,9 +29,8 @@ export function DeviceImportTab({
   onImportSuccess,
   switchTab,
   canCreate,
-  showToast
 }: DeviceImportTabProps) {
-  const [importStatus, setImportStatus] = useState<"IDLE" | "CHECKING" | "VALIDATED" | "ERROR" | "IMPORTED">("IDLE");
+  const [importStatus, setImportStatus] = useState<"IDLE" | "CHECKING" | "VALIDATED" | "ERROR" | "SAVING" | "IMPORTED">("IDLE");
   const [importErrors, setImportErrors] = useState<Array<{ row: number; hardwareId: string; reason: string }>>([]);
   const [importCount, setImportCount] = useState<number>(0);
   const [uploadedFileName, setUploadedFileName] = useState<string>("");
@@ -64,7 +65,7 @@ export function DeviceImportTab({
     const validExts = [".xlsx", ".xls", ".csv"];
     const isExtValid = validExts.some(ext => file.name.toLowerCase().endsWith(ext));
     if (!isExtValid) {
-      showToast("Chỉ hỗ trợ file Excel (.xlsx, .xls) hoặc .csv", "warning");
+      toast.warning("Chỉ hỗ trợ file Excel (.xlsx, .xls) hoặc .csv");
       setImportErrors([{ row: 0, hardwareId: "", reason: `File "${file.name}" không hợp lệ. Vui lòng chọn file .xlsx, .xls hoặc .csv.` }]);
       setImportStatus("ERROR");
       return;
@@ -97,13 +98,13 @@ export function DeviceImportTab({
         json.forEach((row: any, idx: number) => {
           const rowNum = idx + 2;
           const hwIdRaw = String(row["Hardware ID (*)"] || row["Hardware ID"] || row["hardwareId"] || row["Mã Thiết Bị"] || row["Serial"] || "").trim();
-          const name = String(row["Tên Thiết Bị (*)"] || row["Tên Thiết Bị"] || row["name"] || "").trim();
-          const model = String(row["Model (*)"] || row["Model"] || row["model"] || "").trim();
+          const name = String(row["Tên Thiết Bị (*)"] || row["Tên Thiết Bị"] || row["customName"] || row["name"] || "").trim();
+          const model = String(row["Model (*)"] || row["Model"] || row["modelName"] || row["model"] || "").trim();
           const group = String(row["Nhóm Sản Phẩm"] || row["group"] || "Cửa cuốn nhôm Đức").trim();
-          const type = String(row["Loại Phần Cứng"] || row["type"] || "DOOR").trim();
+          const type = String(row["Loại Phần Cứng"] || row["deviceType"] || row["type"] || "DOOR").trim();
           const owner = String(row["Chủ Sở Hữu / Khách Hàng"] || row["owner"] || "Kho Chờ Gán").trim();
           const phone = String(row["Số Điện Thoại"] || row["phone"] || "1900 886 999").trim();
-          const warranty = String(row["Hạn Bảo Hành"] || row["warranty"] || "12/2028").trim();
+          const warranty = String(row["Hạn Bảo Hành"] || row["warrantyEndAt"] || row["warranty"] || "12/2028").trim();
 
           if (!hwIdRaw) {
             errors.push({ row: rowNum, hardwareId: "", reason: "Hardware ID không được để trống ô dữ liệu" });
@@ -123,22 +124,22 @@ export function DeviceImportTab({
           }
           seenInFile.set(normalizedHwId, rowNum);
 
-          const existingDevice = devices.find(d => d.hwId?.trim().toUpperCase() === normalizedHwId);
+          const existingDevice = devices.find(d => (d.hardwareId || d.hwId)?.trim().toUpperCase() === normalizedHwId);
           if (existingDevice) {
             errors.push({ 
               row: rowNum, 
               hardwareId: hwIdRaw, 
-              reason: `Trùng lặp Hardware ID đã tồn tại trong CSDL kho (${existingDevice.name} - ${existingDevice.owner})` 
+              reason: `Trùng lặp Hardware ID đã tồn tại trong CSDL kho (${existingDevice.customName || existingDevice.name})` 
             });
             return;
           }
 
           validRows.push({
-            hwId: hwIdRaw,
-            name: name || `Thiết bị ${hwIdRaw}`,
-            model: model || "AUSTEC-A900",
+            hardwareId: normalizedHwId,
+            customName: name || `Thiết bị ${normalizedHwId}`,
+            modelName: model || "AUSTEC-A900",
             group,
-            type,
+            deviceType: type,
             owner,
             phone,
             status: "in_stock",
@@ -147,7 +148,8 @@ export function DeviceImportTab({
             openState: "STOCK",
             isLocked: false,
             signal: 0,
-            warranty
+            warrantyEndAt: warranty,
+            addressDisplay: "Kho tổng Austec"
           });
         });
 
@@ -200,26 +202,62 @@ export function DeviceImportTab({
     }
   };
 
-  const handleConfirmImport = () => {
+  const handleConfirmImport = async () => {
     if (importRows.length === 0) {
-      showToast("Không có thiết bị hợp lệ để lưu vào kho!", "warning");
+      toast.warning("Không có thiết bị hợp lệ để lưu vào kho!");
       return;
     }
 
-    const currentHwIds = new Set(devices.map(d => d.hwId?.trim().toUpperCase()));
-    const nonDuplicateRows = importRows.filter(r => !currentHwIds.has(r.hwId?.trim().toUpperCase()));
+    const currentHwIds = new Set(devices.map(d => (d.hardwareId || d.hwId)?.trim().toUpperCase()));
+    const nonDuplicateRows = importRows.filter(r => !currentHwIds.has(r.hardwareId.trim().toUpperCase()));
 
     if (nonDuplicateRows.length === 0) {
-      showToast("Toàn bộ thiết bị trong file đã tồn tại trong CSDL. Chống nhập trùng kích hoạt!", "warning");
+      toast.warning("Toàn bộ thiết bị trong file đã tồn tại trong CSDL. Chống nhập trùng kích hoạt!");
       return;
     }
 
-    onImportSuccess(nonDuplicateRows);
-    setImportStatus("IMPORTED");
-    if (nonDuplicateRows.length < importRows.length) {
-      showToast(`Đã lưu ${nonDuplicateRows.length} thiết bị mới (đã tự động bỏ qua ${importRows.length - nonDuplicateRows.length} bản ghi trùng)!`, "warning");
-    } else {
-      showToast(`Đã lưu thành công toàn bộ ${nonDuplicateRows.length} thiết bị vào CSDL kho!`, "success");
+    setImportStatus("SAVING");
+    try {
+      const apiBase = getApiBaseUrl();
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${apiBase}/api/admin/devices/batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(nonDuplicateRows.map(r => ({
+          hwId: r.hardwareId,
+          hardwareId: r.hardwareId,
+          name: r.customName,
+          customName: r.customName,
+          model: r.modelName,
+          modelName: r.modelName,
+          group: r.group,
+          type: r.deviceType,
+          deviceType: r.deviceType,
+          owner: r.owner,
+          phone: r.phone,
+          warranty: r.warrantyEndAt,
+          warrantyEndAt: r.warrantyEndAt,
+          address: r.addressDisplay,
+          addressDisplay: r.addressDisplay
+        }))),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        const savedDevices = data.devices || nonDuplicateRows;
+        onImportSuccess(savedDevices);
+        setImportStatus("IMPORTED");
+        toast.success(`Đã lưu thành công ${savedDevices.length} thiết bị vào CSDL PostgreSQL!`);
+      } else {
+        setImportStatus("ERROR");
+        toast.error(data.error || "Lỗi lưu vào CSDL PostgreSQL");
+      }
+    } catch (err: any) {
+      setImportStatus("ERROR");
+      toast.error("Lỗi kết nối máy chủ: " + err.message);
     }
   };
 
@@ -230,7 +268,7 @@ export function DeviceImportTab({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Đã tải xuống file Excel mẫu: Austec_Device_Import_Template.xlsx", "success");
+    toast.success("Đã tải xuống file Excel mẫu: Austec_Device_Import_Template.xlsx");
   };
 
   const handleDownloadSampleTest = () => {
@@ -240,11 +278,11 @@ export function DeviceImportTab({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Đã tải xuống file dữ liệu mẫu test: Austec_Sample_Import_Test.xlsx", "success");
+    toast.success("Đã tải xuống file dữ liệu mẫu test: Austec_Sample_Import_Test.xlsx");
   };
 
   const handleDownloadQrDecal = () => {
-    showToast("Đang tải file PDF in tem nhãn QR Decal A4...", "info");
+    toast.info("Đang tải file PDF in tem nhãn QR Decal A4...");
   };
 
   return (
@@ -254,10 +292,10 @@ export function DeviceImportTab({
           <div>
             <h2 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-green-500" />
-              Nhập Kho Hàng Loạt Bằng Excel (Smart Dry-run Validation)
+              Nhập Kho Hàng Loạt Bằng Excel (100% CSDL PostgreSQL)
             </h2>
             <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-              Tự động kiểm tra cú pháp, phát hiện trùng lặp Hardware ID trước khi lưu vào CSDL. Tối đa 10,000 bản ghi/lần.
+              Tự động kiểm tra cú pháp, phát hiện trùng lặp Hardware ID trước khi lưu vào CSDL.
             </p>
           </div>
 
@@ -276,7 +314,7 @@ export function DeviceImportTab({
               type="button"
               onClick={handleDownloadSampleTest}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/40 dark:hover:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 text-xs font-semibold border border-cyan-200 dark:border-cyan-800 transition-colors cursor-pointer"
-              title="Tải file mẫu có sẵn 5 thiết bị test (Camera, Sensor, Door...)"
+              title="Tải file mẫu có sẵn thiết bị test"
             >
               <FileCheck2 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
               <span>Tải File Nhập Test Mẫu (.xlsx)</span>
@@ -323,7 +361,7 @@ export function DeviceImportTab({
                 Đã nạp file: {uploadedFileName}
               </span>
             ) : (
-              "Hỗ trợ file xuất xưởng từ nhà máy Austec, file đại lý hoặc file mẫu test (tự động chống trùng lặp Hardware ID)"
+              "Hỗ trợ file xuất xưởng từ nhà máy Austec hoặc file đại lý (tự động chống trùng lặp Hardware ID)"
             )}
           </div>
 
@@ -351,6 +389,13 @@ export function DeviceImportTab({
           <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-2.5">
             <span className="w-3.5 h-3.5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin"></span>
             <span>Hệ thống đang quét từng ô dữ liệu để kiểm tra cú pháp và trùng lặp Hardware ID...</span>
+          </div>
+        )}
+
+        {importStatus === "SAVING" && (
+          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-2.5">
+            <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+            <span className="font-semibold">Đang ghi đồng bộ toàn bộ danh sách thiết bị vào PostgreSQL... Vui lòng đợi trong giây lát!</span>
           </div>
         )}
 
@@ -385,7 +430,7 @@ export function DeviceImportTab({
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Xác Nhận Lưu Vào Kho ({formatNum(importCount)} TB)</span>
+                  <span>Xác Nhận Lưu Vào CSDL ({formatNum(importCount)} TB)</span>
                 </button>
               )}
             </div>
@@ -410,12 +455,12 @@ export function DeviceImportTab({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
                     {importRows.slice(0, 5).map((r, i) => (
                       <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="p-2 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{r.hwId}</td>
-                        <td className="p-2 font-medium text-slate-900 dark:text-white">{r.name}</td>
-                        <td className="p-2 font-mono text-slate-500">{r.model}</td>
+                        <td className="p-2 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{r.hardwareId}</td>
+                        <td className="p-2 font-medium text-slate-900 dark:text-white">{r.customName}</td>
+                        <td className="p-2 font-mono text-slate-500">{r.modelName}</td>
                         <td className="p-2">{r.group}</td>
-                        <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono">{r.type}</span></td>
-                        <td className="p-2 font-mono text-slate-500">{r.warranty}</td>
+                        <td className="p-2"><span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono">{r.deviceType}</span></td>
+                        <td className="p-2 font-mono text-slate-500">{r.warrantyEndAt}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -431,9 +476,9 @@ export function DeviceImportTab({
               <div>
                 <h3 className="text-xs font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
-                  Đã Nhập Kho Thành Công {formatNum(importCount)} Thiết Bị!
+                  Đã Nhập Kho Và Lưu Trữ Bền Vững Vào CSDL {formatNum(importCount)} Thiết Bị!
                 </h3>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Dữ liệu đã được lưu vào danh sách thiết bị. Đã tự động khởi tạo mã băm QR Code bảo mật chống giả mạo cho từng thiết bị.</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Dữ liệu đã được đồng bộ vào PostgreSQL. Khi reload trang dữ liệu vẫn còn nguyên vẹn.</p>
               </div>
               <div className="flex items-center gap-2">
                 <button 

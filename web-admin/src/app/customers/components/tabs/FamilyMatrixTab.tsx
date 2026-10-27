@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
   Users,
   Search,
@@ -140,10 +141,11 @@ export function FamilyMatrixTab({
     return suggestions;
   }, [currentSelectedOwner, currentSelectedDevice]);
 
+
   const handleSubmitNewMember = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMemberForm.memberName.trim() || !newMemberForm.phoneNumber.trim()) {
-      alert("Vui lòng nhập Họ tên và Số điện thoại thành viên!");
+      toast.error("Vui lòng nhập Họ tên và Số điện thoại thành viên!");
       return;
     }
 

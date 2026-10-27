@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Edit3, X, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Edit3, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface EditDeviceModalProps {
@@ -22,65 +23,73 @@ export function EditDeviceModal({
   groups
 }: EditDeviceModalProps) {
   const [form, setForm] = useState({
-    name: "",
-    model: "",
+    customName: "",
+    modelName: "",
     group: "",
-    type: "DOOR",
+    deviceType: "DOOR",
     owner: "",
     phone: "",
-    address: "",
-    warranty: "",
+    addressDisplay: "",
+    warrantyEndAt: "",
     subscriptionType: "LIMITED",
     subscriptionStatus: "ACTIVE"
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     if (device) {
       setForm({
-        name: device.name || device.customName || "",
-        model: device.model || device.modelName || "",
-        group: device.group || device.deviceType || "",
-        type: device.type || device.deviceType || "DOOR",
+        customName: device.customName || device.name || "",
+        modelName: device.modelName || device.model || "",
+        group: device.group || "",
+        deviceType: device.deviceType || device.type || "DOOR",
         owner: device.owner || device.ownerName || "",
         phone: device.phone || device.ownerPhone || "",
-        address: device.address || device.addressDisplay || "",
-        warranty: device.warranty || device.warrantyEndAt || "",
+        addressDisplay: device.addressDisplay || device.address || "",
+        warrantyEndAt: device.warrantyEndAt || device.warranty || "",
         subscriptionType: device.subscriptionType || "LIMITED",
         subscriptionStatus: device.subscriptionStatus || "ACTIVE"
       });
-      setSubmitError(null);
     }
   }, [device]);
 
   if (!isOpen || !device) return null;
 
+  const hardwareId = device.hardwareId || device.hwId;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.customName.trim()) {
+      toast.error("Vui lòng nhập tên thiết bị!");
+      return;
+    }
 
     setIsSubmitting(true);
-    setSubmitError(null);
 
     const payload = {
-      name: form.name.trim(),
-      model: form.model,
+      hardwareId,
+      hwId: hardwareId,
+      customName: form.customName.trim(),
+      name: form.customName.trim(),
+      modelName: form.modelName,
+      model: form.modelName,
       group: form.group,
-      type: form.type,
+      deviceType: form.deviceType,
+      type: form.deviceType,
       owner: form.owner.trim(),
       phone: form.phone.trim(),
-      address: form.address.trim(),
-      warranty: form.warranty.trim(),
+      addressDisplay: form.addressDisplay.trim(),
+      address: form.addressDisplay.trim(),
+      warrantyEndAt: form.warrantyEndAt.trim(),
+      warranty: form.warrantyEndAt.trim(),
       subscriptionType: form.subscriptionType,
       subscriptionStatus: form.subscriptionStatus
     };
 
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-      const hwId = device.hwId || device.hardwareId;
-      const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hwId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hardwareId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -94,74 +103,66 @@ export function EditDeviceModal({
         onUpdated(data.device);
         onClose();
       } else {
-        setSubmitError(data.error || "Không thể cập nhật thiết bị trong CSDL");
+        toast.error(data.error || "Không thể cập nhật thiết bị trong CSDL");
       }
     } catch (err: any) {
-      setSubmitError("Lỗi kết nối máy chủ: " + err.message);
+      toast.error("Lỗi kết nối máy chủ: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-xl w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+      <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+            <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center">
               <Edit3 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Chỉnh Sửa Thông Tin Thiết Bị ({device.hwId || device.hardwareId})
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                Chỉnh Sửa Thiết Bị ({hardwareId})
               </h3>
-              <p className="text-[11px] text-slate-500">
-                Cập nhật thông số phần cứng, khách hàng sở hữu & gói cước trong CSDL
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Cập nhật thông số kỹ thuật và thông tin vào CSDL PostgreSQL
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer"
+            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {submitError && (
-          <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{submitError}</span>
+        <form onSubmit={handleSubmit} className="p-5 space-y-3 max-h-[80vh] overflow-y-auto">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+              Hardware ID (Bất biến)
+            </label>
+            <input
+              type="text"
+              disabled
+              value={hardwareId}
+              className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono cursor-not-allowed uppercase"
+            />
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Hardware ID (Cố Định)
-              </label>
-              <input
-                type="text"
-                disabled
-                value={device.hwId || device.hardwareId}
-                className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono cursor-not-allowed uppercase"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Tên Thiết Bị (*)
-              </label>
-              <input
-                type="text"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+              Tên Thiết Bị (*)
+            </label>
+            <input
+              type="text"
+              required
+              placeholder="vd: Cửa cuốn Showroom Austec 02"
+              value={form.customName}
+              onChange={(e) => setForm({ ...form, customName: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
@@ -170,23 +171,15 @@ export function EditDeviceModal({
                 Model Thương Phẩm
               </label>
               <select
-                value={form.model}
-                onChange={(e) => setForm({ ...form, model: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                value={form.modelName}
+                onChange={(e) => setForm({ ...form, modelName: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
-                {models.length === 0 ? (
-                  <option value={form.model || "AUSTEC-A900"}>{form.model || "AUSTEC-A900"}</option>
-                ) : (
-                  models.map(m => {
-                    const code = m.modelCode || m.code || m.id;
-                    const name = m.modelName || m.name || code;
-                    return (
-                      <option key={m.id || code} value={code}>
-                        {name} ({code})
-                      </option>
-                    );
-                  })
-                )}
+                {models.map(m => (
+                  <option key={m.id || m.modelCode} value={m.modelCode}>
+                    {m.modelName} ({m.modelCode})
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -197,38 +190,32 @@ export function EditDeviceModal({
               <select
                 value={form.group}
                 onChange={(e) => setForm({ ...form, group: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
-                {groups.length === 0 ? (
-                  <option value={form.group || "Cửa cuốn nhôm Đức"}>{form.group || "Cửa cuốn nhôm Đức"}</option>
-                ) : (
-                  groups.map(g => {
-                    const gName = g.groupName || g.name || g.code;
-                    return (
-                      <option key={g.id || gName} value={gName}>
-                        {gName}
-                      </option>
-                    );
-                  })
-                )}
+                {groups.map(g => (
+                  <option key={g.id || g.code} value={g.groupName}>
+                    {g.groupName}
+                  </option>
+                ))}
               </select>
             </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Loại Phần Cứng
               </label>
               <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                value={form.deviceType}
+                onChange={(e) => setForm({ ...form, deviceType: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
-                <option value="DOOR">Cửa cuốn (DOOR)</option>
-                <option value="SMART_LOCK">Khóa thông minh (SMART_LOCK)</option>
-                <option value="CAMERA">Camera AI (CAMERA)</option>
-                <option value="SENSOR_ENV">Cảm biến nhiệt ẩm (SENSOR_ENV)</option>
+                <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
+                <option value="SMART_LOCK">Khóa cửa Masaru (SMART_LOCK)</option>
                 <option value="UPS">Bộ lưu điện (UPS)</option>
-                <option value="BIKE">Xe máy điện / GSHT (BIKE)</option>
+                <option value="CAM">Camera AI giám sát (CAM)</option>
+                <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
               </select>
             </div>
 
@@ -238,10 +225,10 @@ export function EditDeviceModal({
               </label>
               <input
                 type="text"
-                placeholder="vd: 12/2028"
-                value={form.warranty}
-                onChange={(e) => setForm({ ...form, warranty: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+                placeholder="vd: 12/2028 hoặc 2028-12-31"
+                value={form.warrantyEndAt}
+                onChange={(e) => setForm({ ...form, warrantyEndAt: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
@@ -249,13 +236,45 @@ export function EditDeviceModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Khách Hàng / Nơi Lắp Đặt
+                Gói Thuê Bao
+              </label>
+              <select
+                value={form.subscriptionType}
+                onChange={(e) => setForm({ ...form, subscriptionType: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="LIMITED">Có thời hạn (LIMITED)</option>
+                <option value="PERPETUAL">Vĩnh viễn (PERPETUAL)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Trạng Thái Thuê Bao
+              </label>
+              <select
+                value={form.subscriptionStatus}
+                onChange={(e) => setForm({ ...form, subscriptionStatus: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                <option value="EXPIRED">Hết hạn (EXPIRED)</option>
+                <option value="SUSPENDED">Tạm ngưng (SUSPENDED)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Chủ Sở Hữu / Khách Hàng
               </label>
               <input
                 type="text"
+                placeholder="vd: Nguyễn Văn A"
                 value={form.owner}
                 onChange={(e) => setForm({ ...form, owner: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
             </div>
 
@@ -265,85 +284,42 @@ export function EditDeviceModal({
               </label>
               <input
                 type="text"
+                placeholder="vd: 0988 123 456"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
 
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-              Địa Chỉ Lắp Đặt Chi Tiết
+              Địa Chỉ Lắp Đặt
             </label>
             <input
               type="text"
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              placeholder="vd: Biệt thự BT4, KĐT Ecopark, Hưng Yên"
+              value={form.addressDisplay}
+              onChange={(e) => setForm({ ...form, addressDisplay: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Gói Dịch Vụ
-              </label>
-              <select
-                value={form.subscriptionType}
-                onChange={(e) => setForm({ ...form, subscriptionType: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-              >
-                <option value="LIMITED">Có Thời Hạn (Định kỳ)</option>
-                <option value="PERPETUAL">Vô Thời Hạn (Trọn đời)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Trạng Thái Gói Cước
-              </label>
-              <select
-                value={form.subscriptionStatus}
-                onChange={(e) => setForm({ ...form, subscriptionStatus: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-              >
-                <option value="ACTIVE">Hoạt Động (ACTIVE)</option>
-                <option value="EXPIRED">Hết Hạn (EXPIRED)</option>
-                <option value="LIFETIME">Trọn Đời (LIFETIME)</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
-              disabled={isSubmitting}
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
             >
               Hủy
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !form.name.trim()}
-              className={`px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-xs flex items-center gap-1.5 transition-all ${
-                isSubmitting || !form.name.trim()
-                  ? "bg-slate-400 cursor-not-allowed opacity-60"
-                  : "bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
-              }`}
+              disabled={isSubmitting || !form.customName.trim()}
+              className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang lưu PostgreSQL...</span>
-                </>
-              ) : (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Cập Nhật Vào CSDL</span>
-                </>
-              )}
+              {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>Lưu Cập Nhật Vào CSDL</span>
             </button>
           </div>
         </form>

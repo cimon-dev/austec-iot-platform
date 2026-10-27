@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
@@ -348,7 +349,7 @@ export default function LoginPage() {
                     </label>
                     <button
                       type="button"
-                      onClick={() => alert("Hệ thống đã gửi liên kết đặt lại mật khẩu về Email/SĐT của bạn!")}
+                      onClick={() => toast.info("Hệ thống đã gửi liên kết đặt lại mật khẩu về Email/SĐT của bạn!")}
                       className="text-[11px] text-cyan-600 dark:text-cyan-400 hover:underline"
                     >
                       Quên mật khẩu?
@@ -427,7 +428,7 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => alert("Đã gửi lại mã OTP mới qua SMS/Email!")}
+                    onClick={() => toast.success("Đã gửi lại mã OTP mới qua SMS/Email!")}
                     className="text-cyan-600 dark:text-cyan-400 hover:underline"
                   >
                     Gửi lại mã OTP

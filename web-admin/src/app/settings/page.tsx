@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { settingsService } from "./settings-service";
@@ -31,12 +31,6 @@ export default function SystemSettingsPage() {
   const [timezone, setTimezone] = useState("Asia/Ho_Chi_Minh (GMT+7)");
 
   const [isSaving, setIsSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-
-  const showToast = useCallback((message: string, type: "success" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   // Nạp dữ liệu thực tế từ PostgreSQL khi mở trang
   useEffect(() => {
@@ -67,7 +61,7 @@ export default function SystemSettingsPage() {
   // Lưu dữ liệu thực tế xuống Database PostgreSQL
   const handleSave = async () => {
     if (!canUpdate("mod_setting")) {
-      showToast("Bạn không có quyền cập nhật cấu hình hệ thống!", "error");
+      toast.error("Bạn không có quyền cập nhật cấu hình hệ thống!");
       return;
     }
 
@@ -88,12 +82,12 @@ export default function SystemSettingsPage() {
       });
 
       if (res.success) {
-        showToast("Đã lưu các thiết lập cấu hình hệ thống vào PostgreSQL thành công!");
+        toast.success("Đã lưu các thiết lập cấu hình hệ thống vào PostgreSQL thành công!");
       } else {
-        showToast(res.error || "Lỗi lưu cấu hình!", "error");
+        toast.error(res.error || "Lỗi lưu cấu hình!");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối máy chủ: " + err.message, "error");
+      toast.error("Lỗi kết nối máy chủ: " + err.message);
     } finally {
       setIsSaving(false);
     }
@@ -101,7 +95,7 @@ export default function SystemSettingsPage() {
 
   const handleReset = () => {
     if (!canUpdate("mod_setting")) {
-      showToast("Bạn không có quyền cập nhật cấu hình hệ thống!", "error");
+      toast.error("Bạn không có quyền cập nhật cấu hình hệ thống!");
       return;
     }
     setExpiryNotificationDays(30);
@@ -111,7 +105,7 @@ export default function SystemSettingsPage() {
     setMqttPort(8883);
     setTlsEnabled(true);
     setKeepAliveSeconds(60);
-    showToast("Đã khôi phục các giá trị về mặc định (chưa lưu)!");
+    toast.info("Đã khôi phục các giá trị về mặc định (chưa lưu)!");
   };
 
   if (!canView("mod_setting")) {
@@ -120,23 +114,6 @@ export default function SystemSettingsPage() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-3 overflow-hidden">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border shadow-lg flex items-center gap-2 text-xs font-semibold animate-in slide-in-from-bottom ${
-            toast.type === "success"
-              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-              : "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
-          }`}
-        >
-          {toast.type === "success" ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
 
       {/* Header Bar */}
       <SettingsHeader

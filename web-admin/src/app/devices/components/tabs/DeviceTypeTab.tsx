@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { ImageUploader } from "@/components/ImageUploader";
@@ -20,14 +21,12 @@ interface DeviceTypeTabProps {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  showToast: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
 export function DeviceTypeTab({
   canCreate,
   canUpdate,
   canDelete,
-  showToast,
 }: DeviceTypeTabProps) {
   const [types, setTypes] = useState<DeviceTypeItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,13 +81,13 @@ export function DeviceTypeTab({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.typeName.trim() || !createForm.typeCode.trim()) {
-      showToast("Vui lòng điền đầy đủ Tên và Mã loại!", "error");
+      toast.error("Vui lòng điền đầy đủ Tên và Mã loại!");
       return;
     }
 
     const cleanCode = createForm.typeCode.trim().toUpperCase();
     if (types.some((t) => t.typeCode?.toUpperCase() === cleanCode)) {
-      showToast(`Mã loại "${cleanCode}" đã tồn tại! Vui lòng chọn mã khác.`, "error");
+      toast.error(`Mã loại "${cleanCode}" đã tồn tại! Vui lòng chọn mã khác.`);
       return;
     }
 
@@ -111,15 +110,15 @@ export function DeviceTypeTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã tạo loại phần cứng "${createForm.typeName}" thành công!`);
+        toast.success(`Đã tạo loại phần cứng "${createForm.typeName}" thành công!`);
         setIsCreateOpen(false);
         setCreateForm({ typeName: "", typeCode: "", imageUrl: "", description: "" });
         fetchTypes();
       } else {
-        showToast(data.error || "Lỗi tạo loại phần cứng", "error");
+        toast.error(data.error || "Lỗi tạo loại phần cứng");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối máy chủ: " + err.message, "error");
+      toast.error("Lỗi kết nối máy chủ: " + err.message);
     } finally {
       setIsCreating(false);
     }
@@ -141,7 +140,7 @@ export function DeviceTypeTab({
     e.preventDefault();
     if (!editItem) return;
     if (!editForm.typeName.trim()) {
-      showToast("Vui lòng nhập tên loại phần cứng!", "error");
+      toast.error("Vui lòng nhập tên loại phần cứng!");
       return;
     }
 
@@ -164,14 +163,14 @@ export function DeviceTypeTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã cập nhật loại phần cứng "${editForm.typeName}"!`);
+        toast.success(`Đã cập nhật loại phần cứng "${editForm.typeName}"!`);
         setEditItem(null);
         fetchTypes();
       } else {
-        showToast(data.error || "Lỗi cập nhật", "error");
+        toast.error(data.error || "Lỗi cập nhật");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối: " + err.message, "error");
+      toast.error("Lỗi kết nối: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -191,14 +190,14 @@ export function DeviceTypeTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã xóa loại phần cứng "${deleteTarget.typeName}" khỏi hệ thống!`);
+        toast.success(`Đã xóa loại phần cứng "${deleteTarget.typeName}" khỏi hệ thống!`);
         setDeleteTarget(null);
         fetchTypes();
       } else {
-        showToast(data.error || "Lỗi khi xóa loại phần cứng", "error");
+        toast.error(data.error || "Lỗi khi xóa loại phần cứng");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối: " + err.message, "error");
+      toast.error("Lỗi kết nối: " + err.message);
     } finally {
       setIsDeleting(false);
     }
@@ -319,7 +318,7 @@ export function DeviceTypeTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Cửa cuốn thông minh"
+                  placeholder="Ví dụ: Cửa cuốn tự động, Khóa cửa thông minh"
                   value={createForm.typeName}
                   onChange={(e) => setCreateForm({ ...createForm, typeName: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -333,31 +332,31 @@ export function DeviceTypeTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: DOOR, SMART_LOCK"
+                  placeholder="Ví dụ: DOOR, SMART_LOCK, UPS"
                   value={createForm.typeCode}
                   onChange={(e) => setCreateForm({ ...createForm, typeCode: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
-              {/* Real Image Uploader directly to Cloudflare R2 */}
+              {/* Cloudflare R2 Image Uploader */}
               <ImageUploader
-                label="Hình ảnh minh họa"
-                folder="types"
                 value={createForm.imageUrl}
                 onChange={(url) => setCreateForm({ ...createForm, imageUrl: url })}
+                label="Ảnh minh họa loại phần cứng"
+                folder="device-types"
               />
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mô tả chi tiết
+                  Mô tả chức năng
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Nhập mô tả ngắn về loại phần cứng này..."
+                  placeholder="Mô tả công năng của dòng phần cứng này..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
                 />
               </div>
 
@@ -365,16 +364,17 @@ export function DeviceTypeTab({
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
-                  {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Tạo mới"}
+                  {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Lưu loại thiết bị</span>
                 </button>
               </div>
             </form>
@@ -388,7 +388,7 @@ export function DeviceTypeTab({
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Chỉnh sửa loại phần cứng: {editItem.typeName}
+                Chỉnh sửa loại phần cứng
               </h3>
               <button
                 type="button"
@@ -426,22 +426,23 @@ export function DeviceTypeTab({
                 />
               </div>
 
+              {/* Cloudflare R2 Image Uploader */}
               <ImageUploader
-                label="Hình ảnh minh họa"
-                folder="types"
                 value={editForm.imageUrl}
                 onChange={(url) => setEditForm({ ...editForm, imageUrl: url })}
+                label="Ảnh minh họa loại phần cứng"
+                folder="device-types"
               />
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Mô tả chi tiết
+                  Mô tả chức năng
                 </label>
                 <textarea
                   rows={2}
                   value={editForm.description}
                   onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"
                 />
               </div>
 
@@ -449,16 +450,17 @@ export function DeviceTypeTab({
                 <button
                   type="button"
                   onClick={() => setEditItem(null)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
-                  {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Lưu thay đổi"}
+                  {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Cập nhật</span>
                 </button>
               </div>
             </form>
@@ -468,10 +470,11 @@ export function DeviceTypeTab({
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmDeleteModal
-        isOpen={Boolean(deleteTarget)}
+        isOpen={!!deleteTarget}
         title="Xóa loại phần cứng"
         itemName={deleteTarget?.typeName}
         itemType="loại phần cứng"
+        description={`Bạn có chắc chắn muốn xóa loại phần cứng "${deleteTarget?.typeName}" (${deleteTarget?.typeCode})?`}
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}

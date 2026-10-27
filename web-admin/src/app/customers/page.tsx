@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, Suspense, useCallback } from "react";
+import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { CustomerAccount, MatrixOwnerItem, MemberPermissionItem } from "./types";
-import { MOCK_CUSTOMERS, INITIAL_FAMILY_MATRIX } from "./mock-data";
+import { INITIAL_FAMILY_MATRIX } from "./mock-data";
 import { customersService } from "./customers-service";
 import {
   CustomerHeader,
@@ -35,15 +36,8 @@ function CustomersPageContent() {
     else if (tab === "accounts") setActiveTab("accounts");
   }, [searchParams]);
 
-  // Toast
-  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "warning" | "error" } | null>(null);
-  const showToast = useCallback((message: string, type: "success" | "info" | "warning" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  }, []);
-
   // Accounts Tab State
-  const [customers, setCustomers] = useState<CustomerAccount[]>(MOCK_CUSTOMERS);
+  const [customers, setCustomers] = useState<CustomerAccount[]>([]);
   const [viewCustomer, setViewCustomer] = useState<CustomerAccount | null>(null);
   const [isAddCustomerModalOpen, setIsAddCustomerModalOpen] = useState(false);
   const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false);
@@ -89,12 +83,13 @@ function CustomersPageContent() {
 
     try {
       await customersService.toggleCustomerStatus(customerId, newStatus);
-      showToast(
-        newStatus ? `Đã mở khóa tài khoản ${cust.fullName}` : `Đã tạm khóa tài khoản ${cust.fullName}`,
-        newStatus ? "success" : "warning"
-      );
+      if (newStatus) {
+        toast.success(`Đã mở khóa tài khoản ${cust.fullName}`);
+      } else {
+        toast.warning(`Đã tạm khóa tài khoản ${cust.fullName}`);
+      }
     } catch {
-      showToast("Lỗi đồng bộ trạng thái tài khoản!", "error");
+      toast.error("Lỗi đồng bộ trạng thái tài khoản vào PostgreSQL!");
     }
   };
 
@@ -102,7 +97,7 @@ function CustomersPageContent() {
   const handleAddCustomerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCustomerForm.fullName.trim() || !newCustomerForm.phoneNumber.trim()) {
-      showToast("Vui lòng điền đủ Họ tên và Số điện thoại!", "warning");
+      toast.warning("Vui lòng điền đủ Họ tên và Số điện thoại!");
       return;
     }
 
@@ -135,9 +130,9 @@ function CustomersPageContent() {
       await customersService.createCustomer(newCust);
       setCustomers((prev) => [newCust, ...prev]);
       setIsAddCustomerModalOpen(false);
-      showToast(`Đã tạo tài khoản khách hàng "${newCust.fullName}" thành công!`, "success");
+      toast.success(`Đã tạo tài khoản khách hàng "${newCust.fullName}" lưu vào PostgreSQL thành công!`);
     } catch (e: any) {
-      showToast(`Lỗi tạo khách hàng: ${e.message}`, "error");
+      toast.error(`Lỗi tạo khách hàng: ${e.message}`);
     } finally {
       setIsSubmittingCustomer(false);
     }
@@ -166,7 +161,7 @@ function CustomersPageContent() {
     );
 
     customersService.updateMemberPermission(hwId, memberId, { [field]: true }).catch(() => {});
-    showToast("Đã cập nhật phân quyền thành viên tức thì!", "success");
+    toast.success("Đã cập nhật phân quyền thành viên tức thì!");
   };
 
   // Revoke member
@@ -187,9 +182,9 @@ function CustomersPageContent() {
           }),
         }))
       );
-      showToast(`Đã thu hồi quyền thành công của ${revokeTarget.memberName}`, "info");
+      toast.info(`Đã thu hồi quyền thành công của ${revokeTarget.memberName}`);
     } catch (e: any) {
-      showToast(`Lỗi thu hồi quyền: ${e.message}`, "error");
+      toast.error(`Lỗi thu hồi quyền: ${e.message}`);
     } finally {
       setIsRevoking(false);
       setRevokeTarget(null);
@@ -212,7 +207,7 @@ function CustomersPageContent() {
       }))
     );
     customersService.addMember(hwId, newMember).catch(() => {});
-    showToast(`Đã cấp quyền điều khiển cho ${newMember.memberName}`, "success");
+    toast.success(`Đã cấp quyền điều khiển cho ${newMember.memberName}`);
   };
 
   if (!canView("mod_user")) {
@@ -221,22 +216,6 @@ function CustomersPageContent() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-65px)] overflow-hidden bg-slate-100 dark:bg-slate-950 p-2.5 space-y-2.5">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-3.5 py-2 rounded-lg text-xs font-semibold shadow-lg animate-in slide-in-from-top-2 border ${
-            toast.type === "success"
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-              : toast.type === "error"
-              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-              : toast.type === "warning"
-              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-              : "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* Header */}
       <CustomerHeader

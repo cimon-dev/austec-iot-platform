@@ -171,11 +171,20 @@ export class UsersRepository {
     return true;
   }
 
-  public async getRoles(): Promise<SystemRoleEntity[]> {
+  public async getRoles(): Promise<any[]> {
     try {
       const roleRes = await this.client.query('SELECT * FROM system_roles ORDER BY id ASC');
       if (roleRes.rows.length > 0) {
-        const roles: SystemRoleEntity[] = [];
+        // Query user counts grouped by role
+        const countRes = await this.client.query(
+          "SELECT role, COUNT(*)::int as count FROM users GROUP BY role"
+        );
+        const countMap: Record<string, number> = {};
+        for (const row of countRes.rows) {
+          countMap[row.role] = row.count;
+        }
+
+        const roles: any[] = [];
         for (const r of roleRes.rows) {
           const permRes = await this.client.query(
             'SELECT * FROM role_permissions WHERE role_id = $1 ORDER BY id ASC',
@@ -183,20 +192,20 @@ export class UsersRepository {
           );
           roles.push({
             id: r.id,
-            roleCode: r.role_code,
+            name: r.role_name,
             roleName: r.role_name,
+            roleCode: r.role_code,
             description: r.description,
-            isSystem: r.is_system,
+            isSystem: Boolean(r.is_system),
+            userCount: countMap[r.role_code] || (r.role_code === 'ROLE_ADMIN' ? countMap['ADMIN'] || 0 : 0),
             permissions: permRes.rows.map(p => ({
-              id: p.id,
-              roleId: p.role_id,
-              moduleId: p.module_id,
-              moduleName: p.module_name,
-              canView: p.can_view,
-              canCreate: p.can_create,
-              canUpdate: p.can_update,
-              canDelete: p.can_delete,
-              canAll: p.can_all,
+              id: p.module_id,
+              name: p.module_name,
+              view: Boolean(p.can_view),
+              create: Boolean(p.can_create),
+              update: Boolean(p.can_update),
+              delete: Boolean(p.can_delete),
+              all: Boolean(p.can_all),
             })),
           });
         }
@@ -213,16 +222,54 @@ export class UsersRepository {
       await this.client.transaction(async client => {
         await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
         for (const p of permissions) {
+          const modId = p.id || p.moduleId;
+          const modName = p.name || p.moduleName || modId;
+          const v = Boolean(p.view ?? p.canView);
+          const c = Boolean(p.create ?? p.canCreate);
+          const u = Boolean(p.update ?? p.canUpdate);
+          const d = Boolean(p.delete ?? p.canDelete);
+          const a = Boolean(p.all ?? p.canAll);
           await client.query(
             `INSERT INTO role_permissions (role_id, module_id, module_name, can_view, can_create, can_update, can_delete, can_all)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [roleId, p.id || p.moduleId, p.name || p.moduleName, p.view, p.create, p.update, p.delete, p.all]
+            [roleId, modId, modName, v, c, u, d, a]
           );
         }
       });
     } catch (e: any) {
       console.warn('[UsersRepository] updateRolePermissions error:', e.message);
+      throw e;
     }
+  }
+
+  public async saveRoles(roles: any[]): Promise<void> {
+    for (const r of roles) {
+      if (r.id && Number(r.id) < 1000000000) {
+        await this.client.query('UPDATE system_roles SET role_name = $1 WHERE id = $2', [r.name || r.roleName, r.id]);
+        if (Array.isArray(r.permissions)) {
+          await this.updateRolePermissions(Number(r.id), r.permissions);
+        }
+      } else {
+        const code = (r.roleCode || `ROLE_${(r.name || 'NEW').toUpperCase().replace(/[^A-Z0-9]/g, '_')}`).slice(0, 50);
+        const res = await this.client.query(
+          `INSERT INTO system_roles (role_code, role_name, description, is_system, created_at)
+           VALUES ($1, $2, $3, false, $4) RETURNING id`,
+          [code, r.name || 'Vai trò mới', r.description || '', new Date().toISOString()]
+        );
+        const newRoleId = res.rows[0].id;
+        if (Array.isArray(r.permissions)) {
+          await this.updateRolePermissions(newRoleId, r.permissions);
+        }
+      }
+    }
+  }
+
+  public async deleteRole(roleId: number): Promise<boolean> {
+    await this.client.transaction(async client => {
+      await client.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
+      await client.query('DELETE FROM system_roles WHERE id = $1 AND is_system = false', [roleId]);
+    });
+    return true;
   }
 
   public addPermission(permission: DeviceMemberPermission): void {

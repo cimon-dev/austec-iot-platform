@@ -129,4 +129,29 @@ export class UsersController {
       res.status(400).json({ success: false, error: e.message });
     }
   };
+
+  public saveRoles = async (req: Request, res: Response) => {
+    try {
+      const { roles } = req.body;
+      if (!Array.isArray(roles)) {
+        res.status(400).json({ success: false, error: 'Danh sách vai trò không hợp lệ' });
+        return;
+      }
+      await this.service.saveRoles(roles);
+      res.json({ success: true, message: 'Đã lưu thiết lập ma trận phân quyền vào PostgreSQL thành công!' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  };
+
+  public deleteRole = async (req: Request, res: Response) => {
+    try {
+      const roleId = Number(req.params.id);
+      await this.service.deleteRole(roleId);
+      res.json({ success: true, message: 'Đã xóa vai trò thành công khỏi PostgreSQL!' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  };
 }
+

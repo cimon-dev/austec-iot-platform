@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, Suspense, useCallback } from "react";
+import { toast } from "sonner";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
@@ -17,68 +18,14 @@ import {
 
 export type { ProductItem };
 
-const INITIAL_PRODUCTS: ProductItem[] = [
-  {
-    id: "PROD-A900",
-    name: "Cửa Cuốn Khe Thoáng Austec Titadoor A900 Super",
-    category: "DOOR",
-    price: 18500000,
-    originalPrice: 21000000,
-    imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
-    description: "Cửa cuốn nan nhôm khe thoáng công nghệ Đức cao cấp, motor biến tần không chổi than vận hành siêu êm, tích hợp bộ điều khiển IoT thông minh Austec Cloud.",
-    highlights: ["Hợp kim nhôm 6063-T5", "Động cơ Inverter siêu êm", "Tự dừng khi gặp vật cản", "Cảm biến chống xô"],
-    specs: {
-      "Chất liệu": "Hợp kim nhôm định hình 6063-T5",
-      "Độ dày nan": "1.3mm - 2.3mm",
-      "Sơn tĩnh điện": "AkzoNobel chống phai màu 10 năm",
-      "Điện áp hoạt động": "220V / 50Hz",
-      "Tốc độ đóng mở": "15cm - 18cm / giây",
-      "Tải trọng tối đa": "1000 kg",
-      "Bảo hành xuất xưởng": "24 tháng chính hãng",
-    },
-    stock: 45,
-    status: "ACTIVE",
-    isFeatured: true,
-  },
-  {
-    id: "PROD-MASARU-X1",
-    name: "Khóa Thông Minh Nhận Diện Khuôn Mặt 3D Masaru Titan X1",
-    category: "LOCK",
-    price: 8900000,
-    originalPrice: 10500000,
-    imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
-    description: "Khóa cửa thông minh cao cấp công nghệ Nhật Bản, nhận diện khuôn mặt 3D Face ID ngay cả trong bóng tối, vân tay FPC Thụy Điển 0.3s, quản lý OTP ảo qua app.",
-    highlights: ["Nhận diện 3D Face ID", "Vân tay FPC Thụy Điển", "Thẻ từ & Mã số ảo", "Chống cạy phá báo động"],
-    specs: {
-      "Phương thức mở": "Khuôn mặt 3D, Vân tay, Mật khẩu, Thẻ từ, Chìa cơ, App",
-      "Thời gian nhận diện": "< 0.3 giây",
-      "Dung lượng lưu trữ": "100 Khuôn mặt, 100 Vân tay, 100 Thẻ từ",
-      "Nguồn điện": "Pin sạc Lithium 5000mAh (Dùng 8-10 tháng)",
-      "Cổng sạc khẩn cấp": "Type-C 5V",
-      "Chuẩn khóa cơ": "Lõi inox 304 chuẩn an toàn cấp C",
-      "Bảo hành xuất xưởng": "36 tháng 1 đổi 1",
-    },
-    stock: 80,
-    status: "ACTIVE",
-    isFeatured: true,
-  },
-];
-
 function StoreContent() {
   const { canView } = usePermissions();
 
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<ProductItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
-
-  // Toast
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  }, []);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,7 +142,7 @@ function StoreContent() {
   const handleSaveProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!productForm.name.trim()) {
-      alert("Vui lòng nhập tên sản phẩm!");
+      toast.error("Vui lòng nhập tên sản phẩm!");
       return;
     }
 
@@ -212,7 +159,7 @@ function StoreContent() {
       .filter(Boolean);
 
     const savedProduct: ProductItem = {
-      id: productForm.id,
+      id: productForm.id || `PROD-${Date.now().toString().slice(-6)}`,
       name: productForm.name.trim(),
       category: productForm.category,
       price: Number(productForm.price),
@@ -228,16 +175,28 @@ function StoreContent() {
     };
 
     if (modalMode === "CREATE") {
-      setProducts((prev) => [savedProduct, ...prev]);
-      storeService.createProduct(savedProduct).catch(() => {});
-      showToast(`Đã thêm sản phẩm "${savedProduct.name}" vào gian hàng!`);
-    } else {
-      setProducts((prev) => prev.map((p) => (p.id === savedProduct.id ? savedProduct : p)));
-      storeService.updateProduct(savedProduct.id, savedProduct).catch(() => {});
-      if (selectedProduct?.id === savedProduct.id) {
-        setSelectedProduct(savedProduct);
+      try {
+        const res = await storeService.createProduct(savedProduct);
+        if (res.success && res.product) {
+          setProducts((prev) => [res.product!, ...prev]);
+        } else {
+          setProducts((prev) => [savedProduct, ...prev]);
+        }
+        toast.success(`Đã thêm sản phẩm "${savedProduct.name}" vào CSDL PostgreSQL!`);
+      } catch (err: any) {
+        toast.error(`Lỗi khi tạo sản phẩm: ${err.message}`);
       }
-      showToast(`Đã cập nhật thông tin sản phẩm "${savedProduct.name}"!`);
+    } else {
+      try {
+        await storeService.updateProduct(savedProduct.id, savedProduct);
+        setProducts((prev) => prev.map((p) => (p.id === savedProduct.id ? savedProduct : p)));
+        if (selectedProduct?.id === savedProduct.id) {
+          setSelectedProduct(savedProduct);
+        }
+        toast.success(`Đã cập nhật thông tin sản phẩm "${savedProduct.name}" vào PostgreSQL!`);
+      } catch (err: any) {
+        toast.error(`Lỗi cập nhật sản phẩm: ${err.message}`);
+      }
     }
 
     setIsModalOpen(false);
@@ -256,9 +215,9 @@ function StoreContent() {
       if (selectedProduct?.id === deleteTarget.id) {
         setSelectedProduct(null);
       }
-      showToast(`Đã xóa sản phẩm "${deleteTarget.name}" khỏi gian hàng`);
+      toast.success(`Đã xóa sản phẩm "${deleteTarget.name}" khỏi CSDL PostgreSQL thành công!`);
     } catch (e: any) {
-      showToast(`Lỗi khi xóa sản phẩm: ${e.message}`);
+      toast.error(`Lỗi khi xóa sản phẩm: ${e.message}`);
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
@@ -276,12 +235,7 @@ function StoreContent() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-65px)] overflow-hidden bg-slate-100 dark:bg-slate-950 p-2.5 space-y-2.5">
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 px-3.5 py-2 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-lg animate-in slide-in-from-top-2">
-          {toastMessage}
-        </div>
-      )}
+
 
       {/* Top Header */}
       <StoreHeader onOpenCreateModal={handleOpenCreateModal} />

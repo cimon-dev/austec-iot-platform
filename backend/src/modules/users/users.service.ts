@@ -311,4 +311,13 @@ export class UsersService {
   public async updateRolePermissions(roleId: number, permissions: any[]) {
     return this.repo.updateRolePermissions(roleId, permissions);
   }
+
+  public async saveRoles(roles: any[]) {
+    return this.repo.saveRoles(roles);
+  }
+
+  public async deleteRole(roleId: number) {
+    return this.repo.deleteRole(roleId);
+  }
 }
+

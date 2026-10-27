@@ -8,10 +8,9 @@ import {
   Sliders, 
   Box, 
   FileSpreadsheet, 
-  Radio, 
-  CheckCircle2, 
-  AlertCircle 
+  Radio 
 } from "lucide-react";
+import { toast } from "sonner";
 import { usePermissions } from "@/context/PermissionContext";
 import { AccessDenied } from "@/components/AccessDenied";
 import { getApiBaseUrl } from "@/context/apiConfig";
@@ -45,13 +44,6 @@ function DevicesManagementContent() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  // Toast State
-  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "warning" | "error" } | null>(null);
-  const showToast = (message: string, type: "success" | "info" | "warning" | "error" = "success") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
-
   // Master Data (100% PostgreSQL DB backed)
   const [groups, setGroups] = useState<any[]>([]);
   const [deviceTypes, setDeviceTypes] = useState<any[]>([]);
@@ -70,14 +62,7 @@ function DevicesManagementContent() {
       const res = await fetch(`${apiBase}/api/admin/groups`, { headers });
       const data = await res.json();
       if (data.success && Array.isArray(data.groups)) {
-        setGroups(data.groups.map((g: any) => ({
-          id: g.id,
-          name: g.groupName || g.name,
-          code: g.code,
-          desc: g.description || g.desc || "",
-          deviceCount: g.deviceCount || 0,
-          onlineRate: g.onlineRate || 99.5,
-        })));
+        setGroups(data.groups);
       }
     } catch (e) {
       console.warn("Lỗi tải groups từ PostgreSQL:", e);
@@ -87,14 +72,8 @@ function DevicesManagementContent() {
     try {
       const res = await fetch(`${apiBase}/api/admin/device-types`, { headers });
       const data = await res.json();
-      if (data.success && Array.isArray(data.types)) {
-        setDeviceTypes(data.types.map((t: any) => ({
-          id: t.id,
-          name: t.typeName || t.name,
-          code: t.code,
-          icon: t.icon || "📦",
-          activeCount: t.activeCount || 0,
-        })));
+      if (data.success && Array.isArray(data.deviceTypes)) {
+        setDeviceTypes(data.deviceTypes);
       }
     } catch (e) {
       console.warn("Lỗi tải device types từ PostgreSQL:", e);
@@ -138,26 +117,6 @@ function DevicesManagementContent() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
-      {/* Toast Feedback */}
-      {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border backdrop-blur-md shadow-lg flex items-center gap-2 text-xs font-semibold animate-in slide-in-from-bottom ${
-          toast.type === "error"
-            ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
-            : toast.type === "warning"
-            ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-            : toast.type === "info"
-            ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
-            : "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-        }`}>
-          {toast.type === "error" || toast.type === "warning" ? (
-            <AlertCircle className="w-4 h-4 text-rose-500" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
-
       {/* Modern Compact Sub-navigation Tab Header */}
       <div className="shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
         <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
@@ -236,7 +195,6 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
-            showToast={showToast}
           />
         )}
 
@@ -245,7 +203,6 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
-            showToast={showToast}
           />
         )}
 
@@ -254,7 +211,6 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
-            showToast={showToast}
           />
         )}
 
@@ -263,7 +219,6 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
-            showToast={showToast}
           />
         )}
 
@@ -273,7 +228,6 @@ function DevicesManagementContent() {
             onImportSuccess={(newDevs) => setDevices(prev => [...newDevs, ...prev])}
             switchTab={switchTab}
             canCreate={canCreate("mod_dev")}
-            showToast={showToast}
           />
         )}
 
@@ -284,17 +238,16 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
-            showToast={showToast}
             onOpenCreateModal={() => setIsCreateDeviceOpen(true)}
             models={models}
             groups={groups}
             onDeviceUpdated={(updated) => {
-              setDevices(prev => prev.map(d => (d.hwId === updated.hwId || d.hardwareId === updated.hardwareId) ? { ...d, ...updated } : d));
-              showToast(`Đã cập nhật thiết bị ${updated.name || updated.customName || updated.hwId} thành công!`);
+              setDevices(prev => prev.map(d => (d.hardwareId === updated.hardwareId || d.hwId === updated.hwId) ? { ...d, ...updated } : d));
+              toast.success(`Đã cập nhật thiết bị ${updated.customName || updated.name} (${updated.hardwareId || updated.hwId}) thành công!`);
             }}
             onDeviceDeleted={(hardwareId) => {
-              setDevices(prev => prev.filter(d => (d.hwId || d.hardwareId) !== hardwareId));
-              showToast(`Đã xóa thiết bị ${hardwareId} khỏi hệ thống!`);
+              setDevices(prev => prev.filter(d => (d.hardwareId !== hardwareId && d.hwId !== hardwareId)));
+              toast.success(`Đã xóa thiết bị ${hardwareId} khỏi hệ thống!`);
             }}
           />
         )}
@@ -306,7 +259,7 @@ function DevicesManagementContent() {
         onClose={() => setIsCreateDeviceOpen(false)}
         onCreated={(newDev) => {
           setDevices(prev => [newDev, ...prev]);
-          showToast(`Đã thêm thiết bị ${newDev.name || newDev.customName || newDev.hwId} (${newDev.hwId || newDev.hardwareId}) thành công!`);
+          toast.success(`Đã thêm thiết bị ${newDev.customName || newDev.name} (${newDev.hardwareId || newDev.hwId}) thành công!`);
         }}
         models={models}
         groups={groups}

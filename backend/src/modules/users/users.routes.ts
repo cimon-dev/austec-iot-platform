@@ -40,9 +40,12 @@ export function createUsersRouter(
 
   // System Roles endpoints
   router.get('/admin/roles', authenticate, controller.getRoles);
+  router.put('/admin/roles', authenticate, requireRole(['ADMIN']), controller.saveRoles);
   router.put('/admin/roles/:id/permissions', authenticate, requireRole(['ADMIN']), controller.updateRolePermissions);
+  router.delete('/admin/roles/:id', authenticate, requireRole(['ADMIN']), controller.deleteRole);
 
   return router;
+
 }
 
 export const usersRouter = createUsersRouter();

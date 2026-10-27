@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { ImageUploader } from "@/components/ImageUploader";
@@ -25,14 +26,12 @@ interface DeviceModelTabProps {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
-  showToast: (msg: string, type?: "success" | "error" | "info") => void;
 }
 
 export function DeviceModelTab({
   canCreate,
   canUpdate,
   canDelete,
-  showToast,
 }: DeviceModelTabProps) {
   const [models, setModels] = useState<DeviceModelItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,13 +90,13 @@ export function DeviceModelTab({
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.modelName.trim() || !createForm.modelCode.trim()) {
-      showToast("Vui lòng điền tên và mã khuôn mẫu!", "error");
+      toast.error("Vui lòng điền tên và mã khuôn mẫu!");
       return;
     }
 
     const cleanCode = createForm.modelCode.trim().toUpperCase();
     if (models.some((m) => m.modelCode?.toUpperCase() === cleanCode)) {
-      showToast(`Mã Model "${cleanCode}" đã tồn tại! Vui lòng chọn mã khác.`, "error");
+      toast.error(`Mã Model "${cleanCode}" đã tồn tại! Vui lòng chọn mã khác.`);
       return;
     }
 
@@ -122,7 +121,7 @@ export function DeviceModelTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã tạo khuôn mẫu "${createForm.modelName}" thành công!`);
+        toast.success(`Đã tạo khuôn mẫu "${createForm.modelName}" thành công!`);
         setIsCreateOpen(false);
         setCreateForm({
           modelCode: "",
@@ -134,10 +133,10 @@ export function DeviceModelTab({
         });
         fetchModels();
       } else {
-        showToast(data.error || "Lỗi tạo khuôn mẫu", "error");
+        toast.error(data.error || "Lỗi tạo khuôn mẫu");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối: " + err.message, "error");
+      toast.error("Lỗi kết nối: " + err.message);
     } finally {
       setIsCreating(false);
     }
@@ -161,7 +160,7 @@ export function DeviceModelTab({
     e.preventDefault();
     if (!editItem) return;
     if (!editForm.modelName.trim()) {
-      showToast("Vui lòng nhập tên khuôn mẫu!", "error");
+      toast.error("Vui lòng nhập tên khuôn mẫu!");
       return;
     }
 
@@ -186,14 +185,14 @@ export function DeviceModelTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã cập nhật khuôn mẫu "${editForm.modelName}"!`);
+        toast.success(`Đã cập nhật khuôn mẫu "${editForm.modelName}"!`);
         setEditItem(null);
         fetchModels();
       } else {
-        showToast(data.error || "Lỗi cập nhật", "error");
+        toast.error(data.error || "Lỗi cập nhật");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối: " + err.message, "error");
+      toast.error("Lỗi kết nối: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -213,14 +212,14 @@ export function DeviceModelTab({
 
       const data = await res.json();
       if (data.success) {
-        showToast(`Đã xóa khuôn mẫu "${deleteTarget.modelName}" khỏi hệ thống!`);
+        toast.success(`Đã xóa khuôn mẫu "${deleteTarget.modelName}" khỏi hệ thống!`);
         setDeleteTarget(null);
         fetchModels();
       } else {
-        showToast(data.error || "Lỗi khi xóa khuôn mẫu", "error");
+        toast.error(data.error || "Lỗi khi xóa khuôn mẫu");
       }
     } catch (err: any) {
-      showToast("Lỗi kết nối: " + err.message, "error");
+      toast.error("Lỗi kết nối: " + err.message);
     } finally {
       setIsDeleting(false);
     }
@@ -253,7 +252,7 @@ export function DeviceModelTab({
           </div>
         ) : models.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-            <p className="text-xs text-slate-400">Chưa có khuôn mẫu sản phẩm nào được tạo.</p>
+            <p className="text-xs text-slate-400">Chưa có khuôn mẫu sản phẩm nào được tạo trong CSDL.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -322,7 +321,7 @@ export function DeviceModelTab({
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Thêm khuôn mẫu sản phẩm mới
+                Thêm khuôn mẫu mới
               </h3>
               <button
                 type="button"
@@ -336,12 +335,12 @@ export function DeviceModelTab({
             <form onSubmit={handleCreateSubmit} className="p-5 space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tên khuôn mẫu sản phẩm *
+                  Tên thương phẩm *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Austec Titadoor A900 Super"
+                  placeholder="Ví dụ: Cửa cuốn tự động Austec A900 Super"
                   value={createForm.modelName}
                   onChange={(e) => setCreateForm({ ...createForm, modelName: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -355,7 +354,7 @@ export function DeviceModelTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: AUSTEC-A900"
+                  placeholder="Ví dụ: AUSTEC-A900, MASARU-M8"
                   value={createForm.modelCode}
                   onChange={(e) => setCreateForm({ ...createForm, modelCode: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-indigo-500"
@@ -369,17 +368,20 @@ export function DeviceModelTab({
                   </label>
                   <input
                     type="text"
+                    placeholder="v1.0.0"
                     value={createForm.fw}
                     onChange={(e) => setCreateForm({ ...createForm, fw: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Hardware Revision
+                    Phiên bản Phần cứng
                   </label>
                   <input
                     type="text"
+                    placeholder="HW-REV-A"
                     value={createForm.hw}
                     onChange={(e) => setCreateForm({ ...createForm, hw: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -387,28 +389,42 @@ export function DeviceModelTab({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Nhà máy / Nhà cung ứng
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Austec Smart Factory"
+                  value={createForm.supplier}
+                  onChange={(e) => setCreateForm({ ...createForm, supplier: e.target.value })}
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
               {/* Cloudflare R2 Image Uploader */}
               <ImageUploader
-                label="Hình ảnh khuôn mẫu sản phẩm"
-                folder="models"
                 value={createForm.imageUrl}
                 onChange={(url) => setCreateForm({ ...createForm, imageUrl: url })}
+                label="Ảnh minh họa khuôn mẫu"
+                folder="models"
               />
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
-                  {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Tạo mới"}
+                  {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Lưu khuôn mẫu</span>
                 </button>
               </div>
             </form>
@@ -422,7 +438,7 @@ export function DeviceModelTab({
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Chỉnh sửa khuôn mẫu: {editItem.modelName}
+                Chỉnh sửa khuôn mẫu
               </h3>
               <button
                 type="button"
@@ -436,7 +452,7 @@ export function DeviceModelTab({
             <form onSubmit={handleUpdateSubmit} className="p-5 space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Tên khuôn mẫu sản phẩm *
+                  Tên thương phẩm *
                 </label>
                 <input
                   type="text"
@@ -463,7 +479,7 @@ export function DeviceModelTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Phiên bản Firmware
+                    Phiên bản FW
                   </label>
                   <input
                     type="text"
@@ -472,9 +488,10 @@ export function DeviceModelTab({
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
                   />
                 </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Hardware Revision
+                    Phiên bản HW
                   </label>
                   <input
                     type="text"
@@ -485,27 +502,41 @@ export function DeviceModelTab({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Nhà máy / Nhà cung ứng
+                </label>
+                <input
+                  type="text"
+                  value={editForm.supplier}
+                  onChange={(e) => setEditForm({ ...editForm, supplier: e.target.value })}
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              {/* Cloudflare R2 Image Uploader */}
               <ImageUploader
-                label="Hình ảnh khuôn mẫu sản phẩm"
-                folder="models"
                 value={editForm.imageUrl}
                 onChange={(url) => setEditForm({ ...editForm, imageUrl: url })}
+                label="Ảnh minh họa khuôn mẫu"
+                folder="models"
               />
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setEditItem(null)}
-                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                  className="px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
-                  {isUpdating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Lưu thay đổi"}
+                  {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>Cập nhật</span>
                 </button>
               </div>
             </form>
@@ -515,10 +546,11 @@ export function DeviceModelTab({
 
       {/* CONFIRM DELETE MODAL */}
       <ConfirmDeleteModal
-        isOpen={Boolean(deleteTarget)}
-        title="Xóa khuôn mẫu sản phẩm"
+        isOpen={!!deleteTarget}
+        title="Xóa khuôn mẫu"
         itemName={deleteTarget?.modelName}
-        itemType="khuôn mẫu sản phẩm"
+        itemType="khuôn mẫu"
+        description={`Bạn có chắc chắn muốn xóa khuôn mẫu "${deleteTarget?.modelName}" (${deleteTarget?.modelCode}) khỏi CSDL?`}
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}

@@ -175,6 +175,19 @@ export class DevicesController {
     }
   };
 
+  public createDevicesBatch = async (req: Request, res: Response) => {
+    try {
+      const items = Array.isArray(req.body) ? req.body : req.body.devices;
+      if (!Array.isArray(items)) {
+        return res.status(400).json({ success: false, error: 'Dữ liệu thiết bị gửi lên phải là một mảng!' });
+      }
+      const result = await this.service.createDevicesBatch(items);
+      res.json({ success: true, ...result, message: `Đã lưu thành công ${result.count} thiết bị vào CSDL!` });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  };
+
   public updateDevice = async (req: Request, res: Response) => {
     try {
       const device = await this.service.updateDevice(String(req.params.hardwareId), req.body);

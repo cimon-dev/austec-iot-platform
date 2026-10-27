@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { usePermissions } from "../../../context/PermissionContext";
 import { AccessDenied } from "../../../components/AccessDenied";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
@@ -24,48 +24,10 @@ const DEFAULT_MODULES: ModulePermission[] = [
   { id: "mod_ota", name: "Quản lý Firmware OTA (Firmware Release)", all: true, create: true, update: true, delete: false, view: true },
 ];
 
-const INITIAL_ROLES: RoleItem[] = [
-  {
-    id: 1,
-    name: "Administrator",
-    userCount: 2,
-    isSystem: true,
-    permissions: DEFAULT_MODULES.map((m) => ({ ...m, all: true, create: true, update: true, delete: true, view: true })),
-  },
-  {
-    id: 2,
-    name: "Device Admin",
-    userCount: 4,
-    isSystem: false,
-    permissions: DEFAULT_MODULES.map((m) => ({
-      ...m,
-      all: m.id === "mod_dev" || m.id === "mod_ota",
-      create: m.id === "mod_dev" || m.id === "mod_ota",
-      update: m.id === "mod_dev" || m.id === "mod_ota",
-      delete: m.id === "mod_dev",
-      view: true,
-    })),
-  },
-  {
-    id: 3,
-    name: "CSKH Support",
-    userCount: 8,
-    isSystem: false,
-    permissions: DEFAULT_MODULES.map((m) => ({
-      ...m,
-      all: m.id === "mod_cskh",
-      create: m.id === "mod_cskh" || m.id === "mod_noti",
-      update: m.id === "mod_cskh",
-      delete: false,
-      view: m.id === "mod_dev" || m.id === "mod_user" || m.id === "mod_cskh" || m.id === "mod_noti",
-    })),
-  },
-];
-
 export default function RolesManagementPage() {
   const { canView, canCreate, canUpdate, canDelete } = usePermissions();
 
-  const [roles, setRoles] = useState<RoleItem[]>(INITIAL_ROLES);
+  const [roles, setRoles] = useState<RoleItem[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<number>(1);
   const [searchRole, setSearchRole] = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -73,20 +35,17 @@ export default function RolesManagementPage() {
   const [deleteTarget, setDeleteTarget] = useState<RoleItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }, []);
 
   const fetchRoles = useCallback(() => {
     rolesService.getRoles().then((data) => {
       if (data && data.length > 0) {
         setRoles(data);
+        if (!data.some((r) => r.id === selectedRoleId)) {
+          setSelectedRoleId(data[0].id);
+        }
       }
     });
-  }, []);
+  }, [selectedRoleId]);
 
   useEffect(() => {
     fetchRoles();
@@ -130,16 +89,16 @@ export default function RolesManagementPage() {
 
   const handleRenameRole = (roleId: number, newName: string) => {
     setRoles((prev) => prev.map((r) => (r.id === roleId ? { ...r, name: newName } : r)));
-    showToast(`Đã đổi tên vai trò thành "${newName}"`);
+    toast.info(`Đã đổi tên vai trò thành "${newName}"`);
   };
 
   const handleSaveRoles = async () => {
     setIsSaving(true);
     try {
       await rolesService.saveRoles(roles);
-      showToast("Đã lưu thiết lập ma trận phân quyền vào PostgreSQL thành công!");
+      toast.success("Đã lưu thiết lập ma trận phân quyền vào PostgreSQL thành công!");
     } catch {
-      showToast("Lỗi khi lưu thiết lập phân quyền.");
+      toast.error("Lỗi khi lưu thiết lập phân quyền vào PostgreSQL.");
     } finally {
       setIsSaving(false);
     }
@@ -168,7 +127,7 @@ export default function RolesManagementPage() {
     setSelectedRoleId(newRole.id);
     setNewRoleName("");
     setIsCreateModalOpen(false);
-    showToast(`Đã tạo vai trò mới: "${newRole.name}"`);
+    toast.success(`Đã thêm vai trò mới: "${newRole.name}" (Bấm lưu để ghi xuống CSDL)`);
   };
 
   const handleConfirmDelete = async () => {
@@ -180,10 +139,10 @@ export default function RolesManagementPage() {
       if (selectedRoleId === deleteTarget.id) {
         setSelectedRoleId(1);
       }
-      showToast(`Đã xóa vai trò "${deleteTarget.name}" thành công!`);
+      toast.success(`Đã xóa vai trò "${deleteTarget.name}" thành công khỏi PostgreSQL!`);
       setDeleteTarget(null);
     } catch {
-      showToast("Lỗi khi xóa vai trò.");
+      toast.error("Lỗi khi xóa vai trò khỏi PostgreSQL.");
     } finally {
       setIsDeleting(false);
     }
@@ -195,13 +154,6 @@ export default function RolesManagementPage() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2.5 overflow-hidden">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-lg border shadow-xl flex items-center gap-2 text-xs font-semibold bg-emerald-950/90 text-emerald-300 border-emerald-500/40 animate-in slide-in-from-bottom">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <span>{toast}</span>
-        </div>
-      )}
-
       <RolesHeader rolesCount={roles.length} />
 
       <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-12 gap-2.5 overflow-hidden">
@@ -231,7 +183,7 @@ export default function RolesManagementPage() {
               setRoles((prev) =>
                 prev.map((r) => (r.id === selectedRoleId ? { ...r, permissions: DEFAULT_MODULES } : r))
               );
-              showToast("Đã khôi phục phân quyền mặc định cho vai trò này (chưa lưu).");
+              toast.info("Đã khôi phục phân quyền mặc định cho vai trò này (chưa lưu).");
             }}
           />
         </div>
