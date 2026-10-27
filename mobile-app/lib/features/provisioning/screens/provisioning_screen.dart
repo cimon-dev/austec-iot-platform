@@ -12,6 +12,7 @@ import '../../../core/models/device_model.dart';
 import '../widgets/wifi_picker_sheet.dart';
 import '../widgets/pairing_progress_dialog.dart';
 import '../../devices/screens/roller_door_control_screen.dart';
+import '../../devices/screens/device_detail_screen.dart';
 
 class ProvisioningScreen extends StatefulWidget {
   const ProvisioningScreen({super.key});
@@ -149,7 +150,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
            r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
 
       if (isAustecService || isAustecName || isTargetMatch) {
-        final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : 'amtuong1994');
+        final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
         final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
         final newDev = DiscoveredHardwareBLE(
           hardwareId: devId,
@@ -229,10 +230,6 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (mounted) {
       setState(() {
         _isScanningWifi = false;
-        if (_ssidController.text.isEmpty) {
-          _ssidController.text = "Manh Duc";
-          _currentWifiSsid = "Manh Duc";
-        }
       });
     }
   }
@@ -310,10 +307,18 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         },
         onControlDoor: (hwId) {
           final dev = IoTGatewayClient().findByHardwareId(hwId);
-          if (dev != null && dev.category == DeviceCategory.rollerDoor) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev)),
-            );
+          if (dev != null) {
+            if (dev.category == DeviceCategory.rollerDoor) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev)),
+              );
+            } else {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev)),
+              );
+            }
+          } else {
+            Navigator.of(context).pop();
           }
         },
       ),
@@ -338,8 +343,37 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("THIẾT BỊ BLE TÌM THẤY", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                if (_isScanning)
-                  const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_isScanning)
+                      const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
+                    if (kIsWeb) ...[
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: () async {
+                          setState(() => _isScanning = true);
+                          final devs = await _bleService.scanForHardwareDevices(triggerWebBle: true);
+                          if (mounted) {
+                            setState(() {
+                              _isScanning = false;
+                              _discoveredDevices = devs;
+                              if (devs.isNotEmpty && _selectedDevice == null) {
+                                _selectedDevice = devs.first;
+                              }
+                            });
+                          }
+                        },
+                        icon: const Icon(Icons.bluetooth_searching, size: 14, color: AppTheme.cyanAccent),
+                        label: const Text("Quét BLE Web", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11)),
+                      ),
+                    ],
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 8),

@@ -282,9 +282,9 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppTheme.blueAccent.withOpacity(0.5)),
+                border: Border.all(color: AppTheme.blueAccent.withValues(alpha: 0.5)),
                 boxShadow: [
-                  BoxShadow(color: AppTheme.blueAccent.withOpacity(0.2), blurRadius: 16, offset: const Offset(0, 4)),
+                  BoxShadow(color: AppTheme.blueAccent.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
                 ],
               ),
               child: Row(
@@ -410,7 +410,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.cyanAccent.withOpacity(0.12),
+                color: AppTheme.cyanAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -555,9 +555,9 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.emeraldSuccess.withOpacity(0.15),
+                    color: AppTheme.emeraldSuccess.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.emeraldSuccess.withOpacity(0.4)),
+                    border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.4)),
                   ),
                   child: Text(
                     product.warrantyText,

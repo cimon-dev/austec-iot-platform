@@ -72,5 +72,14 @@
 	<string>Ứng dụng cần quyền Bluetooth để cấu hình thiết bị phần cứng Austec.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Ứng dụng cần quyền mạng cục bộ để kết nối và cài đặt WiFi cho cửa cuốn Austec qua WiFi trực tiếp.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần quyền Camera để quét mã QR tem bảo hành và ghép nối thiết bị Austec.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 </dict>
 </plist>

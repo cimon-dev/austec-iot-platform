@@ -177,13 +177,60 @@ export function createApp() {
   app.use('/api', createMqttRouter(mqttGateway));
 
   // Device Operations (Pairing, Live Telemetry, Command Dispatch)
+  app.post('/api/pairing/simulate-onboard', async (req, res) => {
+    try {
+      const { hardwareId, userId, modelCode, customerName, ownerName } = req.body;
+      if (!hardwareId) {
+        return res.status(400).json({ success: false, error: 'Thiếu hardwareId' });
+      }
+      const targetUser = userId || '00000000-0000-0000-0000-000000000001';
+      const targetModel = modelCode || 'DOOR_GERMAN_ALU';
+      const finalCustomerName = customerName || `Cửa cuốn ${hardwareId}`;
+      const finalOwnerName = ownerName || customerName || 'Chủ sở hữu';
+
+      if (postgresService && postgresClient.getConnected()) {
+        const result = await postgresService.registerPairingDevice(
+          hardwareId,
+          targetModel,
+          targetUser,
+          finalCustomerName,
+          finalOwnerName
+        );
+        return res.json({
+          success: true,
+          message: `Kích hoạt onboard thiết bị [${hardwareId}] thành công!`,
+          ...result,
+        });
+      }
+
+      const pairResult = provisioningService.pairDevice({
+        hardwareId,
+        qrCodeHash: '',
+        userId: targetUser,
+        customName: finalCustomerName,
+      });
+      persistAll(true);
+      res.json({
+        success: true,
+        message: `Kích hoạt onboard thiết bị [${hardwareId}] thành công!`,
+        hardwareId,
+        ownerName: finalOwnerName,
+        status: 'INSTALLED',
+        warrantyUntil: new Date(Date.now() + 24 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   app.post('/api/devices/pair', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
     try {
-      const { hardwareId, qrHash, deviceName, location } = req.body;
+      const { hardwareId, qrHash, deviceName, location, customName, wifiSsid } = req.body;
       const targetUser = req.user!;
       if (!hardwareId) {
         return res.status(400).json({ success: false, error: 'Thiếu thông tin Hardware ID' });
       }
+      const finalName = customName || deviceName || 'Cửa Cuốn Gia Đình';
 
       if (postgresClient.getConnected()) {
         await postgresClient.query(
@@ -191,26 +238,36 @@ export function createApp() {
           [hardwareId]
         );
         const instRes = await postgresClient.query(
-          `INSERT INTO device_instances (hardware_id, owner_id, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, true, 'STANDARD', 'ACTIVE', NOW(), NOW() + INTERVAL '2 years', NOW())
+          `INSERT INTO device_instances (id, hardware_id, owner_id, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              custom_name = EXCLUDED.custom_name,
              address_display = EXCLUDED.address_display,
              is_online = true
            RETURNING *`,
-          [hardwareId, targetUser.id, deviceName || 'Cửa Cuốn Gia Đình', location || 'Nhà riêng']
+          [hardwareId, hardwareId, targetUser.id, finalName, location || 'Nhà riêng']
         );
+        const permId = `PERM-${hardwareId}-${targetUser.id.slice(0, 8)}`;
         await postgresClient.query(
-          `INSERT INTO device_permissions (hardware_id, user_id, role, can_control, can_view_history, can_child_lock, can_config, created_at)
-           VALUES ($1, $2, 'OWNER', true, true, true, true, NOW())
-           ON CONFLICT (hardware_id, user_id) DO UPDATE SET can_control = true`,
-          [hardwareId, targetUser.id]
+          `INSERT INTO device_permissions (id, hardware_id, user_id, member_name, role, can_control, can_view_history, can_child_lock, can_config, created_at)
+           VALUES ($1, $2, $3, $4, 'OWNER', true, true, true, true, NOW()::text)
+           ON CONFLICT (id) DO UPDATE SET can_control = true, role = 'OWNER'`,
+          [permId, hardwareId, targetUser.id, targetUser.fullName || targetUser.email || 'Chủ sở hữu']
         );
+        const inst = instRes.rows[0];
+        const warrantyUntil = inst.warranty_end_at ? new Date(inst.warranty_end_at).toISOString().slice(0, 10) : '2028-10-23';
+        const warrantyCode = `EW-${hardwareId.replace(/-/g, '').toUpperCase()}-24M`;
+
         return res.json({
           success: true,
           message: 'Ghép nối thiết bị và kích hoạt bảo hành điện tử thành công!',
-          instance: instRes.rows[0],
+          instance: inst,
+          device: {
+            ...inst,
+            warrantyUntil,
+            warrantyCode,
+          },
         });
       }
 
@@ -218,11 +275,23 @@ export function createApp() {
         hardwareId,
         qrCodeHash: qrHash || '',
         userId: targetUser.id,
-        customName: deviceName || 'Cửa cuốn Austec',
+        customName: finalName,
         addressDisplay: location,
       });
       persistAll(true);
-      res.json({ success: true, message: 'Ghép nối thiết bị thành công!', instance: pairResult.device });
+      const warrantyUntil = new Date(Date.now() + 24 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      const warrantyCode = `EW-${hardwareId.replace(/-/g, '').toUpperCase()}-24M`;
+
+      res.json({
+        success: true,
+        message: 'Ghép nối thiết bị thành công!',
+        instance: pairResult.device,
+        device: {
+          ...pairResult.device,
+          warrantyUntil,
+          warrantyCode,
+        },
+      });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }

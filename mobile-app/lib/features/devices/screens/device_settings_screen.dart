@@ -378,7 +378,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       Switch(
                         value: _isAutoSchedule,
-                        activeColor: AppTheme.cyanAccent,
+                        activeThumbColor: AppTheme.cyanAccent,
                         onChanged: (val) => setState(() => _isAutoSchedule = val),
                       ),
                     ],
@@ -416,7 +416,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               ),
                               Switch(
                                 value: s["enabled"] as bool,
-                                activeColor: AppTheme.cyanAccent,
+                                activeThumbColor: AppTheme.cyanAccent,
                                 onChanged: (val) => setState(() => s["enabled"] = val),
                               ),
                             ],
@@ -468,7 +468,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       Switch(
                         value: _isAccessLimit,
-                        activeColor: AppTheme.blueAccent,
+                        activeThumbColor: AppTheme.blueAccent,
                         onChanged: (val) => setState(() => _isAccessLimit = val),
                       ),
                     ],

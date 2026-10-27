@@ -166,7 +166,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger,
                       boxShadow: [
                         BoxShadow(
-                          color: (_device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger).withOpacity(0.6),
+                          color: (_device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger).withValues(alpha: 0.6),
                           blurRadius: 8,
                           spreadRadius: 2,
                         ),
@@ -188,9 +188,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.cyanAccent.withOpacity(0.12),
+                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.cyanAccent.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
                 ),
                 child: Text(
                   _device.modelName,
@@ -270,7 +270,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   inactiveTrackColor: AppTheme.cardBorder,
                   thumbColor: Colors.white,
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  overlayColor: AppTheme.cyanAccent.withOpacity(0.2),
+                  overlayColor: AppTheme.cyanAccent.withValues(alpha: 0.2),
                 ),
                 child: Slider(
                   value: _device.positionPercent.toDouble(),
@@ -356,7 +356,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   ),
                   Switch(
                     value: _device.isChildLockActive,
-                    activeColor: AppTheme.cyanAccent,
+                    activeThumbColor: AppTheme.cyanAccent,
                     onChanged: (val) => _triggerAction("TOGGLE_CHILD_LOCK"),
                   ),
                 ],
@@ -444,7 +444,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const Text("Công Tắc Tổng", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
               Switch(
                 value: _device.isRelayOn,
-                activeColor: AppTheme.cyanAccent,
+                activeThumbColor: AppTheme.cyanAccent,
                 onChanged: (val) => _triggerAction("TOGGLE_RELAY"),
               ),
             ],
@@ -460,9 +460,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: isOn ? AppTheme.cyanAccent.withOpacity(0.08) : AppTheme.surface,
+                color: isOn ? AppTheme.cyanAccent.withValues(alpha: 0.08) : AppTheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isOn ? AppTheme.cyanAccent.withOpacity(0.4) : AppTheme.cardBorder),
+                border: Border.all(color: isOn ? AppTheme.cyanAccent.withValues(alpha: 0.4) : AppTheme.cardBorder),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -476,7 +476,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   ),
                   Switch(
                     value: isOn,
-                    activeColor: AppTheme.amberWarning,
+                    activeThumbColor: AppTheme.amberWarning,
                     onChanged: (val) => _triggerAction("TOGGLE_SUB_CHANNEL", {"channelIndex": idx}),
                   ),
                 ],
@@ -502,7 +502,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.cyanAccent.withOpacity(0.4)),
+              border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
             ),
             child: Stack(
               children: [
@@ -600,7 +600,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               ),
               Switch(
                 value: _device.isDischarging,
-                activeColor: AppTheme.emeraldSuccess,
+                activeThumbColor: AppTheme.emeraldSuccess,
                 onChanged: (val) => _triggerAction("TOGGLE_DISCHARGE"),
               ),
             ],
@@ -631,7 +631,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 gradient: _device.isLocked ? AppTheme.amberGradient : AppTheme.emeraldGradient,
                 boxShadow: [
                   BoxShadow(
-                    color: (_device.isLocked ? AppTheme.amberWarning : AppTheme.emeraldSuccess).withOpacity(0.4),
+                    color: (_device.isLocked ? AppTheme.amberWarning : AppTheme.emeraldSuccess).withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: 4,
                   ),
@@ -680,7 +680,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               return ListTile(
                 dense: true,
                 leading: CircleAvatar(
-                  backgroundColor: log.isAlert ? AppTheme.roseDanger.withOpacity(0.2) : AppTheme.blueAccent.withOpacity(0.2),
+                  backgroundColor: log.isAlert ? AppTheme.roseDanger.withValues(alpha: 0.2) : AppTheme.blueAccent.withValues(alpha: 0.2),
                   radius: 16,
                   child: Icon(
                     log.isAlert ? Icons.warning_rounded : Icons.check_circle_outline,
@@ -709,7 +709,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isCurrent ? AppTheme.cyanAccent.withOpacity(0.18) : AppTheme.surface,
+          color: isCurrent ? AppTheme.cyanAccent.withValues(alpha: 0.18) : AppTheme.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: isCurrent ? AppTheme.cyanAccent : AppTheme.cardBorder),
         ),
@@ -740,7 +740,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           gradient: gradient,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.35), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
         child: Column(

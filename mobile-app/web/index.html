@@ -60,8 +60,8 @@
               supported: true,
               success: true,
               id: device.id,
-              name: device.name || 'amtuong1994',
-              hardwareId: device.name || 'amtuong1994'
+              name: device.name || ('ESP32-' + device.id.slice(0, 6)),
+              hardwareId: device.name || ('ESP32-' + device.id.slice(0, 6))
             }));
           }).catch(function(err) {
             console.warn('[WebBLE] Lỗi hoặc người dùng hủy:', err);

@@ -308,7 +308,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       ),
                       Switch(
                         value: isDark,
-                        activeColor: AppTheme.cyanAccent,
+                        activeThumbColor: AppTheme.cyanAccent,
                         onChanged: (_) {
                           widget.onThemeChanged();
                           setState(() {});
@@ -407,7 +407,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       ),
                       Switch(
                         value: _pushNotifications,
-                        activeColor: AppTheme.cyanAccent,
+                        activeThumbColor: AppTheme.cyanAccent,
                         onChanged: (val) => setState(() => _pushNotifications = val),
                       ),
                     ],
@@ -446,7 +446,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       ),
                       Switch(
                         value: _biometricLock,
-                        activeColor: AppTheme.cyanAccent,
+                        activeThumbColor: AppTheme.cyanAccent,
                         onChanged: (val) => setState(() => _biometricLock = val),
                       ),
                     ],

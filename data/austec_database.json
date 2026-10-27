@@ -3,7 +3,7 @@
     {
       "id": "USR-805862",
       "fullName": "test",
-      "email": "test@gmail.com",
+      "email": "test@gmail.xn--comd123-j7a",
       "phoneNumber": "0944123123",
       "address": "Vạn Phcus",
       "province": "Hà Nội",
@@ -22,7 +22,8 @@
           "isOnline": true,
           "roleInHome": "OWNER"
         }
-      ]
+      ],
+      "updatedAt": "2026-10-27"
     },
     {
       "id": "admin-001",
@@ -321,6 +322,167 @@
       ]
     }
   ],
+  "products": [
+    {
+      "id": "PROD-DOOR-A900",
+      "name": "Cửa Cuốn Austec Titadoor A900 Super",
+      "categoryTag": "Cửa Cuốn",
+      "subtitle": "Nhôm định hình 6063 T6 • Khe thoáng thông minh thế hệ mới",
+      "price": 18500000,
+      "originalPrice": 21000000,
+      "rating": 4.9,
+      "reviewsCount": 142,
+      "imageUrl": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [
+        "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80"
+      ],
+      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
+      "highlights": [
+        "Sơn tĩnh điện cao cấp AkzoNobel chống phai màu 10 năm ngoài trời",
+        "Cảm biến tự dừng & đảo chiều thông minh khi gặp vật cản siêu nhạy",
+        "Bo mạch kép kết nối đồng thời WiFi băng tần kép + Bluetooth BLE 5.0",
+        "Vận hành êm ái dưới 45dB nhờ gioăng cao su giảm chấn 2 chiều kép"
+      ],
+      "specs": {
+        "Độ dày nan cửa": "1.4mm - 1.8mm (Nan kép khe thoáng)",
+        "Chất liệu cấu thành": "Hợp kim nhôm 6063-T6 đạt chuẩn quốc tế",
+        "Tốc độ đóng/mở": "15cm - 18cm / giây",
+        "Màu sắc chuẩn": "Ghi sần / Cafe ánh kim / Vàng kem hoàng gia",
+        "Công suất động cơ": "Austec Turbo 800W lõi đồng nguyên chất",
+        "Kháng nước & bụi": "Chuẩn IP65 chống nước mưa tạt ngang",
+        "Tích hợp": "Điều khiển qua App, Tay RF học lệnh, Nút bấm âm tường"
+      },
+      "stockQuantity": 45,
+      "isPublished": true,
+      "displayOrder": 1,
+      "createdAt": "2026-08-01T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-LOCK-MASARU-X1",
+      "name": "Khóa Cửa Thông Minh Masaru Titan X1 FaceID",
+      "categoryTag": "Khóa Masaru",
+      "subtitle": "Nhận diện khuôn mặt 3D AI • Vân tay bán dẫn FPC Thụy Điển",
+      "price": 9800000,
+      "originalPrice": 12500000,
+      "rating": 5,
+      "reviewsCount": 88,
+      "imageUrl": "https://images.unsplash.com/photo-1558089687-f282ffcbc126?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành 1 đổi 1 trong 24 tháng theo Hardware ID",
+      "highlights": [
+        "Camera 3D cấu trúc ánh sáng nhận diện FaceID trong 0.2 giây",
+        "Thân khóa đúc bằng hợp kim Titan nguyên khối chống cưa cắt phá hoại",
+        "Cảnh báo đột nhập và còi hú tự động chụp ảnh gửi về điện thoại",
+        "Mã số ảo chống nhìn trộm và cấp mã OTP một lần cho khách"
+      ],
+      "specs": {
+        "Phương thức mở khóa": "FaceID 3D, Vân tay FPC, Thẻ từ RFID, Mã số, Khóa cơ, App Mobile",
+        "Dung lượng lưu trữ": "50 Khuôn mặt, 100 Vân tay, 100 Thẻ từ, 100 Mật mã",
+        "Chất liệu thân khóa": "Hợp kim Kẽm & Titan đúc liền khối",
+        "Thời lượng pin": "Pin sạc Lithium 5000mAh (Dùng 10 - 12 tháng/lần sạc)",
+        "Cổng sạc khẩn cấp": "USB Type-C tiện lợi",
+        "Tiêu chuẩn ruột khóa": "Ruột 6068 inox 304 tiêu chuẩn châu Âu"
+      },
+      "stockQuantity": 60,
+      "isPublished": true,
+      "displayOrder": 2,
+      "createdAt": "2026-08-10T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-UPS-SINE-1200",
+      "name": "Bộ Lưu Điện Austec Sin Chuẩn Pro 1200VA",
+      "categoryTag": "Lưu Điện UPS",
+      "subtitle": "Sóng sin chuẩn tinh khiết • Tự động xả bảo dưỡng chống chai ắc quy",
+      "price": 4600000,
+      "originalPrice": 5200000,
+      "rating": 4.8,
+      "reviewsCount": 95,
+      "imageUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành bo mạch & ắc quy chính hãng 24 tháng",
+      "highlights": [
+        "Điện áp ra sóng sin chuẩn 220V/50Hz giúp motor cửa chạy êm không gằn",
+        "Thời gian lưu điện chờ liên tục lên đến 72 giờ không mất nguồn",
+        "Thuật toán AI tự động xả ắc quy định kỳ mỗi 30 ngày giúp pin bền gấp 3 lần",
+        "Màn hình LCD và viễn thám báo chính xác dung lượng pin còn lại theo %"
+      ],
+      "specs": {
+        "Công suất định mức": "1200VA / 900W",
+        "Điện áp đầu vào": "AC 160V - 240V / 50Hz",
+        "Điện áp đầu ra": "AC 220V ± 2% (Sóng sin chuẩn tinh khiết)",
+        "Dung lượng ắc quy": "2 x 12V / 12Ah kín khí chuyên dụng",
+        "Thời gian chuyển mạch": "< 4ms (Không gây gián đoạn động cơ)",
+        "Cơ chế bảo vệ": "Quá tải, ngắn mạch, sụt áp, quá nhiệt độ"
+      },
+      "stockQuantity": 80,
+      "isPublished": true,
+      "displayOrder": 3,
+      "createdAt": "2026-08-15T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-CAM-AI-VISION",
+      "name": "Camera AI An Ninh Ngoài Trời Austec Vision 4K",
+      "categoryTag": "AI Camera",
+      "subtitle": "Độ phân giải 4K HDR • Nhận diện chuyển động người AI • Quay quét 360°",
+      "price": 2450000,
+      "originalPrice": 2900000,
+      "rating": 4.9,
+      "reviewsCount": 110,
+      "imageUrl": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
+      "highlights": [
+        "Ống kính 8.0MP 4K HDR ghi hình sắc nét ngày đêm có màu ban đêm",
+        "Chip AI tích hợp phát hiện chính xác người, xe, cảnh báo xua đuổi còi hú",
+        "Đàm thoại 2 chiều lọc tiếng ồn rõ ràng từ điện thoại",
+        "Chuẩn chống nước ngoài trời IP67 chịu mưa bão khắc nghiệt"
+      ],
+      "specs": {
+        "Cảm biến hình ảnh": "Sony Starvis CMOS 8MP 4K Ultra HD",
+        "Góc nhìn": "Quay ngang 355°, quay dọc 90°, ống kính 4mm",
+        "Tầm nhìn ban đêm": "Hồng ngoại 30m + Đèn LED trợ sáng có màu 20m",
+        "Chuẩn nén video": "H.265+ tiết kiệm 80% dung lượng",
+        "Lưu trữ": "Thẻ nhớ MicroSD tối đa 256GB hoặc Austec Cloud NVR"
+      },
+      "stockQuantity": 120,
+      "isPublished": true,
+      "displayOrder": 4,
+      "createdAt": "2026-08-20T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    },
+    {
+      "id": "PROD-SENSOR-ENV-M1",
+      "name": "Trạm Cảm Biến Môi Trường Không Dây MultiSensor M1 Pro",
+      "categoryTag": "Cảm Biến",
+      "subtitle": "Đo nhiệt độ, độ ẩm, chất lượng không khí AQI • Kết nối Zigbee 3.0",
+      "price": 850000,
+      "originalPrice": 1100000,
+      "rating": 4.7,
+      "reviewsCount": 76,
+      "imageUrl": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
+      "galleryUrls": [],
+      "warrantyText": "Bảo hành chính hãng 24 tháng 1 đổi 1",
+      "highlights": [
+        "Cảm biến Sensirion Thụy Sĩ sai số nhiệt độ dưới 0.2°C",
+        "Tự động kích hoạt đóng cửa khi phát hiện mưa hoặc mở quạt thông gió khi nhiệt độ cao",
+        "Thời lượng pin cúc áo CR2450 dùng liên tục 2 năm"
+      ],
+      "specs": {
+        "Dải đo nhiệt độ": "-20°C đến 60°C (Sai số ±0.2°C)",
+        "Dải đo độ ẩm": "0% đến 99% RH (Sai số ±2%)",
+        "Giao thức kết nối": "Zigbee 3.0 / BLE Mesh",
+        "Kích thước": "40mm x 40mm x 12mm (Cực kỳ nhỏ gọn)"
+      },
+      "stockQuantity": 150,
+      "isPublished": true,
+      "displayOrder": 5,
+      "createdAt": "2026-08-22T00:00:00Z",
+      "updatedAt": "2026-10-21T00:00:00Z"
+    }
+  ],
   "permissions": [
     {
       "id": "PERM-01",
@@ -512,167 +674,6 @@
       "updatedAt": "2026-10-21T11:20:00Z"
     }
   ],
-  "products": [
-    {
-      "id": "PROD-DOOR-A900",
-      "name": "Cửa Cuốn Austec Titadoor A900 Super",
-      "categoryTag": "Cửa Cuốn",
-      "subtitle": "Nhôm định hình 6063 T6 • Khe thoáng thông minh thế hệ mới",
-      "price": 18500000,
-      "originalPrice": 21000000,
-      "rating": 4.9,
-      "reviewsCount": 142,
-      "imageUrl": "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80",
-      "galleryUrls": [
-        "https://images.unsplash.com/photo-1558002038-1055907df827?auto=format&fit=crop&w=800&q=80"
-      ],
-      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
-      "highlights": [
-        "Sơn tĩnh điện cao cấp AkzoNobel chống phai màu 10 năm ngoài trời",
-        "Cảm biến tự dừng & đảo chiều thông minh khi gặp vật cản siêu nhạy",
-        "Bo mạch kép kết nối đồng thời WiFi băng tần kép + Bluetooth BLE 5.0",
-        "Vận hành êm ái dưới 45dB nhờ gioăng cao su giảm chấn 2 chiều kép"
-      ],
-      "specs": {
-        "Độ dày nan cửa": "1.4mm - 1.8mm (Nan kép khe thoáng)",
-        "Chất liệu cấu thành": "Hợp kim nhôm 6063-T6 đạt chuẩn quốc tế",
-        "Tốc độ đóng/mở": "15cm - 18cm / giây",
-        "Màu sắc chuẩn": "Ghi sần / Cafe ánh kim / Vàng kem hoàng gia",
-        "Công suất động cơ": "Austec Turbo 800W lõi đồng nguyên chất",
-        "Kháng nước & bụi": "Chuẩn IP65 chống nước mưa tạt ngang",
-        "Tích hợp": "Điều khiển qua App, Tay RF học lệnh, Nút bấm âm tường"
-      },
-      "stockQuantity": 45,
-      "isPublished": true,
-      "displayOrder": 1,
-      "createdAt": "2026-08-01T00:00:00Z",
-      "updatedAt": "2026-10-21T00:00:00Z"
-    },
-    {
-      "id": "PROD-LOCK-MASARU-X1",
-      "name": "Khóa Cửa Thông Minh Masaru Titan X1 FaceID",
-      "categoryTag": "Khóa Masaru",
-      "subtitle": "Nhận diện khuôn mặt 3D AI • Vân tay bán dẫn FPC Thụy Điển",
-      "price": 9800000,
-      "originalPrice": 12500000,
-      "rating": 5,
-      "reviewsCount": 88,
-      "imageUrl": "https://images.unsplash.com/photo-1558089687-f282ffcbc126?auto=format&fit=crop&w=800&q=80",
-      "galleryUrls": [],
-      "warrantyText": "Bảo hành 1 đổi 1 trong 24 tháng theo Hardware ID",
-      "highlights": [
-        "Camera 3D cấu trúc ánh sáng nhận diện FaceID trong 0.2 giây",
-        "Thân khóa đúc bằng hợp kim Titan nguyên khối chống cưa cắt phá hoại",
-        "Cảnh báo đột nhập và còi hú tự động chụp ảnh gửi về điện thoại",
-        "Mã số ảo chống nhìn trộm và cấp mã OTP một lần cho khách"
-      ],
-      "specs": {
-        "Phương thức mở khóa": "FaceID 3D, Vân tay FPC, Thẻ từ RFID, Mã số, Khóa cơ, App Mobile",
-        "Dung lượng lưu trữ": "50 Khuôn mặt, 100 Vân tay, 100 Thẻ từ, 100 Mật mã",
-        "Chất liệu thân khóa": "Hợp kim Kẽm & Titan đúc liền khối",
-        "Thời lượng pin": "Pin sạc Lithium 5000mAh (Dùng 10 - 12 tháng/lần sạc)",
-        "Cổng sạc khẩn cấp": "USB Type-C tiện lợi",
-        "Tiêu chuẩn ruột khóa": "Ruột 6068 inox 304 tiêu chuẩn châu Âu"
-      },
-      "stockQuantity": 60,
-      "isPublished": true,
-      "displayOrder": 2,
-      "createdAt": "2026-08-10T00:00:00Z",
-      "updatedAt": "2026-10-21T00:00:00Z"
-    },
-    {
-      "id": "PROD-UPS-SINE-1200",
-      "name": "Bộ Lưu Điện Austec Sin Chuẩn Pro 1200VA",
-      "categoryTag": "Lưu Điện UPS",
-      "subtitle": "Sóng sin chuẩn tinh khiết • Tự động xả bảo dưỡng chống chai ắc quy",
-      "price": 4600000,
-      "originalPrice": 5200000,
-      "rating": 4.8,
-      "reviewsCount": 95,
-      "imageUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
-      "galleryUrls": [],
-      "warrantyText": "Bảo hành bo mạch & ắc quy chính hãng 24 tháng",
-      "highlights": [
-        "Điện áp ra sóng sin chuẩn 220V/50Hz giúp motor cửa chạy êm không gằn",
-        "Thời gian lưu điện chờ liên tục lên đến 72 giờ không mất nguồn",
-        "Thuật toán AI tự động xả ắc quy định kỳ mỗi 30 ngày giúp pin bền gấp 3 lần",
-        "Màn hình LCD và viễn thám báo chính xác dung lượng pin còn lại theo %"
-      ],
-      "specs": {
-        "Công suất định mức": "1200VA / 900W",
-        "Điện áp đầu vào": "AC 160V - 240V / 50Hz",
-        "Điện áp đầu ra": "AC 220V ± 2% (Sóng sin chuẩn tinh khiết)",
-        "Dung lượng ắc quy": "2 x 12V / 12Ah kín khí chuyên dụng",
-        "Thời gian chuyển mạch": "< 4ms (Không gây gián đoạn động cơ)",
-        "Cơ chế bảo vệ": "Quá tải, ngắn mạch, sụt áp, quá nhiệt độ"
-      },
-      "stockQuantity": 80,
-      "isPublished": true,
-      "displayOrder": 3,
-      "createdAt": "2026-08-15T00:00:00Z",
-      "updatedAt": "2026-10-21T00:00:00Z"
-    },
-    {
-      "id": "PROD-CAM-AI-VISION",
-      "name": "Camera AI An Ninh Ngoài Trời Austec Vision 4K",
-      "categoryTag": "AI Camera",
-      "subtitle": "Độ phân giải 4K HDR • Nhận diện chuyển động người AI • Quay quét 360°",
-      "price": 2450000,
-      "originalPrice": 2900000,
-      "rating": 4.9,
-      "reviewsCount": 110,
-      "imageUrl": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=800&q=80",
-      "galleryUrls": [],
-      "warrantyText": "Bảo hành chính hãng 24 tháng theo Hardware ID",
-      "highlights": [
-        "Ống kính 8.0MP 4K HDR ghi hình sắc nét ngày đêm có màu ban đêm",
-        "Chip AI tích hợp phát hiện chính xác người, xe, cảnh báo xua đuổi còi hú",
-        "Đàm thoại 2 chiều lọc tiếng ồn rõ ràng từ điện thoại",
-        "Chuẩn chống nước ngoài trời IP67 chịu mưa bão khắc nghiệt"
-      ],
-      "specs": {
-        "Cảm biến hình ảnh": "Sony Starvis CMOS 8MP 4K Ultra HD",
-        "Góc nhìn": "Quay ngang 355°, quay dọc 90°, ống kính 4mm",
-        "Tầm nhìn ban đêm": "Hồng ngoại 30m + Đèn LED trợ sáng có màu 20m",
-        "Chuẩn nén video": "H.265+ tiết kiệm 80% dung lượng",
-        "Lưu trữ": "Thẻ nhớ MicroSD tối đa 256GB hoặc Austec Cloud NVR"
-      },
-      "stockQuantity": 120,
-      "isPublished": true,
-      "displayOrder": 4,
-      "createdAt": "2026-08-20T00:00:00Z",
-      "updatedAt": "2026-10-21T00:00:00Z"
-    },
-    {
-      "id": "PROD-SENSOR-ENV-M1",
-      "name": "Trạm Cảm Biến Môi Trường Không Dây MultiSensor M1 Pro",
-      "categoryTag": "Cảm Biến",
-      "subtitle": "Đo nhiệt độ, độ ẩm, chất lượng không khí AQI • Kết nối Zigbee 3.0",
-      "price": 850000,
-      "originalPrice": 1100000,
-      "rating": 4.7,
-      "reviewsCount": 76,
-      "imageUrl": "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80",
-      "galleryUrls": [],
-      "warrantyText": "Bảo hành chính hãng 24 tháng 1 đổi 1",
-      "highlights": [
-        "Cảm biến Sensirion Thụy Sĩ sai số nhiệt độ dưới 0.2°C",
-        "Tự động kích hoạt đóng cửa khi phát hiện mưa hoặc mở quạt thông gió khi nhiệt độ cao",
-        "Thời lượng pin cúc áo CR2450 dùng liên tục 2 năm"
-      ],
-      "specs": {
-        "Dải đo nhiệt độ": "-20°C đến 60°C (Sai số ±0.2°C)",
-        "Dải đo độ ẩm": "0% đến 99% RH (Sai số ±2%)",
-        "Giao thức kết nối": "Zigbee 3.0 / BLE Mesh",
-        "Kích thước": "40mm x 40mm x 12mm (Cực kỳ nhỏ gọn)"
-      },
-      "stockQuantity": 150,
-      "isPublished": true,
-      "displayOrder": 5,
-      "createdAt": "2026-08-22T00:00:00Z",
-      "updatedAt": "2026-10-21T00:00:00Z"
-    }
-  ],
   "supportTickets": [
     {
       "id": "ticket-1792660838908",
@@ -766,243 +767,6 @@
       "attachmentUrls": [],
       "deviceSnapshot": {},
       "createdAt": "2026-10-22T09:20:55.997Z"
-    }
-  ],
-  "deviceInstances": [
-    {
-      "id": "20000000-0000-0000-0000-000000000001",
-      "hardwareId": "AT-DOOR-88239A01",
-      "customName": "Cửa cuốn Gara Đức Mạnh",
-      "ownerId": "00000000-0000-0000-0000-000000000001",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.633Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92,
-        "positionPercent": 0
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Cửa cuốn",
-      "installationAddress": {
-        "street": "Số 45 Lê Duẩn",
-        "ward": "Bến Nghé",
-        "district": "Hoàn Kiếm",
-        "province": "Hà Nội",
-        "fullText": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội"
-      },
-      "locationLat": 21.0285,
-      "locationLng": 105.8542,
-      "addressDisplay": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000002",
-      "hardwareId": "AT-LOCK-77124B02",
-      "customName": "Khóa chính Dan Phung",
-      "ownerId": "00000000-0000-0000-0000-000000000002",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Khóa thông minh",
-      "installationAddress": {
-        "street": "Tòa Park 3",
-        "ward": "Mai Động",
-        "district": "Hoàng Mai",
-        "province": "Hà Nội",
-        "fullText": "Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội"
-      },
-      "locationLat": 21.038500000000003,
-      "locationLng": 105.86420000000001,
-      "addressDisplay": "Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000003",
-      "hardwareId": "AT-UPS-99011C03",
-      "customName": "Bộ lưu điện UPS Quang",
-      "ownerId": "00000000-0000-0000-0000-000000000003",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Bộ lưu điện",
-      "installationAddress": {
-        "street": "Số 88 Phố Huế",
-        "ward": "Ngô Thì Nhậm",
-        "district": "Hai Bà Trưng",
-        "province": "Hà Nội",
-        "fullText": "Số 88 Phố Huế, Hai Bà Trưng, Hà Nội"
-      },
-      "locationLat": 21.0485,
-      "locationLng": 105.8742,
-      "addressDisplay": "Số 88 Phố Huế, Hai Bà Trưng, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000004",
-      "hardwareId": "AT-DOOR-88239A04",
-      "customName": "Cửa cuốn Công Bằng",
-      "ownerId": "00000000-0000-0000-0000-000000000005",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": false,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92,
-        "positionPercent": 0
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "EXPIRED",
-      "deviceType": "Cửa cuốn",
-      "installationAddress": {
-        "street": "Đường D1",
-        "ward": "Tân Hưng",
-        "district": "Quận 7",
-        "province": "TP. Hồ Chí Minh",
-        "fullText": "Khu dân cư Him Lam, Quận 7, TP. HCM"
-      },
-      "locationLat": 21.058500000000002,
-      "locationLng": 105.8842,
-      "addressDisplay": "Khu dân cư Him Lam, Quận 7, TP. HCM",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000005",
-      "hardwareId": "AT-DOOR-88239A05",
-      "customName": "Cửa cuốn Đình Long",
-      "ownerId": "00000000-0000-0000-0000-000000000007",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92,
-        "positionPercent": 0
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "PERPETUAL",
-      "subscriptionExpiresAt": "2099-12-31T23:59:59Z",
-      "subscriptionStatus": "LIFETIME",
-      "deviceType": "Cửa cuốn",
-      "installationAddress": {
-        "street": "Lô H2 Khu Starlake",
-        "ward": "Xuân Tảo",
-        "district": "Tây Hồ",
-        "province": "Hà Nội",
-        "fullText": "Khu đô thị Starlake, Tây Hồ, Hà Nội"
-      },
-      "locationLat": 21.0685,
-      "locationLng": 105.89420000000001,
-      "addressDisplay": "Khu đô thị Starlake, Tây Hồ, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000006",
-      "hardwareId": "AT-DOOR-88239A06",
-      "customName": "Cửa cuốn Lò Thị Mai",
-      "ownerId": "00000000-0000-0000-0000-000000000008",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92,
-        "positionPercent": 0
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Cửa cuốn",
-      "installationAddress": {
-        "street": "Bản Mòn",
-        "ward": "Chiềng Cơi",
-        "district": "TP. Sơn La",
-        "province": "Sơn La",
-        "fullText": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La"
-      },
-      "locationLat": 21.078500000000002,
-      "locationLng": 105.9042,
-      "addressDisplay": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000007",
-      "hardwareId": "AT-CAM-00109A01",
-      "customName": "Camera Cổng Chính Biệt Thự Đức",
-      "ownerId": "00000000-0000-0000-0000-000000000001",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-10-22T08:25:18.634Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Camera AI",
-      "installationAddress": {
-        "street": "Số 45 Lê Duẩn",
-        "ward": "Bến Nghé",
-        "district": "Hoàn Kiếm",
-        "province": "Hà Nội",
-        "fullText": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội"
-      },
-      "locationLat": 21.0885,
-      "locationLng": 105.91420000000001,
-      "addressDisplay": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
     }
   ],
   "deviceInventory": [
@@ -1124,7 +888,244 @@
       "createdAt": "2026-08-15T00:00:00Z"
     }
   ],
+  "deviceInstances": [
+    {
+      "id": "20000000-0000-0000-0000-000000000001",
+      "hardwareId": "AT-DOOR-88239A01",
+      "customName": "Cửa cuốn Gara Đức Mạnh",
+      "ownerId": "00000000-0000-0000-0000-000000000001",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.022Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92,
+        "positionPercent": 0
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "ACTIVE",
+      "deviceType": "Cửa cuốn",
+      "installationAddress": {
+        "street": "Số 45 Lê Duẩn",
+        "ward": "Bến Nghé",
+        "district": "Hoàn Kiếm",
+        "province": "Hà Nội",
+        "fullText": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội"
+      },
+      "locationLat": 21.0285,
+      "locationLng": 105.8542,
+      "addressDisplay": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000002",
+      "hardwareId": "AT-LOCK-77124B02",
+      "customName": "Khóa chính Dan Phung",
+      "ownerId": "00000000-0000-0000-0000-000000000002",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "ACTIVE",
+      "deviceType": "Khóa thông minh",
+      "installationAddress": {
+        "street": "Tòa Park 3",
+        "ward": "Mai Động",
+        "district": "Hoàng Mai",
+        "province": "Hà Nội",
+        "fullText": "Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội"
+      },
+      "locationLat": 21.038500000000003,
+      "locationLng": 105.86420000000001,
+      "addressDisplay": "Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000003",
+      "hardwareId": "AT-UPS-99011C03",
+      "customName": "Bộ lưu điện UPS Quang",
+      "ownerId": "00000000-0000-0000-0000-000000000003",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "ACTIVE",
+      "deviceType": "Bộ lưu điện",
+      "installationAddress": {
+        "street": "Số 88 Phố Huế",
+        "ward": "Ngô Thì Nhậm",
+        "district": "Hai Bà Trưng",
+        "province": "Hà Nội",
+        "fullText": "Số 88 Phố Huế, Hai Bà Trưng, Hà Nội"
+      },
+      "locationLat": 21.0485,
+      "locationLng": 105.8742,
+      "addressDisplay": "Số 88 Phố Huế, Hai Bà Trưng, Hà Nội",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000004",
+      "hardwareId": "AT-DOOR-88239A04",
+      "customName": "Cửa cuốn Công Bằng",
+      "ownerId": "00000000-0000-0000-0000-000000000005",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": false,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92,
+        "positionPercent": 0
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "EXPIRED",
+      "deviceType": "Cửa cuốn",
+      "installationAddress": {
+        "street": "Đường D1",
+        "ward": "Tân Hưng",
+        "district": "Quận 7",
+        "province": "TP. Hồ Chí Minh",
+        "fullText": "Khu dân cư Him Lam, Quận 7, TP. HCM"
+      },
+      "locationLat": 21.058500000000002,
+      "locationLng": 105.8842,
+      "addressDisplay": "Khu dân cư Him Lam, Quận 7, TP. HCM",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000005",
+      "hardwareId": "AT-DOOR-88239A05",
+      "customName": "Cửa cuốn Đình Long",
+      "ownerId": "00000000-0000-0000-0000-000000000007",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92,
+        "positionPercent": 0
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "PERPETUAL",
+      "subscriptionExpiresAt": "2099-12-31T23:59:59Z",
+      "subscriptionStatus": "LIFETIME",
+      "deviceType": "Cửa cuốn",
+      "installationAddress": {
+        "street": "Lô H2 Khu Starlake",
+        "ward": "Xuân Tảo",
+        "district": "Tây Hồ",
+        "province": "Hà Nội",
+        "fullText": "Khu đô thị Starlake, Tây Hồ, Hà Nội"
+      },
+      "locationLat": 21.0685,
+      "locationLng": 105.89420000000001,
+      "addressDisplay": "Khu đô thị Starlake, Tây Hồ, Hà Nội",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000006",
+      "hardwareId": "AT-DOOR-88239A06",
+      "customName": "Cửa cuốn Lò Thị Mai",
+      "ownerId": "00000000-0000-0000-0000-000000000008",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92,
+        "positionPercent": 0
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "ACTIVE",
+      "deviceType": "Cửa cuốn",
+      "installationAddress": {
+        "street": "Bản Mòn",
+        "ward": "Chiềng Cơi",
+        "district": "TP. Sơn La",
+        "province": "Sơn La",
+        "fullText": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La"
+      },
+      "locationLat": 21.078500000000002,
+      "locationLng": 105.9042,
+      "addressDisplay": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La",
+      "createdAt": "2026-09-01T00:00:00Z"
+    },
+    {
+      "id": "20000000-0000-0000-0000-000000000007",
+      "hardwareId": "AT-CAM-00109A01",
+      "customName": "Camera Cổng Chính Biệt Thự Đức",
+      "ownerId": "00000000-0000-0000-0000-000000000001",
+      "firmwareVersionCurrent": "v2.4.1",
+      "isOnline": true,
+      "lastHeartbeat": "2026-10-27T19:22:31.023Z",
+      "ipAddress": "192.168.1.100",
+      "rssiSignal": -65,
+      "currentProperties": {
+        "on_off_status": true,
+        "is_locked": false,
+        "battery_level": 92
+      },
+      "warrantyStartAt": "2026-09-01T00:00:00Z",
+      "warrantyEndAt": "2028-09-01T00:00:00Z",
+      "subscriptionType": "LIMITED",
+      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
+      "subscriptionStatus": "ACTIVE",
+      "deviceType": "Camera AI",
+      "installationAddress": {
+        "street": "Số 45 Lê Duẩn",
+        "ward": "Bến Nghé",
+        "district": "Hoàn Kiếm",
+        "province": "Hà Nội",
+        "fullText": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội"
+      },
+      "locationLat": 21.0885,
+      "locationLng": 105.91420000000001,
+      "addressDisplay": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội",
+      "createdAt": "2026-09-01T00:00:00Z"
+    }
+  ],
   "blackboxLogs": [],
-  "lastSavedAt": "2026-10-24T11:50:30.738Z",
+  "lastSavedAt": "2026-10-27T20:06:28.371Z",
   "version": "1.0"
 }

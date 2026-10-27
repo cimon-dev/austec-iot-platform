@@ -59,19 +59,6 @@ class BleProvisioningService {
   factory BleProvisioningService() => _instance;
   BleProvisioningService._internal();
 
-  // Danh mục bo mạch thực tế của Austec (ESP32-C3 ECO / Titadoor)
-  // UUID chuẩn theo firmware ESP32: 6E400001-B5A3-F393-E0A9-E50E24DCCA9E
-  final List<DiscoveredHardwareBLE> _realDeviceRegistry = [
-    DiscoveredHardwareBLE(
-      hardwareId: "amtuong1994",
-      modelName: "Cửa Cuốn Austec ECO (ESP32-C3 Thực)",
-      category: DeviceCategory.rollerDoor,
-      rssi: -42,
-      bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
-      isRealHardware: true,
-    ),
-  ];
-
   /// Dò tìm sóng Bluetooth BLE & Phần cứng thực tế xung quanh (Tự động liên tục & độ nhạy cao)
   Future<List<DiscoveredHardwareBLE>> scanForHardwareDevices({String? targetHardwareId, bool triggerWebBle = false}) async {
     final List<DiscoveredHardwareBLE> discovered = [];
@@ -96,7 +83,7 @@ class BleProvisioningService {
                  r.device.remoteId.str.toLowerCase() == targetHardwareId.trim().toLowerCase());
 
             if (isAustecService || isAustecName || isTargetMatch) {
-              final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : 'amtuong1994');
+              final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : r.device.remoteId.str);
               final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
               if (!exists) {
                 discovered.add(DiscoveredHardwareBLE(
@@ -127,14 +114,20 @@ class BleProvisioningService {
         final body = jsonDecode(res.body);
         if (body['success'] == true && body['devices'] is List) {
           for (final d in body['devices']) {
-            discovered.add(DiscoveredHardwareBLE(
-              hardwareId: d['hardwareId'] ?? 'amtuong1994',
-              modelName: d['modelName'] ?? 'Cửa Cuốn Austec ECO (Phần Cứng Thực)',
-              category: DeviceCategory.rollerDoor,
-              rssi: (d['rssi'] as num?)?.toInt() ?? -42,
-              bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
-              isRealHardware: true,
-            ));
+            final hwId = (d['hardwareId'] ?? d['id'] ?? '').toString();
+            if (hwId.isNotEmpty) {
+              final exists = discovered.any((item) => item.hardwareId.toLowerCase() == hwId.toLowerCase());
+              if (!exists) {
+                discovered.add(DiscoveredHardwareBLE(
+                  hardwareId: hwId,
+                  modelName: d['modelName'] ?? 'Cửa Cuốn Austec ($hwId - Mạng AP)',
+                  category: DeviceCategory.rollerDoor,
+                  rssi: (d['rssi'] as num?)?.toInt() ?? -42,
+                  bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                  isRealHardware: true,
+                ));
+              }
+            }
           }
         }
       }
@@ -145,17 +138,19 @@ class BleProvisioningService {
       try {
         final webResult = await scanWebBluetooth();
         if (webResult != null && webResult['success'] == true) {
-          final foundId = (webResult['hardwareId'] ?? webResult['name'] ?? 'amtuong1994').toString();
-          final exists = discovered.any((d) => d.hardwareId.toLowerCase() == foundId.toLowerCase());
-          if (!exists) {
-            discovered.add(DiscoveredHardwareBLE(
-              hardwareId: foundId,
-              modelName: "Cửa Cuốn Austec ($foundId - Bluetooth Thực)",
-              category: DeviceCategory.rollerDoor,
-              rssi: -39,
-              bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
-              isRealHardware: true,
-            ));
+          final foundId = (webResult['hardwareId'] ?? webResult['name'] ?? webResult['id'] ?? '').toString().trim();
+          if (foundId.isNotEmpty) {
+            final exists = discovered.any((d) => d.hardwareId.toLowerCase() == foundId.toLowerCase());
+            if (!exists) {
+              discovered.add(DiscoveredHardwareBLE(
+                hardwareId: foundId,
+                modelName: "Cửa Cuốn Austec ($foundId - Bluetooth Thực)",
+                category: DeviceCategory.rollerDoor,
+                rssi: -39,
+                bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                isRealHardware: true,
+              ));
+            }
           }
         }
       } catch (_) {}

@@ -40,8 +40,12 @@ export class CommandService {
     // 1. Kiểm tra thiết bị có đang online không trong Hot Cache (< 0.1ms)
     const currentState = await this.hotCache.getDeviceState(req.hardwareId);
     if (!currentState || !currentState.isOnline) {
-      // Đối với thiết bị thật amtuong1994, cho phép kích hoạt ngay cả khi cache chưa nhận để kiểm thử
-      if (req.hardwareId !== 'amtuong1994' && !req.hardwareId.startsWith('AT-')) {
+      // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*)
+      const isHardwareDevice = req.hardwareId.toLowerCase().startsWith('amtuong') ||
+                               req.hardwareId.toLowerCase().startsWith('austec') ||
+                               req.hardwareId.toLowerCase().startsWith('esp') ||
+                               req.hardwareId.startsWith('AT-');
+      if (!isHardwareDevice) {
         const latencyMs = Math.round(performance.now() - startTime);
 
         this.blackboxService.logCommand({
