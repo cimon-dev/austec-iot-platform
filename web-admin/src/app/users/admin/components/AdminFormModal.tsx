@@ -101,14 +101,20 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Email Đăng Nhập *
+                {editingAdmin ? "Email Đăng Nhập (Cố định)" : "Email Đăng Nhập *"}
               </label>
               <input
                 type="email"
                 required
+                disabled={!!editingAdmin}
+                readOnly={!!editingAdmin}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                className={`w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none ${
+                  editingAdmin
+                    ? "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed"
+                    : "bg-white dark:bg-slate-950 focus:border-indigo-500"
+                }`}
               />
             </div>
             <div>

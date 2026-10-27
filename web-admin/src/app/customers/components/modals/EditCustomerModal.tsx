@@ -116,15 +116,15 @@ export function EditCustomerModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
-                Email Đăng Nhập *
+                Email Đăng Nhập (Cố định)
               </label>
               <input
                 type="email"
-                required
-                placeholder="khachhang@gmail.com"
+                disabled
+                readOnly
                 value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                title="Email đăng nhập cố định, không thể thay đổi"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-medium cursor-not-allowed focus:outline-none"
               />
             </div>
             <div>
