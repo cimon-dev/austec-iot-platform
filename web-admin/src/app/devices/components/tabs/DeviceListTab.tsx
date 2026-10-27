@@ -15,9 +15,13 @@ import {
   CheckCircle2, 
   AlertCircle, 
   Wifi, 
-  Battery 
+  Battery,
+  Edit3,
+  Trash2
 } from "lucide-react";
 import { Pagination } from "@/components/Pagination";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { EditDeviceModal } from "../modals/EditDeviceModal";
 import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface DeviceListTabProps {
@@ -28,6 +32,10 @@ interface DeviceListTabProps {
   canDelete: boolean;
   showToast: (message: string, type?: "success" | "info" | "warning" | "error") => void;
   onOpenCreateModal: () => void;
+  models?: any[];
+  groups?: any[];
+  onDeviceUpdated?: (updated: any) => void;
+  onDeviceDeleted?: (hardwareId: string) => void;
 }
 
 export function DeviceListTab({
@@ -37,9 +45,16 @@ export function DeviceListTab({
   canUpdate,
   canDelete,
   showToast,
-  onOpenCreateModal
+  onOpenCreateModal,
+  models = [],
+  groups = [],
+  onDeviceUpdated,
+  onDeviceDeleted
 }: DeviceListTabProps) {
   const [selectedDevice, setSelectedDevice] = useState<any | null>(null);
+  const [editingDevice, setEditingDevice] = useState<any | null>(null);
+  const [deletingDevice, setDeletingDevice] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");
@@ -145,6 +160,48 @@ export function DeviceListTab({
     } finally {
       setRenewLoading(false);
     }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingDevice) return;
+    const hwId = deletingDevice.hwId || deletingDevice.hardwareId;
+    setIsDeleting(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hwId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDevices(prev => prev.filter(d => (d.hwId || d.hardwareId) !== hwId));
+        if (selectedDevice && (selectedDevice.hwId || selectedDevice.hardwareId) === hwId) {
+          setSelectedDevice(null);
+        }
+        if (onDeviceDeleted) onDeviceDeleted(hwId);
+        showToast(`Đã xóa thiết bị ${deletingDevice.name || hwId} khỏi CSDL!`, "success");
+        setDeletingDevice(null);
+      } else {
+        showToast(data.error || "Không thể xóa thiết bị khỏi CSDL", "error");
+      }
+    } catch (e: any) {
+      showToast("Lỗi kết nối khi xóa: " + e.message, "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeviceUpdated = (updated: any) => {
+    const hwId = updated.hwId || updated.hardwareId;
+    setDevices(prev => prev.map(d => (d.hwId || d.hardwareId) === hwId ? { ...d, ...updated } : d));
+    if (selectedDevice && (selectedDevice.hwId || selectedDevice.hardwareId) === hwId) {
+      setSelectedDevice((prev: any) => ({ ...prev, ...updated }));
+    }
+    if (onDeviceUpdated) onDeviceUpdated(updated);
+    showToast(`Đã cập nhật thiết bị ${updated.name || hwId} trong CSDL!`, "success");
+    setEditingDevice(null);
   };
 
   return (
@@ -344,20 +401,50 @@ export function DeviceListTab({
                       </td>
                       <td className="p-2.5 font-mono text-slate-500 dark:text-slate-400">{d.warranty}</td>
                       <td className="p-2.5 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDevice(selectedDevice?.hwId === d.hwId ? null : d);
-                          }}
-                          className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer transition-colors ${
-                            isSelected
-                              ? "bg-cyan-600 text-white border-cyan-600"
-                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700"
-                          }`}
-                        >
-                          {isSelected ? "Đang xem" : "Chi tiết ➔"}
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedDevice(selectedDevice?.hwId === d.hwId ? null : d);
+                            }}
+                            className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer transition-colors ${
+                              isSelected
+                                ? "bg-cyan-600 text-white border-cyan-600"
+                                : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700"
+                            }`}
+                          >
+                            {isSelected ? "Đang xem" : "Chi tiết ➔"}
+                          </button>
+
+                          {canUpdate && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingDevice(d);
+                              }}
+                              className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 cursor-pointer transition-colors"
+                              title="Sửa thông tin thiết bị"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {canDelete && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingDevice(d);
+                              }}
+                              className="p-1 rounded-md bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 cursor-pointer transition-colors"
+                              title="Xóa thiết bị khỏi CSDL"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -715,7 +802,28 @@ export function DeviceListTab({
 
             {/* Bottom Footer Actions */}
             <div className="p-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between shrink-0">
-              <span className="text-[10px] text-slate-400 font-mono">Live Telemetry Gateway</span>
+              <div className="flex items-center gap-1.5">
+                {canUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => setEditingDevice(selectedDevice)}
+                    className="px-2.5 py-1 rounded bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Sửa</span>
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => setDeletingDevice(selectedDevice)}
+                    className="px-2.5 py-1 rounded bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800 text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa</span>
+                  </button>
+                )}
+              </div>
               <button 
                 type="button"
                 onClick={() => setSelectedDevice(null)}
@@ -727,6 +835,31 @@ export function DeviceListTab({
           </div>
         )}
       </div>
+
+      {/* Edit Device Modal */}
+      {editingDevice && (
+        <EditDeviceModal
+          isOpen={!!editingDevice}
+          onClose={() => setEditingDevice(null)}
+          device={editingDevice}
+          onUpdated={handleDeviceUpdated}
+          models={models}
+          groups={groups}
+        />
+      )}
+
+      {/* Delete Device Modal */}
+      {deletingDevice && (
+        <ConfirmDeleteModal
+          isOpen={!!deletingDevice}
+          onClose={() => setDeletingDevice(null)}
+          onConfirm={handleDeleteConfirm}
+          itemName={deletingDevice.name || deletingDevice.hwId}
+          itemType="thiết bị"
+          description={`Bạn có chắc chắn muốn xóa thiết bị "${deletingDevice.name || deletingDevice.hwId}" (Serial: ${deletingDevice.hwId || deletingDevice.hardwareId}) khỏi CSDL? Hành động này không thể hoàn tác.`}
+          isDeleting={isDeleting}
+        />
+      )}
     </div>
   );
 }

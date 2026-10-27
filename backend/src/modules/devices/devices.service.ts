@@ -4,6 +4,7 @@ import {
   CreateDeviceTypeSchema,
   CreatePropertySchema,
   CreateModelSchema,
+  CreateDeviceSchema,
 } from './dto/device.dto.js';
 
 export class DevicesService {
@@ -117,6 +118,15 @@ export class DevicesService {
   // Devices & Inventory
   public async getDevices(page: number, limit: number, status?: string, search?: string) {
     return await this.repo.getDevices(page, limit, status, search);
+  }
+
+  public async createDevice(raw: unknown) {
+    const v = CreateDeviceSchema.parse(raw);
+    return await this.repo.createDevice(v);
+  }
+
+  public async updateDevice(hardwareId: string, raw: unknown) {
+    return await this.repo.updateDevice(hardwareId, raw as any);
   }
 
   public async deleteDevice(hardwareId: string) {

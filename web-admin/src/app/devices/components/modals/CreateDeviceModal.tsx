@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Plus, X, AlertCircle, CheckCircle2, Check } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, X, AlertCircle, CheckCircle2, Check, Loader2 } from "lucide-react";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface CreateDeviceModalProps {
   isOpen: boolean;
@@ -23,46 +24,89 @@ export function CreateDeviceModal({
   const [form, setForm] = useState({
     hwId: "",
     name: "",
-    model: models[0]?.code || "AUSTEC-A900",
-    group: groups[0]?.name || "Cửa cuốn nhôm Đức",
+    model: "",
+    group: "",
     type: "DOOR",
     owner: "",
     phone: "",
+    address: "",
     warranty: "12/2028"
   });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Auto-select first model and group when options are loaded
+  useEffect(() => {
+    if (models.length > 0 && !form.model) {
+      setForm(prev => ({
+        ...prev,
+        model: models[0]?.modelCode || models[0]?.code || models[0]?.modelName || "AUSTEC-A900"
+      }));
+    }
+  }, [models]);
+
+  useEffect(() => {
+    if (groups.length > 0 && !form.group) {
+      setForm(prev => ({
+        ...prev,
+        group: groups[0]?.name || groups[0]?.groupName || "Cửa cuốn nhôm Đức"
+      }));
+    }
+  }, [groups]);
 
   if (!isOpen) return null;
 
   const isDuplicateHwId = form.hwId.trim() !== "" && 
-    devices.some(d => d.hwId?.trim().toUpperCase() === form.hwId.trim().toUpperCase());
+    devices.some(d => (d.hwId || d.hardwareId)?.trim().toUpperCase() === form.hwId.trim().toUpperCase());
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.hwId.trim() || !form.name.trim() || isDuplicateHwId) return;
 
-    const newDevice = {
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    const payload = {
       hwId: form.hwId.trim().toUpperCase(),
       name: form.name.trim(),
-      model: form.model,
-      group: form.group,
+      model: form.model || (models[0]?.modelCode || models[0]?.code || "AUSTEC-A900"),
+      group: form.group || (groups[0]?.name || "Cửa cuốn nhôm Đức"),
       type: form.type,
       owner: form.owner.trim() || "Chưa gán",
       phone: form.phone.trim() || "---",
+      address: form.address.trim() || "Kho tổng Austec",
+      warranty: form.warranty.trim() || "12/2028",
       status: "in_stock",
       isOnline: false,
-      battery: 100,
-      openState: "STOCK",
-      isLocked: false,
-      signal: 0,
-      warranty: form.warranty.trim() || "12/2028",
-      address: "Kho tổng Austec",
       subscriptionType: "LIMITED",
       subscriptionExpiresAt: "2028-12-31T00:00:00.000Z",
       subscriptionStatus: "ACTIVE"
     };
 
-    onCreated(newDevice);
-    onClose();
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/devices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (data.success && data.device) {
+        onCreated(data.device);
+        onClose();
+      } else {
+        setSubmitError(data.error || "Không thể lưu thiết bị vào CSDL PostgreSQL");
+      }
+    } catch (err: any) {
+      setSubmitError("Lỗi kết nối máy chủ: " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -75,7 +119,7 @@ export function CreateDeviceModal({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Khởi Tạo Thiết Bị Mới Vào Kho (Anti-Duplicate Check)
+                Khởi Tạo Thiết Bị Mới Vào CSDL (PostgreSQL Lưu Trữ)
               </h3>
               <p className="text-[11px] text-slate-500">
                 Thêm một thiết bị mới đơn lẻ với mã Hardware ID chống trùng lặp tuyệt đối
@@ -90,6 +134,13 @@ export function CreateDeviceModal({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {submitError && (
+          <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{submitError}</span>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
@@ -111,7 +162,7 @@ export function CreateDeviceModal({
             {isDuplicateHwId && (
               <div className="flex items-center gap-1.5 mt-1.5 p-2 rounded-md bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-[11px] font-semibold">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>Hardware ID &quot;{form.hwId.trim()}&quot; đã tồn tại trong CSDL kho! Chống nhập trùng kích hoạt.</span>
+                <span>Hardware ID &quot;{form.hwId.trim()}&quot; đã tồn tại trong CSDL! Chống nhập trùng kích hoạt.</span>
               </div>
             )}
             {!isDuplicateHwId && form.hwId.trim() && (
@@ -146,9 +197,19 @@ export function CreateDeviceModal({
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
               >
-                {models.map(m => (
-                  <option key={m.id} value={m.code}>{m.name} ({m.code})</option>
-                ))}
+                {models.length === 0 ? (
+                  <option value="AUSTEC-A900">AUSTEC TITADOOR SUPER A900 (AUSTEC-A900)</option>
+                ) : (
+                  models.map(m => {
+                    const code = m.modelCode || m.code || m.id;
+                    const name = m.modelName || m.name || code;
+                    return (
+                      <option key={m.id || code} value={code}>
+                        {name} ({code})
+                      </option>
+                    );
+                  })
+                )}
               </select>
             </div>
 
@@ -161,9 +222,18 @@ export function CreateDeviceModal({
                 onChange={(e) => setForm({ ...form, group: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
               >
-                {groups.map(g => (
-                  <option key={g.id} value={g.name}>{g.name}</option>
-                ))}
+                {groups.length === 0 ? (
+                  <option value="Cửa cuốn nhôm Đức">Cửa cuốn nhôm Đức</option>
+                ) : (
+                  groups.map(g => {
+                    const gName = g.groupName || g.name || g.code;
+                    return (
+                      <option key={g.id || gName} value={gName}>
+                        {gName}
+                      </option>
+                    );
+                  })
+                )}
               </select>
             </div>
 
@@ -227,25 +297,48 @@ export function CreateDeviceModal({
             </div>
           </div>
 
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+              Địa Chỉ Lắp Đặt Chi Tiết
+            </label>
+            <input
+              type="text"
+              placeholder="vd: Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội"
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+            />
+          </div>
+
           <div className="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onClose}
-              className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer"
+              className="px-3.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg cursor-pointer disabled:opacity-50"
             >
               Hủy
             </button>
             <button
               type="submit"
-              disabled={isDuplicateHwId || !form.hwId.trim() || !form.name.trim()}
+              disabled={isSubmitting || isDuplicateHwId || !form.hwId.trim() || !form.name.trim()}
               className={`px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-xs flex items-center gap-1.5 transition-all ${
-                isDuplicateHwId || !form.hwId.trim() || !form.name.trim()
+                isSubmitting || isDuplicateHwId || !form.hwId.trim() || !form.name.trim()
                   ? "bg-slate-400 cursor-not-allowed opacity-60"
                   : "bg-cyan-600 hover:bg-cyan-500 cursor-pointer"
               }`}
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>Lưu Thiết Bị Vào Kho</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Đang lưu PostgreSQL...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Lưu Thiết Bị Vào CSDL</span>
+                </>
+              )}
             </button>
           </div>
         </form>

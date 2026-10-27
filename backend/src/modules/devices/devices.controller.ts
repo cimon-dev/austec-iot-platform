@@ -166,6 +166,24 @@ export class DevicesController {
     }
   };
 
+  public createDevice = async (req: Request, res: Response) => {
+    try {
+      const device = await this.service.createDevice(req.body);
+      res.json({ success: true, device, message: 'Khởi tạo thiết bị vào CSDL thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  };
+
+  public updateDevice = async (req: Request, res: Response) => {
+    try {
+      const device = await this.service.updateDevice(String(req.params.hardwareId), req.body);
+      res.json({ success: true, device, message: 'Cập nhật thiết bị trong CSDL thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  };
+
   public deleteDevice = async (req: Request, res: Response) => {
     try {
       await this.service.deleteDevice(String(req.params.hardwareId));

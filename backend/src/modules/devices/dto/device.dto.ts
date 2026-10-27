@@ -100,3 +100,29 @@ export const DevicePairSchema = z.object({
   deviceName: z.string().optional(),
   location: z.string().optional(),
 });
+
+export const CreateDeviceSchema = z.object({
+  hwId: z.string().optional(),
+  hardwareId: z.string().optional(),
+  name: z.string().optional(),
+  customName: z.string().optional(),
+  model: z.string().optional(),
+  modelName: z.string().optional(),
+  group: z.string().optional(),
+  type: z.string().optional(),
+  deviceType: z.string().optional(),
+  owner: z.string().optional(),
+  phone: z.string().optional(),
+  warranty: z.string().optional(),
+  address: z.string().optional(),
+  subscriptionType: z.string().optional(),
+  subscriptionExpiresAt: z.string().optional(),
+  subscriptionStatus: z.string().optional(),
+}).refine(data => !!(data.hwId || data.hardwareId), {
+  message: 'Hardware ID không được để trống',
+  path: ['hwId'],
+}).refine(data => !!(data.name || data.customName), {
+  message: 'Tên thiết bị không được để trống',
+  path: ['name'],
+});
+

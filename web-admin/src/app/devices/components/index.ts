@@ -5,3 +5,4 @@ export { DeviceModelTab } from "./tabs/DeviceModelTab";
 export { DeviceImportTab } from "./tabs/DeviceImportTab";
 export { DeviceListTab } from "./tabs/DeviceListTab";
 export { CreateDeviceModal } from "./modals/CreateDeviceModal";
+export { EditDeviceModal } from "./modals/EditDeviceModal";

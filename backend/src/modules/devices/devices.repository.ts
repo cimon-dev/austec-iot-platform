@@ -518,7 +518,7 @@ export class DevicesRepository {
           di.*,
           u.full_name as owner_name,
           u.phone_number as owner_phone,
-          m.model_name
+          COALESCE(m.model_name, inv.model_name, 'AUSTEC-A900') as model_name
         FROM device_instances di
         LEFT JOIN users u ON u.id = di.owner_id
         LEFT JOIN device_inventory inv ON inv.hardware_id = di.hardware_id
@@ -535,7 +535,7 @@ export class DevicesRepository {
       }
 
       if (search) {
-        query += ` AND (LOWER(di.hardware_id) LIKE $${idx} OR LOWER(di.custom_name) LIKE $${idx} OR LOWER(u.full_name) LIKE $${idx})`;
+        query += ` AND (LOWER(di.hardware_id) LIKE $${idx} OR LOWER(di.custom_name) LIKE $${idx} OR LOWER(COALESCE(u.full_name, '')) LIKE $${idx})`;
         params.push(`%${search.toLowerCase()}%`);
         idx++;
       }
@@ -545,24 +545,39 @@ export class DevicesRepository {
       params.push(limit, offset);
 
       const res = await this.client.query(query, params);
-      const devices: DeviceInstanceEntity[] = res.rows.map(r => ({
+      const devices = res.rows.map(r => ({
         id: r.id,
+        hwId: r.hardware_id,
         hardwareId: r.hardware_id,
-        customName: r.custom_name,
+        name: r.custom_name || r.hardware_id,
+        customName: r.custom_name || r.hardware_id,
         ownerId: r.owner_id,
-        ownerName: r.owner_name,
-        ownerPhone: r.owner_phone,
-        deviceType: r.device_type,
-        modelName: r.model_name,
-        firmwareVersionCurrent: r.firmware_version_current,
-        isOnline: r.is_online,
+        owner: r.owner_name || 'Chưa gán',
+        ownerName: r.owner_name || 'Chưa gán',
+        phone: r.owner_phone || '---',
+        ownerPhone: r.owner_phone || '---',
+        type: r.device_type || 'DOOR',
+        deviceType: r.device_type || 'DOOR',
+        model: r.model_name || 'AUSTEC-A900',
+        modelName: r.model_name || 'AUSTEC-A900',
+        group: r.device_type || 'Cửa cuốn nhôm Đức',
+        firmwareVersionCurrent: r.firmware_version_current || 'v2.4.1',
+        isOnline: !!r.is_online,
+        status: r.is_online ? 'online' : (r.owner_id ? 'offline' : 'in_stock'),
         lastHeartbeat: r.last_heartbeat,
         currentProperties: r.current_properties || {},
+        battery: (r.current_properties && r.current_properties.battery_level) || 100,
+        openState: (r.current_properties && (r.current_properties.door_state || r.current_properties.state)) || (r.is_online ? 'CLOSED' : 'STOCK'),
+        isLocked: !!(r.current_properties && r.current_properties.is_locked),
+        signal: -65,
+        warranty: r.warranty_end_at || '12/2028',
         warrantyStartAt: r.warranty_start_at,
-        warrantyEndAt: r.warranty_end_at,
-        subscriptionType: r.subscription_type,
-        subscriptionStatus: r.subscription_status,
-        addressDisplay: r.address_display,
+        warrantyEndAt: r.warranty_end_at || '12/2028',
+        subscriptionType: r.subscription_type || 'LIMITED',
+        subscriptionExpiresAt: r.subscription_expires_at || '2028-12-31T00:00:00.000Z',
+        subscriptionStatus: r.subscription_status || 'ACTIVE',
+        address: r.address_display || 'Kho tổng Austec',
+        addressDisplay: r.address_display || 'Kho tổng Austec',
         createdAt: r.created_at,
       }));
 
@@ -573,11 +588,166 @@ export class DevicesRepository {
     return { devices: [], total: 0 };
   }
 
+  public async createDevice(data: any): Promise<any> {
+    const hwId = (data.hwId || data.hardwareId || `AT-${Date.now()}`).trim().toUpperCase();
+    const name = data.name || data.customName || `Thiết bị ${hwId}`;
+    const model = data.model || data.modelName || 'AUSTEC-A900';
+    const type = data.type || data.deviceType || 'DOOR';
+    const group = data.group || 'Cửa cuốn nhôm Đức';
+    const owner = data.owner || data.ownerName || 'Chưa gán';
+    const phone = data.phone || data.ownerPhone || '---';
+    const warranty = data.warranty || data.warrantyEndAt || '12/2028';
+    const address = data.address || data.addressDisplay || 'Kho tổng Austec';
+    const subType = data.subscriptionType || 'LIMITED';
+    const subExpires = data.subscriptionExpiresAt || '2028-12-31T00:00:00.000Z';
+    const subStatus = data.subscriptionStatus || 'ACTIVE';
+    const id = data.id || `dev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+
+    try {
+      // 1. Insert into device_inventory
+      await this.client.query(
+        `INSERT INTO device_inventory (hardware_id, model_name, device_type, supplier, status, created_at)
+         VALUES ($1, $2, $3, 'Austec Smart Factory', 'IN_USE', NOW())
+         ON CONFLICT (hardware_id) DO UPDATE SET
+           model_name = EXCLUDED.model_name,
+           device_type = EXCLUDED.device_type,
+           status = EXCLUDED.status`,
+        [hwId, model, type]
+      );
+
+      // 2. Insert into device_instances
+      const res = await this.client.query(
+        `INSERT INTO device_instances (
+           id, hardware_id, custom_name, device_type, is_online, address_display,
+           warranty_start_at, warranty_end_at, subscription_type, subscription_expires_at, subscription_status, created_at
+         ) VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11)
+         ON CONFLICT (hardware_id) DO UPDATE SET
+           custom_name = EXCLUDED.custom_name,
+           device_type = EXCLUDED.device_type,
+           address_display = EXCLUDED.address_display,
+           warranty_end_at = EXCLUDED.warranty_end_at,
+           subscription_type = EXCLUDED.subscription_type,
+           subscription_expires_at = EXCLUDED.subscription_expires_at,
+           subscription_status = EXCLUDED.subscription_status
+         RETURNING *`,
+        [id, hwId, name, type, address, now, warranty, subType, subExpires, subStatus, now]
+      );
+      const r = res.rows[0];
+      return {
+        id: r.id,
+        hwId: r.hardware_id,
+        hardwareId: r.hardware_id,
+        name: r.custom_name,
+        customName: r.custom_name,
+        model,
+        modelName: model,
+        group,
+        type: r.device_type,
+        deviceType: r.device_type,
+        owner,
+        ownerName: owner,
+        phone,
+        ownerPhone: phone,
+        status: 'in_stock',
+        isOnline: false,
+        battery: 100,
+        openState: 'STOCK',
+        isLocked: false,
+        signal: 0,
+        warranty: r.warranty_end_at,
+        address: r.address_display,
+        subscriptionType: r.subscription_type,
+        subscriptionExpiresAt: r.subscription_expires_at,
+        subscriptionStatus: r.subscription_status,
+        createdAt: r.created_at,
+      };
+    } catch (e: any) {
+      console.warn('[DevicesRepository] createDevice error:', e.message);
+      throw e;
+    }
+  }
+
+  public async updateDevice(hardwareId: string, data: any): Promise<any> {
+    const hwId = hardwareId.trim().toUpperCase();
+    const name = data.name || data.customName;
+    const model = data.model || data.modelName;
+    const type = data.type || data.deviceType;
+    const address = data.address || data.addressDisplay;
+    const warranty = data.warranty || data.warrantyEndAt;
+    const subType = data.subscriptionType;
+    const subExpires = data.subscriptionExpiresAt;
+    const subStatus = data.subscriptionStatus;
+
+    try {
+      if (model || type) {
+        await this.client.query(
+          `UPDATE device_inventory SET
+             model_name = COALESCE($1, model_name),
+             device_type = COALESCE($2, device_type)
+           WHERE hardware_id = $3`,
+          [model, type, hwId]
+        );
+      }
+
+      const res = await this.client.query(
+        `UPDATE device_instances SET
+           custom_name = COALESCE($1, custom_name),
+           device_type = COALESCE($2, device_type),
+           address_display = COALESCE($3, address_display),
+           warranty_end_at = COALESCE($4, warranty_end_at),
+           subscription_type = COALESCE($5, subscription_type),
+           subscription_expires_at = COALESCE($6, subscription_expires_at),
+           subscription_status = COALESCE($7, subscription_status)
+         WHERE hardware_id = $8
+         RETURNING *`,
+        [name, type, address, warranty, subType, subExpires, subStatus, hwId]
+      );
+
+      if (res.rows.length === 0) {
+        throw new Error(`Không tìm thấy thiết bị với Hardware ID: ${hwId}`);
+      }
+
+      const r = res.rows[0];
+      return {
+        id: r.id,
+        hwId: r.hardware_id,
+        hardwareId: r.hardware_id,
+        name: r.custom_name,
+        customName: r.custom_name,
+        model: model || 'AUSTEC-A900',
+        modelName: model || 'AUSTEC-A900',
+        type: r.device_type,
+        deviceType: r.device_type,
+        group: data.group || r.device_type,
+        owner: data.owner || 'Chưa gán',
+        phone: data.phone || '---',
+        status: r.is_online ? 'online' : 'offline',
+        isOnline: !!r.is_online,
+        battery: 100,
+        openState: r.is_online ? 'CLOSED' : 'STOCK',
+        isLocked: false,
+        signal: -65,
+        warranty: r.warranty_end_at,
+        address: r.address_display,
+        subscriptionType: r.subscription_type,
+        subscriptionExpiresAt: r.subscription_expires_at,
+        subscriptionStatus: r.subscription_status,
+        createdAt: r.created_at,
+      };
+    } catch (e: any) {
+      console.warn('[DevicesRepository] updateDevice error:', e.message);
+      throw e;
+    }
+  }
+
   public async deleteDevice(hardwareId: string): Promise<boolean> {
     try {
-      await this.client.query('DELETE FROM device_instances WHERE hardware_id = $1', [hardwareId]);
-      await this.client.query('DELETE FROM device_permissions WHERE hardware_id = $1', [hardwareId]);
-      await this.client.query("UPDATE device_inventory SET status = 'MANUFACTURED' WHERE hardware_id = $1", [hardwareId]);
+      const hwId = hardwareId.trim().toUpperCase();
+      await this.client.query('DELETE FROM device_instances WHERE hardware_id = $1', [hwId]);
+      await this.client.query('DELETE FROM device_inventory WHERE hardware_id = $1', [hwId]);
+      await this.client.query('DELETE FROM device_permissions WHERE hardware_id = $1', [hwId]);
+      await this.client.query('DELETE FROM device_rf_remotes WHERE hardware_id = $1', [hwId]);
       return true;
     } catch (e: any) {
       console.warn('[DevicesRepository] deleteDevice error:', e.message);
