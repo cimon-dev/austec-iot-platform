@@ -15,8 +15,15 @@ export class DevicesService {
   }
 
   public async createGroup(raw: unknown) {
-    const validated = CreateGroupSchema.parse(raw);
-    return await this.repo.createGroup(validated as any);
+    const v = CreateGroupSchema.parse(raw);
+    return await this.repo.createGroup({
+      code: v.code,
+      groupName: v.groupName || v.name || v.group_name,
+      imageUrl: v.imageUrl || v.image_url,
+      bannerUrl: v.bannerUrl || v.banner_url,
+      description: v.description,
+      displayOrder: v.displayOrder ?? v.display_order ?? 0,
+    } as any);
   }
 
   public async updateGroup(id: number, raw: unknown) {
@@ -33,8 +40,14 @@ export class DevicesService {
   }
 
   public async createDeviceType(raw: unknown) {
-    const validated = CreateDeviceTypeSchema.parse(raw);
-    return await this.repo.createDeviceType(validated as any);
+    const v = CreateDeviceTypeSchema.parse(raw);
+    return await this.repo.createDeviceType({
+      typeCode: v.typeCode || v.type_code || v.code,
+      typeName: v.typeName || v.type_name || v.name,
+      imageUrl: v.imageUrl || v.image_url || v.iconSvg || v.icon_svg,
+      iconSvg: v.iconSvg || v.icon_svg || v.imageUrl || v.image_url,
+      description: v.description,
+    } as any);
   }
 
   public async updateDeviceType(id: number, raw: unknown) {
@@ -51,8 +64,18 @@ export class DevicesService {
   }
 
   public async createProperty(raw: unknown) {
-    const validated = CreatePropertySchema.parse(raw);
-    return await this.repo.createProperty(validated as any);
+    const v = CreatePropertySchema.parse(raw);
+    return await this.repo.createProperty({
+      propertyKey: v.propertyKey || v.property_key,
+      displayName: v.displayName || v.display_name,
+      dataType: v.dataType || v.data_type || 'BOOLEAN',
+      unit: v.unit || '',
+      uiWidgetType: v.uiWidgetType || v.ui_widget_type || 'TOGGLE',
+      isControllable: v.isControllable ?? v.is_controllable ?? true,
+      minVal: v.minVal ?? v.min_val,
+      maxVal: v.maxVal ?? v.max_val,
+      description: v.description || '',
+    } as any);
   }
 
   public async updateProperty(id: number, raw: unknown) {
@@ -69,8 +92,18 @@ export class DevicesService {
   }
 
   public async createModel(raw: unknown) {
-    const validated = CreateModelSchema.parse(raw);
-    return await this.repo.createModel(validated as any);
+    const v = CreateModelSchema.parse(raw);
+    return await this.repo.createModel({
+      modelCode: v.modelCode || v.model_code,
+      modelName: v.modelName || v.model_name,
+      groupId: v.groupId || v.group_id,
+      typeId: v.typeId || v.type_id,
+      imageUrl: v.imageUrl || v.image_url,
+      firmwareVersionLatest: v.firmwareVersionLatest || v.firmware_version_latest,
+      hardwareVersion: v.hardwareVersion || v.hardware_version,
+      supplier: v.supplier,
+      assignedProperties: v.assignedProperties || v.assigned_properties || [],
+    } as any);
   }
 
   public async updateModel(id: number, raw: unknown) {

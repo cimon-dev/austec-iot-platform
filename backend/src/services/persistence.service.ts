@@ -72,10 +72,7 @@ export class PersistenceService {
 
   private async initPostgres(): Promise<void> {
     if (!this.postgresService) return;
-    const ok = await this.postgresService.connect();
-    if (ok) {
-      await this.postgresService.initTables();
-    }
+    await this.postgresService.connect();
   }
 
   public getPostgresService(): PostgresService | null {
