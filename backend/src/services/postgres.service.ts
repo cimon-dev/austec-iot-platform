@@ -193,6 +193,10 @@ export class PostgresService {
         location_lat FLOAT,
         location_lng FLOAT,
         address_display TEXT,
+        model_name VARCHAR(255),
+        group_name VARCHAR(100),
+        owner_name VARCHAR(255),
+        owner_phone VARCHAR(50),
         created_at VARCHAR(50)
       );
 

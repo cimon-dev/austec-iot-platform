@@ -67,7 +67,18 @@ export interface DeviceInstanceEntity {
   warrantyStartAt?: string;
   warrantyEndAt?: string;
   subscriptionType?: string;
+  subscriptionExpiresAt?: string;
   subscriptionStatus?: string;
   addressDisplay?: string;
+  groupName?: string;
+  modelCode?: string;
+  supplier?: string;
+  hardwareVersion?: string;
+  firmwareVersionLatest?: string;
+  imageUrl?: string;
+  batchNumber?: string;
+  productionDate?: string;
+  macAddress?: string;
   createdAt?: string;
+  [key: string]: any;
 }

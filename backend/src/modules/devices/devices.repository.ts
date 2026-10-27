@@ -516,13 +516,22 @@ export class DevicesRepository {
       let query = `
         SELECT 
           di.*,
-          u.full_name as owner_name,
-          u.phone_number as owner_phone,
-          COALESCE(m.model_name, inv.model_name, 'AUSTEC-A900') as model_name
+          COALESCE(di.owner_name, u.full_name, 'Chưa gán') as resolved_owner_name,
+          COALESCE(di.owner_phone, u.phone_number, '---') as resolved_owner_phone,
+          COALESCE(di.model_name, m.model_name, inv.model_name, 'AUSTEC-A900') as resolved_model_name,
+          COALESCE(di.group_name, 'Chưa phân nhóm') as resolved_group_name,
+          m.model_code,
+          m.hardware_version as model_hardware_version,
+          m.firmware_version_latest as model_firmware_version_latest,
+          COALESCE(m.supplier, inv.supplier, 'Austec Smart Factory') as model_supplier,
+          m.image_url as model_image_url,
+          inv.batch_number,
+          inv.production_date,
+          inv.mac_address
         FROM device_instances di
         LEFT JOIN users u ON u.id = di.owner_id
         LEFT JOIN device_inventory inv ON inv.hardware_id = di.hardware_id
-        LEFT JOIN device_models m ON m.id = inv.model_id
+        LEFT JOIN device_models m ON (m.id = inv.model_id OR m.model_code = di.model_name OR m.model_name = di.model_name)
         WHERE 1=1
       `;
       const params: any[] = [];
@@ -535,7 +544,7 @@ export class DevicesRepository {
       }
 
       if (search) {
-        query += ` AND (LOWER(di.hardware_id) LIKE $${idx} OR LOWER(di.custom_name) LIKE $${idx} OR LOWER(COALESCE(u.full_name, '')) LIKE $${idx})`;
+        query += ` AND (LOWER(di.hardware_id) LIKE $${idx} OR LOWER(di.custom_name) LIKE $${idx} OR LOWER(COALESCE(di.owner_name, u.full_name, '')) LIKE $${idx} OR LOWER(COALESCE(di.group_name, '')) LIKE $${idx} OR LOWER(COALESCE(di.model_name, '')) LIKE $${idx})`;
         params.push(`%${search.toLowerCase()}%`);
         idx++;
       }
@@ -552,18 +561,27 @@ export class DevicesRepository {
         name: r.custom_name || r.hardware_id,
         customName: r.custom_name || r.hardware_id,
         ownerId: r.owner_id,
-        owner: r.owner_name || 'Chưa gán',
-        ownerName: r.owner_name || 'Chưa gán',
-        phone: r.owner_phone || '---',
-        ownerPhone: r.owner_phone || '---',
+        owner: r.resolved_owner_name || 'Chưa gán',
+        ownerName: r.resolved_owner_name || 'Chưa gán',
+        phone: r.resolved_owner_phone || '---',
+        ownerPhone: r.resolved_owner_phone || '---',
         type: r.device_type || 'DOOR',
         deviceType: r.device_type || 'DOOR',
-        model: r.model_name || 'AUSTEC-A900',
-        modelName: r.model_name || 'AUSTEC-A900',
-        group: r.device_type || 'Cửa cuốn nhôm Đức',
+        model: r.resolved_model_name || 'AUSTEC-A900',
+        modelName: r.resolved_model_name || 'AUSTEC-A900',
+        modelCode: r.model_code || '',
+        group: r.resolved_group_name || 'Chưa phân nhóm',
+        groupName: r.resolved_group_name || 'Chưa phân nhóm',
         firmwareVersionCurrent: r.firmware_version_current || 'v2.4.1',
+        firmwareVersionLatest: r.model_firmware_version_latest || 'v2.4.2',
+        hardwareVersion: r.model_hardware_version || 'HW-REV-A',
+        supplier: r.model_supplier || 'Austec Smart Factory',
+        imageUrl: r.model_image_url || '',
+        batchNumber: r.batch_number || '',
+        productionDate: r.production_date || '',
+        macAddress: r.mac_address || '',
         isOnline: !!r.is_online,
-        status: r.is_online ? 'online' : (r.owner_id ? 'offline' : 'in_stock'),
+        status: r.is_online ? 'online' : (r.resolved_owner_name && r.resolved_owner_name !== 'Chưa gán' ? 'offline' : 'in_stock'),
         lastHeartbeat: r.last_heartbeat,
         currentProperties: r.current_properties || {},
         battery: (r.current_properties && r.current_properties.battery_level) || 100,
@@ -593,7 +611,7 @@ export class DevicesRepository {
     const name = data.name || data.customName || `Thiết bị ${hwId}`;
     const model = data.model || data.modelName || 'AUSTEC-A900';
     const type = data.type || data.deviceType || 'DOOR';
-    const group = data.group || 'Cửa cuốn nhôm Đức';
+    const group = data.group || data.groupName || 'Chưa phân nhóm';
     const owner = data.owner || data.ownerName || 'Chưa gán';
     const phone = data.phone || data.ownerPhone || '---';
     const warranty = data.warranty || data.warrantyEndAt || '12/2028';
@@ -620,18 +638,23 @@ export class DevicesRepository {
       const res = await this.client.query(
         `INSERT INTO device_instances (
            id, hardware_id, custom_name, device_type, is_online, address_display,
+           model_name, group_name, owner_name, owner_phone,
            warranty_start_at, warranty_end_at, subscription_type, subscription_expires_at, subscription_status, created_at
-         ) VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11)
+         ) VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (hardware_id) DO UPDATE SET
            custom_name = EXCLUDED.custom_name,
            device_type = EXCLUDED.device_type,
            address_display = EXCLUDED.address_display,
+           model_name = EXCLUDED.model_name,
+           group_name = EXCLUDED.group_name,
+           owner_name = EXCLUDED.owner_name,
+           owner_phone = EXCLUDED.owner_phone,
            warranty_end_at = EXCLUDED.warranty_end_at,
            subscription_type = EXCLUDED.subscription_type,
            subscription_expires_at = EXCLUDED.subscription_expires_at,
            subscription_status = EXCLUDED.subscription_status
          RETURNING *`,
-        [id, hwId, name, type, address, now, warranty, subType, subExpires, subStatus, now]
+        [id, hwId, name, type, address, model, group, owner, phone, now, warranty, subType, subExpires, subStatus, now]
       );
       const r = res.rows[0];
       return {
@@ -640,23 +663,26 @@ export class DevicesRepository {
         hardwareId: r.hardware_id,
         name: r.custom_name,
         customName: r.custom_name,
-        model,
-        modelName: model,
-        group,
+        model: r.model_name || model,
+        modelName: r.model_name || model,
+        group: r.group_name || group,
+        groupName: r.group_name || group,
         type: r.device_type,
         deviceType: r.device_type,
-        owner,
-        ownerName: owner,
-        phone,
-        ownerPhone: phone,
-        status: 'in_stock',
+        owner: r.owner_name || owner,
+        ownerName: r.owner_name || owner,
+        phone: r.owner_phone || phone,
+        ownerPhone: r.owner_phone || phone,
+        status: (r.owner_name && r.owner_name !== 'Chưa gán') ? 'offline' : 'in_stock',
         isOnline: false,
         battery: 100,
         openState: 'STOCK',
         isLocked: false,
         signal: 0,
         warranty: r.warranty_end_at,
+        warrantyEndAt: r.warranty_end_at,
         address: r.address_display,
+        addressDisplay: r.address_display,
         subscriptionType: r.subscription_type,
         subscriptionExpiresAt: r.subscription_expires_at,
         subscriptionStatus: r.subscription_status,
@@ -686,6 +712,9 @@ export class DevicesRepository {
     const name = data.name || data.customName;
     const model = data.model || data.modelName;
     const type = data.type || data.deviceType;
+    const group = data.group || data.groupName;
+    const owner = data.owner || data.ownerName;
+    const phone = data.phone || data.ownerPhone;
     const address = data.address || data.addressDisplay;
     const warranty = data.warranty || data.warrantyEndAt;
     const subType = data.subscriptionType;
@@ -711,10 +740,14 @@ export class DevicesRepository {
            warranty_end_at = COALESCE($4, warranty_end_at),
            subscription_type = COALESCE($5, subscription_type),
            subscription_expires_at = COALESCE($6, subscription_expires_at),
-           subscription_status = COALESCE($7, subscription_status)
-         WHERE hardware_id = $8
+           subscription_status = COALESCE($7, subscription_status),
+           model_name = COALESCE($8, model_name),
+           group_name = COALESCE($9, group_name),
+           owner_name = COALESCE($10, owner_name),
+           owner_phone = COALESCE($11, owner_phone)
+         WHERE hardware_id = $12
          RETURNING *`,
-        [name, type, address, warranty, subType, subExpires, subStatus, hwId]
+        [name, type, address, warranty, subType, subExpires, subStatus, model, group, owner, phone, hwId]
       );
 
       if (res.rows.length === 0) {
@@ -728,21 +761,26 @@ export class DevicesRepository {
         hardwareId: r.hardware_id,
         name: r.custom_name,
         customName: r.custom_name,
-        model: model || 'AUSTEC-A900',
-        modelName: model || 'AUSTEC-A900',
+        model: r.model_name || model || 'AUSTEC-A900',
+        modelName: r.model_name || model || 'AUSTEC-A900',
         type: r.device_type,
         deviceType: r.device_type,
-        group: data.group || r.device_type,
-        owner: data.owner || 'Chưa gán',
-        phone: data.phone || '---',
-        status: r.is_online ? 'online' : 'offline',
+        group: r.group_name || group || 'Chưa phân nhóm',
+        groupName: r.group_name || group || 'Chưa phân nhóm',
+        owner: r.owner_name || owner || 'Chưa gán',
+        ownerName: r.owner_name || owner || 'Chưa gán',
+        phone: r.owner_phone || phone || '---',
+        ownerPhone: r.owner_phone || phone || '---',
+        status: r.is_online ? 'online' : (r.owner_name && r.owner_name !== 'Chưa gán' ? 'offline' : 'in_stock'),
         isOnline: !!r.is_online,
         battery: 100,
         openState: r.is_online ? 'CLOSED' : 'STOCK',
         isLocked: false,
         signal: -65,
         warranty: r.warranty_end_at,
+        warrantyEndAt: r.warranty_end_at,
         address: r.address_display,
+        addressDisplay: r.address_display,
         subscriptionType: r.subscription_type,
         subscriptionExpiresAt: r.subscription_expires_at,
         subscriptionStatus: r.subscription_status,
