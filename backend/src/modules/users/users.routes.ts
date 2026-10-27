@@ -36,11 +36,14 @@ export function createUsersRouter(
   router.get('/customers', controller.getCustomers);
   router.post('/admin/customers', authenticate, requireRole(['ADMIN', 'CSKH']), controller.createCustomer);
   router.post('/customers', authenticate, requireRole(['ADMIN', 'CSKH']), controller.createCustomer);
+  router.put('/admin/customers/:id', authenticate, requireRole(['ADMIN', 'CSKH']), controller.updateCustomer);
+  router.put('/customers/:id', authenticate, requireRole(['ADMIN', 'CSKH']), controller.updateCustomer);
   router.put('/admin/customers/:id/status', authenticate, requireRole(['ADMIN', 'CSKH']), controller.toggleCustomerStatus);
 
   // System Roles endpoints
   router.get('/admin/roles', authenticate, controller.getRoles);
   router.put('/admin/roles', authenticate, requireRole(['ADMIN']), controller.saveRoles);
+  router.put('/admin/roles/:id', authenticate, requireRole(['ADMIN']), controller.updateRole);
   router.put('/admin/roles/:id/permissions', authenticate, requireRole(['ADMIN']), controller.updateRolePermissions);
   router.delete('/admin/roles/:id', authenticate, requireRole(['ADMIN']), controller.deleteRole);
 

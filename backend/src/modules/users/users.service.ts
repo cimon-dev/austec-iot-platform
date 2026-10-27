@@ -294,18 +294,46 @@ export class UsersService {
     return newCust;
   }
 
-  public toggleCustomerStatus(id: string, isActive?: boolean) {
-    const cust = this.repo.findById(id);
-    if (!cust || cust.role !== 'CUSTOMER') {
+  public async toggleCustomerStatus(id: string, isActive?: boolean) {
+    let cust = this.repo.findById(id);
+    if (!cust) {
+      cust = (await this.repo.findByIdAsync(id)) || undefined;
+    }
+    if (!cust) {
       throw new Error('Không tìm thấy khách hàng');
     }
     cust.isActive = isActive !== undefined ? Boolean(isActive) : !cust.isActive;
-    this.repo.update(id, cust);
+    await this.repo.update(id, cust);
+    return cust;
+  }
+
+  public async updateCustomer(id: string, updates: any) {
+    let cust = this.repo.findById(id);
+    if (!cust) {
+      cust = (await this.repo.findByIdAsync(id)) || undefined;
+    }
+    if (!cust) {
+      throw new Error('Không tìm thấy khách hàng');
+    }
+
+    if (updates.fullName || updates.name) cust.fullName = (updates.fullName || updates.name).trim();
+    if (updates.email) cust.email = updates.email.trim().toLowerCase();
+    if (updates.phone || updates.phoneNumber) cust.phoneNumber = (updates.phoneNumber || updates.phone).trim();
+    if (updates.address) cust.address = updates.address.trim();
+    if (updates.province) cust.province = updates.province.trim();
+    if (updates.isActive !== undefined) cust.isActive = Boolean(updates.isActive);
+    cust.updatedAt = new Date().toISOString().split('T')[0];
+
+    await this.repo.update(id, cust);
     return cust;
   }
 
   public async getRoles() {
     return this.repo.getRoles();
+  }
+
+  public async updateRole(roleId: number, data: { name: string; description?: string }) {
+    return this.repo.updateRole(roleId, data);
   }
 
   public async updateRolePermissions(roleId: number, permissions: any[]) {

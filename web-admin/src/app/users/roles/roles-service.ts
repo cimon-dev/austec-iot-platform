@@ -18,6 +18,15 @@ export const rolesService = {
     };
   },
 
+  async updateRole(id: number, data: { name: string; description?: string }): Promise<{ success: boolean; role?: any; error?: string }> {
+    const res = await apiClient.put<{ role?: any; message?: string }>(`/api/admin/roles/${id}`, data);
+    return {
+      success: !!res.success,
+      role: res.role,
+      error: res.error,
+    };
+  },
+
   async deleteRole(id: number): Promise<{ success: boolean; error?: string }> {
     const res = await apiClient.delete<{ message?: string }>(`/api/admin/roles/${id}`);
     return {

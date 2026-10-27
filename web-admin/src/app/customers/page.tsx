@@ -13,6 +13,7 @@ import {
   CustomerAccountsTab,
   FamilyMatrixTab,
   CreateCustomerModal,
+  EditCustomerModal,
 } from "./components";
 
 function CustomersPageContent() {
@@ -51,6 +52,32 @@ function CustomersPageContent() {
     isActive: true,
     initialHardwareId: "",
   });
+
+  const [editingCustomer, setEditingCustomer] = useState<CustomerAccount | null>(null);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  const handleUpdateCustomerSubmit = async (id: string, updatedData: Partial<CustomerAccount>) => {
+    setIsSubmittingEdit(true);
+    try {
+      const res = await customersService.updateCustomer(id, updatedData);
+      if (res.success) {
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, ...updatedData } : c))
+        );
+        if (viewCustomer?.id === id) {
+          setViewCustomer((prev) => (prev ? { ...prev, ...updatedData } : null));
+        }
+        toast.success(`Đã cập nhật thông tin khách hàng (bao gồm email) vào PostgreSQL thành công!`);
+        setEditingCustomer(null);
+      } else {
+        toast.error(res.error || "Không thể cập nhật thông tin khách hàng");
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi cập nhật khách hàng: ${e.message}`);
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
 
   // Hydrate customers from backend
   useEffect(() => {
@@ -233,6 +260,7 @@ function CustomersPageContent() {
           canUpdate={canUpdate("mod_user")}
           onToggleStatus={handleToggleAccountStatus}
           onOpenAddModal={() => setIsAddCustomerModalOpen(true)}
+          onEditCustomer={(cust) => setEditingCustomer(cust)}
           onViewMatrix={(ownerId) => {
             setSelectedOwnerId(ownerId);
             switchTab("matrix");
@@ -271,6 +299,15 @@ function CustomersPageContent() {
         form={newCustomerForm}
         setForm={setNewCustomerForm}
         isSubmitting={isSubmittingCustomer}
+      />
+
+      {/* Edit Customer Modal */}
+      <EditCustomerModal
+        isOpen={!!editingCustomer}
+        customer={editingCustomer}
+        onClose={() => setEditingCustomer(null)}
+        onSubmit={handleUpdateCustomerSubmit}
+        isSubmitting={isSubmittingEdit}
       />
     </div>
   );

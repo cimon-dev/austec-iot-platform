@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, Lock, Unlock } from "lucide-react";
+import { X, Lock, Unlock, Edit3 } from "lucide-react";
 import { CustomerAccount } from "../../types";
 
 interface CustomerDetailModalProps {
@@ -10,6 +10,7 @@ interface CustomerDetailModalProps {
   canUpdate: boolean;
   onToggleStatus: (id: string) => void;
   onViewMatrix: (ownerId: string) => void;
+  onEditCustomer?: (cust: CustomerAccount) => void;
 }
 
 export function CustomerDetailModal({
@@ -18,6 +19,7 @@ export function CustomerDetailModal({
   canUpdate,
   onToggleStatus,
   onViewMatrix,
+  onEditCustomer,
 }: CustomerDetailModalProps) {
   if (!customer) return null;
 
@@ -52,7 +54,7 @@ export function CustomerDetailModal({
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-500">Email:</span>
-            <span className="text-slate-700 dark:text-slate-300">{customer.email}</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">{customer.email}</span>
           </div>
           <div className="flex justify-between items-start gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
             <span className="text-slate-500 shrink-0">Địa chỉ:</span>
@@ -64,25 +66,34 @@ export function CustomerDetailModal({
 
         {/* Account Actions */}
         {canUpdate && (
-          <button
-            type="button"
-            onClick={() => onToggleStatus(customer.id)}
-            className={`w-full py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
-              customer.isActive
-                ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
-                : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-            }`}
-          >
-            {customer.isActive ? (
-              <>
-                <Lock className="w-3.5 h-3.5" /> <span>Khóa tài khoản khách hàng</span>
-              </>
-            ) : (
-              <>
-                <Unlock className="w-3.5 h-3.5" /> <span>Mở khóa tài khoản khách hàng</span>
-              </>
-            )}
-          </button>
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => onEditCustomer?.(customer)}
+              className="w-full py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800"
+            >
+              <Edit3 className="w-3.5 h-3.5" /> <span>Chỉnh sửa thông tin khách hàng</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleStatus(customer.id)}
+              className={`w-full py-1.5 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                customer.isActive
+                  ? "bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800"
+                  : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+              }`}
+            >
+              {customer.isActive ? (
+                <>
+                  <Lock className="w-3.5 h-3.5" /> <span>Khóa tài khoản khách hàng</span>
+                </>
+              ) : (
+                <>
+                  <Unlock className="w-3.5 h-3.5" /> <span>Mở khóa tài khoản khách hàng</span>
+                </>
+              )}
+            </button>
+          </div>
         )}
 
         {/* Device List of Customer */}

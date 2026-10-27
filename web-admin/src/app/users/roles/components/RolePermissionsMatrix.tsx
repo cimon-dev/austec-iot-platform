@@ -84,11 +84,11 @@ export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Ma Trận: {currentRole.name}
               </h2>
-              {canUpdate && !currentRole.isSystem && (
+              {canUpdate && (
                 <button
                   type="button"
                   onClick={handleStartRename}
-                  className="p-1 rounded text-slate-400 hover:text-indigo-600 cursor-pointer"
+                  className="p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
                   title="Đổi tên vai trò"
                 >
                   <Edit className="w-3 h-3" />

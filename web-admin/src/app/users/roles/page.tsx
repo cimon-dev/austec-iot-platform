@@ -87,9 +87,24 @@ export default function RolesManagementPage() {
     );
   };
 
-  const handleRenameRole = (roleId: number, newName: string) => {
-    setRoles((prev) => prev.map((r) => (r.id === roleId ? { ...r, name: newName } : r)));
-    toast.info(`Đã đổi tên vai trò thành "${newName}"`);
+  const handleRenameRole = async (roleId: number, newName: string) => {
+    if (roleId > 1000000000) {
+      setRoles((prev) => prev.map((r) => (r.id === roleId ? { ...r, name: newName } : r)));
+      toast.info(`Đã đổi tên vai trò thành "${newName}"`);
+      return;
+    }
+
+    try {
+      const res = await rolesService.updateRole(roleId, { name: newName });
+      if (res.success) {
+        setRoles((prev) => prev.map((r) => (r.id === roleId ? { ...r, name: newName } : r)));
+        toast.success(`Đã đổi tên vai trò thành "${newName}" và lưu vào PostgreSQL!`);
+      } else {
+        toast.error(res.error || "Không thể cập nhật tên vai trò");
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi cập nhật vai trò: ${e.message}`);
+    }
   };
 
   const handleSaveRoles = async () => {
@@ -165,9 +180,11 @@ export default function RolesManagementPage() {
             searchQuery={searchRole}
             onSearchChange={setSearchRole}
             canCreate={canCreate("mod_user")}
+            canUpdate={canUpdate("mod_user")}
             canDelete={canDelete("mod_user")}
             onOpenCreate={() => setIsCreateModalOpen(true)}
             onDeleteRole={setDeleteTarget}
+            onRenameRole={handleRenameRole}
           />
         </div>
 

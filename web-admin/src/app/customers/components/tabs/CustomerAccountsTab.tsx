@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Edit3 } from "lucide-react";
 import { CustomerAccount } from "../../types";
 import { Pagination } from "@/components/Pagination";
 import { CustomerDetailModal } from "../modals/CustomerDetailModal";
@@ -14,6 +14,7 @@ interface CustomerAccountsTabProps {
   onToggleStatus: (id: string) => void;
   onOpenAddModal: () => void;
   onViewMatrix: (ownerId: string) => void;
+  onEditCustomer?: (cust: CustomerAccount) => void;
 }
 
 export function CustomerAccountsTab({
@@ -24,6 +25,7 @@ export function CustomerAccountsTab({
   onToggleStatus,
   onOpenAddModal,
   onViewMatrix,
+  onEditCustomer,
 }: CustomerAccountsTabProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProvince, setSelectedProvince] = useState("ALL");
@@ -144,20 +146,35 @@ export function CustomerAccountsTab({
                     </td>
                     <td className="p-2.5 font-mono text-slate-500 dark:text-slate-400">{cust.registeredAt}</td>
                     <td className="p-2.5 text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onSelectCustomer(viewCustomer?.id === cust.id ? null : cust);
-                        }}
-                        className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer transition-colors ${
-                          isSelected
-                            ? "bg-purple-600 text-white border-purple-600"
-                            : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 border-slate-200 dark:border-slate-700"
-                        }`}
-                      >
-                        {isSelected ? "Đang xem" : "Chi tiết ➔"}
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectCustomer(viewCustomer?.id === cust.id ? null : cust);
+                          }}
+                          className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer transition-colors ${
+                            isSelected
+                              ? "bg-purple-600 text-white border-purple-600"
+                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {isSelected ? "Đang xem" : "Chi tiết ➔"}
+                        </button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditCustomer?.(cust);
+                            }}
+                            className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 cursor-pointer transition-colors"
+                            title="Chỉnh sửa thông tin khách hàng"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -186,6 +203,7 @@ export function CustomerAccountsTab({
           canUpdate={canUpdate}
           onToggleStatus={onToggleStatus}
           onViewMatrix={onViewMatrix}
+          onEditCustomer={onEditCustomer}
         />
       )}
     </div>

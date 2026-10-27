@@ -100,7 +100,7 @@ export class UsersController {
 
   public toggleCustomerStatus = async (req: Request, res: Response) => {
     try {
-      const customer = this.service.toggleCustomerStatus(String(req.params.id), req.body.isActive);
+      const customer = await this.service.toggleCustomerStatus(String(req.params.id), req.body.isActive);
       res.json({
         success: true,
         customer,
@@ -111,12 +111,40 @@ export class UsersController {
     }
   };
 
+  public updateCustomer = async (req: Request, res: Response) => {
+    try {
+      const customer = await this.service.updateCustomer(String(req.params.id), req.body);
+      res.json({
+        success: true,
+        customer,
+        message: 'Cập nhật thông tin khách hàng thành công vào PostgreSQL!',
+      });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  };
+
   public getRoles = async (_req: Request, res: Response) => {
     try {
       const roles = await this.service.getRoles();
       res.json({ success: true, roles });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
+    }
+  };
+
+  public updateRole = async (req: Request, res: Response) => {
+    try {
+      const roleId = Number(req.params.id);
+      const { name, roleName, description } = req.body;
+      const role = await this.service.updateRole(roleId, { name: name || roleName, description });
+      res.json({
+        success: true,
+        role,
+        message: 'Cập nhật tên vai trò thành công vào PostgreSQL!',
+      });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
     }
   };
 

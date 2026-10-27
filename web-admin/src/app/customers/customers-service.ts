@@ -19,6 +19,15 @@ export const customersService = {
     };
   },
 
+  async updateCustomer(id: string, customerData: Partial<CustomerAccount>): Promise<{ success: boolean; customer?: CustomerAccount; error?: string }> {
+    const res = await apiClient.put<{ customer?: CustomerAccount; message?: string }>(`/api/admin/customers/${id}`, customerData);
+    return {
+      success: !!res.success,
+      customer: res.customer,
+      error: res.error,
+    };
+  },
+
   async toggleCustomerStatus(id: string, isActive: boolean): Promise<{ success: boolean; error?: string }> {
     const res = await apiClient.put<{ message?: string }>(`/api/admin/customers/${id}/status`, { isActive });
     return {

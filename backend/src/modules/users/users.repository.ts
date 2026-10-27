@@ -56,6 +56,23 @@ export class UsersRepository {
     return this.usersStore.find(u => u.id === id || u.empID === id);
   }
 
+  public async findByIdAsync(id: string): Promise<UserEntity | null> {
+    const memoryUser = this.usersStore.find(u => u.id === id || u.empID === id);
+    if (memoryUser) return memoryUser;
+
+    try {
+      const res = await this.client.query('SELECT * FROM users WHERE id = $1 OR emp_id = $1 LIMIT 1', [id]);
+      if (res.rows.length > 0) {
+        const entity = this.mapRowToEntity(res.rows[0]);
+        this.usersStore.push(entity);
+        return entity;
+      }
+    } catch (e: any) {
+      console.warn('[UsersRepository] findByIdAsync DB error:', e.message);
+    }
+    return null;
+  }
+
   public findByEmailOrPhone(email?: string, phone?: string): UserEntity | undefined {
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanPhone = (phone || '').replace(/[\s.-]/g, '');
@@ -118,34 +135,40 @@ export class UsersRepository {
   }
 
   public async update(id: string, updates: Partial<UserEntity>): Promise<UserEntity | null> {
-    const user = this.findById(id);
-    if (!user) return null;
-    Object.assign(user, updates);
+    let user = this.findById(id);
+    if (!user) {
+      user = (await this.findByIdAsync(id)) || undefined;
+    }
+    if (user) {
+      Object.assign(user, updates);
+    }
 
     try {
       await this.client.query(
         `UPDATE users SET
            full_name = COALESCE($1, full_name),
-           phone_number = COALESCE($2, phone_number),
-           company = COALESCE($3, company),
-           department = COALESCE($4, department),
-           role = COALESCE($5, role),
-           role_title = COALESCE($6, role_title),
-           address = COALESCE($7, address),
-           province = COALESCE($8, province),
-           is_active = COALESCE($9, is_active),
+           email = COALESCE($2, email),
+           phone_number = COALESCE($3, phone_number),
+           company = COALESCE($4, company),
+           department = COALESCE($5, department),
+           role = COALESCE($6, role),
+           role_title = COALESCE($7, role_title),
+           address = COALESCE($8, address),
+           province = COALESCE($9, province),
+           is_active = COALESCE($10, is_active),
            updated_at = NOW()
-         WHERE id = $10`,
+         WHERE id = $11 OR emp_id = $11`,
         [
-          updates.fullName,
-          updates.phoneNumber,
-          updates.company,
-          updates.department,
-          updates.role,
-          updates.roleTitle,
-          updates.address,
-          updates.province,
-          updates.isActive,
+          updates.fullName ?? null,
+          updates.email ? updates.email.trim().toLowerCase() : null,
+          updates.phoneNumber ?? null,
+          updates.company ?? null,
+          updates.department ?? null,
+          updates.role ?? null,
+          updates.roleTitle ?? null,
+          updates.address ?? null,
+          updates.province ?? null,
+          updates.isActive ?? null,
           id,
         ]
       );
@@ -154,7 +177,7 @@ export class UsersRepository {
     }
 
     this.onPersist?.();
-    return user;
+    return user || null;
   }
 
   public async remove(id: string): Promise<boolean> {
@@ -262,6 +285,33 @@ export class UsersRepository {
         }
       }
     }
+  }
+
+  public async updateRole(roleId: number, data: { name: string; description?: string }): Promise<any> {
+    try {
+      const res = await this.client.query(
+        `UPDATE system_roles SET
+           role_name = COALESCE($1, role_name),
+           description = COALESCE($2, description)
+         WHERE id = $3
+         RETURNING *`,
+        [data.name, data.description || null, roleId]
+      );
+      if (res.rows.length > 0) {
+        const r = res.rows[0];
+        return {
+          id: r.id,
+          name: r.role_name,
+          roleCode: r.role_code,
+          description: r.description,
+          isSystem: r.is_system,
+        };
+      }
+    } catch (e: any) {
+      console.warn('[UsersRepository] updateRole error:', e.message);
+      throw e;
+    }
+    return { id: roleId, name: data.name };
   }
 
   public async deleteRole(roleId: number): Promise<boolean> {
