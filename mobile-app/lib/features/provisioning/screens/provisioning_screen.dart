@@ -110,17 +110,31 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
     // Native Flutter trên iOS / Android
     try {
-      if (FlutterBluePlus.isScanningNow) {
-        await FlutterBluePlus.stopScan();
+      // Đợi CBCentralManager của iOS khởi tạo xong (từ unknown sang on) tối đa 3s
+      final currentState = await FlutterBluePlus.adapterState
+          .where((s) => s == BluetoothAdapterState.on)
+          .first
+          .timeout(const Duration(seconds: 3), onTimeout: () => FlutterBluePlus.adapterStateNow);
+
+      if (mounted) {
+        setState(() => _adapterState = currentState);
       }
 
-      _scanResultSub?.cancel();
-      _scanResultSub = FlutterBluePlus.scanResults.listen(_processNativeScanResults);
+      if (currentState == BluetoothAdapterState.on) {
+        if (FlutterBluePlus.isScanningNow) {
+          await FlutterBluePlus.stopScan();
+        }
 
-      await FlutterBluePlus.startScan(
-        timeout: const Duration(seconds: 15),
-        androidUsesFineLocation: false,
-      );
+        _scanResultSub?.cancel();
+        _scanResultSub = FlutterBluePlus.scanResults.listen(_processNativeScanResults);
+
+        await FlutterBluePlus.startScan(
+          timeout: const Duration(seconds: 15),
+          androidUsesFineLocation: false,
+        );
+      } else {
+        debugPrint("Bluetooth state is not ON: $currentState");
+      }
     } catch (e) {
       debugPrint("Native startScan error: $e");
     } finally {
