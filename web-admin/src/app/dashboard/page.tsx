@@ -6,6 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { DeviceGeoMap } from "../../components/DeviceGeoMap";
+import { getApiBaseUrl } from "@/context/apiConfig";
 import { 
   Radio, 
   AlertTriangle, 
@@ -49,7 +50,7 @@ export default function DashboardPage() {
   const fetchStats = async () => {
     try {
       const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
-      const res = await fetch("http://localhost:4000/api/dashboard/stats", {
+      const res = await fetch(`${getApiBaseUrl()}/api/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();

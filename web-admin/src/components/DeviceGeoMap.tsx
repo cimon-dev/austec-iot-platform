@@ -20,6 +20,7 @@ import {
   Minimize2,
   X
 } from "lucide-react";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 export interface DeviceGeoLocation {
   hardwareId: string;
@@ -316,7 +317,7 @@ export function DeviceGeoMap() {
     const fetchLiveDevices = async () => {
       try {
         const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
-        const res = await fetch("http://localhost:4000/api/admin/devices", {
+        const res = await fetch(`${getApiBaseUrl()}/api/admin/devices`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();

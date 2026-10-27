@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:austec_iot_mobile/core/constants/app_theme.dart';
 import 'package:austec_iot_mobile/core/services/auth_service.dart';
-import 'package:austec_iot_mobile/presentation/screens/orbital_hub_screen.dart';
-import 'package:austec_iot_mobile/presentation/screens/login_screen.dart';
+import 'package:austec_iot_mobile/features/devices/devices.dart';
+import 'package:austec_iot_mobile/features/auth/auth.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

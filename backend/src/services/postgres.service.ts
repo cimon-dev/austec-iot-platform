@@ -447,6 +447,25 @@ export class PostgresService {
         updated_at VARCHAR(50) NOT NULL
       );
 
+      -- 25. BẢNG CÀI ĐẶT HỆ THỐNG CHUẨN (SYSTEM SETTINGS)
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id INT PRIMARY KEY DEFAULT 1,
+        expiry_notification_days INT DEFAULT 30,
+        trial_expiry_period INT DEFAULT 15,
+        notification_frequency VARCHAR(50) DEFAULT 'daily',
+        mqtt_broker_url VARCHAR(255) DEFAULT 'mqtt://broker.austec.vn',
+        mqtt_port INT DEFAULT 8883,
+        tls_enabled BOOLEAN DEFAULT TRUE,
+        keep_alive_seconds INT DEFAULT 60,
+        company_name VARCHAR(255) DEFAULT 'CÔNG TY CỔ PHẦN CÔNG NGHỆ AUSTEC',
+        hotline VARCHAR(50) DEFAULT '1900 6868',
+        support_email VARCHAR(255) DEFAULT 'support@austec.vn',
+        timezone VARCHAR(100) DEFAULT 'Asia/Ho_Chi_Minh (GMT+7)',
+        updated_at VARCHAR(50),
+        updated_by VARCHAR(100)
+      );
+      INSERT INTO system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
       -- INDEXES TĂNG TỐC TRUY VẤN TOÀN HỆ THỐNG
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
@@ -956,6 +975,153 @@ export class PostgresService {
         }
         console.log('[PostgresService] Đã nạp 4 Hướng dẫn Lắp đặt & Reset Phần cứng vào PostgreSQL!');
       }
+
+      // 9. Seed Products
+      const prodCheck = await this.pool.query('SELECT COUNT(*) FROM products');
+      if (parseInt(prodCheck.rows[0].count) === 0) {
+        const initialProducts = [
+          {
+            id: 'PROD-A900',
+            name: 'Cửa Cuốn Khe Thoáng Austec Titadoor A900 Super',
+            categoryTag: 'DOOR',
+            subtitle: 'Cửa cuốn nan nhôm khe thoáng công nghệ Đức cao cấp, motor biến tần không chổi than vận hành siêu êm, tích hợp bộ điều khiển IoT thông minh Austec Cloud.',
+            price: 18500000,
+            originalPrice: 21000000,
+            rating: 5.0,
+            reviewsCount: 128,
+            imageUrl: 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png',
+            galleryUrls: ['https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png'],
+            warrantyText: 'Bảo hành chính hãng 24 tháng theo Hardware ID',
+            highlights: ['Hợp kim nhôm 6063-T5', 'Động cơ Inverter siêu êm', 'Tự dừng khi gặp vật cản', 'Cảm biến chống xô'],
+            specs: {
+              'Chất liệu': 'Hợp kim nhôm định hình 6063-T5',
+              'Độ dày nan': '1.3mm - 2.3mm',
+              'Sơn tĩnh điện': 'AkzoNobel chống phai màu 10 năm',
+              'Điện áp hoạt động': '220V / 50Hz',
+              'Tốc độ đóng mở': '15cm - 18cm / giây',
+              'Tải trọng tối đa': '1000 kg',
+              'Bảo hành xuất xưởng': '24 tháng chính hãng'
+            },
+            stockQuantity: 45,
+            isPublished: true,
+            displayOrder: 1
+          },
+          {
+            id: 'PROD-MASARU-X1',
+            name: 'Khóa Thông Minh Nhận Diện Khuôn Mặt 3D Masaru Titan X1',
+            categoryTag: 'LOCK',
+            subtitle: 'Khóa cửa thông minh cao cấp công nghệ Nhật Bản, nhận diện khuôn mặt 3D Face ID ngay cả trong bóng tối, vân tay FPC Thụy Điển 0.3s, quản lý OTP ảo qua app.',
+            price: 8900000,
+            originalPrice: 10500000,
+            rating: 4.9,
+            reviewsCount: 86,
+            imageUrl: 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png',
+            galleryUrls: ['https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png'],
+            warrantyText: 'Bảo hành 36 tháng 1 đổi 1 tận nơi',
+            highlights: ['Nhận diện 3D Face ID', 'Vân tay FPC Thụy Điển', 'Thẻ từ & Mã số ảo', 'Chống cạy phá báo động'],
+            specs: {
+              'Phương thức mở': 'Khuôn mặt 3D, Vân tay, Mật khẩu, Thẻ từ, Chìa cơ, App',
+              'Thời gian nhận diện': '< 0.3 giây',
+              'Dung lượng lưu trữ': '100 Khuôn mặt, 100 Vân tay, 100 Thẻ từ',
+              'Nguồn điện': 'Pin sạc Lithium 5000mAh (Dùng 8-10 tháng)',
+              'Cổng sạc khẩn cấp': 'Type-C 5V',
+              'Chuẩn khóa cơ': 'Lõi inox 304 chuẩn an toàn cấp C',
+              'Bảo hành xuất xưởng': '36 tháng 1 đổi 1'
+            },
+            stockQuantity: 80,
+            isPublished: true,
+            displayOrder: 2
+          },
+          {
+            id: 'PROD-UPS-SINE',
+            name: 'Bộ Lưu Điện Cửa Cuốn Sóng Sin Chuẩn Austec Sine Pro 220V',
+            categoryTag: 'UPS',
+            subtitle: 'Bộ lưu điện chuyên dụng cho motor cửa cuốn tải nặng, đầu ra sóng Sin chuẩn bảo vệ bo mạch, thời gian lưu điện lên tới 48 giờ liên tục khi mất điện lưới.',
+            price: 3650000,
+            originalPrice: 4200000,
+            rating: 4.8,
+            reviewsCount: 54,
+            imageUrl: 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png',
+            galleryUrls: ['https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png'],
+            warrantyText: 'Bảo hành 24 tháng chính hãng',
+            highlights: ['Sóng Sin chuẩn 100%', 'Thời gian chờ 48 giờ', 'Tự động xả sạc bảo dưỡng bình', 'Bảo vệ quá dòng / quá áp'],
+            specs: {
+              'Công suất danh định': '1200VA / 900W',
+              'Dung lượng ắc quy': '2 x 12V / 12Ah',
+              'Thời gian lưu điện': 'Lên đến 48 giờ',
+              'Bảo hành xuất xưởng': '24 tháng chính hãng'
+            },
+            stockQuantity: 120,
+            isPublished: true,
+            displayOrder: 3
+          },
+          {
+            id: 'PROD-CAM-AI',
+            name: 'Camera AI 360 Độ Ban Đêm Austec Vision Pro',
+            categoryTag: 'CAMERA',
+            subtitle: 'Camera AI 360 độ quay quét thông minh, cảm biến ban đêm Starlight siêu nét, nhận diện người và biển số xe thời gian thực.',
+            price: 1850000,
+            originalPrice: 2300000,
+            rating: 4.9,
+            reviewsCount: 72,
+            imageUrl: 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png',
+            galleryUrls: ['https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png'],
+            warrantyText: 'Bảo hành 24 tháng 1 đổi 1',
+            highlights: ['Độ phân giải 2K QHD', 'Quay quét 360 độ', 'AI phát hiện người', 'Đàm thoại 2 chiều'],
+            specs: {
+              'Độ phân giải': '2K (2560 x 1440)',
+              'Góc nhìn': '360 độ ngang, 114 độ dọc',
+              'Chuẩn nén': 'H.265+',
+              'Bảo hành xuất xưởng': '24 tháng'
+            },
+            stockQuantity: 150,
+            isPublished: true,
+            displayOrder: 4
+          },
+          {
+            id: 'PROD-SENSOR-M1',
+            name: 'Cảm Biến Môi Trường Đa Năng Zigbee 3.0 Austec MultiSensor M1',
+            categoryTag: 'SENSOR',
+            subtitle: 'Cảm biến nhiệt độ, độ ẩm không khí và cảnh báo khói cháy thông minh, kết nối Zigbee 3.0 phản hồi siêu tốc, màn hình hiển thị E-Ink tiết kiệm pin.',
+            price: 650000,
+            originalPrice: 850000,
+            rating: 4.8,
+            reviewsCount: 40,
+            imageUrl: 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png',
+            galleryUrls: ['https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/branding/1793005822920_2cd5a63db14c.png'],
+            warrantyText: 'Bảo hành 12 tháng đổi mới',
+            highlights: ['Đo nhiệt độ ±0.2°C', 'Đo độ ẩm ±2% RH', 'Màn hình E-Ink sắc nét', 'Pin dùng 2 năm liên tục'],
+            specs: {
+              'Giao thức kết nối': 'Zigbee 3.0 / Bluetooth BLE',
+              'Dải đo nhiệt độ': '-10°C đến +60°C',
+              'Dải đo độ ẩm': '0% đến 99% RH',
+              'Loại pin': 'CR2450 (Thời lượng pin 24 tháng)',
+              'Bảo hành xuất xưởng': '12 tháng đổi mới'
+            },
+            stockQuantity: 200,
+            isPublished: true,
+            displayOrder: 5
+          }
+        ];
+
+        for (const prod of initialProducts) {
+          await this.pool.query(
+            `INSERT INTO products (
+              id, name, category_tag, subtitle, price, original_price, rating, reviews_count,
+              image_url, gallery_urls, warranty_text, highlights, specs, stock_quantity,
+              is_published, display_order, created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+            ON CONFLICT (id) DO NOTHING`,
+            [
+              prod.id, prod.name, prod.categoryTag, prod.subtitle, prod.price, prod.originalPrice,
+              prod.rating, prod.reviewsCount, prod.imageUrl, JSON.stringify(prod.galleryUrls),
+              prod.warrantyText, JSON.stringify(prod.highlights), JSON.stringify(prod.specs),
+              prod.stockQuantity, prod.isPublished, prod.displayOrder, new Date().toISOString(), new Date().toISOString()
+            ]
+          );
+        }
+        console.log('[PostgresService] Đã nạp 5 Sản phẩm xuất xưởng (Products) vào PostgreSQL!');
+      }
     } catch (e) {
       console.error('[PostgresService] Lỗi khi nạp seed metadata:', e);
     }
@@ -1174,6 +1340,51 @@ export class PostgresService {
     };
   }
 
+  public async updateProperty(id: number, data: any): Promise<Property> {
+    if (!this.pool) throw new Error('Database not connected');
+    const res = await this.pool.query(
+      `UPDATE device_properties
+       SET property_key = COALESCE($1, property_key),
+           display_name = COALESCE($2, display_name),
+           data_type = COALESCE($3, data_type),
+           unit = COALESCE($4, unit),
+           ui_widget_type = COALESCE($5, ui_widget_type),
+           is_controllable = COALESCE($6, is_controllable),
+           description = COALESCE($7, description)
+       WHERE id = $8
+       RETURNING *`,
+      [
+        data.propertyKey || data.key,
+        data.displayName || data.name,
+        data.dataType || data.type,
+        data.unit,
+        data.uiWidgetType || data.widget,
+        data.isControllable ?? data.ctrl,
+        data.description,
+        id,
+      ]
+    );
+    if (res.rows.length === 0) throw new Error(`Thuộc tính với ID ${id} không tồn tại`);
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      propertyKey: r.property_key,
+      displayName: r.display_name,
+      dataType: r.data_type,
+      unit: r.unit,
+      uiWidgetType: r.ui_widget_type,
+      isControllable: r.is_controllable,
+      validationRule: { min: r.min_val, max: r.max_val },
+      description: r.description,
+    };
+  }
+
+  public async deleteProperty(id: number): Promise<boolean> {
+    if (!this.pool) throw new Error('Database not connected');
+    const res = await this.pool.query('DELETE FROM device_properties WHERE id = $1', [id]);
+    return (res.rowCount || 0) > 0;
+  }
+
   // ==========================================
   // REPOSITORY METHODS: MODELS
   // ==========================================
@@ -1203,15 +1414,15 @@ export class PostgresService {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
-        data.modelCode,
-        data.modelName,
+        data.modelCode || (data as any).code,
+        data.modelName || (data as any).name,
         data.groupId || 9,
         data.typeId || 10,
-        data.firmwareVersionLatest || 'v1.0.0',
-        data.hardwareVersion || 'HW-REV-A',
+        data.firmwareVersionLatest || (data as any).fw || 'v1.0.0',
+        data.hardwareVersion || (data as any).hw || 'HW-REV-A',
         data.supplier || 'Austec Factory',
         data.imageUrl || '',
-        JSON.stringify(data.propertiesConfig || []),
+        JSON.stringify(data.propertiesConfig || (data as any).assignedProperties || []),
         JSON.stringify(data.controlCapabilities || []),
         new Date().toISOString(),
       ]
@@ -1230,6 +1441,139 @@ export class PostgresService {
       propertiesConfig: r.properties_config,
       controlCapabilities: r.control_capabilities,
       createdAt: r.created_at,
+    };
+  }
+
+  public async updateDeviceModel(id: number, data: any): Promise<DeviceModel> {
+    if (!this.pool) throw new Error('Database not connected');
+    const res = await this.pool.query(
+      `UPDATE device_models
+       SET model_code = COALESCE($1, model_code),
+           model_name = COALESCE($2, model_name),
+           group_id = COALESCE($3, group_id),
+           type_id = COALESCE($4, type_id),
+           firmware_version_latest = COALESCE($5, firmware_version_latest),
+           hardware_version = COALESCE($6, hardware_version),
+           supplier = COALESCE($7, supplier),
+           image_url = COALESCE($8, image_url),
+           properties_config = COALESCE($9, properties_config)
+       WHERE id = $10
+       RETURNING *`,
+      [
+        data.modelCode || data.code,
+        data.modelName || data.name,
+        data.groupId,
+        data.typeId,
+        data.firmwareVersionLatest || data.fw,
+        data.hardwareVersion || data.hw,
+        data.supplier,
+        data.imageUrl,
+        data.propertiesConfig ? JSON.stringify(data.propertiesConfig) : (data.assignedProperties ? JSON.stringify(data.assignedProperties) : undefined),
+        id,
+      ]
+    );
+    if (res.rows.length === 0) throw new Error(`Model với ID ${id} không tồn tại`);
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      modelCode: r.model_code,
+      modelName: r.model_name,
+      groupId: r.group_id,
+      typeId: r.type_id,
+      firmwareVersionLatest: r.firmware_version_latest,
+      hardwareVersion: r.hardware_version,
+      supplier: r.supplier,
+      imageUrl: r.image_url,
+      propertiesConfig: r.properties_config,
+      controlCapabilities: r.control_capabilities,
+      createdAt: r.created_at,
+    };
+  }
+
+  public async deleteDeviceModel(id: number): Promise<boolean> {
+    if (!this.pool) throw new Error('Database not connected');
+    const res = await this.pool.query('DELETE FROM device_models WHERE id = $1', [id]);
+    return (res.rowCount || 0) > 0;
+  }
+
+  // ==========================================
+  // REPOSITORY METHODS: SYSTEM SETTINGS
+  // ==========================================
+  public async getSystemSettings(): Promise<any> {
+    if (!this.pool) return null;
+    const res = await this.pool.query('SELECT * FROM system_settings WHERE id = 1');
+    if (res.rows.length === 0) {
+      await this.pool.query('INSERT INTO system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING');
+      const r2 = await this.pool.query('SELECT * FROM system_settings WHERE id = 1');
+      return r2.rows[0];
+    }
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      expiryNotificationDays: r.expiry_notification_days,
+      trialExpiryPeriod: r.trial_expiry_period,
+      notificationFrequency: r.notification_frequency,
+      mqttBrokerUrl: r.mqtt_broker_url,
+      mqttPort: r.mqtt_port,
+      tlsEnabled: r.tls_enabled,
+      keepAliveSeconds: r.keep_alive_seconds,
+      companyName: r.company_name,
+      hotline: r.hotline,
+      supportEmail: r.support_email,
+      timezone: r.timezone,
+      updatedAt: r.updated_at,
+      updatedBy: r.updated_by,
+    };
+  }
+
+  public async updateSystemSettings(data: any): Promise<any> {
+    if (!this.pool) throw new Error('Database not connected');
+    const res = await this.pool.query(
+      `UPDATE system_settings
+       SET expiry_notification_days = COALESCE($1, expiry_notification_days),
+           trial_expiry_period = COALESCE($2, trial_expiry_period),
+           notification_frequency = COALESCE($3, notification_frequency),
+           mqtt_broker_url = COALESCE($4, mqtt_broker_url),
+           mqtt_port = COALESCE($5, mqtt_port),
+           tls_enabled = COALESCE($6, tls_enabled),
+           keep_alive_seconds = COALESCE($7, keep_alive_seconds),
+           company_name = COALESCE($8, company_name),
+           hotline = COALESCE($9, hotline),
+           support_email = COALESCE($10, support_email),
+           timezone = COALESCE($11, timezone),
+           updated_at = $12
+       WHERE id = 1
+       RETURNING *`,
+      [
+        data.expiryNotificationDays,
+        data.trialExpiryPeriod,
+        data.notificationFrequency,
+        data.mqttBrokerUrl,
+        data.mqttPort,
+        data.tlsEnabled,
+        data.keepAliveSeconds,
+        data.companyName,
+        data.hotline,
+        data.supportEmail,
+        data.timezone,
+        new Date().toISOString(),
+      ]
+    );
+    const r = res.rows[0];
+    return {
+      id: r.id,
+      expiryNotificationDays: r.expiry_notification_days,
+      trialExpiryPeriod: r.trial_expiry_period,
+      notificationFrequency: r.notification_frequency,
+      mqttBrokerUrl: r.mqtt_broker_url,
+      mqttPort: r.mqtt_port,
+      tlsEnabled: r.tls_enabled,
+      keepAliveSeconds: r.keep_alive_seconds,
+      companyName: r.company_name,
+      hotline: r.hotline,
+      supportEmail: r.support_email,
+      timezone: r.timezone,
+      updatedAt: r.updated_at,
     };
   }
 
@@ -2303,6 +2647,198 @@ export class PostgresService {
       firmwareVersion: r.firmware_version || 'v1.0.0',
       createdAt: r.created_at,
     }));
+  }
+
+  // ==========================================
+  // REPOSITORY METHODS: PRODUCTS (STORE & SHOWROOM)
+  // ==========================================
+  public async getProducts(isPublishedOnly = false, category?: string, search?: string): Promise<any[]> {
+    if (!this.pool) return [];
+    try {
+      let query = `SELECT * FROM products WHERE 1=1`;
+      const params: any[] = [];
+      let paramIdx = 1;
+
+      if (isPublishedOnly) {
+        query += ` AND is_published = true`;
+      }
+      if (category && category !== 'ALL') {
+        query += ` AND LOWER(category_tag) = LOWER($${paramIdx++})`;
+        params.push(category);
+      }
+      if (search) {
+        query += ` AND (LOWER(name) LIKE $${paramIdx} OR LOWER(COALESCE(subtitle, '')) LIKE $${paramIdx} OR LOWER(COALESCE(category_tag, '')) LIKE $${paramIdx})`;
+        params.push(`%${search.toLowerCase().trim()}%`);
+        paramIdx++;
+      }
+
+      query += ` ORDER BY display_order ASC, created_at DESC`;
+      const res = await this.pool.query(query, params);
+      return res.rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        category: r.category_tag,
+        categoryTag: r.category_tag,
+        subtitle: r.subtitle || '',
+        description: r.subtitle || '',
+        price: Number(r.price),
+        originalPrice: r.original_price ? Number(r.original_price) : undefined,
+        rating: Number(r.rating) || 5.0,
+        reviewsCount: Number(r.reviews_count) || 0,
+        imageUrl: r.image_url || '',
+        galleryUrls: Array.isArray(r.gallery_urls) ? r.gallery_urls : [],
+        warrantyText: r.warranty_text || '',
+        highlights: Array.isArray(r.highlights) ? r.highlights : [],
+        specs: typeof r.specs === 'object' && r.specs !== null ? r.specs : {},
+        stock: Number(r.stock_quantity) || 0,
+        stockQuantity: Number(r.stock_quantity) || 0,
+        status: r.is_published ? (r.stock_quantity > 0 ? 'ACTIVE' : 'OUT_OF_STOCK') : 'DISCONTINUED',
+        isPublished: Boolean(r.is_published),
+        displayOrder: Number(r.display_order) || 1,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
+    } catch (e: any) {
+      console.warn('[PostgresService] getProducts error:', e.message);
+      return [];
+    }
+  }
+
+  public async getProductById(id: string): Promise<any | null> {
+    if (!this.pool) return null;
+    try {
+      const res = await this.pool.query(`SELECT * FROM products WHERE id = $1`, [id]);
+      if (res.rows.length === 0) return null;
+      const r = res.rows[0];
+      return {
+        id: r.id,
+        name: r.name,
+        category: r.category_tag,
+        categoryTag: r.category_tag,
+        subtitle: r.subtitle || '',
+        description: r.subtitle || '',
+        price: Number(r.price),
+        originalPrice: r.original_price ? Number(r.original_price) : undefined,
+        rating: Number(r.rating) || 5.0,
+        reviewsCount: Number(r.reviews_count) || 0,
+        imageUrl: r.image_url || '',
+        galleryUrls: Array.isArray(r.gallery_urls) ? r.gallery_urls : [],
+        warrantyText: r.warranty_text || '',
+        highlights: Array.isArray(r.highlights) ? r.highlights : [],
+        specs: typeof r.specs === 'object' && r.specs !== null ? r.specs : {},
+        stock: Number(r.stock_quantity) || 0,
+        stockQuantity: Number(r.stock_quantity) || 0,
+        status: r.is_published ? (r.stock_quantity > 0 ? 'ACTIVE' : 'OUT_OF_STOCK') : 'DISCONTINUED',
+        isPublished: Boolean(r.is_published),
+        displayOrder: Number(r.display_order) || 1,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      };
+    } catch (e: any) {
+      console.warn('[PostgresService] getProductById error:', e.message);
+      return null;
+    }
+  }
+
+  public async createProduct(product: any): Promise<any> {
+    if (!this.pool) return null;
+    const now = new Date().toISOString();
+    const id = product.id || `PROD-${Date.now()}`;
+    const categoryTag = product.categoryTag || product.category || 'DOOR';
+    const subtitle = product.subtitle || product.description || '';
+    const price = Number(product.price) || 0;
+    const originalPrice = product.originalPrice ? Number(product.originalPrice) : null;
+    const rating = Number(product.rating) || 5.0;
+    const reviewsCount = Number(product.reviewsCount) || 0;
+    const imageUrl = product.imageUrl || '';
+    const galleryUrls = JSON.stringify(Array.isArray(product.galleryUrls) ? product.galleryUrls : []);
+    const warrantyText = product.warrantyText || 'Bảo hành chính hãng 24 tháng theo Hardware ID';
+    const highlights = JSON.stringify(Array.isArray(product.highlights) ? product.highlights : []);
+    const specs = JSON.stringify(typeof product.specs === 'object' && product.specs !== null ? product.specs : {});
+    const stockQuantity = Number(product.stockQuantity || product.stock) || 0;
+    const isPublished = product.isPublished !== undefined ? Boolean(product.isPublished) : (product.status !== 'DISCONTINUED');
+    const displayOrder = Number(product.displayOrder) || 1;
+
+    await this.pool.query(
+      `INSERT INTO products (
+        id, name, category_tag, subtitle, price, original_price, rating, reviews_count,
+        image_url, gallery_urls, warranty_text, highlights, specs, stock_quantity,
+        is_published, display_order, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        category_tag = EXCLUDED.category_tag,
+        subtitle = EXCLUDED.subtitle,
+        price = EXCLUDED.price,
+        original_price = EXCLUDED.original_price,
+        image_url = EXCLUDED.image_url,
+        gallery_urls = EXCLUDED.gallery_urls,
+        warranty_text = EXCLUDED.warranty_text,
+        highlights = EXCLUDED.highlights,
+        specs = EXCLUDED.specs,
+        stock_quantity = EXCLUDED.stock_quantity,
+        is_published = EXCLUDED.is_published,
+        display_order = EXCLUDED.display_order,
+        updated_at = EXCLUDED.updated_at`,
+      [
+        id, product.name, categoryTag, subtitle, price, originalPrice, rating, reviewsCount,
+        imageUrl, galleryUrls, warrantyText, highlights, specs, stockQuantity,
+        isPublished, displayOrder, now, now
+      ]
+    );
+
+    return { ...product, id, category: categoryTag, description: subtitle, stock: stockQuantity, isPublished };
+  }
+
+  public async updateProduct(id: string, updates: any): Promise<any> {
+    if (!this.pool) return null;
+    const now = new Date().toISOString();
+    const fields: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (updates.name !== undefined) { fields.push(`name = $${idx++}`); values.push(updates.name); }
+    if (updates.categoryTag !== undefined || updates.category !== undefined) {
+      fields.push(`category_tag = $${idx++}`);
+      values.push(updates.categoryTag || updates.category);
+    }
+    if (updates.subtitle !== undefined || updates.description !== undefined) {
+      fields.push(`subtitle = $${idx++}`);
+      values.push(updates.subtitle || updates.description);
+    }
+    if (updates.price !== undefined) { fields.push(`price = $${idx++}`); values.push(Number(updates.price)); }
+    if (updates.originalPrice !== undefined) { fields.push(`original_price = $${idx++}`); values.push(updates.originalPrice ? Number(updates.originalPrice) : null); }
+    if (updates.imageUrl !== undefined) { fields.push(`image_url = $${idx++}`); values.push(updates.imageUrl); }
+    if (updates.galleryUrls !== undefined) { fields.push(`gallery_urls = $${idx++}`); values.push(JSON.stringify(updates.galleryUrls)); }
+    if (updates.warrantyText !== undefined) { fields.push(`warranty_text = $${idx++}`); values.push(updates.warrantyText); }
+    if (updates.highlights !== undefined) { fields.push(`highlights = $${idx++}`); values.push(JSON.stringify(updates.highlights)); }
+    if (updates.specs !== undefined) { fields.push(`specs = $${idx++}`); values.push(JSON.stringify(updates.specs)); }
+    if (updates.stockQuantity !== undefined || updates.stock !== undefined) {
+      fields.push(`stock_quantity = $${idx++}`);
+      values.push(Number(updates.stockQuantity || updates.stock));
+    }
+    if (updates.isPublished !== undefined) {
+      fields.push(`is_published = $${idx++}`);
+      values.push(Boolean(updates.isPublished));
+    } else if (updates.status !== undefined) {
+      fields.push(`is_published = $${idx++}`);
+      values.push(updates.status !== 'DISCONTINUED');
+    }
+    if (updates.displayOrder !== undefined) { fields.push(`display_order = $${idx++}`); values.push(Number(updates.displayOrder)); }
+
+    fields.push(`updated_at = $${idx++}`);
+    values.push(now);
+
+    values.push(id);
+    const query = `UPDATE products SET ${fields.join(', ')} WHERE id = $${idx}`;
+    await this.pool.query(query, values);
+    return { success: true };
+  }
+
+  public async deleteProduct(id: string): Promise<boolean> {
+    if (!this.pool) return false;
+    await this.pool.query(`DELETE FROM products WHERE id = $1`, [id]);
+    return true;
   }
 
   public async close(): Promise<void> {

@@ -19,6 +19,7 @@ import {
   Zap,
   Play
 } from "lucide-react";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface GuideStep {
   step: number;
@@ -63,7 +64,7 @@ export default function InstallationGuidesPage() {
   const fetchGuides = async () => {
     try {
       setLoading(true);
-      const res = await fetch("http://localhost:4000/api/admin/guides");
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/guides`);
       const data = await res.json();
       if (data.success && data.guides) {
         setGuides(data.guides);
@@ -95,7 +96,7 @@ export default function InstallationGuidesPage() {
     if (!activeGuide) return;
 
     try {
-      const res = await fetch("http://localhost:4000/api/admin/guides", {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/guides`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

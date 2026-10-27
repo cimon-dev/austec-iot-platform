@@ -20,6 +20,7 @@ import {
   ArrowUpRight,
   Server
 } from "lucide-react";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface FirmwareRelease {
   id: number;
@@ -92,8 +93,8 @@ export default function FirmwareOtaPage() {
     try {
       setLoading(true);
       const [fwRes, campRes] = await Promise.all([
-        fetch("http://localhost:4000/api/admin/firmware"),
-        fetch("http://localhost:4000/api/admin/ota/campaigns")
+        fetch(`${getApiBaseUrl()}/api/admin/firmware`),
+        fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns`)
       ]);
       const fwData = await fwRes.json();
       const campData = await campRes.json();
@@ -103,7 +104,7 @@ export default function FirmwareOtaPage() {
         setCampaigns(campData.campaigns);
         // Lấy chi tiết campaign mới nhất
         const latestId = campData.campaigns[0].id;
-        const detRes = await fetch(`http://localhost:4000/api/admin/ota/campaigns/${latestId}`);
+        const detRes = await fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns/${latestId}`);
         const detData = await detRes.json();
         if (detData.success) {
           setRecords(detData.records || []);
@@ -128,7 +129,7 @@ export default function FirmwareOtaPage() {
 
   const handleRetryDevice = async (recordId: number) => {
     try {
-      const res = await fetch(`http://localhost:4000/api/admin/ota/retry/${recordId}`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${recordId}`, {
         method: "POST"
       });
       const data = await res.json();
@@ -143,7 +144,7 @@ export default function FirmwareOtaPage() {
   const handleDeployCampaign = async () => {
     try {
       setDeploying(true);
-      const res = await fetch("http://localhost:4000/api/admin/ota/deploy", {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -168,14 +169,14 @@ export default function FirmwareOtaPage() {
   const handleCreateRelease = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:4000/api/admin/firmware", {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/firmware`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           version: newVersion,
           modelCode: newModel,
           binaryFilename: `firmware_${newModel.toLowerCase()}_${newVersion}.bin`,
-          binaryUrl: `http://localhost:4000/firmware/${newModel.toLowerCase()}_${newVersion}.bin`,
+          binaryUrl: `${getApiBaseUrl()}/firmware/${newModel.toLowerCase()}_${newVersion}.bin`,
           fileSizeBytes: 1612000,
           sha256Checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           releaseType: newType,

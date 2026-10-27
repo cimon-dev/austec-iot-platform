@@ -25,6 +25,7 @@ import {
   Sparkles,
   Check
 } from "lucide-react";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 export default function PairingLabPage() {
   const [method, setMethod] = useState<"BLE" | "WIFI">("BLE");
@@ -71,7 +72,7 @@ export default function PairingLabPage() {
   // 2. Fetch MQTT Status & History
   const fetchMqttHistory = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/mqtt/history");
+      const res = await fetch(`${getApiBaseUrl()}/api/mqtt/history`);
       const data = await res.json();
       if (data.success && data.history) {
         setMqttHistory(data.history);
@@ -132,7 +133,7 @@ export default function PairingLabPage() {
 
       // Gọi API Backend xác nhận ghép nối vào DB
       try {
-        await fetch("http://localhost:4000/api/pairing/simulate-onboard", {
+        await fetch(`${getApiBaseUrl()}/api/pairing/simulate-onboard`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -167,7 +168,7 @@ export default function PairingLabPage() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const res = await fetch("http://localhost:4000/api/devices/control", {
+      const res = await fetch(`${getApiBaseUrl()}/api/devices/control`, {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -195,7 +196,7 @@ export default function PairingLabPage() {
   const handleTriggerSensor = async (actionCode: "4" | "5", stateName: string) => {
     try {
       // Gửi MQTT Publish gói tin từ ESP32: austec/amtuong1994/pub/action -> "4" hoặc "5"
-      await fetch("http://localhost:4000/api/mqtt/publish", {
+      await fetch(`${getApiBaseUrl()}/api/mqtt/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

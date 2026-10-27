@@ -53,21 +53,21 @@ function SidebarNavigation({
   const [userMenuOpen, setUserMenuOpen] = useState(true);
 
   const deviceSubmodules = [
-    { id: "groups", label: language === "vi" ? "1. Nhóm sản phẩm" : "1. Product Groups", href: "/devices?tab=groups", icon: Layers },
-    { id: "types", label: language === "vi" ? "2. Loại phần cứng" : "2. Hardware Types", href: "/devices?tab=types", icon: Cpu },
-    { id: "properties", label: language === "vi" ? "3. Từ điển Schema" : "3. Schema Properties", href: "/devices?tab=properties", icon: Sliders },
-    { id: "models", label: language === "vi" ? "4. Mẫu thương phẩm" : "4. Device Models", href: "/devices?tab=models", icon: Box },
-    { id: "import", label: language === "vi" ? "5. Nhập kho & Tem QR" : "5. Excel & QR Decals", href: "/devices?tab=import", icon: FileSpreadsheet },
-    { id: "list", label: language === "vi" ? "6. Danh sách thiết bị" : "6. Device Inventory", href: "/devices?tab=list", icon: Radio },
-    { id: "firmware", label: language === "vi" ? "7. Quản lý Firmware & OTA" : "7. Firmware & OTA", href: "/devices/firmware", icon: UploadCloud },
-    { id: "pairing", label: language === "vi" ? "8. Lab Ghép Nối & Test ESP32" : "8. Hardware Lab & Test", href: "/devices/pairing-lab", icon: Radio },
+    { id: "groups", label: language === "vi" ? "Nhóm sản phẩm" : "Product Groups", href: "/devices?tab=groups" },
+    { id: "types", label: language === "vi" ? "Loại phần cứng" : "Hardware Types", href: "/devices?tab=types" },
+    { id: "properties", label: language === "vi" ? "Từ điển thuộc tính" : "Schema Properties", href: "/devices?tab=properties" },
+    { id: "models", label: language === "vi" ? "Mẫu thương phẩm" : "Device Models", href: "/devices?tab=models" },
+    { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/devices?tab=import" },
+    { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/devices?tab=list" },
+    { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/devices/firmware" },
+    { id: "pairing", label: language === "vi" ? "Lab ghép nối ESP32" : "Hardware Lab & Test", href: "/devices/pairing-lab" },
   ];
 
   const userSubmodules = [
-    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin", icon: UserCheck },
-    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles", icon: KeyRound },
-    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts", icon: Users },
-    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix", icon: ShieldCheck },
+    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin" },
+    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles" },
+    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts" },
+    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix" },
   ];
 
   return (
@@ -110,20 +110,18 @@ function SidebarNavigation({
               {deviceMenuOpen && (
                 <div className="mt-0.5 space-y-0.5 pl-2 border-l border-slate-200 dark:border-slate-800 ml-2.5">
                   {deviceSubmodules.map((sub) => {
-                    const SubIcon = sub.icon;
                     const isSubActive = pathname === "/devices" && currentTab === sub.id;
                     return (
                       <Link
                         key={sub.id}
                         href={sub.href}
                         onClick={onNavigate}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        className={`flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
                             ? "bg-indigo-600 text-white font-semibold shadow-xs"
                             : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                         }`}
                       >
-                        <SubIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-slate-400"}`} />
                         <span className="truncate">{sub.label}</span>
                       </Link>
                     );
@@ -168,7 +166,6 @@ function SidebarNavigation({
               {userMenuOpen && (
                 <div className="mt-0.5 space-y-0.5 pl-2 border-l border-slate-200 dark:border-slate-800 ml-2.5">
                   {userSubmodules.map((sub) => {
-                    const SubIcon = sub.icon;
                     const isSubActive = sub.href.includes("?tab=")
                       ? pathname === "/customers" && (searchParams.get("tab") || "accounts") === sub.href.split("tab=")[1]
                       : pathname === sub.href;
@@ -177,13 +174,12 @@ function SidebarNavigation({
                         key={sub.href}
                         href={sub.href}
                         onClick={onNavigate}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        className={`flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
                             ? "bg-purple-600 text-white font-semibold shadow-xs"
                             : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                         }`}
                       >
-                        <SubIcon className={`w-3.5 h-3.5 shrink-0 ${isSubActive ? "text-white" : "text-slate-400"}`} />
                         <span className="truncate">{sub.label}</span>
                       </Link>
                     );
@@ -224,11 +220,6 @@ function SidebarNavigation({
               <Bell className={`w-4 h-4 shrink-0 ${pathname === "/notifications" ? "text-amber-400" : "text-slate-500"}`} />
               {!isCollapsed && <span className="truncate">Thông Báo (Push Hub)</span>}
             </div>
-            {!isCollapsed && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                NEW
-              </span>
-            )}
           </Link>
         </div>
       )}
@@ -257,11 +248,6 @@ function SidebarNavigation({
                   <Headphones className={`w-4 h-4 shrink-0 ${pathname.startsWith("/cskh") ? "text-rose-400" : "text-slate-500"}`} />
                   {!isCollapsed && <span className="truncate">{t("cskhHub", "CSKH Hub & Live Chat")}</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-rose-500/10 text-rose-500 border border-rose-500/20 font-mono">
-                    LIVE
-                  </span>
-                )}
               </Link>
             )}
 
@@ -279,11 +265,6 @@ function SidebarNavigation({
                   <ShieldAlert className={`w-4 h-4 shrink-0 ${pathname.startsWith("/blackbox") ? "text-amber-400" : "text-slate-500"}`} />
                   {!isCollapsed && <span className="truncate">{t("blackbox", "Hộp đen Kiểm toán")}</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 font-mono">
-                    SHA-256
-                  </span>
-                )}
               </Link>
             )}
 
@@ -301,11 +282,6 @@ function SidebarNavigation({
                   <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/store") ? "text-cyan-400" : "text-slate-500"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Gian Hàng & Thương Phẩm" : "Store & Catalog"}</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-cyan-500/10 text-cyan-500 border border-cyan-500/20 font-mono">
-                    SYNC
-                  </span>
-                )}
               </Link>
             )}
 
@@ -323,11 +299,6 @@ function SidebarNavigation({
                   <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/guides") ? "text-emerald-400" : "text-slate-500"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Hướng Dẫn Lắp Đặt & Reset" : "Install & Reset Manuals"}</span>}
                 </div>
-                {!isCollapsed && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 font-mono">
-                    VIDEO
-                  </span>
-                )}
               </Link>
             )}
           </div>

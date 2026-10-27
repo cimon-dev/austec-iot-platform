@@ -20,6 +20,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { Pagination } from "@/components/Pagination";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 
 interface NotificationItem {
   id: number;
@@ -148,6 +149,8 @@ export default function NotificationsManagementPage() {
 
   // Modal State
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<NotificationItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [composeForm, setComposeForm] = useState({
     title: "",
     category: "SYSTEM" as const,
@@ -220,11 +223,20 @@ export default function NotificationsManagementPage() {
     });
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (item: NotificationItem) => {
     if (!canDelete("mod_noti")) return;
-    if (confirm("Bạn có chắc chắn muốn xóa chiến dịch thông báo này?")) {
-      setNotifications(notifications.filter(n => n.id !== id));
+    setDeleteTarget(item);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setIsDeleting(true);
+    try {
+      setNotifications(prev => prev.filter(n => n.id !== deleteTarget.id));
       showToast("Đã xóa chiến dịch thông báo thành công!");
+      setDeleteTarget(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -387,7 +399,7 @@ export default function NotificationsManagementPage() {
                     {canDelete("mod_noti") && (
                       <td className="p-2.5 text-right">
                         <button
-                          onClick={() => handleDelete(n.id)}
+                          onClick={() => handleDelete(n)}
                           className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -555,6 +567,16 @@ export default function NotificationsManagementPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Delete Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        itemName={deleteTarget?.title}
+        itemType="Chiến dịch thông báo"
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
