@@ -145,33 +145,29 @@ export function DeviceModelTab({
     }
   };
 
-  // Fetch Types & Groups if not provided
+  // Fetch Types & Groups
   const fetchSupportingData = async () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
     const headers = { Authorization: `Bearer ${token}` };
 
-    if (!externalTypes || externalTypes.length === 0) {
-      try {
-        const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types`, { headers });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.deviceTypes)) {
-          setDeviceTypes(data.deviceTypes);
-        }
-      } catch (e: any) {
-        console.warn("Lỗi nạp device types:", e.message);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.deviceTypes)) {
+        setDeviceTypes(data.deviceTypes);
       }
+    } catch (e: any) {
+      console.warn("Lỗi nạp device types:", e.message);
     }
 
-    if (!externalGroups || externalGroups.length === 0) {
-      try {
-        const res = await fetch(`${getApiBaseUrl()}/api/admin/groups`, { headers });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.groups)) {
-          setGroups(data.groups);
-        }
-      } catch (e: any) {
-        console.warn("Lỗi nạp groups:", e.message);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/groups`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.groups)) {
+        setGroups(data.groups);
       }
+    } catch (e: any) {
+      console.warn("Lỗi nạp groups:", e.message);
     }
   };
 
@@ -263,6 +259,33 @@ export function DeviceModelTab({
       setCreateForm((prev) => ({ ...prev, assignedProperties: [] }));
     } else {
       setEditForm((prev) => ({ ...prev, assignedProperties: [] }));
+    }
+  };
+
+  // Tự động kế thừa và check các thuộc tính mặc định của Loại phần cứng khi được chọn
+  const handleTypeSelect = (selectedTypeId: string | number, isCreate: boolean) => {
+    const matchedType = deviceTypes.find((t) => String(t.id) === String(selectedTypeId));
+    const typeProps = (matchedType?.assignedProperties || (matchedType as any)?.default_properties || []) as (number | string)[];
+
+    if (isCreate) {
+      setCreateForm((prev) => {
+        // Hợp nhất các thuộc tính mặc định của loại phần cứng vào danh sách thuộc tính của mẫu
+        const merged = Array.from(new Set([...prev.assignedProperties, ...typeProps]));
+        return {
+          ...prev,
+          typeId: selectedTypeId,
+          assignedProperties: merged,
+        };
+      });
+    } else {
+      setEditForm((prev) => {
+        const merged = Array.from(new Set([...prev.assignedProperties, ...typeProps]));
+        return {
+          ...prev,
+          typeId: selectedTypeId,
+          assignedProperties: merged,
+        };
+      });
     }
   };
 
@@ -443,6 +466,8 @@ export function DeviceModelTab({
           <button
             type="button"
             onClick={() => {
+              fetchSupportingData();
+              fetchProperties();
               setPropertySearchQuery("");
               setIsCreateOpen(true);
             }}
@@ -671,7 +696,7 @@ export function DeviceModelTab({
                   </label>
                   <select
                     value={createForm.typeId}
-                    onChange={(e) => setCreateForm({ ...createForm, typeId: e.target.value })}
+                    onChange={(e) => handleTypeSelect(e.target.value, true)}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="">-- Chưa gán loại phần cứng --</option>
@@ -681,6 +706,11 @@ export function DeviceModelTab({
                       </option>
                     ))}
                   </select>
+                  {createForm.typeId && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      * Mẫu sẽ tự động có các thuộc tính của loại phần cứng đã chọn.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -752,119 +782,136 @@ export function DeviceModelTab({
               />
 
               {/* SECTION: GÁN BỘ THUỘC TÍNH SCHEMA (DYNAMIC PROPERTIES) */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Gán Bộ Thuộc Tính Schema (Dynamic Properties)</span>
-                    </label>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Chọn các chỉ số vi điều khiển thu thập hoặc nhận lệnh điều khiển trực tiếp từ xa
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAll(true)}
-                      className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      Chọn tất cả
-                    </button>
-                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeselectAll(true)}
-                      className="text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      Bỏ chọn
-                    </button>
-                  </div>
-                </div>
+              {(() => {
+                const selectedCreateType = deviceTypes.find((t) => String(t.id) === String(createForm.typeId));
+                const createTypeProps = (selectedCreateType?.assignedProperties || (selectedCreateType as any)?.default_properties || []) as (number | string)[];
 
-                {/* Filter and Counter Bar */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm thuộc tính theo tên, mã key..."
-                      value={propertySearchQuery}
-                      onChange={(e) => setPropertySearchQuery(e.target.value)}
-                      className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    Đã gán: {createForm.assignedProperties.length} / {properties.length} thuộc tính
-                  </span>
-                </div>
-
-                {/* Properties Checkbox Grid */}
-                <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800">
-                  {filteredProperties.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400">
-                      Không tìm thấy thuộc tính nào phù hợp.
-                    </div>
-                  ) : (
-                    filteredProperties.map((prop) => {
-                      const selected = isPropSelected(createForm.assignedProperties, prop);
-                      return (
-                        <div
-                          key={prop.id}
-                          onClick={() => handleToggleProperty(prop, true)}
-                          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all select-none ${
-                            selected
-                              ? "bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 shadow-xs"
-                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-                          }`}
+                return (
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Gán Bộ Thuộc Tính Schema (Dynamic Properties)</span>
+                        </label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {selectedCreateType 
+                            ? `Đã tự động chọn các thuộc tính của loại "${selectedCreateType.typeName}". Bạn có thể tích thêm hoặc bỏ bớt cho mẫu này.`
+                            : "Chọn các chỉ số vi điều khiển thu thập hoặc nhận lệnh điều khiển trực tiếp từ xa"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectAll(true)}
+                          className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => {}}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer pointer-events-none"
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                                  {prop.displayName}
-                                </span>
-                                {prop.unit && (
-                                  <span className="text-[10px] text-slate-400 font-mono">({prop.unit})</span>
-                                )}
+                          Chọn tất cả
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-700">|</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeselectAll(true)}
+                          className="text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filter and Counter Bar */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="relative flex-1">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm thuộc tính theo tên, mã key..."
+                          value={propertySearchQuery}
+                          onChange={(e) => setPropertySearchQuery(e.target.value)}
+                          className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        Đã gán: {createForm.assignedProperties.length} / {properties.length} thuộc tính
+                      </span>
+                    </div>
+
+                    {/* Properties Checkbox Grid */}
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800">
+                      {filteredProperties.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-slate-400">
+                          Không tìm thấy thuộc tính nào phù hợp.
+                        </div>
+                      ) : (
+                        filteredProperties.map((prop) => {
+                          const selected = isPropSelected(createForm.assignedProperties, prop);
+                          const isInherited = createTypeProps.some(
+                            (item) => item === prop.id || String(item) === String(prop.id) || item === prop.propertyKey
+                          );
+                          return (
+                            <div
+                              key={prop.id}
+                              onClick={() => handleToggleProperty(prop, true)}
+                              className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all select-none ${
+                                selected
+                                  ? "bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() => {}}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer pointer-events-none"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                                      {prop.displayName}
+                                    </span>
+                                    {prop.unit && (
+                                      <span className="text-[10px] text-slate-400 font-mono">({prop.unit})</span>
+                                    )}
+                                    {isInherited && (
+                                      <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0">
+                                        Mặc định loại
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] font-mono text-slate-400 truncate">
+                                    {prop.propertyKey}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-[10px] font-mono text-slate-400 truncate">
-                                {prop.propertyKey}
+
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
+                                  {prop.dataType}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                    prop.isControllable
+                                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                                  }`}
+                                  title={
+                                    prop.isControllable
+                                      ? "RW: Đọc & Ghi (Hỗ trợ nhận lệnh điều khiển)"
+                                      : "RO: Chỉ đọc (Giám sát telemetry)"
+                                  }
+                                >
+                                  {prop.isControllable ? "RW" : "RO"}
+                                </span>
                               </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
-                              {prop.dataType}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                                prop.isControllable
-                                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
-                              }`}
-                              title={
-                                prop.isControllable
-                                  ? "RW: Đọc & Ghi (Hỗ trợ nhận lệnh điều khiển)"
-                                  : "RO: Chỉ đọc (Giám sát telemetry)"
-                              }
-                            >
-                              {prop.isControllable ? "RW" : "RO"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
@@ -949,7 +996,7 @@ export function DeviceModelTab({
                   </label>
                   <select
                     value={editForm.typeId}
-                    onChange={(e) => setEditForm({ ...editForm, typeId: e.target.value })}
+                    onChange={(e) => handleTypeSelect(e.target.value, false)}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   >
                     <option value="">-- Chưa gán loại phần cứng --</option>
@@ -959,6 +1006,11 @@ export function DeviceModelTab({
                       </option>
                     ))}
                   </select>
+                  {editForm.typeId && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      * Mẫu sẽ tự động có các thuộc tính của loại phần cứng đã chọn.
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1027,119 +1079,136 @@ export function DeviceModelTab({
               />
 
               {/* SECTION: GÁN BỘ THUỘC TÍNH SCHEMA (DYNAMIC PROPERTIES) */}
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <Sliders className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Gán Bộ Thuộc Tính Schema (Dynamic Properties)</span>
-                    </label>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Chọn các chỉ số vi điều khiển thu thập hoặc nhận lệnh điều khiển trực tiếp từ xa
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectAll(false)}
-                      className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      Chọn tất cả
-                    </button>
-                    <span className="text-slate-300 dark:text-slate-700">|</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeselectAll(false)}
-                      className="text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                    >
-                      Bỏ chọn
-                    </button>
-                  </div>
-                </div>
+              {(() => {
+                const selectedEditType = deviceTypes.find((t) => String(t.id) === String(editForm.typeId));
+                const editTypeProps = (selectedEditType?.assignedProperties || (selectedEditType as any)?.default_properties || []) as (number | string)[];
 
-                {/* Filter and Counter Bar */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm thuộc tính theo tên, mã key..."
-                      value={propertySearchQuery}
-                      onChange={(e) => setPropertySearchQuery(e.target.value)}
-                      className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                    Đã gán: {editForm.assignedProperties.length} / {properties.length} thuộc tính
-                  </span>
-                </div>
-
-                {/* Properties Checkbox Grid */}
-                <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800">
-                  {filteredProperties.length === 0 ? (
-                    <div className="text-center py-6 text-xs text-slate-400">
-                      Không tìm thấy thuộc tính nào phù hợp.
-                    </div>
-                  ) : (
-                    filteredProperties.map((prop) => {
-                      const selected = isPropSelected(editForm.assignedProperties, prop);
-                      return (
-                        <div
-                          key={prop.id}
-                          onClick={() => handleToggleProperty(prop, false)}
-                          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all select-none ${
-                            selected
-                              ? "bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 shadow-xs"
-                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-                          }`}
+                return (
+                  <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Gán Bộ Thuộc Tính Schema (Dynamic Properties)</span>
+                        </label>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {selectedEditType 
+                            ? `Đã tự động chọn các thuộc tính của loại "${selectedEditType.typeName}". Bạn có thể tích thêm hoặc bỏ bớt cho mẫu này.`
+                            : "Chọn các chỉ số vi điều khiển thu thập hoặc nhận lệnh điều khiển trực tiếp từ xa"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectAll(false)}
+                          className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-slate-800 cursor-pointer"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={selected}
-                              onChange={() => {}}
-                              className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer pointer-events-none"
-                            />
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
-                                  {prop.displayName}
-                                </span>
-                                {prop.unit && (
-                                  <span className="text-[10px] text-slate-400 font-mono">({prop.unit})</span>
-                                )}
+                          Chọn tất cả
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-700">|</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeselectAll(false)}
+                          className="text-[11px] font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 px-2 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          Bỏ chọn
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Filter and Counter Bar */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="relative flex-1">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm thuộc tính theo tên, mã key..."
+                          value={propertySearchQuery}
+                          onChange={(e) => setPropertySearchQuery(e.target.value)}
+                          className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        Đã gán: {editForm.assignedProperties.length} / {properties.length} thuộc tính
+                      </span>
+                    </div>
+
+                    {/* Properties Checkbox Grid */}
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-slate-200 dark:border-slate-800">
+                      {filteredProperties.length === 0 ? (
+                        <div className="text-center py-6 text-xs text-slate-400">
+                          Không tìm thấy thuộc tính nào phù hợp.
+                        </div>
+                      ) : (
+                        filteredProperties.map((prop) => {
+                          const selected = isPropSelected(editForm.assignedProperties, prop);
+                          const isInherited = editTypeProps.some(
+                            (item) => item === prop.id || String(item) === String(prop.id) || item === prop.propertyKey
+                          );
+                          return (
+                            <div
+                              key={prop.id}
+                              onClick={() => handleToggleProperty(prop, false)}
+                              className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-all select-none ${
+                                selected
+                                  ? "bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-700 shadow-xs"
+                                  : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() => {}}
+                                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer pointer-events-none"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                                      {prop.displayName}
+                                    </span>
+                                    {prop.unit && (
+                                      <span className="text-[10px] text-slate-400 font-mono">({prop.unit})</span>
+                                    )}
+                                    {isInherited && (
+                                      <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 shrink-0">
+                                        Mặc định loại
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] font-mono text-slate-400 truncate">
+                                    {prop.propertyKey}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="text-[10px] font-mono text-slate-400 truncate">
-                                {prop.propertyKey}
+
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
+                                  {prop.dataType}
+                                </span>
+                                <span
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                    prop.isControllable
+                                      ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                                      : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
+                                  }`}
+                                  title={
+                                    prop.isControllable
+                                      ? "RW: Đọc & Ghi (Hỗ trợ nhận lệnh điều khiển)"
+                                      : "RO: Chỉ đọc (Giám sát telemetry)"
+                                  }
+                                >
+                                  {prop.isControllable ? "RW" : "RO"}
+                                </span>
                               </div>
                             </div>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                            <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
-                              {prop.dataType}
-                            </span>
-                            <span
-                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                                prop.isControllable
-                                  ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
-                                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700"
-                              }`}
-                              title={
-                                prop.isControllable
-                                  ? "RW: Đọc & Ghi (Hỗ trợ nhận lệnh điều khiển)"
-                                  : "RO: Chỉ đọc (Giám sát telemetry)"
-                              }
-                            >
-                              {prop.isControllable ? "RW" : "RO"}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Submit Buttons */}
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">

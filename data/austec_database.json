@@ -1,6 +1,30 @@
 {
   "users": [
     {
+      "id": "USR-330967",
+      "fullName": "Nguyễn Văn Test",
+      "email": "test@gmail.com",
+      "phoneNumber": "0944102588",
+      "address": "Vạn Phúc, Nam Phù",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "123456",
+      "isActive": true,
+      "registeredAt": "2026-10-29",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-USR-330967",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-10-29 20:05",
+          "warrantyUntil": "2028-10-22",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
       "id": "admin-001",
       "empID": "AUSTEC001",
       "fullName": "AUSTEC Super Admin",
@@ -178,13 +202,39 @@
       "updatedAt": "2026-10-21T00:00:00Z"
     }
   ],
-  "permissions": [],
+  "permissions": [
+    {
+      "id": "PERM-USR-330967-OWNER",
+      "hardwareId": "AT-DOOR-USR-330967",
+      "userId": "USR-330967",
+      "memberName": "Nguyễn Văn Test (Chủ hộ)",
+      "phoneNumber": "0944102588",
+      "role": "OWNER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": true,
+      "scheduleLimitActive": false,
+      "accessStartTime": "00:00",
+      "accessEndTime": "23:59",
+      "accessDays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "createdAt": "2026-10-29T20:05:30.968Z"
+    }
+  ],
   "requests": [],
   "supportTickets": [],
   "supportMessages": [],
   "deviceInventory": [],
   "deviceInstances": [],
   "blackboxLogs": [],
-  "lastSavedAt": "2026-10-29T19:22:02.669Z",
+  "lastSavedAt": "2026-10-29T20:05:31.247Z",
   "version": "1.0"
 }

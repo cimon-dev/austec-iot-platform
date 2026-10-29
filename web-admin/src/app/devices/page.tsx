@@ -37,6 +37,7 @@ function DevicesManagementContent() {
     if (typeof window !== "undefined") {
       window.history.replaceState(null, '', '/devices?tab=' + tab);
     }
+    loadMasterData();
   };
 
   useEffect(() => {
