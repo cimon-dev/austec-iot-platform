@@ -19,6 +19,7 @@ export interface DeviceTypeEntity {
   description?: string;
   imageUrl?: string;
   iconSvg?: string;
+  assignedProperties?: (string | number)[];
   createdAt?: string;
 }
 
@@ -40,13 +41,13 @@ export interface DeviceModelEntity {
   id: number;
   modelCode: string;
   modelName: string;
-  groupId?: number;
-  typeId?: number;
+  groupId?: number | null;
+  typeId?: number | null;
   firmwareVersionLatest?: string;
   hardwareVersion?: string;
   supplier?: string;
   imageUrl?: string;
-  assignedProperties?: string[];
+  assignedProperties?: (string | number)[];
   controlCapabilities?: string[];
   createdAt?: string;
 }

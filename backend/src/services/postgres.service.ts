@@ -161,6 +161,8 @@ export class PostgresService {
         status VARCHAR(50) DEFAULT 'MANUFACTURED',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE device_types ADD COLUMN IF NOT EXISTS default_properties JSONB DEFAULT '[]'::jsonb;
+      ALTER TABLE device_models ADD COLUMN IF NOT EXISTS properties_config JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE device_inventory ADD COLUMN IF NOT EXISTS mac_address VARCHAR(50);
       ALTER TABLE device_inventory ADD COLUMN IF NOT EXISTS model_id INT;
       ALTER TABLE device_inventory ADD COLUMN IF NOT EXISTS model_name VARCHAR(255);

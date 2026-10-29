@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   Search, 
   X, 
@@ -46,6 +46,7 @@ interface DeviceListTabProps {
   onOpenCreateModal: () => void;
   models?: any[];
   groups?: any[];
+  deviceTypes?: any[];
   onDeviceUpdated?: (updated: any) => void;
   onDeviceDeleted?: (hardwareId: string) => void;
 }
@@ -59,9 +60,30 @@ export function DeviceListTab({
   onOpenCreateModal,
   models = [],
   groups = [],
+  deviceTypes = [],
   onDeviceUpdated,
   onDeviceDeleted
 }: DeviceListTabProps) {
+  const [internalTypes, setInternalTypes] = useState<any[]>(deviceTypes);
+
+  useEffect(() => {
+    if (deviceTypes && deviceTypes.length > 0) {
+      setInternalTypes(deviceTypes);
+    } else {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.deviceTypes)) {
+            setInternalTypes(data.deviceTypes);
+          }
+        })
+        .catch(err => console.warn("Lỗi nạp device types trong danh sách thiết bị:", err));
+    }
+  }, [deviceTypes]);
+
   const [selectedDevice, setSelectedDevice] = useState<any | null>(null);
   const [editingDevice, setEditingDevice] = useState<any | null>(null);
   const [deletingDevice, setDeletingDevice] = useState<any | null>(null);
@@ -88,7 +110,35 @@ export function DeviceListTab({
 
   // Device type metadata
   const getDeviceTypeInfo = (type: string) => {
-    switch (type) {
+    const matched = internalTypes.find((t: any) => 
+      (t.typeCode && t.typeCode.toUpperCase() === (type || "").toUpperCase()) ||
+      (t.typeName && t.typeName.toUpperCase() === (type || "").toUpperCase())
+    );
+    if (matched) {
+      const code = matched.typeCode || type;
+      const label = matched.typeName || code;
+      let badgeColor = "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800";
+      let icon = "📦";
+      if (code === "DOOR" || /cửa/i.test(label)) {
+        badgeColor = "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800";
+        icon = "🚪";
+      } else if (code === "SMART_LOCK" || code === "LOCK" || /khóa/i.test(label)) {
+        badgeColor = "bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800";
+        icon = "🔒";
+      } else if (code === "CAM" || /camera/i.test(label)) {
+        badgeColor = "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800";
+        icon = "📹";
+      } else if (code === "UPS" || /lưu điện/i.test(label)) {
+        badgeColor = "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800";
+        icon = "⚡";
+      } else if (code === "SENSOR" || /cảm biến/i.test(label)) {
+        badgeColor = "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800";
+        icon = "🌡️";
+      }
+      return { label, code, icon, badgeColor };
+    }
+
+    switch ((type || "").toUpperCase()) {
       case "DOOR":
         return { label: "Cửa cuốn thông minh", code: "DOOR", icon: "🚪", badgeColor: "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" };
       case "SMART_LOCK":
@@ -137,7 +187,11 @@ export function DeviceListTab({
         group.includes(search) ||
         address.includes(search);
       const matchGroup = filterGroup === "ALL" || getGroup(d) === filterGroup;
-      const matchType = filterType === "ALL" || getType(d) === filterType;
+      const devType = getType(d);
+      const matchType = filterType === "ALL" || 
+        devType.toUpperCase() === filterType.toUpperCase() ||
+        (d.deviceType && d.deviceType.toUpperCase() === filterType.toUpperCase()) ||
+        (d.type && d.type.toUpperCase() === filterType.toUpperCase());
       const matchStatus = filterStatus === "ALL" || d.status === filterStatus;
       return matchSearch && matchGroup && matchType && matchStatus;
     });
@@ -329,11 +383,25 @@ export function DeviceListTab({
               className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md px-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-medium cursor-pointer"
             >
               <option value="ALL">Tất cả loại phần cứng</option>
-              <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
-              <option value="SMART_LOCK">Khóa cửa thông minh (LOCK)</option>
-              <option value="UPS">Bộ lưu điện (UPS)</option>
-              <option value="CAM">Camera AI giám sát (CAM)</option>
-              <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
+              {internalTypes && internalTypes.length > 0 ? (
+                internalTypes.map((t: any) => {
+                  const code = t.typeCode || t.code || t.type_code;
+                  const name = t.typeName || t.name || t.type_name || code;
+                  return (
+                    <option key={t.id || code} value={code}>
+                      {name} ({code})
+                    </option>
+                  );
+                })
+              ) : (
+                <>
+                  <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
+                  <option value="SMART_LOCK">Khóa cửa thông minh (LOCK)</option>
+                  <option value="UPS">Bộ lưu điện (UPS)</option>
+                  <option value="CAM">Camera AI giám sát (CAM)</option>
+                  <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -1002,6 +1070,7 @@ export function DeviceListTab({
           onUpdated={handleDeviceUpdated}
           models={models}
           groups={groups}
+          deviceTypes={internalTypes}
         />
       )}
 

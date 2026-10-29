@@ -35,31 +35,21 @@ export class DevicesRepository {
   public async getGroups(): Promise<DeviceGroupEntity[]> {
     try {
       const res = await this.client.query('SELECT * FROM device_groups ORDER BY display_order ASC, id ASC');
-      if (res.rows.length > 0) {
-        return res.rows.map(r => ({
-          id: r.id,
-          code: r.code,
-          groupName: r.group_name,
-          description: r.description,
-          imageUrl: r.image_url,
-          bannerUrl: r.banner_url,
-          displayOrder: r.display_order,
-          createdAt: r.created_at,
-          updatedAt: r.updated_at,
-        }));
-      }
+      return res.rows.map(r => ({
+        id: r.id,
+        code: r.code,
+        groupName: r.group_name,
+        description: r.description,
+        imageUrl: r.image_url,
+        bannerUrl: r.banner_url,
+        displayOrder: r.display_order,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }));
     } catch (e: any) {
-      console.warn('[DevicesRepository] getGroups fallback:', e.message);
+      console.error('[DevicesRepository] getGroups error:', e.message);
+      throw new Error('Lỗi truy vấn danh sách nhóm sản phẩm từ CSDL PostgreSQL: ' + e.message);
     }
-    return (this.fallbacks.groups || []).map(g => ({
-      id: g.id,
-      code: g.code,
-      groupName: g.groupName || g.name || g.group_name,
-      description: g.description || g.desc,
-      imageUrl: g.imageUrl || g.image_url,
-      displayOrder: g.displayOrder || g.order,
-      createdAt: g.createdAt,
-    }));
   }
 
   public async createGroup(data: Partial<DeviceGroupEntity>): Promise<DeviceGroupEntity> {
@@ -90,8 +80,8 @@ export class DevicesRepository {
         createdAt: r.created_at,
       };
     } catch (e: any) {
-      console.warn('[DevicesRepository] createGroup DB error, returning memory item:', e.message);
-      return { id: Date.now(), code, groupName: name, description: desc, imageUrl: img, displayOrder: order, createdAt: now };
+      console.error('[DevicesRepository] createGroup error:', e.message);
+      throw new Error('Lỗi thêm nhóm sản phẩm vào CSDL PostgreSQL: ' + e.message);
     }
   }
 
@@ -129,10 +119,11 @@ export class DevicesRepository {
           updatedAt: r.updated_at,
         };
       }
+      return null;
     } catch (e: any) {
-      console.warn('[DevicesRepository] updateGroup DB error:', e.message);
+      console.error('[DevicesRepository] updateGroup error:', e.message);
+      throw new Error('Lỗi cập nhật nhóm sản phẩm trong CSDL PostgreSQL: ' + e.message);
     }
-    return null;
   }
 
   public async deleteGroup(id: number): Promise<boolean> {
@@ -140,39 +131,33 @@ export class DevicesRepository {
       await this.client.query('DELETE FROM device_groups WHERE id = $1', [id]);
       return true;
     } catch (e: any) {
-      console.warn('[DevicesRepository] deleteGroup DB error:', e.message);
-      return false;
+      console.error('[DevicesRepository] deleteGroup error:', e.message);
+      throw new Error('Lỗi xóa nhóm sản phẩm trong CSDL PostgreSQL: ' + e.message);
     }
   }
 
   // ==========================================
   // DEVICE TYPES
   // ==========================================
+  // DEVICE TYPES
+  // ==========================================
   public async getDeviceTypes(): Promise<DeviceTypeEntity[]> {
     try {
       const res = await this.client.query('SELECT * FROM device_types ORDER BY id ASC');
-      if (res.rows.length > 0) {
-        return res.rows.map(r => ({
-          id: r.id,
-          typeCode: r.type_code,
-          typeName: r.type_name,
-          description: r.description,
-          imageUrl: r.icon_svg,
-          iconSvg: r.icon_svg,
-          createdAt: r.created_at,
-        }));
-      }
+      return res.rows.map(r => ({
+        id: r.id,
+        typeCode: r.type_code,
+        typeName: r.type_name,
+        description: r.description,
+        imageUrl: r.icon_svg,
+        iconSvg: r.icon_svg,
+        assignedProperties: typeof r.default_properties === 'string' ? JSON.parse(r.default_properties) : (r.default_properties || []),
+        createdAt: r.created_at,
+      }));
     } catch (e: any) {
-      console.warn('[DevicesRepository] getDeviceTypes fallback:', e.message);
+      console.error('[DevicesRepository] getDeviceTypes error:', e.message);
+      throw new Error('Lỗi truy vấn danh sách loại thiết bị từ CSDL PostgreSQL: ' + e.message);
     }
-    return (this.fallbacks.types || []).map(t => ({
-      id: t.id,
-      typeCode: t.typeCode || t.type_code || t.code,
-      typeName: t.typeName || t.type_name || t.name,
-      description: t.description || t.desc,
-      imageUrl: t.imageUrl || t.image_url || t.iconSvg,
-      createdAt: t.createdAt,
-    }));
   }
 
   public async createDeviceType(data: Partial<DeviceTypeEntity>): Promise<DeviceTypeEntity> {
@@ -180,20 +165,29 @@ export class DevicesRepository {
     const name = data.typeName || (data as any).type_name || 'Loại thiết bị mới';
     const desc = data.description || '';
     const img = data.imageUrl || (data as any).image_url || data.iconSvg || '';
+    const props = data.assignedProperties !== undefined ? data.assignedProperties : ((data as any).assigned_properties || (data as any).defaultProperties || (data as any).default_properties || []);
     const now = new Date().toISOString();
 
     try {
       const res = await this.client.query(
-        `INSERT INTO device_types (type_code, type_name, description, icon_svg, created_at)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO device_types (type_code, type_name, description, icon_svg, default_properties, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
-        [code, name, desc, img, now]
+        [code, name, desc, img, JSON.stringify(props), now]
       );
       const r = res.rows[0];
-      return { id: r.id, typeCode: r.type_code, typeName: r.type_name, description: r.description, imageUrl: r.icon_svg, createdAt: r.created_at };
+      return { 
+        id: r.id, 
+        typeCode: r.type_code, 
+        typeName: r.type_name, 
+        description: r.description, 
+        imageUrl: r.icon_svg, 
+        assignedProperties: typeof r.default_properties === 'string' ? JSON.parse(r.default_properties) : (r.default_properties || []),
+        createdAt: r.created_at 
+      };
     } catch (e: any) {
-      console.warn('[DevicesRepository] createDeviceType error:', e.message);
-      return { id: Date.now(), typeCode: code, typeName: name, description: desc, imageUrl: img, createdAt: now };
+      console.error('[DevicesRepository] createDeviceType error:', e.message);
+      throw new Error('Lỗi thêm loại thiết bị vào CSDL PostgreSQL: ' + e.message);
     }
   }
 
@@ -201,25 +195,35 @@ export class DevicesRepository {
     const name = data.typeName || (data as any).type_name;
     const desc = data.description;
     const img = data.imageUrl || (data as any).image_url || data.iconSvg;
+    const props = data.assignedProperties !== undefined ? data.assignedProperties : ((data as any).assigned_properties || (data as any).defaultProperties || (data as any).default_properties);
 
     try {
       const res = await this.client.query(
         `UPDATE device_types SET
            type_name = COALESCE($1, type_name),
            description = COALESCE($2, description),
-           icon_svg = COALESCE($3, icon_svg)
-         WHERE id = $4
+           icon_svg = COALESCE($3, icon_svg),
+           default_properties = CASE WHEN $4::text IS NOT NULL THEN $4::jsonb ELSE default_properties END
+         WHERE id = $5
          RETURNING *`,
-        [name, desc, img, id]
+        [name, desc, img, props !== undefined ? JSON.stringify(props) : null, id]
       );
       if (res.rows.length > 0) {
         const r = res.rows[0];
-        return { id: r.id, typeCode: r.type_code, typeName: r.type_name, description: r.description, imageUrl: r.icon_svg };
+        return { 
+          id: r.id, 
+          typeCode: r.type_code, 
+          typeName: r.type_name, 
+          description: r.description, 
+          imageUrl: r.icon_svg,
+          assignedProperties: typeof r.default_properties === 'string' ? JSON.parse(r.default_properties) : (r.default_properties || [])
+        };
       }
+      return null;
     } catch (e: any) {
-      console.warn('[DevicesRepository] updateDeviceType error:', e.message);
+      console.error('[DevicesRepository] updateDeviceType error:', e.message);
+      throw new Error('Lỗi cập nhật loại thiết bị trong CSDL PostgreSQL: ' + e.message);
     }
-    return null;
   }
 
   public async deleteDeviceType(id: number): Promise<boolean> {
@@ -238,37 +242,23 @@ export class DevicesRepository {
   public async getProperties(): Promise<DevicePropertyEntity[]> {
     try {
       const res = await this.client.query('SELECT * FROM device_properties ORDER BY id ASC');
-      if (res.rows.length > 0) {
-        return res.rows.map(r => ({
-          id: r.id,
-          propertyKey: r.property_key,
-          displayName: r.display_name,
-          dataType: r.data_type,
-          unit: r.unit,
-          uiWidgetType: r.ui_widget_type,
-          isControllable: r.is_controllable,
-          minVal: r.min_val,
-          maxVal: r.max_val,
-          description: r.description,
-          createdAt: r.created_at,
-        }));
-      }
+      return res.rows.map(r => ({
+        id: r.id,
+        propertyKey: r.property_key,
+        displayName: r.display_name,
+        dataType: r.data_type,
+        unit: r.unit,
+        uiWidgetType: r.ui_widget_type,
+        isControllable: r.is_controllable,
+        minVal: r.min_val,
+        maxVal: r.max_val,
+        description: r.description,
+        createdAt: r.created_at,
+      }));
     } catch (e: any) {
-      console.warn('[DevicesRepository] getProperties fallback:', e.message);
+      console.error('[DevicesRepository] getProperties error:', e.message);
+      throw new Error('Lỗi truy vấn danh mục thuộc tính từ CSDL PostgreSQL: ' + e.message);
     }
-    return (this.fallbacks.properties || []).map(p => ({
-      id: p.id,
-      propertyKey: p.propertyKey || p.property_key || p.key,
-      displayName: p.displayName || p.display_name || p.name,
-      dataType: p.dataType || p.data_type || 'STRING',
-      unit: p.unit,
-      uiWidgetType: p.uiWidgetType || p.ui_widget_type || 'status_badge',
-      isControllable: p.isControllable ?? p.is_controllable ?? false,
-      minVal: p.minVal,
-      maxVal: p.maxVal,
-      description: p.description,
-      createdAt: p.createdAt,
-    }));
   }
 
   public async createProperty(data: Partial<DevicePropertyEntity>): Promise<DevicePropertyEntity> {
@@ -305,8 +295,8 @@ export class DevicesRepository {
         createdAt: r.created_at,
       };
     } catch (e: any) {
-      console.warn('[DevicesRepository] createProperty error:', e.message);
-      return { id: Date.now(), propertyKey: key, displayName: name, dataType: type, unit, uiWidgetType: widget, isControllable: controllable, createdAt: now };
+      console.error('[DevicesRepository] createProperty error:', e.message);
+      throw new Error('Lỗi thêm thuộc tính vào CSDL PostgreSQL: ' + e.message);
     }
   }
 
@@ -341,10 +331,11 @@ export class DevicesRepository {
           isControllable: r.is_controllable,
         };
       }
+      return null;
     } catch (e: any) {
-      console.warn('[DevicesRepository] updateProperty error:', e.message);
+      console.error('[DevicesRepository] updateProperty error:', e.message);
+      throw new Error('Lỗi cập nhật thuộc tính trong CSDL PostgreSQL: ' + e.message);
     }
-    return null;
   }
 
   public async deleteProperty(id: number): Promise<boolean> {
@@ -369,38 +360,24 @@ export class DevicesRepository {
         LEFT JOIN device_types dt ON dt.id = dm.type_id
         ORDER BY dm.id ASC
       `);
-      if (res.rows.length > 0) {
-        return res.rows.map(r => ({
-          id: r.id,
-          modelCode: r.model_code,
-          modelName: r.model_name,
-          groupId: r.group_id,
-          typeId: r.type_id,
-          firmwareVersionLatest: r.firmware_version_latest,
-          hardwareVersion: r.hardware_version,
-          supplier: r.supplier,
-          imageUrl: r.image_url,
-          assignedProperties: typeof r.properties_config === 'string' ? JSON.parse(r.properties_config) : (r.properties_config || []),
-          controlCapabilities: typeof r.control_capabilities === 'string' ? JSON.parse(r.control_capabilities) : (r.control_capabilities || []),
-          createdAt: r.created_at,
-        }));
-      }
+      return res.rows.map(r => ({
+        id: r.id,
+        modelCode: r.model_code,
+        modelName: r.model_name,
+        groupId: r.group_id,
+        typeId: r.type_id,
+        firmwareVersionLatest: r.firmware_version_latest,
+        hardwareVersion: r.hardware_version,
+        supplier: r.supplier,
+        imageUrl: r.image_url,
+        assignedProperties: typeof r.properties_config === 'string' ? JSON.parse(r.properties_config) : (r.properties_config || []),
+        controlCapabilities: typeof r.control_capabilities === 'string' ? JSON.parse(r.control_capabilities) : (r.control_capabilities || []),
+        createdAt: r.created_at,
+      }));
     } catch (e: any) {
-      console.warn('[DevicesRepository] getDeviceModels fallback:', e.message);
+      console.error('[DevicesRepository] getDeviceModels error:', e.message);
+      throw new Error('Lỗi truy vấn danh sách khuôn mẫu từ CSDL PostgreSQL: ' + e.message);
     }
-    return (this.fallbacks.models || []).map(m => ({
-      id: m.id,
-      modelCode: m.modelCode || m.model_code || m.code,
-      modelName: m.modelName || m.model_name || m.name,
-      groupId: m.groupId || m.group_id,
-      typeId: m.typeId || m.type_id,
-      firmwareVersionLatest: m.firmwareVersionLatest || m.firmware_version_latest || m.fw,
-      hardwareVersion: m.hardwareVersion || m.hardware_version || m.hw,
-      imageUrl: m.imageUrl || m.image_url,
-      assignedProperties: m.assignedProperties || m.assigned_properties || [],
-      controlCapabilities: m.controlCapabilities || m.control_capabilities || m.capabilities || [],
-      createdAt: m.createdAt,
-    }));
   }
 
   public async getModels(): Promise<DeviceModelEntity[]> {
@@ -436,11 +413,13 @@ export class DevicesRepository {
         firmwareVersionLatest: r.firmware_version_latest,
         hardwareVersion: r.hardware_version,
         imageUrl: r.image_url,
+        assignedProperties: typeof r.properties_config === 'string' ? JSON.parse(r.properties_config) : (r.properties_config || []),
+        controlCapabilities: typeof r.control_capabilities === 'string' ? JSON.parse(r.control_capabilities) : (r.control_capabilities || []),
         createdAt: r.created_at,
       };
     } catch (e: any) {
-      console.warn('[DevicesRepository] createDeviceModel error:', e.message);
-      return { id: Date.now(), modelCode: code, modelName: name, groupId, typeId, firmwareVersionLatest: fw, hardwareVersion: hw, imageUrl: img, createdAt: now };
+      console.error('[DevicesRepository] createDeviceModel error:', e.message);
+      throw new Error('Lỗi thêm khuôn mẫu vào CSDL PostgreSQL: ' + e.message);
     }
   }
 
@@ -450,12 +429,12 @@ export class DevicesRepository {
 
   public async updateDeviceModel(id: number, data: Partial<DeviceModelEntity>): Promise<DeviceModelEntity | null> {
     const name = data.modelName || (data as any).model_name;
-    const groupId = data.groupId || (data as any).group_id;
-    const typeId = data.typeId || (data as any).type_id;
+    const groupId = data.groupId !== undefined ? data.groupId : (data as any).group_id;
+    const typeId = data.typeId !== undefined ? data.typeId : (data as any).type_id;
     const fw = data.firmwareVersionLatest || (data as any).firmware_version_latest;
     const hw = data.hardwareVersion || (data as any).hardware_version;
     const img = data.imageUrl || (data as any).image_url;
-    const props = data.assignedProperties || (data as any).assigned_properties;
+    const props = data.assignedProperties !== undefined ? data.assignedProperties : (data as any).assigned_properties;
 
     try {
       const res = await this.client.query(
@@ -466,10 +445,10 @@ export class DevicesRepository {
            firmware_version_latest = COALESCE($4, firmware_version_latest),
            hardware_version = COALESCE($5, hardware_version),
            image_url = COALESCE($6, image_url),
-           properties_config = COALESCE($7, properties_config)
+           properties_config = CASE WHEN $7::text IS NOT NULL THEN $7::jsonb ELSE properties_config END
          WHERE id = $8
          RETURNING *`,
-        [name, groupId, typeId, fw, hw, img, props ? JSON.stringify(props) : null, id]
+        [name, groupId, typeId, fw, hw, img, props !== undefined ? JSON.stringify(props) : null, id]
       );
       if (res.rows.length > 0) {
         const r = res.rows[0];
@@ -482,12 +461,15 @@ export class DevicesRepository {
           firmwareVersionLatest: r.firmware_version_latest,
           hardwareVersion: r.hardware_version,
           imageUrl: r.image_url,
+          assignedProperties: typeof r.properties_config === 'string' ? JSON.parse(r.properties_config) : (r.properties_config || []),
+          controlCapabilities: typeof r.control_capabilities === 'string' ? JSON.parse(r.control_capabilities) : (r.control_capabilities || []),
         };
       }
+      return null;
     } catch (e: any) {
-      console.warn('[DevicesRepository] updateDeviceModel error:', e.message);
+      console.error('[DevicesRepository] updateDeviceModel error:', e.message);
+      throw new Error('Lỗi cập nhật khuôn mẫu trong CSDL PostgreSQL: ' + e.message);
     }
-    return null;
   }
 
   public async updateModel(id: number, data: Partial<DeviceModelEntity>): Promise<DeviceModelEntity | null> {

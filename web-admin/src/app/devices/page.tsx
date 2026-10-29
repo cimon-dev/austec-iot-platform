@@ -219,6 +219,8 @@ function DevicesManagementContent() {
             canCreate={canCreate("mod_dev")}
             canUpdate={canUpdate("mod_dev")}
             canDelete={canDelete("mod_dev")}
+            deviceTypes={deviceTypes}
+            groups={groups}
           />
         )}
 
@@ -241,6 +243,7 @@ function DevicesManagementContent() {
             onOpenCreateModal={() => setIsCreateDeviceOpen(true)}
             models={models}
             groups={groups}
+            deviceTypes={deviceTypes}
             onDeviceUpdated={(updated) => {
               setDevices(prev => prev.map(d => (d.hardwareId === updated.hardwareId || d.hwId === updated.hwId) ? { ...d, ...updated } : d));
               toast.success(`Đã cập nhật thiết bị ${updated.customName || updated.name} (${updated.hardwareId || updated.hwId}) thành công!`);
@@ -263,6 +266,7 @@ function DevicesManagementContent() {
         }}
         models={models}
         groups={groups}
+        deviceTypes={deviceTypes}
         devices={devices}
       />
     </div>

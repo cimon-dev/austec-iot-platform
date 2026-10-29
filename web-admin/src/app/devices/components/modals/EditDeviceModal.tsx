@@ -12,6 +12,7 @@ interface EditDeviceModalProps {
   onUpdated: (updatedDevice: any) => void;
   models: any[];
   groups: any[];
+  deviceTypes?: any[];
 }
 
 export function EditDeviceModal({
@@ -20,8 +21,29 @@ export function EditDeviceModal({
   device,
   onUpdated,
   models,
-  groups
+  groups,
+  deviceTypes = []
 }: EditDeviceModalProps) {
+  const [internalTypes, setInternalTypes] = useState<any[]>(deviceTypes);
+
+  useEffect(() => {
+    if (deviceTypes && deviceTypes.length > 0) {
+      setInternalTypes(deviceTypes);
+    } else {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && Array.isArray(data.deviceTypes)) {
+            setInternalTypes(data.deviceTypes);
+          }
+        })
+        .catch(err => console.warn("Lỗi nạp device types trong modal sửa thiết bị:", err));
+    }
+  }, [deviceTypes]);
+
   const [form, setForm] = useState({
     customName: "",
     modelName: "",
@@ -214,11 +236,28 @@ export function EditDeviceModal({
                 onChange={(e) => setForm({ ...form, deviceType: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
-                <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
-                <option value="SMART_LOCK">Khóa cửa Masaru (SMART_LOCK)</option>
-                <option value="UPS">Bộ lưu điện (UPS)</option>
-                <option value="CAM">Camera AI giám sát (CAM)</option>
-                <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
+                {internalTypes && internalTypes.length > 0 ? (
+                  internalTypes.map((t: any) => {
+                    const code = t.typeCode || t.code || t.type_code;
+                    const name = t.typeName || t.name || t.type_name || code;
+                    return (
+                      <option key={t.id || code} value={code}>
+                        {name} ({code})
+                      </option>
+                    );
+                  })
+                ) : (
+                  <>
+                    <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
+                    <option value="SMART_LOCK">Khóa cửa Masaru (SMART_LOCK)</option>
+                    <option value="UPS">Bộ lưu điện (UPS)</option>
+                    <option value="CAM">Camera AI giám sát (CAM)</option>
+                    <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
+                  </>
+                )}
+                {form.deviceType && internalTypes && !internalTypes.some((t: any) => (t.typeCode || t.code || t.type_code) === form.deviceType) && (
+                  <option value={form.deviceType}>{form.deviceType}</option>
+                )}
               </select>
             </div>
 
