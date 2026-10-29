@@ -6,6 +6,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/constants/app_theme.dart';
 import '../../../core/constants/api_config.dart';
+import '../../../core/constants/device_provisioning_catalog.dart';
 import '../../../core/services/ble_provisioning_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/models/device_model.dart';
@@ -62,6 +63,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         } else {
           setState(() => _isScanning = false);
         }
+      });
+
+      FlutterBluePlus.isScanning.listen((scanning) {
+        if (mounted) setState(() => _isScanning = scanning);
       });
 
       // Kiểm tra trạng thái hiện tại và kích hoạt quét ngay
@@ -127,6 +132,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
         _scanResultSub?.cancel();
         _scanResultSub = FlutterBluePlus.scanResults.listen(_processNativeScanResults);
+        _processNativeScanResults(FlutterBluePlus.lastScanResults);
 
         await FlutterBluePlus.startScan(
           timeout: const Duration(seconds: 15),
@@ -187,33 +193,33 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     for (final r in results) {
       final adv = r.advertisementData;
       final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
-      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase().replaceAll('-', '')).toList();
+      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
 
-      final bool isAustecService = serviceUuids.any((u) => u.contains('6e400001'));
-      final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
-                                rawName.toLowerCase().contains('austec') ||
-                                rawName.toLowerCase().contains('esp') ||
-                                rawName.toLowerCase().contains('cuacuon') ||
-                                rawName.toLowerCase().contains('door');
+      final matchedProfile = DeviceProvisioningCatalog.resolveProfile(
+        rawName: rawName,
+        advertisedUuids: serviceUuids,
+      );
+      final bool isRecognized = matchedProfile.matches(rawName: rawName, advertisedUuids: serviceUuids);
       final bool isTargetMatch = targetId.isNotEmpty &&
           (rawName.toLowerCase() == targetId.toLowerCase() ||
            r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
 
-      final bool isAustec = isAustecService || isAustecName || isTargetMatch;
+      final bool isAustec = isRecognized || isTargetMatch;
       // Chấp nhận mọi thiết bị Austec/ESP32 hoặc thiết bị BLE có tên xung quanh
       if (isAustec || rawName.isNotEmpty) {
         final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
         final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
         final newDev = DiscoveredHardwareBLE(
           hardwareId: devId,
-          modelName: isAustec
-              ? "Cửa Cuốn Austec ($devId - Bluetooth Thực)"
+          modelName: isRecognized
+              ? "${matchedProfile.defaultTitle} ($devId)"
               : "Thiết Bị BLE ($devId)",
-          category: DeviceCategory.rollerDoor,
+          category: matchedProfile.category,
           rssi: r.rssi,
-          bleUuid: isAustecService ? "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" : "",
+          bleUuid: matchedProfile.bleServiceUuids.first,
           isRealHardware: true,
           nativeDevice: r.device,
+          profile: matchedProfile,
         );
         if (idx >= 0) {
           list[idx] = newDev;
@@ -491,19 +497,64 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               Column(
                 children: _discoveredDevices.map((dev) {
                   final isSelected = _selectedDevice?.hardwareId == dev.hardwareId;
+                  final accent = dev.profile.accentColor;
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.cyanAccent.withValues(alpha: 0.15) : AppTheme.surface,
+                      color: isSelected ? accent.withValues(alpha: 0.15) : AppTheme.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSelected ? AppTheme.cyanAccent : AppTheme.cardBorder),
+                      border: Border.all(color: isSelected ? accent : AppTheme.cardBorder),
                     ),
                     child: ListTile(
                       dense: true,
-                      leading: const Icon(Icons.bluetooth, color: AppTheme.cyanAccent),
-                      title: Text(dev.modelName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      subtitle: Text("ID: ${dev.hardwareId} • RSSI: ${dev.rssi} dBm", style: const TextStyle(fontSize: 10, color: AppTheme.textMuted)),
-                      trailing: isSelected ? const Icon(Icons.check_circle, color: AppTheme.cyanAccent, size: 20) : null,
+                      leading: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: accent.withValues(alpha: 0.3)),
+                        ),
+                        child: Icon(dev.profile.icon, color: accent, size: 20),
+                      ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              dev.modelName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.18),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: accent.withValues(alpha: 0.45)),
+                            ),
+                            child: Text(
+                              dev.category == DeviceCategory.camera
+                                  ? "CAMERA AI"
+                                  : dev.category == DeviceCategory.rollerDoor
+                                      ? "CỬA CUỐN"
+                                      : "THIẾT BỊ",
+                              style: TextStyle(
+                                color: accent,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        "ID: ${dev.hardwareId} • Sóng: ${dev.rssi} dBm",
+                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      ),
+                      trailing: isSelected ? Icon(Icons.check_circle, color: accent, size: 20) : null,
                       onTap: () => setState(() => _selectedDevice = dev),
                     ),
                   );

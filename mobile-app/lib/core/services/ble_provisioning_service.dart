@@ -5,6 +5,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:http/http.dart' as http;
 import '../models/device_model.dart';
 import '../constants/api_config.dart';
+import '../constants/device_provisioning_catalog.dart';
 import 'iot_gateway_client.dart';
 import 'auth_service.dart';
 import 'ble_web_scanner.dart';
@@ -22,6 +23,7 @@ class DiscoveredHardwareBLE {
   final String bleUuid;
   final bool isRealHardware;
   final BluetoothDevice? nativeDevice;
+  final DeviceProvisioningProfile profile;
 
   DiscoveredHardwareBLE({
     required this.hardwareId,
@@ -31,7 +33,8 @@ class DiscoveredHardwareBLE {
     required this.bleUuid,
     this.isRealHardware = true,
     this.nativeDevice,
-  });
+    DeviceProvisioningProfile? profile,
+  }) : profile = profile ?? DeviceProvisioningCatalog.resolveProfile(rawName: hardwareId);
 }
 
 class PairingResult {
@@ -72,32 +75,31 @@ class BleProvisioningService {
             final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
             final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
 
-            final bool isAustecService = serviceUuids.any((u) => u.contains('6e400001'));
-            final bool isAustecName = rawName.toLowerCase().contains('amtuong') ||
-                                      rawName.toLowerCase().contains('austec') ||
-                                      rawName.toLowerCase().contains('esp') ||
-                                      rawName.toLowerCase().contains('cuacuon') ||
-                                      rawName.toLowerCase().contains('door');
+            final matchedProfile = DeviceProvisioningCatalog.resolveProfile(
+              rawName: rawName,
+              advertisedUuids: serviceUuids,
+            );
+            final bool isRecognized = matchedProfile.matches(rawName: rawName, advertisedUuids: serviceUuids);
             final bool isTargetMatch = targetHardwareId != null &&
                 targetHardwareId.trim().isNotEmpty &&
                 (rawName.toLowerCase() == targetHardwareId.trim().toLowerCase() ||
                  r.device.remoteId.str.toLowerCase() == targetHardwareId.trim().toLowerCase());
 
-            final bool isAustec = isAustecService || isAustecName || isTargetMatch;
-            if (isAustec || rawName.isNotEmpty) {
+            if (isRecognized || isTargetMatch || rawName.isNotEmpty) {
               final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : r.device.remoteId.str);
               final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
               if (!exists) {
                 discovered.add(DiscoveredHardwareBLE(
                   hardwareId: devId,
-                  modelName: isAustec
-                      ? "Cửa Cuốn Austec ($devId - Bluetooth Thực)"
+                  modelName: isRecognized
+                      ? "${matchedProfile.defaultTitle} ($devId)"
                       : "Thiết Bị BLE ($devId)",
-                  category: DeviceCategory.rollerDoor,
+                  category: matchedProfile.category,
                   rssi: r.rssi,
-                  bleUuid: isAustecService ? "6E400001-B5A3-F393-E0A9-E50E24DCCA9E" : "",
+                  bleUuid: matchedProfile.bleServiceUuids.first,
                   isRealHardware: true,
                   nativeDevice: r.device,
+                  profile: matchedProfile,
                 ));
               }
             }
@@ -122,13 +124,15 @@ class BleProvisioningService {
             if (hwId.isNotEmpty) {
               final exists = discovered.any((item) => item.hardwareId.toLowerCase() == hwId.toLowerCase());
               if (!exists) {
+                final profile = DeviceProvisioningCatalog.resolveProfile(rawName: hwId);
                 discovered.add(DiscoveredHardwareBLE(
                   hardwareId: hwId,
-                  modelName: d['modelName'] ?? 'Cửa Cuốn Austec ($hwId - Mạng AP)',
-                  category: DeviceCategory.rollerDoor,
+                  modelName: d['modelName'] ?? '${profile.defaultTitle} ($hwId - Mạng AP)',
+                  category: profile.category,
                   rssi: (d['rssi'] as num?)?.toInt() ?? -42,
-                  bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                  bleUuid: profile.bleServiceUuids.first,
                   isRealHardware: true,
+                  profile: profile,
                 ));
               }
             }
@@ -146,13 +150,15 @@ class BleProvisioningService {
           if (foundId.isNotEmpty) {
             final exists = discovered.any((d) => d.hardwareId.toLowerCase() == foundId.toLowerCase());
             if (!exists) {
+              final profile = DeviceProvisioningCatalog.resolveProfile(rawName: foundId);
               discovered.add(DiscoveredHardwareBLE(
                 hardwareId: foundId,
-                modelName: "Cửa Cuốn Austec ($foundId - Bluetooth Thực)",
-                category: DeviceCategory.rollerDoor,
+                modelName: "${profile.defaultTitle} ($foundId - Bluetooth Thực)",
+                category: profile.category,
                 rssi: -39,
-                bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+                bleUuid: profile.bleServiceUuids.first,
                 isRealHardware: true,
+                profile: profile,
               ));
             }
           }
@@ -165,13 +171,15 @@ class BleProvisioningService {
       final q = targetHardwareId.trim();
       final exists = discovered.any((d) => d.hardwareId.toLowerCase() == q.toLowerCase());
       if (!exists) {
+        final profile = DeviceProvisioningCatalog.resolveProfile(rawName: q);
         discovered.add(DiscoveredHardwareBLE(
           hardwareId: q,
-          modelName: "Cửa Cuốn Austec ($q - Khớp Tem ID)",
-          category: DeviceCategory.rollerDoor,
+          modelName: "${profile.defaultTitle} ($q - Khớp Tem ID)",
+          category: profile.category,
           rssi: -45,
-          bleUuid: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E",
+          bleUuid: profile.bleServiceUuids.first,
           isRealHardware: true,
+          profile: profile,
         ));
       }
     }
@@ -201,11 +209,19 @@ class BleProvisioningService {
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
     final String targetBrokerIp = (brokerIp != null && brokerIp.isNotEmpty) ? brokerIp : '192.168.100.6';
-    final String payloadString = "onboard/$wifiSsid/$wifiPassword/$currentUserId/$targetBrokerIp/$brokerPort";
+    final profile = targetDevice.profile;
+    final inputData = ProvisioningInputData(
+      ssid: wifiSsid,
+      password: wifiPassword,
+      userId: currentUserId,
+      brokerIp: targetBrokerIp,
+      brokerPort: brokerPort,
+    );
+    final String payloadString = profile.buildBlePayload(inputData);
 
     // Step 1: Truyền thông trực tiếp xuống bo mạch phần cứng thực tế
     if (method == PairingMethod.bluetooth) {
-      onProgress("Đang kết nối Bluetooth BLE với phần cứng [${targetDevice.hardwareId}]...", 0.20);
+      onProgress("Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.20);
       
       bool bleSuccess = false;
       if (kIsWeb) {
@@ -222,11 +238,13 @@ class BleProvisioningService {
           if (devToConnect == null) {
             final scanResults = FlutterBluePlus.lastScanResults;
             if (scanResults.isNotEmpty) {
+              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toLowerCase()).toList();
               final match = scanResults.firstWhere(
                 (r) {
                   final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+                  final advUuids = r.advertisementData.serviceUuids.map((u) => u.toString().replaceAll('-', '').toLowerCase()).toList();
                   return n == targetDevice.hardwareId.toLowerCase() ||
-                         r.advertisementData.serviceUuids.any((u) => u.toString().toLowerCase().contains('6e400001'));
+                         advUuids.any((adv) => normTargetUuids.any((target) => adv.contains(target)));
                 },
                 orElse: () => scanResults.first,
               );
@@ -240,13 +258,24 @@ class BleProvisioningService {
               timeout: const Duration(seconds: 8),
             );
             final services = await devToConnect.discoverServices();
-            final nusService = services.firstWhere(
-              (s) => s.uuid.toString().toUpperCase().contains('6E400001'),
+            final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
+            final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
+
+            final targetService = services.firstWhere(
+              (s) {
+                final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
+                return normTargetUuids.any((t) => sUuid.contains(t));
+              },
               orElse: () => services.first,
             );
-            final rxChar = nusService.characteristics.firstWhere(
-              (c) => c.uuid.toString().toUpperCase().contains('6E400002'),
-              orElse: () => nusService.characteristics.first,
+            final rxChar = targetService.characteristics.firstWhere(
+              (c) {
+                final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+                return cUuid.contains(normRxChar) ||
+                       cUuid.contains("6E400002") ||
+                       cUuid.contains("BEA5C122");
+              },
+              orElse: () => targetService.characteristics.first,
             );
             await rxChar.write(utf8.encode(payloadString));
             bleSuccess = true;
@@ -270,9 +299,7 @@ class BleProvisioningService {
       onProgress("Đang gửi thông số qua Wi-Fi SoftAP tới bo mạch (192.168.4.1)...", 0.25);
       bool apSuccess = false;
       try {
-        final apUri = Uri.parse(
-          'http://192.168.4.1/?SSID=${Uri.encodeComponent(wifiSsid)}&PASS=${Uri.encodeComponent(wifiPassword)}&USER=${Uri.encodeComponent(currentUserId)}&IP=${Uri.encodeComponent(targetBrokerIp)}&PORT=$brokerPort',
-        );
+        final apUri = profile.buildSoftApUri(inputData, apHost: '192.168.4.1');
         final apRes = await http.get(apUri).timeout(const Duration(seconds: 4));
         if (apRes.statusCode == 200) {
           apSuccess = true;
@@ -307,7 +334,7 @@ class BleProvisioningService {
         body: jsonEncode({
           'hardwareId': targetDevice.hardwareId,
           'userId': currentUserId,
-          'modelCode': 'DOOR_GERMAN_ALU',
+          'modelCode': profile.defaultModelCode,
           'customerName': targetDevice.modelName,
           'ownerName': currentUserName,
         }),
