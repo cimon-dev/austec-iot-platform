@@ -498,8 +498,8 @@ export class DevicesRepository {
       let query = `
         SELECT 
           di.*,
-          COALESCE(di.owner_name, u.full_name, 'Chưa gán') as resolved_owner_name,
-          COALESCE(di.owner_phone, u.phone_number, '---') as resolved_owner_phone,
+          COALESCE(NULLIF(di.owner_name, 'Chưa gán'), u.full_name, 'Chưa gán') as resolved_owner_name,
+          COALESCE(NULLIF(di.owner_phone, '---'), u.phone_number, '---') as resolved_owner_phone,
           COALESCE(di.model_name, m.model_name, inv.model_name, 'AUSTEC-A900') as resolved_model_name,
           COALESCE(di.group_name, 'Chưa phân nhóm') as resolved_group_name,
           m.model_code,

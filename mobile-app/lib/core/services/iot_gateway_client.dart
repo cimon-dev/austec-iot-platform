@@ -6,6 +6,7 @@ import '../models/device_model.dart';
 import '../constants/app_theme.dart';
 import '../constants/api_config.dart';
 import 'auth_service.dart';
+import 'ble_device_control_service.dart';
 
 class CommandResult {
   final bool success;
@@ -221,7 +222,16 @@ class IoTGatewayClient {
     String cryptoSig = "SIG-${DateTime.now().millisecondsSinceEpoch}";
     int netLatency = 120;
 
-    // Send real command to PostgreSQL backend API
+    // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
+    final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
+        : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"
+        : (action == "STOP_DOOR" || action == "STOP" || action == "3") ? "3"
+        : null;
+    if (bleAction != null) {
+      unawaited(BleDeviceControlService().sendDoorAction(hardwareId: hardwareId, actionNumber: bleAction));
+    }
+
+    // 2. Kênh Cloud MQTT Gateway: Cập nhật CSDL PostgreSQL & đồng bộ Web Admin qua API
     try {
       final beAction = action == "OPEN_DOOR"
           ? "OPEN"

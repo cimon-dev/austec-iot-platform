@@ -247,23 +247,31 @@ export function createApp() {
           `UPDATE device_inventory SET status = 'ACTIVE' WHERE hardware_id = $1`,
           [resolvedHwId]
         );
+
+        const uRes = await postgresClient.query(`SELECT id, full_name, phone_number, email FROM users WHERE id = $1`, [targetUser.id]);
+        const dbUser = uRes.rows[0];
+        const ownerFullName = dbUser?.full_name || targetUser.fullName || targetUser.email || 'Chủ sở hữu';
+        const ownerPhone = dbUser?.phone_number || '---';
+
         const instRes = await postgresClient.query(
-          `INSERT INTO device_instances (id, hardware_id, owner_id, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
+             owner_name = EXCLUDED.owner_name,
+             owner_phone = EXCLUDED.owner_phone,
              custom_name = EXCLUDED.custom_name,
              address_display = EXCLUDED.address_display,
              is_online = true
            RETURNING *`,
-          [resolvedHwId, resolvedHwId, targetUser.id, finalName, location || 'Nhà riêng']
+          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, location || 'Nhà riêng']
         );
         const permId = `PERM-${resolvedHwId}-${targetUser.id.slice(0, 8)}`;
         await postgresClient.query(
-          `INSERT INTO device_permissions (id, hardware_id, user_id, member_name, role, can_control, can_view_history, can_child_lock, can_config, created_at)
-           VALUES ($1, $2, $3, $4, 'OWNER', true, true, true, true, NOW()::text)
-           ON CONFLICT (id) DO UPDATE SET can_control = true, role = 'OWNER'`,
-          [permId, resolvedHwId, targetUser.id, targetUser.fullName || targetUser.email || 'Chủ sở hữu']
+          `INSERT INTO device_permissions (id, hardware_id, user_id, member_name, phone_number, role, can_control, can_view_history, can_child_lock, can_config, created_at)
+           VALUES ($1, $2, $3, $4, $5, 'OWNER', true, true, true, true, NOW()::text)
+           ON CONFLICT (id) DO UPDATE SET can_control = true, role = 'OWNER', member_name = EXCLUDED.member_name, phone_number = EXCLUDED.phone_number`,
+          [permId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone]
         );
         const inst = instRes.rows[0];
         const warrantyUntil = inst.warranty_end_at ? new Date(inst.warranty_end_at).toISOString().slice(0, 10) : '2028-10-23';
