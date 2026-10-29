@@ -589,7 +589,7 @@ export class DevicesRepository {
   }
 
   public async createDevice(data: any): Promise<any> {
-    const hwId = (data.hwId || data.hardwareId || `AT-${Date.now()}`).trim().toUpperCase();
+    const hwId = (data.hwId || data.hardwareId || `AT-${Date.now()}`).trim();
     const name = data.name || data.customName || `Thiết bị ${hwId}`;
     const model = data.model || data.modelName || 'AUSTEC-A900';
     const type = data.type || data.deviceType || 'DOOR';
@@ -690,7 +690,7 @@ export class DevicesRepository {
   }
 
   public async updateDevice(hardwareId: string, data: any): Promise<any> {
-    const hwId = hardwareId.trim().toUpperCase();
+    const hwId = hardwareId.trim();
     const name = data.name || data.customName;
     const model = data.model || data.modelName;
     const type = data.type || data.deviceType;
@@ -776,7 +776,7 @@ export class DevicesRepository {
 
   public async deleteDevice(hardwareId: string): Promise<boolean> {
     try {
-      const hwId = hardwareId.trim().toUpperCase();
+      const hwId = hardwareId.trim();
       await this.client.query('DELETE FROM device_instances WHERE hardware_id = $1', [hwId]);
       await this.client.query('DELETE FROM device_inventory WHERE hardware_id = $1', [hwId]);
       await this.client.query('DELETE FROM device_permissions WHERE hardware_id = $1', [hwId]);

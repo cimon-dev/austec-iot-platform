@@ -101,8 +101,8 @@ export function CreateDeviceModal({
     setIsSubmitting(true);
 
     const payload = {
-      hardwareId: form.hardwareId.trim().toUpperCase(),
-      hwId: form.hardwareId.trim().toUpperCase(),
+      hardwareId: form.hardwareId.trim(),
+      hwId: form.hardwareId.trim(),
       customName: form.customName.trim(),
       name: form.customName.trim(),
       modelName: form.modelName || models[0]?.modelCode || "AUSTEC-A900",
@@ -196,10 +196,10 @@ export function CreateDeviceModal({
             <input
               type="text"
               required
-              placeholder="vd: AT-DOOR-88239A99 hoặc AT-CAM-00109A99"
+              placeholder="vd: esp32_door_01 hoặc AT-DOOR-88239A99"
               value={form.hardwareId}
               onChange={(e) => setForm({ ...form, hardwareId: e.target.value })}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-mono focus:outline-none uppercase ${
+              className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-mono focus:outline-none ${
                 isDuplicateHwId 
                   ? "border-rose-500 ring-2 ring-rose-500/20" 
                   : "border-slate-200 dark:border-slate-700 focus:border-cyan-500"

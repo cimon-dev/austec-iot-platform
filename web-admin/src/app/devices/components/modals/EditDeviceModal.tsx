@@ -172,7 +172,7 @@ export function EditDeviceModal({
               type="text"
               disabled
               value={hardwareId}
-              className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono cursor-not-allowed uppercase"
+              className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 font-mono cursor-not-allowed"
             />
           </div>
 

@@ -237,9 +237,15 @@ export function createApp() {
       const finalName = customName || deviceName || 'Cửa Cuốn Gia Đình';
 
       if (postgresClient.getConnected()) {
+        const invRes = await postgresClient.query(
+          `SELECT hardware_id, model_name, device_type FROM device_inventory WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1 LIMIT 1`,
+          [hardwareId]
+        );
+        const resolvedHwId = invRes.rows.length > 0 ? invRes.rows[0].hardware_id : hardwareId;
+
         await postgresClient.query(
           `UPDATE device_inventory SET status = 'ACTIVE' WHERE hardware_id = $1`,
-          [hardwareId]
+          [resolvedHwId]
         );
         const instRes = await postgresClient.query(
           `INSERT INTO device_instances (id, hardware_id, owner_id, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
@@ -250,18 +256,18 @@ export function createApp() {
              address_display = EXCLUDED.address_display,
              is_online = true
            RETURNING *`,
-          [hardwareId, hardwareId, targetUser.id, finalName, location || 'Nhà riêng']
+          [resolvedHwId, resolvedHwId, targetUser.id, finalName, location || 'Nhà riêng']
         );
-        const permId = `PERM-${hardwareId}-${targetUser.id.slice(0, 8)}`;
+        const permId = `PERM-${resolvedHwId}-${targetUser.id.slice(0, 8)}`;
         await postgresClient.query(
           `INSERT INTO device_permissions (id, hardware_id, user_id, member_name, role, can_control, can_view_history, can_child_lock, can_config, created_at)
            VALUES ($1, $2, $3, $4, 'OWNER', true, true, true, true, NOW()::text)
            ON CONFLICT (id) DO UPDATE SET can_control = true, role = 'OWNER'`,
-          [permId, hardwareId, targetUser.id, targetUser.fullName || targetUser.email || 'Chủ sở hữu']
+          [permId, resolvedHwId, targetUser.id, targetUser.fullName || targetUser.email || 'Chủ sở hữu']
         );
         const inst = instRes.rows[0];
         const warrantyUntil = inst.warranty_end_at ? new Date(inst.warranty_end_at).toISOString().slice(0, 10) : '2028-10-23';
-        const warrantyCode = `EW-${hardwareId.replace(/-/g, '').toUpperCase()}-24M`;
+        const warrantyCode = `EW-${resolvedHwId.replace(/-/g, '').toUpperCase()}-24M`;
 
         return res.json({
           success: true,
