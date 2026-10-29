@@ -233,6 +233,13 @@ class BleProvisioningService {
         } catch (_) {}
       } else {
         try {
+          // 1. Dừng quét BLE trước khi kết nối (Bắt buộc trên iOS CoreBluetooth để không bị đơ)
+          try {
+            if (FlutterBluePlus.isScanningNow) {
+              await FlutterBluePlus.stopScan();
+            }
+          } catch (_) {}
+
           // Native FlutterBluePlus trên Android / iOS
           BluetoothDevice? devToConnect = targetDevice.nativeDevice;
           if (devToConnect == null) {
@@ -253,34 +260,49 @@ class BleProvisioningService {
           }
 
           if (devToConnect != null) {
-            await devToConnect.connect(
-              license: License.nonprofit,
-              timeout: const Duration(seconds: 8),
-            );
-            final services = await devToConnect.discoverServices();
-            final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
-            final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
+            if (!devToConnect.isConnected) {
+              await devToConnect.connect(
+                license: License.nonprofit,
+                timeout: const Duration(seconds: 5),
+              ).timeout(const Duration(seconds: 6));
+            }
+            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 5));
+            if (services.isNotEmpty) {
+              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
+              final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
 
-            final targetService = services.firstWhere(
-              (s) {
-                final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
-                return normTargetUuids.any((t) => sUuid.contains(t));
-              },
-              orElse: () => services.first,
-            );
-            final rxChar = targetService.characteristics.firstWhere(
-              (c) {
-                final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
-                return cUuid.contains(normRxChar) ||
-                       cUuid.contains("6E400002") ||
-                       cUuid.contains("BEA5C122");
-              },
-              orElse: () => targetService.characteristics.first,
-            );
-            await rxChar.write(utf8.encode(payloadString));
-            bleSuccess = true;
-            await Future.delayed(const Duration(milliseconds: 600));
-            await devToConnect.disconnect();
+              final targetService = services.firstWhere(
+                (s) {
+                  final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
+                  return normTargetUuids.any((t) => sUuid.contains(t));
+                },
+                orElse: () => services.first,
+              );
+
+              final chars = targetService.characteristics;
+              if (chars.isNotEmpty) {
+                final rxChar = chars.firstWhere(
+                  (c) {
+                    final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+                    return cUuid.contains(normRxChar) ||
+                           cUuid.contains("6E400002") ||
+                           cUuid.contains("BEA5C122");
+                  },
+                  orElse: () => chars.firstWhere(
+                    (c) => c.properties.write || c.properties.writeWithoutResponse,
+                    orElse: () => chars.first,
+                  ),
+                );
+
+                final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
+                await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
+                bleSuccess = true;
+                await Future.delayed(const Duration(milliseconds: 400));
+                try {
+                  await devToConnect.disconnect();
+                } catch (_) {}
+              }
+            }
           }
         } catch (e) {
           debugPrint("BLE native provision error: $e");

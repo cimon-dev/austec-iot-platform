@@ -323,6 +323,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       _pairingResult = null;
     });
 
+    StateSetter? dialogSetState;
+
     _bleService.provisionDevice(
       targetDevice: _selectedDevice!,
       wifiSsid: _ssidController.text.trim(),
@@ -337,50 +339,77 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             _provisioningStep = step;
             _provisioningProgress = progress;
           });
+          dialogSetState?.call(() {});
         }
       },
-    ).then((result) {
+    ).then((result) async {
+      await IoTGatewayClient().fetchDevicesFromBackend();
       if (mounted && _isProvisioning) {
         setState(() {
           _isProvisioning = false;
           _pairingResult = result;
           _provisioningProgress = 1.0;
         });
+        dialogSetState?.call(() {});
+      }
+    }).catchError((err) {
+      if (mounted && _isProvisioning) {
+        setState(() {
+          _isProvisioning = false;
+          _provisioningStep = "Lỗi ghép nối: $err";
+        });
+        dialogSetState?.call(() {});
       }
     });
 
     showDialog(
       context: context,
-      barrierDismissible: true,
-      builder: (ctx) => PairingProgressDialog(
-        isProvisioning: _isProvisioning,
-        provisioningProgress: _provisioningProgress,
-        provisioningStep: _provisioningStep,
-        pairingResult: _pairingResult,
-        wifiSsid: _ssidController.text,
-        onCancel: () {
-          setState(() {
-            _isProvisioning = false;
-            _provisioningProgress = 0.0;
-            _pairingResult = null;
-          });
-          Navigator.of(ctx).pop();
-        },
-        onControlDoor: (hwId) {
-          final dev = IoTGatewayClient().findByHardwareId(hwId);
-          if (dev != null) {
-            if (dev.category == DeviceCategory.rollerDoor) {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev)),
-              );
-            } else {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev)),
-              );
-            }
-          } else {
-            Navigator.of(context).pop();
-          }
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          dialogSetState = setDialogState;
+          return PairingProgressDialog(
+            isProvisioning: _isProvisioning,
+            provisioningProgress: _provisioningProgress,
+            provisioningStep: _provisioningStep,
+            pairingResult: _pairingResult,
+            wifiSsid: _ssidController.text,
+            onCancel: () {
+              setState(() {
+                _isProvisioning = false;
+                _provisioningProgress = 0.0;
+                _pairingResult = null;
+              });
+              Navigator.of(ctx).pop();
+            },
+            onControlDoor: (hwId) async {
+              await IoTGatewayClient().fetchDevicesFromBackend();
+              DeviceItem? dev = IoTGatewayClient().findByHardwareId(hwId);
+              if (dev == null) {
+                dev = DeviceItem(
+                  id: hwId,
+                  hardwareId: hwId,
+                  name: _selectedDevice?.modelName ?? 'Cửa cuốn Austec',
+                  modelName: _selectedDevice?.modelName ?? 'Austec Titadoor',
+                  category: _selectedDevice?.category ?? DeviceCategory.rollerDoor,
+                  isOnline: true,
+                );
+                IoTGatewayClient().addDevice(dev);
+              }
+
+              if (mounted) {
+                if (dev.category == DeviceCategory.rollerDoor) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev!)),
+                  );
+                } else {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev!)),
+                  );
+                }
+              }
+            },
+          );
         },
       ),
     );
