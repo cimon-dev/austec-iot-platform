@@ -73,10 +73,13 @@ export class CommandService {
       OPEN: '1',
       CLOSE: '2',
       STOP: '3',
+      '1': '1',
+      '2': '2',
+      '3': '3',
       RF_SETUP: '11',
       RF_CLEAR: '12',
     };
-    const actionCode = actionMap[req.command] || '3';
+    const actionCode = actionMap[req.command] || req.command || '3';
     
     if (this.mqttGateway) {
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);

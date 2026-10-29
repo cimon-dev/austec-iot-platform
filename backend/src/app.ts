@@ -336,7 +336,9 @@ export function createApp() {
 
   app.post('/api/devices/control', AuthService.authenticate, async (req: AuthenticatedRequest, res) => {
     try {
-      const { hardwareId, command, params } = req.body;
+      const hardwareId = req.body.hardwareId;
+      const command = req.body.command || req.body.action;
+      const params = req.body.params || req.body.parameters;
       const targetUser = req.user!;
       if (!hardwareId || !command) {
         return res.status(400).json({ success: false, error: 'Thiếu hardwareId hoặc command' });
@@ -359,10 +361,6 @@ export function createApp() {
            WHERE hardware_id = $2`,
           [command, hardwareId]
         );
-      }
-
-      if (mqttGateway) {
-        await mqttGateway.publishAction(targetUser.id, hardwareId, command);
       }
 
       wss.clients.forEach(c => {

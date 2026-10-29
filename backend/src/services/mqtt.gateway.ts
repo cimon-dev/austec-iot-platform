@@ -78,7 +78,12 @@ export class MqttGateway {
       // 1. Gói tin ONBOARDING từ chip ESP32
       if (subType === 'onboard' || topic.endsWith('/onboard')) {
         console.log(`[MQTT Gateway] 🚀 Thiết bị [${hwId}] thông báo ONBOARD thành công! Chủ sở hữu: ${user}`);
-        await this.postgresService.registerPairingDevice(hwId, 'DOOR_GERMAN_ALU', '00000000-0000-0000-0000-000000000001');
+        await this.postgresService.registerPairingDevice(hwId, 'DOOR_GERMAN_ALU', user || '00000000-0000-0000-0000-000000000001');
+        await this.hotCache.setDeviceState(hwId, {
+          isOnline: true,
+          currentProperties: { open_state: 'CLOSED', ownerId: user },
+          lastHeartbeat: new Date().toISOString(),
+        });
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
@@ -96,7 +101,7 @@ export class MqttGateway {
 
         await this.hotCache.setDeviceState(hwId, {
           isOnline: true,
-          currentProperties: { open_state: openState, lastAction: payload },
+          currentProperties: { open_state: openState, lastAction: payload, ownerId: user },
           lastHeartbeat: new Date().toISOString(),
         });
 
@@ -132,8 +137,18 @@ export class MqttGateway {
    * Action: "1" (Mở), "2" (Đóng), "3" (Dừng), "11" (Học RF), "12" (Xóa RF)
    */
   public async publishAction(userId: string, hwId: string, actionNumber: string): Promise<boolean> {
-    const topic = `${userId || 'austec'}/${hwId}/sub/action`;
-    return this.publishMessage(topic, actionNumber);
+    const primaryTopic = `${userId || 'austec'}/${hwId}/sub/action`;
+    const res = await this.publishMessage(primaryTopic, actionNumber);
+
+    try {
+      const state = await this.hotCache.getDeviceState(hwId);
+      const knownOwner = (state?.currentProperties as any)?.ownerId;
+      if (knownOwner && knownOwner !== userId) {
+        await this.publishMessage(`${knownOwner}/${hwId}/sub/action`, actionNumber);
+      }
+    } catch (_) {}
+
+    return res;
   }
 
   /**

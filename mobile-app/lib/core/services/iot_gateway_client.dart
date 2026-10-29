@@ -365,14 +365,16 @@ class IoTGatewayClient {
                   ? "STOP"
                   : action;
 
+      final userToken = AuthService().token ?? 'austec-customer-token';
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer austec-customer-token',
+          'Authorization': 'Bearer $userToken',
         },
         body: jsonEncode({
           'hardwareId': hardwareId,
+          'command': beAction,
           'action': beAction,
           'parameters': parameters ?? {},
         }),
