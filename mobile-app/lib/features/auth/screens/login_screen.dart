@@ -108,21 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _selectDemoAccount(String name, String email, String phone) {
-    setState(() {
-      _identifierController.text = email;
-      _passwordController.text = "Austec123!@#";
-      _errorMessage = null;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Đã nạp tài khoản mẫu: $name"),
-        duration: const Duration(seconds: 1),
-        backgroundColor: AppTheme.blueAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -374,42 +359,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
 
-                  // Quick Demo Accounts
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppTheme.cardBorder.withValues(alpha: 0.5)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.bolt_rounded, color: AppTheme.amberWarning, size: 14),
-                            SizedBox(width: 6),
-                            Text(
-                              "TÀI KHOẢN MẪU TEST NHANH (1-CLICK):",
-                              style: TextStyle(color: AppTheme.amberWarning, fontSize: 10, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            _buildDemoChip("Nguyễn Mạnh Đức", "ducduc02092005@gmail.com", "0944102588"),
-                            _buildDemoChip("Nguyễn Văn An", "nguyenvana@gmail.com", "0912345678"),
-                            _buildDemoChip("Tạ Thị Hoan", "thanhhoan151191@gmail.com", "0979031573"),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 24),
 
                   // Register link
@@ -448,21 +398,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildDemoChip(String name, String email, String phone) {
-    return GestureDetector(
-      onTap: () => _selectDemoAccount(name, email, phone),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceGlass,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          name,
-          style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
 }

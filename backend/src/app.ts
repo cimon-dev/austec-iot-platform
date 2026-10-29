@@ -106,7 +106,18 @@ export function createApp() {
 
   const hotCache = new HotCacheClient();
   const blackboxService = new BlackboxService();
-  const provisioningService = new ProvisioningService(migrated.migratedInventory, migrated.migratedInstances);
+
+  // Restore persistence payload
+  const existingBackup = persistenceService.load();
+  let usersStore: UnifiedUser[] = existingBackup?.users?.length ? existingBackup.users : [...INITIAL_SEED_USERS];
+  let productsStore = existingBackup?.products || [...migrated.migratedProducts];
+  let permissionsStore = existingBackup?.permissions || [];
+  let supportRequestsStore = existingBackup?.requests || [];
+
+  const provisioningService = new ProvisioningService(
+    existingBackup?.deviceInventory || [],
+    existingBackup?.deviceInstances || []
+  );
   const commandService = new CommandService(blackboxService, hotCache);
   const supportService = new SupportService(hotCache);
 
@@ -119,13 +130,6 @@ export function createApp() {
   });
   mqttGateway.start(1883).catch(e => console.warn('[Server] MQTT Gateway warning:', e.message));
   commandService.setMqttGateway(mqttGateway);
-
-  // Restore persistence payload
-  const existingBackup = persistenceService.load();
-  let usersStore: UnifiedUser[] = existingBackup?.users || [...INITIAL_SEED_USERS];
-  let productsStore = existingBackup?.products || [...migrated.migratedProducts];
-  let permissionsStore = existingBackup?.permissions || [...migrated.migratedPermissions];
-  let supportRequestsStore = existingBackup?.requests || [...migrated.migratedRequests];
 
   if (existingBackup?.supportTickets && existingBackup?.supportMessages) {
     supportService.importData({
@@ -150,8 +154,8 @@ export function createApp() {
 
   supportService.onUpdate = () => persistAll();
 
-  // Populate hot cache
-  migrated.migratedInstances.forEach(inst => {
+  // Populate hot cache from real instances
+  (existingBackup?.deviceInstances || []).forEach(inst => {
     hotCache.setDeviceState(inst.hardwareId, {
       ...inst.currentProperties,
       isOnline: inst.isOnline,
@@ -167,10 +171,10 @@ export function createApp() {
   app.use('/api', createStoreRouter(postgresClient, productsStore, persistAll));
   app.use('/api', createUsersRouter(usersStore, permissionsStore, persistAll, postgresClient));
   app.use('/api', createDevicesRouter(postgresClient, {
-    groups: migrated.migratedGroups,
-    types: migrated.migratedTypes,
-    properties: migrated.migratedProperties,
-    models: migrated.migratedModels,
+    groups: [],
+    types: [],
+    properties: [],
+    models: [],
   }));
   app.use('/api', createBlackboxRouter(postgresClient));
   app.use('/api', createCskhRouter(postgresClient));

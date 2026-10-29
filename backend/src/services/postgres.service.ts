@@ -503,70 +503,23 @@ export class PostgresService {
     if (!this.pool || !this.isConnected) return;
 
     try {
-      // 1. Seed Groups
-      const groupCheck = await this.pool.query('SELECT COUNT(*) FROM device_groups');
-      if (parseInt(groupCheck.rows[0].count) === 0) {
-        const initialGroups = [
-          { id: 9, code: 'DOOR_GERMAN_ALU', name: 'CỬA CUỐN NHÔM CÔNG NGHỆ ĐỨC', desc: 'Cửa cuốn nan nhôm khe thoáng công nghệ Đức Titadoor siêu êm', order: 1 },
-          { id: 10, code: 'DOOR_AU_STEEL', name: 'CỬA CUỐN TẤM LIỀN CÔNG NGHỆ ÚC', desc: 'Cửa cuốn tấm liền thép hợp kim công nghệ Úc tốc độ nhanh', order: 2 },
-          { id: 11, code: 'SMART_LOCK_MASARU', name: 'KHÓA MASARU CHUẨN NHẬT', desc: 'Khóa vân tay thông minh công nghệ Nhật Bản FaceID 3D', order: 3 },
-          { id: 12, code: 'UPS_AC_220V', name: 'LƯU ĐIỆN AC 220V SÓNG SIN', desc: 'Bộ lưu điện AC 220V - 50Hz sóng sin chuẩn thông minh', order: 4 },
-          { id: 13, code: 'UPS_STANDARD', name: 'LƯU ĐIỆN TIÊU CHUẨN AUSTEC', desc: 'Bộ lưu điện tiêu chuẩn chính hãng tự động xả sạc', order: 5 },
-          { id: 15, code: 'GSHT_TRACKER', name: 'GSHT & XE MÁY ĐIỆN', desc: 'Giám sát hành trình xe máy, ô tô, ngắt nguồn khẩn cấp', order: 6 },
-          { id: 18, code: 'AI_CAMERA_360', name: 'CAMERA AN NINH AI AUSTEC', desc: 'Hệ thống camera giám sát an ninh thông minh AI 360 độ ban đêm', order: 7 },
-          { id: 19, code: 'ENV_SENSOR', name: 'CẢM BIẾN MÔI TRƯỜNG & NHIỆT ẨM', desc: 'Cảm biến nhiệt độ, độ ẩm không khí, cảnh báo cháy & môi trường', order: 8 },
-        ];
-        for (const g of initialGroups) {
-          await this.pool.query(
-            `INSERT INTO device_groups (id, code, group_name, description, display_order, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (id) DO NOTHING`,
-            [g.id, g.code, g.name, g.desc, g.order, new Date().toISOString()]
-          );
-        }
-        await this.pool.query(`SELECT setval('device_groups_id_seq', (SELECT MAX(id) FROM device_groups))`);
-        console.log('[PostgresService] Đã nạp 8 Nhóm sản phẩm (Device Groups) vào PostgreSQL!');
-      }
+      // 1. Seed Groups - Giữ trắng để người dùng tự thêm
+      // const groupCheck = await this.pool.query('SELECT COUNT(*) FROM device_groups');
 
-      // 2. Seed Types
-      const typeCheck = await this.pool.query('SELECT COUNT(*) FROM device_types');
-      if (parseInt(typeCheck.rows[0].count) === 0) {
-        const initialTypes = [
-          { id: 10, code: 'DOOR', name: 'Cửa cuốn thông minh', desc: 'Hệ thống cửa cuốn tự động kết nối WiFi/BLE' },
-          { id: 11, code: 'SMART_LOCK', name: 'Khóa cửa thông minh', desc: 'Khóa cửa vân tay, FaceID, thẻ từ, mã số ảo' },
-          { id: 12, code: 'UPS', name: 'Bộ lưu điện thông minh', desc: 'Bộ lưu điện sóng sin, theo dõi ắc quy thời gian thực' },
-          { id: 14, code: 'AUTO_DOOR', name: 'Cửa trượt tự động', desc: 'Cửa trượt kính mắt thần tự động' },
-          { id: 15, code: 'BIKE', name: 'Xe máy điện / Định vị', desc: 'Xe điện thông minh, định vị GPS, chống trộm' },
-          { id: 16, code: 'CAMERA', name: 'Camera an ninh AI', desc: 'Camera AI nhận diện khuôn mặt và biển số' },
-          { id: 17, code: 'SENSOR', name: 'Cảm biến môi trường', desc: 'Cảm biến nhiệt ẩm, khói, khí gas' },
-        ];
-        for (const t of initialTypes) {
-          await this.pool.query(
-            `INSERT INTO device_types (id, type_code, type_name, description, created_at)
-             VALUES ($1, $2, $3, $4, $5)
-             ON CONFLICT (id) DO NOTHING`,
-            [t.id, t.code, t.name, t.desc, new Date().toISOString()]
-          );
-        }
-        await this.pool.query(`SELECT setval('device_types_id_seq', (SELECT MAX(id) FROM device_types))`);
-        console.log('[PostgresService] Đã nạp 7 Loại phần cứng (Device Types) vào PostgreSQL!');
-      }
+      // 2. Seed Types - Giữ trắng để người dùng tự thêm
+      // const typeCheck = await this.pool.query('SELECT COUNT(*) FROM device_types');
 
-      // 3. Seed Properties Dictionary
+      // 3. Seed Properties Dictionary - Chỉ lưu 7 thuộc tính thực tế của cửa cuốn
       const propCheck = await this.pool.query('SELECT COUNT(*) FROM device_properties');
       if (parseInt(propCheck.rows[0].count) === 0) {
         const initialProperties = [
-          { id: 30, key: 'battery_level', name: 'Mức pin', type: 'integer', unit: '%', widget: 'gauge', ctrl: false, min: 0, max: 100 },
           { id: 31, key: 'motor_current', name: 'Dòng điện động cơ', type: 'float', unit: 'A', widget: 'telemetry_graph', ctrl: false, min: 0, max: 20 },
           { id: 32, key: 'ac_voltage', name: 'Điện áp nguồn AC', type: 'float', unit: 'V', widget: 'gauge', ctrl: false, min: 0, max: 300 },
           { id: 33, key: 'door_state', name: 'Trạng thái cửa', type: 'string', unit: '', widget: 'status_badge', ctrl: true },
           { id: 34, key: 'position_percent', name: 'Vị trí mở cửa', type: 'integer', unit: '%', widget: 'slider', ctrl: true, min: 0, max: 100 },
-          { id: 35, key: 'humidity', name: 'Độ ẩm môi trường', type: 'float', unit: '%', widget: 'gauge', ctrl: false, min: 0, max: 100 },
-          { id: 36, key: 'temperature', name: 'Nhiệt độ môi trường', type: 'float', unit: '°C', widget: 'gauge', ctrl: false, min: -20, max: 100 },
           { id: 37, key: 'is_locked', name: 'Khóa chốt an toàn', type: 'boolean', unit: '', widget: 'toggle', ctrl: true },
-          { id: 38, key: 'is_child_lock', name: 'Khóa trẻ em', type: 'boolean', unit: '', widget: 'toggle', ctrl: true },
+          { id: 38, key: 'is_child_lock', name: 'Khóa phím trẻ em', type: 'boolean', unit: '', widget: 'toggle', ctrl: true },
           { id: 39, key: 'rf_list', name: 'Danh sách tay remote RF', type: 'json', unit: '', widget: 'status_badge', ctrl: false },
-          { id: 40, key: 'expiredAt', name: 'Hạn dịch vụ thuê bao', type: 'string', unit: '', widget: 'status_badge', ctrl: false },
         ];
         for (const p of initialProperties) {
           await this.pool.query(
@@ -576,81 +529,12 @@ export class PostgresService {
             [p.id, p.key, p.name, p.type, p.unit, p.widget, p.ctrl, p.min || null, p.max || null, new Date().toISOString()]
           );
         }
-        await this.pool.query(`SELECT setval('device_properties_id_seq', (SELECT MAX(id) FROM device_properties))`);
-        console.log('[PostgresService] Đã nạp 11 Thuộc tính viễn thám (Device Properties) vào PostgreSQL!');
+        await this.pool.query(`SELECT setval('device_properties_id_seq', (SELECT COALESCE(MAX(id), 1) FROM device_properties))`);
+        console.log('[PostgresService] Đã nạp 7 Thuộc tính cửa cuốn (Device Properties) vào PostgreSQL!');
       }
 
-      // 4. Seed Device Models
-      const modelCheck = await this.pool.query('SELECT COUNT(*) FROM device_models');
-      if (parseInt(modelCheck.rows[0].count) === 0) {
-        const initialModels = [
-          {
-            id: 1,
-            code: 'AUSTEC-A900',
-            name: 'Austec Titadoor A900 Super',
-            groupId: 9,
-            typeId: 10,
-            fw: 'v2.4.1',
-            hw: 'HW-REV-C',
-            supplier: 'Austec Smart Factory Hà Nội',
-            capabilities: ['OPEN', 'CLOSE', 'STOP', 'CHILD_LOCK'],
-          },
-          {
-            id: 2,
-            code: 'MASARU-X1',
-            name: 'Khóa Masaru Titan X1 Pro FaceID',
-            groupId: 11,
-            typeId: 11,
-            fw: 'v3.1.0',
-            hw: 'HW-REV-B',
-            supplier: 'Masaru Security Tokyo',
-            capabilities: ['UNLOCK', 'LOCK', 'GENERATE_OTP'],
-          },
-          {
-            id: 3,
-            code: 'UPS-220-SINE',
-            name: 'Austec UPS Sine 220V Intelligent',
-            groupId: 12,
-            typeId: 12,
-            fw: 'v1.8.2',
-            hw: 'HW-REV-A',
-            supplier: 'Austec Power Corp',
-            capabilities: ['SWITCH_AC_DC', 'CALIBRATE_BATTERY'],
-          },
-          {
-            id: 4,
-            code: 'AUSTEC-CAM-360',
-            name: 'Camera An Ninh AI Austec 4K HDR',
-            groupId: 18,
-            typeId: 16,
-            fw: 'v4.2.0',
-            hw: 'HW-CAM-X2',
-            supplier: 'Austec Vision Lab',
-            capabilities: ['SNAPSHOT', 'SIREN_ALARM', 'NIGHT_VISION'],
-          },
-          {
-            id: 5,
-            code: 'SENSOR-TH-ZIGBEE',
-            name: 'Trạm Môi Trường Nhiệt Ẩm MultiSensor M1 Pro',
-            groupId: 19,
-            typeId: 17,
-            fw: 'v1.2.3',
-            hw: 'HW-TH-Z1',
-            supplier: 'Austec Sensor Core',
-            capabilities: ['PING', 'CALIBRATE'],
-          },
-        ];
-        for (const m of initialModels) {
-          await this.pool.query(
-            `INSERT INTO device_models (id, model_code, model_name, group_id, type_id, firmware_version_latest, hardware_version, supplier, control_capabilities, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             ON CONFLICT (id) DO NOTHING`,
-            [m.id, m.code, m.name, m.groupId, m.typeId, m.fw, m.hw, m.supplier, JSON.stringify(m.capabilities), new Date().toISOString()]
-          );
-        }
-        await this.pool.query(`SELECT setval('device_models_id_seq', (SELECT MAX(id) FROM device_models))`);
-        console.log('[PostgresService] Đã nạp 5 Khuôn mẫu (Device Models) vào PostgreSQL!');
-      }
+      // 4. Seed Device Models - Giữ trắng để người dùng tự thêm
+      // (Không tự động nạp models mẫu)
 
       // 5. Seed System Roles & Permissions Matrix
       const roleCheck = await this.pool.query('SELECT COUNT(*) FROM system_roles');
@@ -701,39 +585,11 @@ export class PostgresService {
         console.log('[PostgresService] Đã nạp 4 Vai trò (System Roles) và Ma trận Phân quyền vào PostgreSQL!');
       }
 
-      // 6. Seed RF Remotes sample
-      const rfCheck = await this.pool.query('SELECT COUNT(*) FROM device_rf_remotes');
-      if (parseInt(rfCheck.rows[0].count) === 0) {
-        const remotes = [
-          { hwId: 'AT-DOOR-88239A01', code: 'RF-433-A101', name: 'Remote Đức Mạnh #1 (Cầm tay)', date: '2026-09-02' },
-          { hwId: 'AT-DOOR-88239A01', code: 'RF-433-A102', name: 'Remote Đức Mạnh #2 (Ô tô)', date: '2026-09-02' },
-          { hwId: 'AT-DOOR-88239A01', code: 'RF-433-A103', name: 'Remote Đức Mạnh #3 (Phòng ngủ)', date: '2026-09-05' },
-          { hwId: 'AT-DOOR-88239A04', code: 'RF-433-B201', name: 'Remote Công Bằng #1', date: '2026-09-10' },
-          { hwId: 'AT-DOOR-88239A05', code: 'RF-433-C301', name: 'Remote Đình Long #1', date: '2026-09-15' },
-        ];
-        for (const r of remotes) {
-          await this.pool.query(
-            `INSERT INTO device_rf_remotes (hardware_id, remote_code, remote_name, paired_at, is_blocked)
-             VALUES ($1, $2, $3, $4, false)`,
-            [r.hwId, r.code, r.name, r.date]
-          );
-        }
-        console.log('[PostgresService] Đã nạp danh mục Remote RF vào PostgreSQL!');
-      }
+      // 6. Seed RF Remotes sample - Giữ trắng
+      // const rfCheck = await this.pool.query('SELECT COUNT(*) FROM device_rf_remotes');
 
-      // 7. Seed Orders sample
-      const orderCheck = await this.pool.query('SELECT COUNT(*) FROM orders');
-      if (parseInt(orderCheck.rows[0].count) === 0) {
-        await this.pool.query(`
-          INSERT INTO orders (id, customer_id, customer_name, customer_phone, shipping_address, total_amount, status, notes, created_at, updated_at)
-          VALUES 
-            ('ORD-88219A', '00000000-0000-0000-0000-000000000001', 'Nguyễn Mạnh Đức', '0944102588', 'Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội', 4500000, 'COMPLETED', 'Lắp đặt phụ kiện lưu điện UPS chính hãng', '2026-10-15 10:30:00', '2026-10-15 14:00:00'),
-            ('ORD-88220B', '00000000-0000-0000-0000-000000000002', 'Dan Phung', '0906806066', 'Tòa Park 3, Vinhomes Times City, Hoàng Mai, Hà Nội', 12500000, 'CONFIRMED', 'Đặt thêm 01 bộ Khóa Masaru Titan X1', '2026-10-20 09:15:00', '2026-10-20 11:00:00'),
-            ('ORD-88221C', '00000000-0000-0000-0000-000000000003', 'Nguyễn Văn Quang', '0982487278', 'Số 88 Phố Huế, Hai Bà Trưng, Hà Nội', 650000, 'PENDING', 'Mua thêm 02 tay Remote RF 433MHz dự phòng', '2026-10-22 08:45:00', '2026-10-22 08:45:00')
-          ON CONFLICT (id) DO NOTHING
-        `);
-        console.log('[PostgresService] Đã nạp 3 Đơn hàng mẫu (Orders) vào PostgreSQL!');
-      }
+      // 7. Seed Orders sample - Giữ trắng
+      // const orderCheck = await this.pool.query('SELECT COUNT(*) FROM orders');
 
       // 8. Seed Firmware Releases
       const fwCheck = await this.pool.query('SELECT COUNT(*) FROM firmware_releases');
@@ -801,36 +657,8 @@ export class PostgresService {
         console.log('[PostgresService] Đã nạp 5 Bản phát hành Firmware (Firmware Releases) vào PostgreSQL!');
       }
 
-      // 9. Seed Active OTA Campaign and Device Records
-      const otaCheck = await this.pool.query('SELECT COUNT(*) FROM ota_campaigns');
-      if (parseInt(otaCheck.rows[0].count) === 0) {
-        const campRes = await this.pool.query(`
-          INSERT INTO ota_campaigns (campaign_name, target_model, target_version, rollout_type, status, total_devices, success_count, failed_count, in_progress_count, started_at)
-          VALUES 
-            ('Nâng cấp Firmware v1.1.0 cho toàn bộ Cửa cuốn Titadoor', 'DOOR_GERMAN_ALU', 'v1.1.0', 'ALL', 'RUNNING', 7, 4, 2, 1, '2026-10-23 08:00:00')
-          RETURNING id
-        `);
-        const campaignId = campRes.rows[0].id;
-
-        const records = [
-          { hwId: 'AT-DOOR-88239A01', cust: 'Nguyễn Mạnh Đức', cur: 'v1.1.0', target: 'v1.1.0', status: 'SUCCESS', pct: 100, err: null, retry: 0 },
-          { hwId: 'AT-DOOR-88239A02', cust: 'Dan Phung', cur: 'v1.1.0', target: 'v1.1.0', status: 'SUCCESS', pct: 100, err: null, retry: 0 },
-          { hwId: 'AT-DOOR-88239A03', cust: 'Phan Quốc Huy', cur: 'v1.1.0', target: 'v1.1.0', status: 'SUCCESS', pct: 100, err: null, retry: 0 },
-          { hwId: 'AT-DOOR-88239A04', cust: 'Lê Công Bằng', cur: 'v1.1.0', target: 'v1.1.0', status: 'SUCCESS', pct: 100, err: null, retry: 0 },
-          { hwId: 'AT-DOOR-88239A05', cust: 'Trần Đình Long', cur: 'v1.0.0', target: 'v1.1.0', status: 'DOWNLOADING', pct: 65, err: null, retry: 0 },
-          { hwId: 'AT-DOOR-88239A06', cust: 'Hoàng Minh Tuấn', cur: 'v1.0.0', target: 'v1.1.0', status: 'FAILED_OFFLINE', pct: 0, err: 'Thiết bị đang ngắt nguồn hoặc mất kết nối WiFi gia đình', retry: 2 },
-          { hwId: 'amtuong1994', cust: 'Thiết Bị Phòng Lab (Mạch ESP32 Thật)', cur: 'v1.0.0', target: 'v1.1.0', status: 'FAILED_CHECKSUM', pct: 90, err: 'Mất sóng WiFi khi đang tải ở 90% (Đã Rollback về v1.0.0 an toàn)', retry: 1 },
-        ];
-
-        for (const r of records) {
-          await this.pool.query(
-            `INSERT INTO ota_device_records (campaign_id, hardware_id, customer_name, current_version, target_version, status, progress_pct, last_attempt_at, error_reason, retry_count)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-            [campaignId, r.hwId, r.cust, r.cur, r.target, r.status, r.pct, new Date().toISOString(), r.err, r.retry]
-          );
-        }
-        console.log('[PostgresService] Đã nạp Chiến dịch OTA mẫu với 7 thiết bị thực tế!');
-      }
+      // 9. Seed Active OTA Campaign and Device Records - Giữ trắng
+      // const otaCheck = await this.pool.query('SELECT COUNT(*) FROM ota_campaigns');
 
       // 10. Seed Installation & Reset Guides
       const guideCheck = await this.pool.query('SELECT COUNT(*) FROM installation_guides');
