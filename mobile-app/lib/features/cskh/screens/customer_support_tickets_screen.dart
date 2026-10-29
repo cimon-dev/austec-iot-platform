@@ -122,44 +122,9 @@ class _CustomerSupportTicketsScreenState extends State<CustomerSupportTicketsScr
       }
     } catch (_) {}
 
-    // Fallback sample data if backend unreachable
     if (mounted) {
       setState(() {
-        _tickets = [
-          CustomerSupportTicketItem(
-            id: "REQ-1001",
-            customerId: AuthService().currentUser?.id ?? "USR-008712",
-            customerName: AuthService().currentUser?.fullName ?? "Khách hàng",
-            customerPhone: AuthService().currentUser?.phoneNumber ?? "0944 102 588",
-            hardwareId: "amtuong1994",
-            deviceName: "Cửa cuốn Gara Đức Mạnh",
-            requestType: "TECHNICAL",
-            description: "Cửa cuốn khi bấm đóng từ xa thỉnh thoảng khựng lại 1-2 giây rồi mới tiếp tục đóng hết hành trình. Nhờ kỹ thuật kiểm tra log motor và sensor chống xô.",
-            images: [
-              "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80"
-            ],
-            replyChannel: "PUSH",
-            status: "PROCESSING",
-            adminResponse: "Kỹ thuật đã kiểm tra telemetry. Dòng tải bình thường, đề xuất hẹn kỹ thuật viên qua kiểm tra ray trượt lúc 17h30 chiều mai.",
-            respondedAt: "2026-10-21 14:15",
-            createdAt: "2026-10-21 09:30",
-          ),
-          CustomerSupportTicketItem(
-            id: "REQ-1003",
-            customerId: "USR-001928",
-            customerName: "Nguyễn Văn Nam",
-            customerPhone: "0912 345 678",
-            hardwareId: "AT-DOOR-88239A",
-            deviceName: "Cửa Cuốn Austec Titadoor Super",
-            requestType: "RENEWAL",
-            description: "Tôi muốn gia hạn thêm gói dịch vụ 24 tháng cho thiết bị cửa cuốn nhà tôi và xuất hóa đơn VAT điện tử công ty.",
-            replyChannel: "PUSH",
-            status: "RESOLVED",
-            adminResponse: "Đã tạo đơn gia hạn 24 tháng và gửi link thanh toán + hóa đơn điện tử về thông báo app.",
-            respondedAt: "2026-10-21 15:45",
-            createdAt: "2026-10-20 16:00",
-          ),
-        ];
+        _tickets = [];
         _isLoading = false;
       });
     }

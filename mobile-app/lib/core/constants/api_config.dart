@@ -1,8 +1,30 @@
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiConfig {
   /// Cho phép cấu hình IP máy chủ động khi test trên iPhone / Android
   static String? customServerHost;
+
+  /// Nạp IP máy chủ đã lưu từ SharedPreferences
+  static Future<void> loadCustomHost() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      customServerHost = prefs.getString('custom_server_host');
+    } catch (_) {}
+  }
+
+  /// Cập nhật IP máy chủ mới và lưu vào bộ nhớ máy
+  static Future<void> setCustomHost(String? host) async {
+    customServerHost = host?.trim().isEmpty == true ? null : host?.trim();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (customServerHost != null && customServerHost!.isNotEmpty) {
+        await prefs.setString('custom_server_host', customServerHost!);
+      } else {
+        await prefs.remove('custom_server_host');
+      }
+    } catch (_) {}
+  }
 
   /// Cấu hình địa chỉ IP máy chủ Backend tự động:
   /// - Khi mở qua Web: Tự động trỏ theo host trình duyệt hoặc localhost:4000
@@ -36,4 +58,3 @@ class ApiConfig {
     return 'ws://192.168.100.6:4000/ws/chat';
   }
 }
-

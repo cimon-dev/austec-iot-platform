@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:austec_iot_mobile/core/constants/api_config.dart';
 import 'package:austec_iot_mobile/core/constants/app_theme.dart';
 import 'package:austec_iot_mobile/core/services/auth_service.dart';
 import 'package:austec_iot_mobile/features/devices/devices.dart';
@@ -27,6 +28,7 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
 
   Future<void> _bootstrap() async {
     try {
+      await ApiConfig.loadCustomHost();
       await AuthService().init();
     } catch (_) {}
     if (mounted) {

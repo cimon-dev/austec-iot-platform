@@ -158,8 +158,14 @@ class AuthService {
 
   /// Đăng nhập nhanh bằng Sinh trắc học (FaceID / Vân tay)
   Future<AuthResult> biometricLogin() async {
-    // Nếu đã có thông tin user trước đó thì dùng lại, nếu chưa thì đăng nhập tài khoản chính mẫu
-    final target = _currentUser?.email ?? 'ducduc02092005@gmail.com';
+    final lastId = await getLastIdentifier();
+    final target = _currentUser?.email ?? _currentUser?.phoneNumber ?? lastId ?? '';
+    if (target.isEmpty) {
+      return AuthResult(
+        success: false,
+        error: 'Chưa có thông tin tài khoản trước đó. Vui lòng đăng nhập tài khoản của bạn trước.',
+      );
+    }
     return login(identifier: target, password: 'Austec123!@#');
   }
 

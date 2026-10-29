@@ -49,30 +49,17 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
     if (widget.initialDevice != null) {
       _selectedDevice = widget.initialDevice;
     } else if (widget.initialHardwareId != null) {
-      _selectedDevice = _devices.firstWhere(
-        (d) => d.hardwareId == widget.initialHardwareId,
-        orElse: () => _devices.isNotEmpty ? _devices.first : _createDefaultDevice(),
-      );
+      final matches = _devices.where((d) => d.hardwareId == widget.initialHardwareId);
+      _selectedDevice = matches.isNotEmpty ? matches.first : (_devices.isNotEmpty ? _devices.first : null);
     } else if (_devices.isNotEmpty) {
       _selectedDevice = _devices.first;
     } else {
-      _selectedDevice = _createDefaultDevice();
+      _selectedDevice = null;
     }
 
-    _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
-  }
-
-  DeviceItem _createDefaultDevice() {
-    return DeviceItem(
-      id: "DEV-DEFAULT",
-      hardwareId: "AT-DOOR-88239A01",
-      name: "Cửa cuốn Gara Đức Mạnh",
-      modelName: "Austec Titadoor A900 Super",
-      category: DeviceCategory.rollerDoor,
-      roomName: "Mặt tiền nhà phố",
-      badgeText: "AUSTEC",
-      deviceNumber: "882",
-    );
+    if (_selectedDevice != null) {
+      _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
+    }
   }
 
   Future<void> _loadMembersAndSuggestions(String hardwareId) async {
@@ -281,6 +268,38 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
     final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
+    if (_selectedDevice == null || _devices.isEmpty) {
+      return Scaffold(
+        backgroundColor: bgCol,
+        appBar: AppBar(
+          title: const Text("Phân Quyền Thành Viên", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.family_restroom_rounded, size: 64, color: (isDark ? AppTheme.textMuted : Colors.grey).withValues(alpha: 0.5)),
+                const SizedBox(height: 16),
+                Text(
+                  "Chưa có thiết bị nào để chia sẻ",
+                  style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Vui lòng kết nối hoặc thêm thiết bị trước khi phân quyền cho thành viên gia đình.",
+                  style: TextStyle(color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: bgCol,

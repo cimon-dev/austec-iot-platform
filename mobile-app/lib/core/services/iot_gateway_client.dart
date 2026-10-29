@@ -100,140 +100,8 @@ class IoTGatewayClient {
     ),
   ];
 
-  // Danh sách thiết bị người dùng sở hữu (khớp amtuong834 và amtuong1834 trong ảnh)
-  final List<DeviceItem> _devices = [
-    // 1. Cửa cuốn chính (amtuong 834 trong ảnh cũ)
-    DeviceItem(
-      id: "DEV-DOOR-01",
-      hardwareId: "amtuong1834",
-      name: "amtuong",
-      modelName: "Cửa cuốn",
-      badgeText: "ÂM TƯỜNG",
-      deviceNumber: "834",
-      category: DeviceCategory.rollerDoor,
-      roomName: "Mặt tiền nhà phố",
-      positionPercent: 0,
-      isChildLockActive: false,
-      openTimeoutSeconds: 23,
-      closeTimeoutSeconds: 20,
-      motorCurrentA: 2.45,
-      acVoltage: 221.4,
-      rfRemoteCount: 3,
-      warrantyUntil: "2028-10-21",
-      warrantyCode: "EW-AMTUONG1834-24M",
-    ),
-    DeviceItem(
-      id: "DEV-DOOR-02",
-      hardwareId: "amtuong9914",
-      name: "Cửa Cuốn Gara",
-      modelName: "Austec RollShutter G-Speed",
-      badgeText: "GARA",
-      deviceNumber: "914",
-      category: DeviceCategory.rollerDoor,
-      roomName: "Gara tầng trệt",
-      positionPercent: 100,
-      isChildLockActive: false,
-      openTimeoutSeconds: 25,
-      closeTimeoutSeconds: 22,
-      motorCurrentA: 2.10,
-      acVoltage: 220.8,
-      rfRemoteCount: 2,
-      warrantyUntil: "2028-08-15",
-      warrantyCode: "EW-ATDOOR99142C-24M",
-    ),
-
-    // 2. Năng lượng & Lưu điện
-    DeviceItem(
-      id: "DEV-UPS-01",
-      hardwareId: "UPS-220V-77192C",
-      name: "Bộ Lưu Điện Sin Chuẩn",
-      modelName: "Austec Sin Chuẩn Pro 1200VA",
-      badgeText: "SIN CHUẨN",
-      deviceNumber: "192",
-      category: DeviceCategory.energyManage,
-      roomName: "Hộp kỹ thuật tầng 1",
-      acVoltage: 221.5,
-      batteryVoltage: 26.4,
-      batteryPercent: 98,
-      isDischarging: false,
-      currentPowerKw: 3.46,
-    ),
-
-    // 3. Cảm biến môi trường
-    DeviceItem(
-      id: "DEV-ENV-01",
-      hardwareId: "SN-ENV-33019",
-      name: "Trạm Môi Trường Phòng Khách",
-      modelName: "Austec MultiSensor M1 Pro",
-      badgeText: "KHÍ TƯỢNG",
-      deviceNumber: "019",
-      category: DeviceCategory.environment,
-      roomName: "Phòng khách trung tâm",
-      temperature: 29.3,
-      humidity: 64.0,
-      airQualityAqi: 32,
-      batteryPercent: 98,
-    ),
-
-    // 4. Thiết bị khác / Khóa Masaru
-    DeviceItem(
-      id: "DEV-LOCK-01",
-      hardwareId: "MS-LOCK-99120B",
-      name: "Khóa Cửa Chính Masaru Titan",
-      modelName: "Masaru Titan X1 FaceID",
-      badgeText: "TITAN",
-      deviceNumber: "120",
-      category: DeviceCategory.othersControl,
-      roomName: "Cửa đại sảnh",
-      isLocked: true,
-      batteryPercent: 89,
-      lastUnlockUser: "Vân tay chủ nhà",
-    ),
-
-    // 5. Data Analytics
-    DeviceItem(
-      id: "DEV-DATA-01",
-      hardwareId: "AI-HUB-001X",
-      name: "Bộ Xử Lý Phân Tích Dữ Liệu",
-      modelName: "Austec AI Edge Core v3",
-      badgeText: "AI CORE",
-      deviceNumber: "001",
-      category: DeviceCategory.dataAnalytics,
-      roomName: "Trung tâm điều phối",
-      aiStatus: "AI Core Active",
-    ),
-
-    // 6. Chiếu sáng & Rơ-le
-    DeviceItem(
-      id: "DEV-LIGHT-01",
-      hardwareId: "SW-RELAY-4CH-01",
-      name: "Đèn Chiếu Sáng & Rơ-le",
-      modelName: "Austec 4-Channel Zigbee Relay",
-      badgeText: "RƠ-LE 4CH",
-      deviceNumber: "401",
-      category: DeviceCategory.lightSwitch,
-      roomName: "Phòng khách & Ban công",
-      isRelayOn: false,
-      brightnessPercent: 85,
-      subChannels: [false, false, false, false],
-      powerWatt: 0.0,
-    ),
-
-    // 7. Camera an ninh
-    DeviceItem(
-      id: "DEV-CAM-01",
-      hardwareId: "CAM-AI-0012A",
-      name: "Camera AI Cổng Chính",
-      modelName: "Austec Vision Pro 4K HDR",
-      badgeText: "AI 4K",
-      deviceNumber: "012",
-      category: DeviceCategory.camera,
-      roomName: "Cổng ra vào",
-      isRecording: true,
-      isAlarmActive: false,
-      streamResolution: "4K HDR NightVision",
-    ),
-  ];
+  // Danh sách thiết bị người dùng sở hữu (Khởi tạo trắng 100%, nạp động từ CSDL Backend khi đăng nhập / ghép nối)
+  final List<DeviceItem> _devices = [];
 
   List<DeviceItem> get devices => List.unmodifiable(_devices);
 
@@ -329,20 +197,18 @@ class IoTGatewayClient {
                 subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
               ));
             }
-            if (parsed.isNotEmpty) {
-              for (final p in parsed) {
-                final existingIdx = _devices.indexWhere((x) => x.hardwareId == p.hardwareId);
-                if (existingIdx >= 0) {
-                  _devices[existingIdx] = p;
-                } else {
-                  _devices.insert(0, p);
-                }
-              }
-            }
+            _devices.clear();
+            _devices.addAll(parsed);
+          } else {
+            _devices.clear();
           }
         }
       }
     } catch (_) {}
+  }
+
+  void clearDevices() {
+    _devices.clear();
   }
 
   // Dispatch command with audit logging

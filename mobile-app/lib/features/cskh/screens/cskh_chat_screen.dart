@@ -173,21 +173,6 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
         },
       ));
     }
-    if (list.isEmpty) {
-      list.add(ChatDeviceItem(
-        isOwned: true,
-        hardwareId: 'amtuong1834',
-        deviceName: 'Cửa Cuốn Austec Titadoor A900 Super',
-        modelName: 'Austec Titadoor A900 Super',
-        categoryTag: 'CỬA CUỐN THÔNG MINH',
-        imageUrl: 'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80',
-        specs: {
-          'Công suất': '850W Turbo Inverter',
-          'Tải trọng': '1200 kg',
-          'Serial': 'amtuong1834',
-        },
-      ));
-    }
     return list;
   }
 
@@ -261,8 +246,14 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
 
   void _attachTelemetrySnapshot() {
     final dev = _selectedDevice ?? (_getOwnedDevices().isNotEmpty ? _getOwnedDevices().first : null);
-    final hwId = dev?.hardwareId ?? 'amtuong1834';
-    final model = dev?.modelName ?? 'Austec Titadoor A900 Super';
+    if (dev == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Chưa có thiết bị nào để đính kèm telemetry")),
+      );
+      return;
+    }
+    final hwId = dev.hardwareId;
+    final model = dev.modelName;
 
     final data = {
       "hardwareId": hwId,

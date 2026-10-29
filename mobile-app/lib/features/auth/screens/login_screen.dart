@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/auth_service.dart';
 import '../../devices/screens/orbital_hub_screen.dart';
@@ -12,8 +13,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _identifierController = TextEditingController(text: "ducduc02092005@gmail.com");
-  final TextEditingController _passwordController = TextEditingController(text: "Austec123!@#");
+  final TextEditingController _identifierController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = true;
   bool _isLoading = false;
@@ -389,6 +390,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 18),
+
+                  // Server connection IP configuration
+                  Center(
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.textMuted,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      ),
+                      onPressed: _showServerConfigDialog,
+                      icon: const Icon(Icons.dns_outlined, size: 13, color: AppTheme.textMuted),
+                      label: Text(
+                        "Máy chủ: ${ApiConfig.baseUrl}",
+                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -398,4 +416,59 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  void _showServerConfigDialog() {
+    final controller = TextEditingController(
+      text: ApiConfig.customServerHost ?? '192.168.100.6',
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.dns_rounded, color: AppTheme.cyanAccent, size: 20),
+            SizedBox(width: 8),
+            Text("Cấu hình IP Backend", style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Địa chỉ IP máy chủ chạy Backend Node.js / PostgreSQL:",
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: "ví dụ: 192.168.100.6 hoặc localhost",
+                hintStyle: const TextStyle(color: AppTheme.textMuted),
+                filled: true,
+                fillColor: AppTheme.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Hủy", style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            onPressed: () async {
+              await ApiConfig.setCustomHost(controller.text);
+              if (mounted) setState(() {});
+              Navigator.of(ctx).pop();
+            },
+            child: const Text("Lưu kết nối"),
+          ),
+        ],
+      ),
+    );
+  }
 }
