@@ -60,9 +60,22 @@ class AuthService {
           'identifier': cleanInput,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 45));
 
-      final data = jsonDecode(res.body);
+      if (res.body.isEmpty) {
+        return AuthResult(success: false, error: 'Máy chủ phản hồi rỗng (HTTP ${res.statusCode})');
+      }
+
+      dynamic data;
+      try {
+        data = jsonDecode(res.body);
+      } catch (_) {
+        return AuthResult(
+          success: false,
+          error: 'Phản hồi từ máy chủ không hợp lệ (HTTP ${res.statusCode}). Vui lòng thử lại sau giây lát.',
+        );
+      }
+
       if (res.statusCode == 200 && data['success'] == true) {
         final tokenStr = data['token']?.toString() ?? 'austec-customer-token';
         final userObj = UserModel.fromJson(data['user'] as Map<String, dynamic>, token: tokenStr);
@@ -87,6 +100,13 @@ class AuthService {
         await _saveSession('austec-customer-token', fallbackUser);
         return AuthResult(success: true, message: 'Đăng nhập thành công (Chế độ Ngoại tuyến Dev)!', user: fallbackUser);
       }
+      final errStr = e.toString();
+      if (errStr.contains('TimeoutException')) {
+        return AuthResult(
+          success: false,
+          error: 'Kết nối máy chủ bị quá hạn (Cloud đang khởi động). Vui lòng thử lại sau vài giây.',
+        );
+      }
       return AuthResult(
         success: false,
         error: 'Không thể kết nối tới máy chủ ($_baseUrl). Vui lòng kiểm tra mạng hoặc thử lại: $e',
@@ -103,21 +123,36 @@ class AuthService {
     String address = '',
     String province = 'Hà Nội',
   }) async {
+    final cleanPhone = phoneNumber.trim().replaceAll(RegExp(r'[\s.-]'), '');
+    final cleanEmail = email.trim().toLowerCase();
     try {
       final res = await http.post(
         Uri.parse('$_baseUrl/api/auth/register'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'fullName': fullName.trim(),
-          'phoneNumber': phoneNumber.trim(),
-          'email': email.trim(),
+          'phoneNumber': cleanPhone,
+          'email': cleanEmail,
           'password': password,
           'address': address.trim(),
           'province': province,
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 45));
 
-      final data = jsonDecode(res.body);
+      if (res.body.isEmpty) {
+        return AuthResult(success: false, error: 'Máy chủ phản hồi rỗng (HTTP ${res.statusCode})');
+      }
+
+      dynamic data;
+      try {
+        data = jsonDecode(res.body);
+      } catch (_) {
+        return AuthResult(
+          success: false,
+          error: 'Phản hồi từ máy chủ không hợp lệ (HTTP ${res.statusCode}). Vui lòng thử lại sau giây lát.',
+        );
+      }
+
       if (res.statusCode == 200 && data['success'] == true) {
         final tokenStr = data['token']?.toString() ?? 'austec-customer-token';
         final userObj = UserModel.fromJson(data['user'] as Map<String, dynamic>, token: tokenStr);
@@ -127,6 +162,13 @@ class AuthService {
         return AuthResult(success: false, error: data['error'] ?? 'Không thể đăng ký tài khoản');
       }
     } catch (e) {
+      final errStr = e.toString();
+      if (errStr.contains('TimeoutException')) {
+        return AuthResult(
+          success: false,
+          error: 'Máy chủ phản hồi quá thời gian chờ (Render Cloud đang khởi động). Vui lòng thử lại sau vài giây.',
+        );
+      }
       return AuthResult(
         success: false,
         error: 'Lỗi kết nối máy chủ khi lưu tài khoản: $e. Vui lòng kiểm tra lại kết nối mạng.',

@@ -19,6 +19,7 @@ export const RegisterSchema = z.object({
   password: z.string().optional(),
   address: z.string().optional(),
   province: z.string().optional(),
+  role: z.enum(['ADMIN', 'CSKH', 'CUSTOMER']).optional(),
 });
 
 export type RegisterDto = z.infer<typeof RegisterSchema>;

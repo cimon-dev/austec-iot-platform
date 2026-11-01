@@ -166,26 +166,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!params.email || !params.email.includes("@")) {
       return { success: false, error: "Địa chỉ email không đúng định dạng" };
     }
-    if (!params.phoneNumber || params.phoneNumber.length < 9) {
+    if (!params.phoneNumber || params.phoneNumber.length < 8) {
       return { success: false, error: "Số điện thoại di động không hợp lệ" };
     }
 
-    const newUser: AuthUser = {
-      id: `USR-${Math.floor(100000 + Math.random() * 900000)}`,
-      fullName: params.fullName,
-      email: params.email,
-      phoneNumber: params.phoneNumber,
-      role: params.role || "CUSTOMER",
-      twoFactorEnabled: true,
-      lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-      sessionToken: `jwt_sha256_${Date.now()}_austec`,
-    };
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: params.fullName.trim(),
+          email: params.email.trim(),
+          phoneNumber: params.phoneNumber.trim(),
+          password: params.password || "Austec123!@#",
+          role: params.role || "CUSTOMER",
+        }),
+      });
 
-    setUser(newUser);
-    localStorage.setItem("austec_auth_user", JSON.stringify(newUser));
-    localStorage.setItem("austec_auth_token", newUser.sessionToken!);
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const authedUser: AuthUser = {
+          id: data.user?.id || `USR-${Math.floor(100000 + Math.random() * 900000)}`,
+          fullName: data.user?.fullName || params.fullName,
+          email: data.user?.email || params.email,
+          phoneNumber: data.user?.phoneNumber || params.phoneNumber,
+          role: (data.user?.role as any) || params.role || "CUSTOMER",
+          twoFactorEnabled: true,
+          lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
+          sessionToken: data.token,
+        };
 
-    return { success: true };
+        setUser(authedUser);
+        try {
+          localStorage.setItem("austec_auth_user", JSON.stringify(authedUser));
+          if (data.token) {
+            localStorage.setItem("austec_auth_token", data.token);
+          }
+        } catch {
+          // ignore
+        }
+        return { success: true };
+      } else {
+        return { success: false, error: data?.error || "Không thể đăng ký tài khoản trên máy chủ" };
+      }
+    } catch (netErr: any) {
+      return { success: false, error: "Lỗi kết nối máy chủ xác thực: " + netErr.message };
+    }
   };
 
   const logout = () => {

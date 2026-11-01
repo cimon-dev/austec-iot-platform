@@ -67,27 +67,30 @@ export class UsersService {
     const cleanEmail = (dto.email || '').trim().toLowerCase();
     const cleanPhone = (dto.phoneNumber || '').trim().replace(/[\s.-]/g, '');
 
-    const existing = this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
+    const existing = (await this.repo.findByEmailOrPhoneAsync(cleanEmail, cleanPhone)) || this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
     if (existing) {
-      throw new Error('Email hoặc số điện thoại này đã được đăng ký');
+      throw new Error('Email hoặc số điện thoại này đã được đăng ký trong hệ thống');
     }
 
-    const newId = `USR-${Date.now().toString().slice(-6)}`;
+    const assignedRole = (dto.role || 'CUSTOMER') as 'ADMIN' | 'CSKH' | 'CUSTOMER';
+    const newId = assignedRole === 'CUSTOMER' ? `USR-${Date.now().toString().slice(-6)}` : `staff-${Date.now()}`;
     const hwId = `AT-DOOR-${newId}`;
 
     const newUser: UnifiedUser = {
       id: newId,
       fullName: dto.fullName.trim(),
       email: cleanEmail || `${cleanPhone}@austec.customer`,
-      phoneNumber: dto.phoneNumber?.trim() || '0900000000',
+      phoneNumber: cleanPhone || '0900000000',
       address: dto.address ? dto.address.trim() : 'Địa chỉ đang cập nhật',
       province: dto.province || 'Hà Nội',
-      role: 'CUSTOMER',
-      roleTitle: 'Khách hàng',
+      role: assignedRole,
+      roleTitle: assignedRole === 'ADMIN' ? 'Administrator' : assignedRole === 'CSKH' ? 'CSKH Support' : 'Khách hàng',
+      company: assignedRole !== 'CUSTOMER' ? 'AUSTEC GROUP' : undefined,
+      department: assignedRole === 'ADMIN' ? 'Ban Điều Hành' : assignedRole === 'CSKH' ? 'Chăm Sóc Khách Hàng' : undefined,
       password: dto.password || 'Austec123!@#',
       isActive: true,
       registeredAt: new Date().toISOString().split('T')[0],
-      devices: [
+      devices: assignedRole === 'CUSTOMER' ? [
         {
           hardwareId: hwId,
           modelName: 'Austec Titadoor A900 Super',
@@ -97,28 +100,41 @@ export class UsersService {
           isOnline: true,
           roleInHome: 'OWNER',
         },
-      ],
+      ] : [],
     };
 
-    await this.repo.add(newUser);
+    try {
+      await this.repo.add(newUser);
+    } catch (dbErr: any) {
+      if (dbErr.message?.includes('duplicate key') || dbErr.message?.includes('unique constraint')) {
+        throw new Error('Email hoặc số điện thoại này đã tồn tại trong hệ thống');
+      }
+      throw dbErr;
+    }
 
-    await this.repo.addPermission({
-      id: `PERM-${newId}-OWNER`,
-      hardwareId: hwId,
-      userId: newUser.id,
-      memberName: `${newUser.fullName} (Chủ hộ)`,
-      phoneNumber: newUser.phoneNumber,
-      role: 'OWNER' as any,
-      canControl: true,
-      canViewHistory: true,
-      canChildLock: true,
-      canConfig: true,
-      scheduleLimitActive: false,
-      accessStartTime: '00:00',
-      accessEndTime: '23:59',
-      accessDays: [true, true, true, true, true, true, true],
-      createdAt: new Date().toISOString(),
-    });
+    if (assignedRole === 'CUSTOMER') {
+      try {
+        await this.repo.addPermission({
+          id: `PERM-${newId}-OWNER`,
+          hardwareId: hwId,
+          userId: newUser.id,
+          memberName: `${newUser.fullName} (Chủ hộ)`,
+          phoneNumber: newUser.phoneNumber,
+          role: 'OWNER' as any,
+          canControl: true,
+          canViewHistory: true,
+          canChildLock: true,
+          canConfig: true,
+          scheduleLimitActive: false,
+          accessStartTime: '00:00',
+          accessEndTime: '23:59',
+          accessDays: [true, true, true, true, true, true, true],
+          createdAt: new Date().toISOString(),
+        });
+      } catch (permErr: any) {
+        console.warn('[UsersService] addPermission warning:', permErr.message);
+      }
+    }
 
     const payload = {
       id: newUser.id,
