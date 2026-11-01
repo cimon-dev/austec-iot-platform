@@ -28,56 +28,57 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
 
   Future<void> _fetchLiveHistory() async {
     setState(() => _isLoading = true);
+    final token = AuthService().token ?? 'austec-customer-token';
     try {
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/${widget.device.hardwareId}/history'),
-        headers: {'Authorization': 'Bearer austec-customer-token'},
-      ).timeout(const Duration(seconds: 3));
+        headers: {'Authorization': 'Bearer $token'},
+      ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['success'] == true && data['logs'] is List) {
           final List list = data['logs'];
-          if (list.isNotEmpty && mounted) {
+          final List<AuditLog> fetched = [];
+          for (var item in list) {
+            final act = (item['actionType'] ?? item['commandType'] ?? 'OPEN').toString().toUpperCase();
+            int code = 1;
+            String actName = "Mở cửa";
+            if (act.contains("CLOSE") || act == "2") {
+              code = 2;
+              actName = "Đóng cửa";
+            } else if (act.contains("STOP") || act == "3") {
+              code = 3;
+              actName = "Dừng cửa";
+            } else if (act.contains("LOCK")) {
+              code = 4;
+              actName = "Khóa an toàn";
+            }
+
+            final rawTime = item['timestamp'] ?? item['createdAt'] ?? DateTime.now().toIso8601String();
+            final dt = DateTime.tryParse(rawTime.toString()) ?? DateTime.now();
+            final timeFormatted = "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
+
+            fetched.add(
+              AuditLog(
+                time: timeFormatted,
+                action: actName,
+                actionCode: code,
+                triggeredBy: item['actorName']?.toString() ?? (AuthService().currentUser?.fullName ?? "Người dùng"),
+                deviceCode: widget.device.hardwareId,
+              ),
+            );
+          }
+
+          if (mounted) {
             setState(() {
-              for (var item in list) {
-                final act = (item['actionType'] ?? item['commandType'] ?? 'OPEN').toString().toUpperCase();
-                int code = 1;
-                String actName = "Mở cửa";
-                if (act.contains("CLOSE")) {
-                  code = 2;
-                  actName = "Đóng cửa";
-                } else if (act.contains("STOP")) {
-                  code = 3;
-                  actName = "Dừng cửa";
-                } else if (act.contains("LOCK")) {
-                  code = 4;
-                  actName = "Khóa khẩn cấp";
-                }
-
-                final rawTime = item['timestamp']?.toString() ?? DateTime.now().toIso8601String();
-                final dt = DateTime.tryParse(rawTime) ?? DateTime.now();
-                final timeFormatted = "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}";
-
-                if (!widget.device.auditLogs.any((l) => l.time == timeFormatted)) {
-                  widget.device.auditLogs.insert(
-                    0,
-                    AuditLog(
-                      time: timeFormatted,
-                      action: actName,
-                      actionCode: code,
-                      triggeredBy: item['actorName']?.toString() ?? (AuthService().currentUser?.fullName ?? "Người dùng"),
-                      deviceCode: widget.device.hardwareId,
-                    ),
-                  );
-                }
-              }
+              widget.device.auditLogs = fetched;
             });
           }
         }
       }
-    } catch (_) {
-      // offline
+    } catch (e) {
+      debugPrint('[DeviceHistoryScreen] Lỗi tải lịch sử từ Cloud: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

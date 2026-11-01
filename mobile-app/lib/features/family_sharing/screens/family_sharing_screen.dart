@@ -65,15 +65,8 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
   Future<void> _loadMembersAndSuggestions(String hardwareId) async {
     setState(() => _isLoadingMembers = true);
 
-    var loadedMembers = await _service.getMembers(hardwareId);
-    var loadedSuggestions = await _service.getSuggestions(hardwareId);
-
-    if (loadedMembers.isEmpty) {
-      loadedMembers = _service.getOfflineFallbackMembers(hardwareId);
-    }
-    if (loadedSuggestions.isEmpty) {
-      loadedSuggestions = _service.getOfflineFallbackSuggestions(hardwareId);
-    }
+    final loadedMembers = await _service.getMembers(hardwareId);
+    final loadedSuggestions = await _service.getSuggestions(hardwareId);
 
     if (mounted) {
       setState(() {
