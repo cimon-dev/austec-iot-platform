@@ -12,10 +12,10 @@ on:
   workflow_dispatch:
     inputs:
       release_version:
-        description: 'Release version to patch (leave empty to use pubspec.yaml)'
+        description: 'Release version to patch (leave empty for latest)'
         required: false
         type: string
-        default: ''
+        default: 'latest'
 
 jobs:
   patch-ios:
@@ -36,8 +36,13 @@ jobs:
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: |
-          if [ -n "${{ inputs.release_version }}" ]; then
-            shorebird patch ios --release-version ${{ inputs.release_version }} --no-confirm --allow-native-diffs --allow-asset-diffs
-          else
-            shorebird patch ios --no-confirm --allow-native-diffs --allow-asset-diffs
+          TARGET_VERSION="${{ inputs.release_version }}"
+          if [ -z "$TARGET_VERSION" ]; then
+            TARGET_VERSION="latest"
           fi
+          shorebird patch ios \
+            --release-version "$TARGET_VERSION" \
+            --no-codesign \
+            --no-confirm \
+            --allow-native-diffs \
+            --allow-asset-diffs
