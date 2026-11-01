@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "../components/AppProviders";
 import { AppShell } from "../components/AppShell";
+
+const inter = Inter({
+  subsets: ["latin", "vietnamese"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "Austec IoT Platform - Modern Cloud Management",
@@ -14,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" suppressHydrationWarning>
-      <body className="antialiased font-sans" suppressHydrationWarning>
+    <html lang="vi" className={inter.variable} suppressHydrationWarning>
+      <body className={`${inter.className} antialiased font-sans`} suppressHydrationWarning>
         <AppProviders>
           <AppShell>{children}</AppShell>
         </AppProviders>
