@@ -105,10 +105,10 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (_) => const OrbitalHubScreen()),
       );
     } else {
-      setState(() => _errorMessage = res.error ?? "Xác thực sinh trắc học không thành công");
+      setState(() => _errorMessage =
+          res.error ?? "Xác thực sinh trắc học không thành công");
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.cyanAccent.withValues(alpha: 0.25),
+                                color:
+                                    AppTheme.cyanAccent.withValues(alpha: 0.25),
                                 blurRadius: 30,
                                 spreadRadius: 6,
                               ),
@@ -149,11 +150,16 @@ class _LoginScreenState extends State<LoginScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             gradient: const LinearGradient(
-                              colors: [AppTheme.cyanAccent, AppTheme.blueAccent],
+                              colors: [
+                                AppTheme.cyanAccent,
+                                AppTheme.blueAccent
+                              ],
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.3),
+                                width: 1.5),
                           ),
                           child: const Icon(
                             Icons.door_sliding_rounded,
@@ -190,20 +196,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Error banner
                   if (_errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppTheme.roseDanger.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.4)),
+                        border: Border.all(
+                            color: AppTheme.roseDanger.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.error_outline_rounded, color: AppTheme.roseDanger, size: 18),
+                          const Icon(Icons.error_outline_rounded,
+                              color: AppTheme.roseDanger, size: 18),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12),
                             ),
                           ),
                         ],
@@ -237,16 +247,24 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Identifier field
                         TextField(
                           controller: _identifierController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: "Email hoặc Số điện thoại",
-                            labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                            prefixIcon: const Icon(Icons.alternate_email_rounded, color: AppTheme.cyanAccent, size: 18),
+                            labelStyle: const TextStyle(
+                                color: AppTheme.textMuted, fontSize: 12),
+                            prefixIcon: const Icon(
+                                Icons.alternate_email_rounded,
+                                color: AppTheme.cyanAccent,
+                                size: 18),
                             filled: true,
                             fillColor: AppTheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -255,23 +273,32 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           decoration: InputDecoration(
                             labelText: "Mật khẩu bảo mật",
-                            labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.cyanAccent, size: 18),
+                            labelStyle: const TextStyle(
+                                color: AppTheme.textMuted, fontSize: 12),
+                            prefixIcon: const Icon(Icons.lock_outline_rounded,
+                                color: AppTheme.cyanAccent, size: 18),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                _obscurePassword
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
                                 color: AppTheme.textMuted,
                                 size: 18,
                               ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                             ),
                             filled: true,
                             fillColor: AppTheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -287,14 +314,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                   width: 24,
                                   child: Checkbox(
                                     value: _rememberMe,
-                                    onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                                    onChanged: (v) =>
+                                        setState(() => _rememberMe = v ?? true),
                                     activeColor: AppTheme.cyanAccent,
                                     checkColor: Colors.black,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4)),
                                   ),
                                 ),
                                 const SizedBox(width: 6),
-                                const Text("Ghi nhớ", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                                const Text("Ghi nhớ",
+                                    style: TextStyle(
+                                        color: AppTheme.textSecondary,
+                                        fontSize: 11)),
                               ],
                             ),
                             TextButton(
@@ -303,19 +335,30 @@ class _LoginScreenState extends State<LoginScreen> {
                                   context: context,
                                   builder: (ctx) => AlertDialog(
                                     backgroundColor: AppTheme.surface,
-                                    title: const Text("Khôi phục mật khẩu", style: TextStyle(color: Colors.white, fontSize: 14)),
+                                    title: const Text("Khôi phục mật khẩu",
+                                        style: TextStyle(
+                                            color: Colors.white, fontSize: 14)),
                                     content: const Text(
                                       "Vui lòng liên hệ Hotline CSKH 1900 8823 hoặc dùng mã OTP gửi về Số điện thoại đã kích hoạt để đặt lại mật khẩu.",
-                                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                                      style: TextStyle(
+                                          color: AppTheme.textSecondary,
+                                          fontSize: 12),
                                     ),
                                     actions: [
-                                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Đã hiểu")),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(ctx),
+                                          child: const Text("Đã hiểu")),
                                     ],
                                   ),
                                 );
                               },
-                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero),
-                              child: const Text("Quên mật khẩu?", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11)),
+                              style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero),
+                              child: const Text("Quên mật khẩu?",
+                                  style: TextStyle(
+                                      color: AppTheme.cyanAccent,
+                                      fontSize: 11)),
                             ),
                           ],
                         ),
@@ -328,16 +371,25 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.cyanAccent,
                               foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
                               elevation: 4,
-                              shadowColor: AppTheme.cyanAccent.withValues(alpha: 0.4),
+                              shadowColor:
+                                  AppTheme.cyanAccent.withValues(alpha: 0.4),
                             ),
                             onPressed: _isLoading ? null : _handleLogin,
                             child: _isLoading
-                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.black))
                                 : const Text(
                                     "ĐĂNG NHẬP NGAY",
-                                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.8),
                                   ),
                           ),
                         ),
@@ -346,15 +398,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Biometric button
                         OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: BorderSide(
+                                color:
+                                    AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             padding: const EdgeInsets.symmetric(vertical: 11),
                           ),
                           onPressed: _isLoading ? null : _handleBiometricLogin,
-                          icon: const Icon(Icons.fingerprint_rounded, color: AppTheme.cyanAccent, size: 20),
+                          icon: const Icon(Icons.fingerprint_rounded,
+                              color: AppTheme.cyanAccent, size: 20),
                           label: const Text(
-                            "Đăng nhập bằng FaceID / Vân tay",
-                            style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                            "Đăng nhập bằng FaceID / Vân tay 123",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
@@ -369,12 +428,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     children: [
                       const Text(
                         "Chưa có tài khoản Austec? ",
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                        style: TextStyle(
+                            color: AppTheme.textSecondary, fontSize: 12),
                       ),
                       GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            MaterialPageRoute(
+                                builder: (_) => const RegisterScreen()),
                           );
                         },
                         child: const Text(
@@ -397,13 +458,18 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: TextButton.icon(
                       style: TextButton.styleFrom(
                         foregroundColor: AppTheme.textMuted,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
                       ),
                       onPressed: _showServerConfigDialog,
                       icon: Icon(
-                        ApiConfig.isUsingCloud ? Icons.cloud_done_rounded : Icons.dns_outlined,
+                        ApiConfig.isUsingCloud
+                            ? Icons.cloud_done_rounded
+                            : Icons.dns_outlined,
                         size: 13,
-                        color: ApiConfig.isUsingCloud ? AppTheme.cyanAccent : AppTheme.textMuted,
+                        color: ApiConfig.isUsingCloud
+                            ? AppTheme.cyanAccent
+                            : AppTheme.textMuted,
                       ),
                       label: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -413,13 +479,16 @@ class _LoginScreenState extends State<LoginScreen> {
                             height: 6,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: ApiConfig.isUsingCloud ? AppTheme.cyanAccent : Colors.amber,
+                              color: ApiConfig.isUsingCloud
+                                  ? AppTheme.cyanAccent
+                                  : Colors.amber,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             "Máy chủ [${ApiConfig.connectionBadgeText}]: ${ApiConfig.baseUrl}",
-                            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                            style: const TextStyle(
+                                fontSize: 10, color: AppTheme.textMuted),
                           ),
                         ],
                       ),
@@ -444,9 +513,11 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppTheme.surface,
         title: const Row(
           children: [
-            Icon(Icons.cloud_sync_rounded, color: AppTheme.cyanAccent, size: 20),
+            Icon(Icons.cloud_sync_rounded,
+                color: AppTheme.cyanAccent, size: 20),
             SizedBox(width: 8),
-            Text("Cấu hình Máy chủ Backend", style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text("Cấu hình Máy chủ Backend",
+                style: TextStyle(color: Colors.white, fontSize: 16)),
           ],
         ),
         content: Column(
@@ -466,7 +537,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 hintStyle: const TextStyle(color: AppTheme.textMuted),
                 filled: true,
                 fillColor: AppTheme.background,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
             const SizedBox(height: 10),
@@ -475,16 +547,20 @@ class _LoginScreenState extends State<LoginScreen> {
               runSpacing: 6,
               children: [
                 ActionChip(
-                  avatar: const Icon(Icons.cloud_outlined, size: 14, color: AppTheme.cyanAccent),
-                  label: const Text("Render Cloud", style: TextStyle(fontSize: 11, color: Colors.white)),
+                  avatar: const Icon(Icons.cloud_outlined,
+                      size: 14, color: AppTheme.cyanAccent),
+                  label: const Text("Render Cloud",
+                      style: TextStyle(fontSize: 11, color: Colors.white)),
                   backgroundColor: AppTheme.cardBorder,
                   onPressed: () {
                     controller.text = ApiConfig.defaultCloudUrl;
                   },
                 ),
                 ActionChip(
-                  avatar: const Icon(Icons.computer_outlined, size: 14, color: Colors.amber),
-                  label: const Text("LAN 192.168.1.145", style: TextStyle(fontSize: 11, color: Colors.white)),
+                  avatar: const Icon(Icons.computer_outlined,
+                      size: 14, color: Colors.amber),
+                  label: const Text("LAN 192.168.1.145",
+                      style: TextStyle(fontSize: 11, color: Colors.white)),
                   backgroundColor: AppTheme.cardBorder,
                   onPressed: () {
                     controller.text = "192.168.1.145";
@@ -497,7 +573,8 @@ class _LoginScreenState extends State<LoginScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("Hủy", style: TextStyle(color: AppTheme.textMuted)),
+            child:
+                const Text("Hủy", style: TextStyle(color: AppTheme.textMuted)),
           ),
           TextButton(
             onPressed: () async {
@@ -505,10 +582,13 @@ class _LoginScreenState extends State<LoginScreen> {
               if (mounted) setState(() {});
               Navigator.of(ctx).pop();
             },
-            child: const Text("Dùng mặc định Cloud", style: TextStyle(color: AppTheme.cyanAccent)),
+            child: const Text("Dùng mặc định Cloud",
+                style: TextStyle(color: AppTheme.cyanAccent)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.cyanAccent,
+                foregroundColor: Colors.black),
             onPressed: () async {
               await ApiConfig.setCustomHost(controller.text);
               if (mounted) setState(() {});
