@@ -188,30 +188,66 @@ export function createApp() {
   // WebSocket Chat Event Handlers
   const wsClients = new Set<ExtendedWebSocket>();
 
-  wss.on('connection', (ws: ExtendedWebSocket) => {
-    ws.isAlive = true;
-    ws.on('pong', () => { ws.isAlive = true; });
-    wsClients.add(ws);
+  function formatLiveMessage(m: any) {
+    const d = new Date(m.createdAt);
+    const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const isCSKH = m.senderRole === 'CSKH';
+    const attachments = m.attachmentUrls || m.images || [];
+    return {
+      id: m.id,
+      ticketId: m.ticketId,
+      sender: isCSKH ? 'CSKH' : 'user',
+      senderRole: m.senderRole,
+      text: m.message,
+      message: m.message,
+      time: timeStr,
+      createdAt: m.createdAt,
+      attachmentUrls: attachments,
+      images: attachments,
+      selectedDevice: m.selectedDevice,
+      hasSnapshot: !!(m.deviceSnapshot && Object.keys(m.deviceSnapshot).length > 0),
+      deviceSnapshot: m.deviceSnapshot,
+    };
+  }
 
-    ws.on('message', async (raw) => {
-      try {
-        const payload = JSON.parse(raw.toString());
-        if (payload.type === 'JOIN') {
-          const cid = payload.customerId || payload.userId || '00000000-0000-0000-0000-000000000001';
-          ws.userData = {
-            role: payload.role || 'CUSTOMER',
-            customerId: cid,
-            userId: cid,
-            customerName: payload.customerName || 'Khách Hàng Austec',
-            customerPhone: payload.customerPhone || '',
-          };
-          ws.send(JSON.stringify({ type: 'JOINED', success: true }));
-        }
-      } catch (_) {}
-    });
-
-    ws.on('close', () => { wsClients.delete(ws); });
-  });
+  function enrichTicket(t: any, formattedMessages: any[]) {
+    const customer = usersStore.find(u => u.id === t.customerId);
+    const lastMsg = formattedMessages.length > 0 ? formattedMessages[formattedMessages.length - 1] : undefined;
+    const device = t.selectedDevice || customer?.devices?.[0];
+    return {
+      id: t.id,
+      customerId: t.customerId,
+      customerName: customer?.fullName || t.subject?.replace('Kênh hỗ trợ 1-1 cho khách hàng ', '') || 'Khách hàng Austec',
+      customerPhone: customer?.phoneNumber || '---',
+      customerEmail: customer?.email || '',
+      hardwareId: t.hardwareId || device?.hardwareId || 'AT-DOOR-88239A01',
+      deviceName: device?.deviceName || device?.modelName || customer?.devices?.[0]?.modelName || 'Cửa cuốn Austec Titadoor A900 Super',
+      subject: t.subject,
+      status: t.status,
+      priority: t.priority,
+      selectedDevice: t.selectedDevice || device,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+      messages: formattedMessages,
+      lastMessage: lastMsg ? {
+        text: lastMsg.text,
+        sender: lastMsg.senderRole === 'CSKH' ? 'CSKH' : 'CUSTOMER',
+        time: lastMsg.time,
+      } : undefined,
+      technicalSnapshot: {
+        model: device?.modelName || customer?.devices?.[0]?.modelName || "Austec Titadoor A900 Super",
+        hardwareId: t.hardwareId || device?.hardwareId || 'AT-DOOR-88239A01',
+        firmware: "v2.4.1",
+        signal: "-65 dBm",
+        status: "ONLINE",
+        safetyBrake: "Hoạt động tốt",
+        childLock: "Bật",
+        doorCycleCount: 1420,
+        voltage: "220V / 50Hz",
+        motorTemp: "42°C",
+      },
+    };
+  }
 
   const broadcastToCustomer = (customerId: string, data: any) => {
     const jsonStr = JSON.stringify(data);
@@ -230,6 +266,183 @@ export function createApp() {
       }
     }
   };
+
+  function broadcastAllTickets() {
+    const rawTickets = supportService.getAllOpenTickets();
+    const tickets = rawTickets
+      .filter(t => supportService.hasActiveMessages(t.id))
+      .map(t => {
+        const rawMsgs = supportService.getMessagesByTicket(t.id);
+        return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
+      });
+    broadcastToStaff({
+      type: 'TICKETS_UPDATED',
+      tickets,
+    });
+  }
+
+  wss.on('connection', (ws: ExtendedWebSocket) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    wsClients.add(ws);
+
+    ws.on('message', async (raw) => {
+      try {
+        const payload = JSON.parse(raw.toString());
+        const { type } = payload;
+
+        switch (type) {
+          case 'JOIN': {
+            const cid = payload.customerId || payload.userId || '00000000-0000-0000-0000-000000000001';
+            ws.userData = {
+              role: payload.role || 'CUSTOMER',
+              customerId: cid,
+              userId: cid,
+              customerName: payload.customerName || 'Khách Hàng Austec',
+              customerPhone: payload.customerPhone || '',
+            };
+            ws.send(JSON.stringify({
+              type: 'JOINED',
+              success: true,
+              role: ws.userData.role,
+              customerId: ws.userData.customerId,
+            }));
+
+            // Nếu là nhân viên CSKH/Admin vừa vào, gửi toàn bộ tickets đang có
+            if (ws.userData.role === 'ADMIN' || ws.userData.role === 'CSKH') {
+              const rawTickets = supportService.getAllOpenTickets();
+              const tickets = rawTickets
+                .filter(t => supportService.hasActiveMessages(t.id))
+                .map(t => {
+                  const rawMsgs = supportService.getMessagesByTicket(t.id);
+                  return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
+                });
+              ws.send(JSON.stringify({ type: 'TICKETS_UPDATED', tickets }));
+            } else if (ws.userData.customerId) {
+              // Nếu là Customer, gửi lại ticket hiện tại của họ nếu có
+              const myTicket = supportService.findActiveCustomerTicket(ws.userData.customerId);
+              if (myTicket) {
+                const rawMsgs = supportService.getMessagesByTicket(myTicket.id);
+                const enriched = enrichTicket(myTicket, rawMsgs.map(m => formatLiveMessage(m)));
+                ws.send(JSON.stringify({
+                  type: 'JOINED',
+                  success: true,
+                  ticket: enriched,
+                  messages: rawMsgs.map(m => formatLiveMessage(m)),
+                }));
+              }
+            }
+            break;
+          }
+
+          case 'PING': {
+            ws.send(JSON.stringify({ type: 'PONG' }));
+            break;
+          }
+
+          case 'START_CONVERSATION': {
+            const { customerId, customerName, customerPhone, hardwareId, message, images, attachmentUrls, selectedDevice } = payload;
+            const targetCustomerId = customerId || ws.userData?.customerId || '00000000-0000-0000-0000-000000000001';
+            const targetUser = usersStore.find(u => u.id === targetCustomerId);
+            const actualName = customerName || targetUser?.fullName || ws.userData?.customerName || 'Khách Hàng Austec';
+            const actualMsg = (message || '').toString().trim() || 'Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị của mình.';
+            const actualHwId = hardwareId || selectedDevice?.hardwareId || targetUser?.devices?.[0]?.hardwareId || 'AT-DOOR-88239A01';
+            const actualAttachments = images || attachmentUrls || [];
+
+            const result = await supportService.startConversation({
+              customerId: targetCustomerId,
+              customerName: actualName,
+              hardwareId: actualHwId,
+              message: actualMsg,
+              attachmentUrls: actualAttachments,
+              selectedDevice,
+            });
+
+            const formattedMessages = result.messages.map(m => formatLiveMessage(m));
+            const enrichedTicket = enrichTicket(result.ticket, formattedMessages);
+
+            ws.send(JSON.stringify({
+              type: 'CONVERSATION_STARTED',
+              success: true,
+              ticket: enrichedTicket,
+              messages: formattedMessages,
+            }));
+
+            broadcastToStaff({
+              type: 'NEW_TICKET',
+              ticket: enrichedTicket,
+              messages: formattedMessages,
+            });
+            break;
+          }
+
+          case 'SEND_MESSAGE': {
+            const { ticketId, customerId, sender, senderRole, text, message, images, attachmentUrls, selectedDevice } = payload;
+            const actualText = (text || message || '').toString().trim();
+            const actualAttachments = images || attachmentUrls || [];
+            if (!actualText && actualAttachments.length === 0) return;
+
+            let ticket: any;
+            if (ticketId) {
+              ticket = supportService.getTicketById(ticketId);
+            }
+            const targetCustomerId = customerId || ws.userData?.customerId;
+            if (!ticket && targetCustomerId) {
+              ticket = supportService.findActiveCustomerTicket(targetCustomerId);
+            }
+            if (!ticket) {
+              ticket = supportService.getOrCreateCustomerTicket(targetCustomerId || '00000000-0000-0000-0000-000000000001');
+            }
+
+            const isCSKH = sender === 'CSKH' || senderRole === 'CSKH' || ws.userData?.role === 'CSKH' || ws.userData?.role === 'ADMIN';
+            const role = isCSKH ? 'CSKH' : 'CUSTOMER';
+            const senderId = isCSKH ? (ws.userData?.customerId || 'cskh-001') : ticket.customerId;
+
+            const newMsg = await supportService.sendMessage({
+              ticketId: ticket.id,
+              senderId,
+              senderRole: role,
+              message: actualText || (actualAttachments.length > 0 ? '[Hình ảnh đính kèm]' : ''),
+              attachmentUrls: actualAttachments,
+              selectedDevice,
+            });
+
+            const formatted = formatLiveMessage(newMsg);
+            const enriched = enrichTicket(ticket, supportService.getMessagesByTicket(ticket.id).map(m => formatLiveMessage(m)));
+
+            broadcastToCustomer(ticket.customerId, {
+              type: 'NEW_MESSAGE',
+              ticketId: ticket.id,
+              message: formatted,
+            });
+
+            broadcastToStaff({
+              type: 'NEW_MESSAGE',
+              ticketId: ticket.id,
+              customerId: ticket.customerId,
+              message: formatted,
+              ticket: enriched,
+            });
+            break;
+          }
+
+          case 'TYPING': {
+            const { ticketId, customerId, isTyping } = payload;
+            if (ws.userData?.role === 'CUSTOMER') {
+              broadcastToStaff({ type: 'TYPING', ticketId, customerId: ws.userData?.customerId, isTyping });
+            } else if (customerId) {
+              broadcastToCustomer(customerId, { type: 'TYPING', ticketId, isTyping });
+            }
+            break;
+          }
+        }
+      } catch (err) {
+        console.error('[WebSocket] Message handling error:', err);
+      }
+    });
+
+    ws.on('close', () => { wsClients.delete(ws); });
+  });
 
   return {
     app,

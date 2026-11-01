@@ -14,6 +14,7 @@ import {
   CustomerDevicePanel,
   SupportTicketsTab,
 } from "./components";
+import { getWsChatUrl } from "@/context/apiConfig";
 
 function CSKHContent() {
   const { canView } = usePermissions();
@@ -85,8 +86,7 @@ function CSKHContent() {
     let ws: WebSocket | null = null;
     const connectWebSocket = () => {
       try {
-        const host = typeof window !== "undefined" ? window.location.hostname || "localhost" : "localhost";
-        const wsUrl = `ws://${host}:4000/ws/chat`;
+        const wsUrl = getWsChatUrl();
         ws = new WebSocket(wsUrl);
         wsRef.current = ws;
 
