@@ -3,16 +3,15 @@ import { DashboardController } from './dashboard.controller.js';
 import { DashboardService } from './dashboard.service.js';
 import { DashboardRepository } from './dashboard.repository.js';
 import { PostgresClient, postgresClient } from '../../core/database/postgres.client.js';
+import { createRouterFromController } from '../../core/decorators/index.js';
 
 export function createDashboardRouter(client: PostgresClient = postgresClient): Router {
-  const router = Router();
   const repo = new DashboardRepository(client);
   const service = new DashboardService(repo);
   const controller = new DashboardController(service);
 
-  router.get('/dashboard/stats', controller.getStats);
-
-  return router;
+  return createRouterFromController(controller);
 }
 
 export const dashboardRouter = createDashboardRouter();
+

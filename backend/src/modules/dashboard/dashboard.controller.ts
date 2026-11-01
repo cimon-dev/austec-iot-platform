@@ -1,15 +1,19 @@
 import { Request, Response } from 'express';
 import { DashboardService } from './dashboard.service.js';
+import { Controller, Get } from '../../core/decorators/index.js';
 
+@Controller('/dashboard')
 export class DashboardController {
   constructor(private service: DashboardService = new DashboardService()) {}
 
-  public getStats = async (_req: Request, res: Response) => {
+  @Get('/stats')
+  public async getStats(_req: Request, res: Response) {
     try {
       const stats = await this.service.getStats();
       res.json({ success: true, stats });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 }
+

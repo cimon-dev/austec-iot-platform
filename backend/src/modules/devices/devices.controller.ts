@@ -1,159 +1,179 @@
 import { Request, Response } from 'express';
 import { DevicesService } from './devices.service.js';
+import { Controller, Get, Post, Put, Delete } from '../../core/decorators/index.js';
+import { authenticate, requireRole } from '../../core/middlewares/auth.middleware.js';
 
+@Controller('/admin')
 export class DevicesController {
   constructor(private service: DevicesService) {}
 
   // Groups
-  public getGroups = async (_req: Request, res: Response) => {
+  @Get('/groups', authenticate)
+  public async getGroups(_req: Request, res: Response) {
     try {
       const groups = await this.service.getGroups();
       res.json({ success: true, groups });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createGroup = async (req: Request, res: Response) => {
+  @Post('/groups', authenticate, requireRole(['ADMIN']))
+  public async createGroup(req: Request, res: Response) {
     try {
       const group = await this.service.createGroup(req.body);
       res.json({ success: true, group, message: 'Tạo nhóm sản phẩm thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public updateGroup = async (req: Request, res: Response) => {
+  @Put('/groups/:id', authenticate, requireRole(['ADMIN']))
+  public async updateGroup(req: Request, res: Response) {
     try {
       const group = await this.service.updateGroup(Number(req.params.id), req.body);
       res.json({ success: true, group, message: 'Cập nhật nhóm sản phẩm thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public deleteGroup = async (req: Request, res: Response) => {
+  @Delete('/groups/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteGroup(req: Request, res: Response) {
     try {
       await this.service.deleteGroup(Number(req.params.id));
       res.json({ success: true, message: 'Xóa nhóm sản phẩm thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
   // Device Types
-  public getDeviceTypes = async (_req: Request, res: Response) => {
+  @Get('/device-types', authenticate)
+  public async getDeviceTypes(_req: Request, res: Response) {
     try {
       const deviceTypes = await this.service.getDeviceTypes();
       res.json({ success: true, deviceTypes });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createDeviceType = async (req: Request, res: Response) => {
+  @Post('/device-types', authenticate, requireRole(['ADMIN']))
+  public async createDeviceType(req: Request, res: Response) {
     try {
       const deviceType = await this.service.createDeviceType(req.body);
       res.json({ success: true, deviceType, message: 'Tạo loại thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public updateDeviceType = async (req: Request, res: Response) => {
+  @Put('/device-types/:id', authenticate, requireRole(['ADMIN']))
+  public async updateDeviceType(req: Request, res: Response) {
     try {
       const deviceType = await this.service.updateDeviceType(Number(req.params.id), req.body);
       res.json({ success: true, deviceType, message: 'Cập nhật loại thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public deleteDeviceType = async (req: Request, res: Response) => {
+  @Delete('/device-types/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteDeviceType(req: Request, res: Response) {
     try {
       await this.service.deleteDeviceType(Number(req.params.id));
       res.json({ success: true, message: 'Xóa loại thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
   // Properties
-  public getProperties = async (_req: Request, res: Response) => {
+  @Get('/properties', authenticate)
+  public async getProperties(_req: Request, res: Response) {
     try {
       const properties = await this.service.getProperties();
       res.json({ success: true, properties });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createProperty = async (req: Request, res: Response) => {
+  @Post('/properties', authenticate, requireRole(['ADMIN']))
+  public async createProperty(req: Request, res: Response) {
     try {
       const property = await this.service.createProperty(req.body);
       res.json({ success: true, property, message: 'Tạo thuộc tính thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public updateProperty = async (req: Request, res: Response) => {
+  @Put('/properties/:id', authenticate, requireRole(['ADMIN']))
+  public async updateProperty(req: Request, res: Response) {
     try {
       const property = await this.service.updateProperty(Number(req.params.id), req.body);
       res.json({ success: true, property, message: 'Cập nhật thuộc tính thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public deleteProperty = async (req: Request, res: Response) => {
+  @Delete('/properties/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteProperty(req: Request, res: Response) {
     try {
       await this.service.deleteProperty(Number(req.params.id));
       res.json({ success: true, message: 'Xóa thuộc tính thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
   // Models
-  public getModels = async (_req: Request, res: Response) => {
+  @Get('/models', authenticate)
+  public async getModels(_req: Request, res: Response) {
     try {
       const models = await this.service.getModels();
       res.json({ success: true, models });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createModel = async (req: Request, res: Response) => {
+  @Post('/models', authenticate, requireRole(['ADMIN']))
+  public async createModel(req: Request, res: Response) {
     try {
       const model = await this.service.createModel(req.body);
       res.json({ success: true, model, message: 'Tạo mẫu thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public updateModel = async (req: Request, res: Response) => {
+  @Put('/models/:id', authenticate, requireRole(['ADMIN']))
+  public async updateModel(req: Request, res: Response) {
     try {
       const model = await this.service.updateModel(Number(req.params.id), req.body);
       res.json({ success: true, model, message: 'Cập nhật mẫu thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public deleteModel = async (req: Request, res: Response) => {
+  @Delete('/models/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteModel(req: Request, res: Response) {
     try {
       await this.service.deleteModel(Number(req.params.id));
       res.json({ success: true, message: 'Xóa mẫu thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
   // Devices & Inventory
-  public getDevices = async (req: Request, res: Response) => {
+  @Get('/devices', authenticate)
+  public async getDevices(req: Request, res: Response) {
     try {
       const page = Number(req.query.page) || 1;
       const limit = Number(req.query.limit) || 50;
@@ -164,73 +184,81 @@ export class DevicesController {
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createDevice = async (req: Request, res: Response) => {
+  @Post('/devices', authenticate, requireRole(['ADMIN']))
+  public async createDevice(req: Request, res: Response) {
     try {
       const device = await this.service.createDevice(req.body);
       res.json({ success: true, device, message: 'Khởi tạo thiết bị vào CSDL thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public createDevicesBatch = async (req: Request, res: Response) => {
+  @Post('/devices/batch', authenticate, requireRole(['ADMIN']))
+  public async createDevicesBatch(req: Request, res: Response) {
     try {
       const items = Array.isArray(req.body) ? req.body : req.body.devices;
       if (!Array.isArray(items)) {
-        return res.status(400).json({ success: false, error: 'Dữ liệu thiết bị gửi lên phải là một mảng!' });
+        res.status(400).json({ success: false, error: 'Dữ liệu thiết bị gửi lên phải là một mảng!' });
+        return;
       }
       const result = await this.service.createDevicesBatch(items);
       res.json({ success: true, ...result, message: `Đã lưu thành công ${result.count} thiết bị vào CSDL!` });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public updateDevice = async (req: Request, res: Response) => {
+  @Put('/devices/:hardwareId', authenticate, requireRole(['ADMIN']))
+  public async updateDevice(req: Request, res: Response) {
     try {
       const device = await this.service.updateDevice(String(req.params.hardwareId), req.body);
       res.json({ success: true, device, message: 'Cập nhật thiết bị trong CSDL thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public deleteDevice = async (req: Request, res: Response) => {
+  @Delete('/devices/:hardwareId', authenticate, requireRole(['ADMIN']))
+  public async deleteDevice(req: Request, res: Response) {
     try {
       await this.service.deleteDevice(String(req.params.hardwareId));
       res.json({ success: true, message: 'Xóa thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
   // RF Remotes
-  public getRfRemotes = async (req: Request, res: Response) => {
+  @Get('/rf-remotes', authenticate)
+  public async getRfRemotes(req: Request, res: Response) {
     try {
       const remotes = await this.service.getRfRemotes(req.query.hardwareId as string);
       res.json({ success: true, remotes });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public addRfRemote = async (req: Request, res: Response) => {
+  @Post('/rf-remotes', authenticate, requireRole(['ADMIN']))
+  public async addRfRemote(req: Request, res: Response) {
     try {
       const remote = await this.service.addRfRemote(req.body);
       res.json({ success: true, remote, message: 'Thêm tay remote RF thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 
-  public toggleBlockRfRemote = async (req: Request, res: Response) => {
+  @Put('/rf-remotes/:id/toggle-block', authenticate, requireRole(['ADMIN']))
+  public async toggleBlockRfRemote(req: Request, res: Response) {
     try {
       const isBlocked = await this.service.toggleBlockRfRemote(Number(req.params.id));
       res.json({ success: true, message: 'Cập nhật trạng thái khóa remote thành công!', isBlocked });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
-  };
+  }
 }
