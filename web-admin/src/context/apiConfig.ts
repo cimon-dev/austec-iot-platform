@@ -1,5 +1,7 @@
+const DEFAULT_CLOUD_API_URL = "https://austec-backend.onrender.com";
+
 export function getApiBaseUrl(): string {
-  // 1. Prioritize environment variable configured on Vercel or in .env
+  // 1. Ưu tiên biến môi trường khai báo trong .env.local hoặc hosting (Vercel)
   if (process.env.NEXT_PUBLIC_API_URL) {
     let url = process.env.NEXT_PUBLIC_API_URL.trim().replace(/\/+$/, "");
     if (url.endsWith("/api")) {
@@ -8,29 +10,17 @@ export function getApiBaseUrl(): string {
     return url;
   }
 
-  // 2. Client-side browser detection
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    // Local development
-    if (host === "localhost" || host === "127.0.0.1") {
-      return "http://localhost:4000";
-    }
-    // LAN / local IP address (e.g. 192.168.1.15)
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
-      return `http://${host}:4000`;
-    }
-  }
-
-  return "http://localhost:4000";
+  // 2. Mặc định toàn hệ thống: Kết nối thẳng tới Backend Cloud đã deploy trên Render
+  return DEFAULT_CLOUD_API_URL;
 }
 
 export function getWsChatUrl(): string {
-  // 1. Prioritize WebSocket URL environment variable
+  // 1. Ưu tiên biến môi trường WebSocket nếu có khai báo
   if (process.env.NEXT_PUBLIC_WS_URL) {
     return process.env.NEXT_PUBLIC_WS_URL.trim().replace(/\/+$/, "");
   }
 
-  // 2. Auto-derive from API base URL if specified
+  // 2. Tự động suy ra WebSocket từ API Base URL (HTTPS => WSS)
   const apiBase = getApiBaseUrl();
   if (apiBase.startsWith("http://")) {
     return apiBase.replace("http://", "ws://") + "/ws/chat";
@@ -39,16 +29,5 @@ export function getWsChatUrl(): string {
     return apiBase.replace("https://", "wss://") + "/ws/chat";
   }
 
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1") {
-      return "ws://localhost:4000/ws/chat";
-    }
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(host)) {
-      return `ws://${host}:4000/ws/chat`;
-    }
-  }
-
-  return "ws://localhost:4000/ws/chat";
+  return "wss://austec-backend.onrender.com/ws/chat";
 }
-
