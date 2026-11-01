@@ -40,7 +40,7 @@ class ApiConfig {
       }
       return 'http://localhost:4000';
     }
-    return 'http://192.168.100.6:4000';
+    return 'http://192.168.1.145:4000';
   }
 
   /// Địa chỉ WebSocket Chat realtime đồng bộ đa nền tảng
@@ -55,6 +55,6 @@ class ApiConfig {
       }
       return 'ws://localhost:4000/ws/chat';
     }
-    return 'ws://192.168.100.6:4000/ws/chat';
+    return 'ws://192.168.1.145:4000/ws/chat';
   }
 }

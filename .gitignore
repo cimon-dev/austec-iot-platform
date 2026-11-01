@@ -45,3 +45,7 @@ coverage/
 
 # Persistent database temp files
 data/*.tmp
+
+# Mobile build binaries
+*.apk
+mobile-app/*.apk

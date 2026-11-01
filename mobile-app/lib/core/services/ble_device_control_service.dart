@@ -46,11 +46,12 @@ class BleDeviceControlService {
         final bool withoutResponse =
             _rxCharacteristic!.properties.writeWithoutResponse && !_rxCharacteristic!.properties.write;
         await _rxCharacteristic!.write(utf8.encode(payloadPrimary), withoutResponse: withoutResponse).timeout(const Duration(seconds: 2));
-        if (currentUserId != 'USR-330967') {
-          // Gửi thêm fallback nếu ID ghép nối là USR-330967
-          await Future.delayed(const Duration(milliseconds: 60));
-          await _rxCharacteristic!.write(utf8.encode("USR-330967/$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
-        }
+        await Future.delayed(const Duration(milliseconds: 30));
+        await _rxCharacteristic!.write(utf8.encode("austec/$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
+        await Future.delayed(const Duration(milliseconds: 30));
+        await _rxCharacteristic!.write(utf8.encode("$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
+        await Future.delayed(const Duration(milliseconds: 30));
+        await _rxCharacteristic!.write(utf8.encode(actionNumber), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
         debugPrint("[BLE Door Control] ⚡ Gửi lệnh trực tiếp BLE siêu tốc thành công: $payloadPrimary");
         return true;
       }
@@ -159,10 +160,12 @@ class BleDeviceControlService {
       if (rxChar != null) {
         final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
         await rxChar.write(utf8.encode(payloadPrimary), withoutResponse: withoutResponse).timeout(const Duration(seconds: 2));
-        if (currentUserId != 'USR-330967') {
-          await Future.delayed(const Duration(milliseconds: 60));
-          await rxChar.write(utf8.encode("USR-330967/$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
-        }
+        await Future.delayed(const Duration(milliseconds: 30));
+        await rxChar.write(utf8.encode("austec/$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
+        await Future.delayed(const Duration(milliseconds: 30));
+        await rxChar.write(utf8.encode("$hardwareId/action/$actionNumber"), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
+        await Future.delayed(const Duration(milliseconds: 30));
+        await rxChar.write(utf8.encode(actionNumber), withoutResponse: withoutResponse).timeout(const Duration(seconds: 1));
 
         debugPrint("[BLE Door Control] ✅ Đã truyền lệnh BLE trực tiếp tới rơ-le bo mạch ESP32: $payloadPrimary");
         _connectedDevice = targetDevice;

@@ -424,14 +424,16 @@ class BleProvisioningService {
       subscriptionStatus: 'ACTIVE',
     );
     IoTGatewayClient().addDevice(newDevice);
-    IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
+    await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
+
+    final syncedDevice = IoTGatewayClient().findByHardwareId(targetDevice.hardwareId) ?? newDevice;
 
     onProgress("Ghép nối thiết bị thành công 100%!", 1.0);
 
     return PairingResult(
       success: true,
       hardwareId: targetDevice.hardwareId,
-      modelName: targetDevice.modelName,
+      modelName: syncedDevice.name,
       ownerName: confirmedOwner,
       warrantyCode: warrantyCode,
       warrantyUntil: warrantyUntil,
