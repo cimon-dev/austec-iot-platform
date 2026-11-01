@@ -409,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           icon: const Icon(Icons.fingerprint_rounded,
                               color: AppTheme.cyanAccent, size: 20),
                           label: const Text(
-                            "Đăng nhập bằng FaceID / Vân tay 123",
+                            "Đăng nhập bằng FaceID / Vân tay 1234",
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 11,
