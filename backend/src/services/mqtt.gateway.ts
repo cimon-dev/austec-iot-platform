@@ -137,18 +137,28 @@ export class MqttGateway {
    * Action: "1" (Mở), "2" (Đóng), "3" (Dừng), "11" (Học RF), "12" (Xóa RF)
    */
   public async publishAction(userId: string, hwId: string, actionNumber: string): Promise<boolean> {
-    const primaryTopic = `${userId || 'austec'}/${hwId}/sub/action`;
-    const res = await this.publishMessage(primaryTopic, actionNumber);
+    const candidateTopics = new Set<string>([
+      `${userId || 'austec'}/${hwId}/sub/action`,
+      `austec/${hwId}/sub/action`,
+      `amtuong/${hwId}/sub/action`,
+      `${hwId}/sub/action`,
+    ]);
 
     try {
       const state = await this.hotCache.getDeviceState(hwId);
       const knownOwner = (state?.currentProperties as any)?.ownerId;
-      if (knownOwner && knownOwner !== userId) {
-        await this.publishMessage(`${knownOwner}/${hwId}/sub/action`, actionNumber);
+      if (knownOwner) {
+        candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
       }
     } catch (_) {}
 
-    return res;
+    let anySuccess = false;
+    for (const topic of candidateTopics) {
+      const ok = await this.publishMessage(topic, actionNumber);
+      if (ok) anySuccess = true;
+    }
+
+    return anySuccess;
   }
 
   /**

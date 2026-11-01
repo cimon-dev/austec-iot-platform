@@ -8,6 +8,7 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   fullName: string;
+  phoneNumber?: string;
 }
 
 export interface AuthenticatedRequest extends Request {

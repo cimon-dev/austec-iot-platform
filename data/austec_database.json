@@ -1,6 +1,30 @@
 {
   "users": [
     {
+      "id": "USR-192473",
+      "fullName": "nguyensonhai",
+      "email": "letgodavid2026@gmail.com",
+      "phoneNumber": "0934473695",
+      "address": "Địa chỉ đang cập nhật",
+      "province": "Hà Nội",
+      "role": "CUSTOMER",
+      "roleTitle": "Khách hàng",
+      "password": "1234567",
+      "isActive": true,
+      "registeredAt": "2026-10-31",
+      "devices": [
+        {
+          "hardwareId": "AT-DOOR-USR-192473",
+          "modelName": "Austec Titadoor A900 Super",
+          "deviceType": "Cửa cuốn",
+          "pairedAt": "2026-10-31 11:13",
+          "warrantyUntil": "2028-10-22",
+          "isOnline": true,
+          "roleInHome": "OWNER"
+        }
+      ]
+    },
+    {
       "id": "USR-330967",
       "fullName": "Nguyễn Văn Test",
       "email": "test@gmail.com",
@@ -227,6 +251,31 @@
         true
       ],
       "createdAt": "2026-10-29T20:05:30.968Z"
+    },
+    {
+      "id": "PERM-USR-192473-OWNER",
+      "hardwareId": "AT-DOOR-USR-192473",
+      "userId": "USR-192473",
+      "memberName": "nguyensonhai (Chủ hộ)",
+      "phoneNumber": "0934473695",
+      "role": "OWNER",
+      "canControl": true,
+      "canViewHistory": true,
+      "canChildLock": true,
+      "canConfig": true,
+      "scheduleLimitActive": false,
+      "accessStartTime": "00:00",
+      "accessEndTime": "23:59",
+      "accessDays": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "createdAt": "2026-10-31T11:13:12.477Z"
     }
   ],
   "requests": [],
@@ -234,7 +283,224 @@
   "supportMessages": [],
   "deviceInventory": [],
   "deviceInstances": [],
-  "blackboxLogs": [],
-  "lastSavedAt": "2026-10-29T20:05:31.247Z",
+  "blackboxLogs": [
+    {
+      "id": 18,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:04:03.041Z"
+    },
+    {
+      "id": 17,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 2,
+      "createdAt": "2026-10-31T11:04:02.423Z"
+    },
+    {
+      "id": 16,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:04:00.890Z"
+    },
+    {
+      "id": 15,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:03:59.056Z"
+    },
+    {
+      "id": 14,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:03:04.367Z"
+    },
+    {
+      "id": 13,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_CLOSE",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:03:02.931Z"
+    },
+    {
+      "id": 12,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:03:01.708Z"
+    },
+    {
+      "id": 11,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:03:01.497Z"
+    },
+    {
+      "id": 10,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T11:02:59.889Z"
+    },
+    {
+      "id": 9,
+      "hardwareId": "amtuong1834",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:53.848Z"
+    },
+    {
+      "id": 8,
+      "hardwareId": "amtuong1834",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:52.593Z"
+    },
+    {
+      "id": 7,
+      "hardwareId": "amtuong1834",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_CLOSE",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:50.927Z"
+    },
+    {
+      "id": 6,
+      "hardwareId": "amtuong1834",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 2,
+      "createdAt": "2026-10-31T10:58:49.202Z"
+    },
+    {
+      "id": 5,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:44.457Z"
+    },
+    {
+      "id": 4,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_CLOSE",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:42.691Z"
+    },
+    {
+      "id": 3,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 2,
+      "createdAt": "2026-10-31T10:58:42.369Z"
+    },
+    {
+      "id": 2,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_STOP",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 1,
+      "createdAt": "2026-10-31T10:58:41.690Z"
+    },
+    {
+      "id": 1,
+      "hardwareId": "amtuong784",
+      "actorId": "USR-330967",
+      "actorRole": "CUSTOMER",
+      "actorIp": "::ffff:192.168.1.144",
+      "actionType": "CMD_OPEN",
+      "payloadSent": {},
+      "ackStatus": "SUCCESS",
+      "latencyMs": 36,
+      "createdAt": "2026-10-31T10:58:37.050Z"
+    }
+  ],
+  "lastSavedAt": "2026-10-31T11:13:13.025Z",
   "version": "1.0"
 }
