@@ -96,6 +96,12 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient purpleGradient = LinearGradient(
+    colors: [Color(0xFFA855F7), Color(0xFF6366F1)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   // Bilingual Dictionary (Anh / Việt)
   static final Map<String, Map<String, String>> _dict = {
     'welcome': {'vi': 'Xin chào', 'en': 'Hello'},

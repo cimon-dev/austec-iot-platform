@@ -31,6 +31,8 @@ import { createDevicesRouter } from './modules/devices/devices.routes.js';
 import { createBlackboxRouter } from './modules/blackbox/blackbox.routes.js';
 import { createCskhRouter } from './modules/cskh/cskh.routes.js';
 import { createMqttRouter } from './modules/mqtt/mqtt.routes.js';
+import { createChatRouter } from './modules/chat/chat.routes.js';
+import { ChatRepository } from './modules/chat/chat.repository.js';
 
 export interface UnifiedUser {
   id: string;
@@ -60,6 +62,7 @@ interface ExtendedWebSocket extends WebSocket {
     userId?: string;
     customerName?: string;
     customerPhone?: string;
+    currentConversationId?: string;
   };
 }
 
@@ -183,7 +186,10 @@ export function createApp() {
   }));
   app.use('/api', createBlackboxRouter(postgresClient));
   app.use('/api', createCskhRouter(postgresClient));
+  app.use('/api', createChatRouter(postgresClient));
   app.use('/api', createMqttRouter(mqttGateway));
+
+  const chatRepository = new ChatRepository(postgresClient);
 
   // WebSocket Chat Event Handlers
   const wsClients = new Set<ExtendedWebSocket>();
@@ -377,7 +383,7 @@ export function createApp() {
           }
 
           case 'SEND_MESSAGE': {
-            const { ticketId, customerId, sender, senderRole, text, message, images, attachmentUrls, selectedDevice } = payload;
+            const { ticketId, customerId, sender, senderRole, text, message, images, attachmentUrls, selectedDevice, clientTempId } = payload;
             const actualText = (text || message || '').toString().trim();
             const actualAttachments = images || attachmentUrls || [];
             if (!actualText && actualAttachments.length === 0) return;
@@ -407,22 +413,147 @@ export function createApp() {
               selectedDevice,
             });
 
-            const formatted = formatLiveMessage(newMsg);
+            const formatted: any = formatLiveMessage(newMsg);
+            if (clientTempId) {
+              formatted.clientTempId = clientTempId;
+            }
             const enriched = enrichTicket(ticket, supportService.getMessagesByTicket(ticket.id).map(m => formatLiveMessage(m)));
 
-            broadcastToCustomer(ticket.customerId, {
-              type: 'NEW_MESSAGE',
+            // Gửi ACK về chính sender socket kèm clientTempId để cập nhật trạng thái đã gửi thành công
+            ws.send(JSON.stringify({
+              type: 'MESSAGE_ACK',
               ticketId: ticket.id,
+              clientTempId,
               message: formatted,
+            }));
+
+            // Broadcast tới Customer (nếu sender không phải là chính customer socket này)
+            for (const c of wsClients) {
+              if (c !== ws && c.readyState === WebSocket.OPEN && c.userData?.role === 'CUSTOMER' && c.userData?.customerId === ticket.customerId) {
+                c.send(JSON.stringify({
+                  type: 'NEW_MESSAGE',
+                  ticketId: ticket.id,
+                  message: formatted,
+                }));
+              }
+            }
+
+            // Broadcast tới Staff (ngoại trừ socket nhân viên vừa gửi để chống duplicate)
+            for (const c of wsClients) {
+              if (c !== ws && c.readyState === WebSocket.OPEN && (c.userData?.role === 'ADMIN' || c.userData?.role === 'CSKH' || !c.userData?.role)) {
+                c.send(JSON.stringify({
+                  type: 'NEW_MESSAGE',
+                  ticketId: ticket.id,
+                  customerId: ticket.customerId,
+                  message: formatted,
+                  ticket: enriched,
+                }));
+              }
+            }
+            break;
+          }
+
+          // ==========================================
+          // MULTI-USER & GROUP CHAT REALTIME HANDLERS
+          // ==========================================
+          case 'JOIN_CONVERSATION': {
+            const { conversationId, userId } = payload;
+            if (!ws.userData) {
+              ws.userData = { role: 'CUSTOMER', userId, customerId: userId };
+            }
+            if (userId) {
+              ws.userData.userId = userId;
+              ws.userData.customerId = userId;
+            }
+            ws.userData.currentConversationId = conversationId;
+
+            ws.send(JSON.stringify({
+              type: 'CONVERSATION_JOINED',
+              success: true,
+              conversationId,
+            }));
+            break;
+          }
+
+          case 'LEAVE_CONVERSATION': {
+            if (ws.userData) {
+              delete ws.userData.currentConversationId;
+            }
+            ws.send(JSON.stringify({
+              type: 'CONVERSATION_LEFT',
+              success: true,
+            }));
+            break;
+          }
+
+          case 'SEND_CONVERSATION_MESSAGE': {
+            const {
+              conversationId,
+              text,
+              content,
+              messageType,
+              attachments,
+              clientTempId,
+              metadata,
+              senderId,
+              senderName,
+              senderRole,
+              senderAvatar,
+            } = payload;
+
+            const actualSenderId = senderId || ws.userData?.userId || ws.userData?.customerId || 'unknown';
+            const actualSenderRole = senderRole || ws.userData?.role || 'CUSTOMER';
+            const actualSenderName = senderName || ws.userData?.customerName || 'Người dùng Austec';
+            const actualContent = (content || text || '').toString().trim();
+            const actualAttachments = attachments || [];
+
+            if (!conversationId) {
+              ws.send(JSON.stringify({ type: 'ERROR', error: 'Thiếu conversationId' }));
+              break;
+            }
+
+            const savedMsg = await chatRepository.saveMessage({
+              conversationId,
+              senderId: actualSenderId,
+              senderRole: actualSenderRole,
+              senderName: actualSenderName,
+              senderAvatar,
+              messageType: messageType || (actualAttachments.length > 0
+                ? (actualAttachments[0].mediaType === 'video' ? 'VIDEO' : actualAttachments[0].mediaType === 'file' ? 'FILE' : 'IMAGE')
+                : 'TEXT'),
+              content: actualContent,
+              attachments: actualAttachments,
+              clientTempId,
+              metadata,
             });
 
-            broadcastToStaff({
-              type: 'NEW_MESSAGE',
-              ticketId: ticket.id,
-              customerId: ticket.customerId,
-              message: formatted,
-              ticket: enriched,
+            // 1. Phản hồi ACK ngay cho chính socket người gửi kèm clientTempId (chống duplicate)
+            ws.send(JSON.stringify({
+              type: 'MESSAGE_ACK',
+              clientTempId,
+              conversationId,
+              message: savedMsg,
+            }));
+
+            // 2. Broadcast tin nhắn tới tất cả người tham gia khác (không gửi lại sender socket)
+            const participantIds = await chatRepository.getParticipantUserIds(conversationId);
+            const broadcastPayload = JSON.stringify({
+              type: 'NEW_CONVERSATION_MESSAGE',
+              conversationId,
+              message: savedMsg,
             });
+
+            for (const client of wsClients) {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                const inRoom = client.userData?.currentConversationId === conversationId;
+                const isPart = client.userData?.userId && participantIds.includes(client.userData.userId);
+                const isStaffForCskh = (client.userData?.role === 'ADMIN' || client.userData?.role === 'CSKH') && conversationId.startsWith('cskh-');
+
+                if (inRoom || isPart || isStaffForCskh) {
+                  client.send(broadcastPayload);
+                }
+              }
+            }
             break;
           }
 

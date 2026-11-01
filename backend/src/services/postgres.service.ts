@@ -472,6 +472,48 @@ export class PostgresService {
       );
       INSERT INTO system_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
 
+      -- 26. BẢNG PHÒNG CHAT / CUỘC HỘI THOẠI (CHAT CONVERSATIONS)
+      CREATE TABLE IF NOT EXISTS chat_conversations (
+        id VARCHAR(100) PRIMARY KEY,
+        type VARCHAR(50) NOT NULL DEFAULT 'DIRECT',
+        title VARCHAR(255),
+        avatar_url TEXT,
+        creator_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
+        last_message TEXT,
+        last_message_sender_name VARCHAR(255),
+        last_message_at VARCHAR(50),
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at VARCHAR(50),
+        updated_at VARCHAR(50)
+      );
+
+      -- 27. BẢNG THÀNH VIÊN CUỘC TRÒ CHUYỆN (CHAT PARTICIPANTS)
+      CREATE TABLE IF NOT EXISTS chat_participants (
+        id SERIAL PRIMARY KEY,
+        conversation_id VARCHAR(100) NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        user_id VARCHAR(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(50) DEFAULT 'MEMBER',
+        joined_at VARCHAR(50),
+        last_read_at VARCHAR(50),
+        UNIQUE (conversation_id, user_id)
+      );
+
+      -- 28. BẢNG TIN NHẮN ĐA PHƯƠNG TIỆN (CHAT MESSAGES)
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id VARCHAR(100) NOT NULL REFERENCES chat_conversations(id) ON DELETE CASCADE,
+        sender_id VARCHAR(100) NOT NULL REFERENCES users(id),
+        sender_role VARCHAR(50) NOT NULL DEFAULT 'CUSTOMER',
+        sender_name VARCHAR(255),
+        sender_avatar TEXT,
+        message_type VARCHAR(50) DEFAULT 'TEXT',
+        content TEXT,
+        attachments JSONB DEFAULT '[]'::jsonb,
+        client_temp_id VARCHAR(100),
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at VARCHAR(50)
+      );
+
       -- INDEXES TĂNG TỐC TRUY VẤN TOÀN HỆ THỐNG
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
@@ -490,6 +532,10 @@ export class PostgresService {
       CREATE INDEX IF NOT EXISTS idx_ota_campaign ON ota_device_records(campaign_id);
       CREATE INDEX IF NOT EXISTS idx_ota_device ON ota_device_records(hardware_id);
       CREATE INDEX IF NOT EXISTS idx_guides_model ON installation_guides(model_code);
+      CREATE INDEX IF NOT EXISTS idx_chat_part_user ON chat_participants(user_id);
+      CREATE INDEX IF NOT EXISTS idx_chat_part_conv ON chat_participants(conversation_id);
+      CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chat_messages(conversation_id, id ASC);
+      CREATE INDEX IF NOT EXISTS idx_chat_msg_client_temp ON chat_messages(client_temp_id);
     `;
 
     await this.pool.query(ddl);

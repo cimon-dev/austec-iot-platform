@@ -50,12 +50,19 @@ function CSKHContent() {
     if (!Array.isArray(msgs)) return [];
     const deduped: any[] = [];
     for (const m of msgs) {
-      const text = (m.text || m.message || "").toString().trim();
-      const sender = m.sender || m.senderRole;
       const isDupe = deduped.some((x) => {
+        if (m.id && x.id && String(m.id) === String(x.id)) return true;
+        if (m.clientTempId && x.clientTempId && m.clientTempId === x.clientTempId) return true;
+        const text = (m.text || m.message || "").toString().trim();
         const xText = (x.text || x.message || "").toString().trim();
+        const sender = m.sender || m.senderRole;
         const xSender = x.sender || x.senderRole;
-        return xSender === sender && xText === text;
+        if (sender === xSender && text === xText) {
+          const t1 = new Date(m.createdAt || 0).getTime();
+          const t2 = new Date(x.createdAt || 0).getTime();
+          if (Math.abs(t1 - t2) < 4000) return true;
+        }
+        return false;
       });
       if (!isDupe) deduped.push(m);
     }
@@ -119,15 +126,29 @@ function CSKHContent() {
               setTickets((prev) => [cleanedTicket, ...prev.filter((t) => t.id !== data.ticket.id)]);
               setSelectedTicketId(data.ticket.id);
               toast.info(`Khách hàng ${data.ticket.customerName} vừa bắt đầu phiên hỗ trợ mới!`);
-            } else if (data.type === "NEW_MESSAGE" && data.message) {
+            } else if ((data.type === "NEW_MESSAGE" || data.type === "MESSAGE_ACK") && data.message) {
+              const msg = data.message;
+              const targetTicketId = data.ticketId;
               setTickets((prev) =>
                 prev.map((t) => {
-                  if (t.id === data.ticketId) {
+                  if (t.id === targetTicketId) {
+                    const existingIndex = t.messages.findIndex(
+                      (m: any) =>
+                        (msg.id && String(m.id) === String(msg.id)) ||
+                        (msg.clientTempId && m.clientTempId === msg.clientTempId)
+                    );
+                    let updatedMsgs: any[];
+                    if (existingIndex !== -1) {
+                      updatedMsgs = [...t.messages];
+                      updatedMsgs[existingIndex] = { ...updatedMsgs[existingIndex], ...msg };
+                    } else {
+                      updatedMsgs = [...t.messages, msg];
+                    }
                     return {
                       ...t,
                       status: "PROCESSING",
-                      messages: [...t.messages, data.message],
-                      selectedDevice: data.message.selectedDevice || t.selectedDevice,
+                      messages: deduplicateTicketMessages(updatedMsgs),
+                      selectedDevice: msg.selectedDevice || t.selectedDevice,
                     };
                   }
                   return t;
@@ -185,11 +206,15 @@ function CSKHContent() {
     if (!replyText.trim() || !currentTicket) return;
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
 
     const newMsg = {
+      id: tempId,
+      clientTempId: tempId,
       sender: "CSKH" as const,
       senderRole: "CSKH",
       text: replyText.trim(),
+      message: replyText.trim(),
       time: timeStr,
       createdAt: now.toISOString(),
     };
@@ -201,12 +226,17 @@ function CSKHContent() {
           ticketId: currentTicket.id,
           sender: "CSKH",
           text: replyText.trim(),
+          clientTempId: tempId,
         })
       );
     }
 
     setTickets((prev) =>
-      prev.map((t) => (t.id === currentTicket.id ? { ...t, messages: [...t.messages, newMsg] } : t))
+      prev.map((t) =>
+        t.id === currentTicket.id
+          ? { ...t, messages: deduplicateTicketMessages([...t.messages, newMsg]) }
+          : t
+      )
     );
     setReplyText("");
   };

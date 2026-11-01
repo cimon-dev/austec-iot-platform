@@ -6,6 +6,7 @@ import '../../../core/services/iot_gateway_client.dart';
 import 'category_device_list_sheet.dart';
 import '../../shop/screens/native_shop_screen.dart';
 import '../../cskh/cskh.dart';
+import '../../chat/screens/chat_hub_screen.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import '../../settings/screens/app_settings_screen.dart';
 import '../../../core/services/auth_service.dart';
@@ -281,9 +282,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                       : _selectedBottomNavIndex == 1
                           ? NativeShopScreen(onConsultProduct: _handleConsultProduct)
                           : _selectedBottomNavIndex == 2
-                              ? CskhChatScreen(
-                                  initialDevice: _cskhPrefilledDevice,
-                                  initialPrompt: _cskhPrefilledPrompt,
+                              ? ChatHubScreen(
+                                  prefilledDevice: _cskhPrefilledDevice,
+                                  prefilledPrompt: _cskhPrefilledPrompt,
+                                  onConsultProduct: _handleConsultProduct,
                                 )
                               : AppSettingsScreen(
                                   onThemeChanged: _toggleTheme,
