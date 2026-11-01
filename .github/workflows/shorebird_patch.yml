@@ -1,0 +1,43 @@
+name: Shorebird Patch iOS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'mobile-app/lib/**'
+      - 'mobile-app/assets/**'
+      - 'mobile-app/pubspec.yaml'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version to patch (leave empty to use pubspec.yaml)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  patch-ios:
+    name: Patch iOS via Shorebird
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Shorebird
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      - name: Run Shorebird Patch iOS
+        working-directory: mobile-app
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: |
+          if [ -n "${{ inputs.release_version }}" ]; then
+            shorebird patch ios --release-version ${{ inputs.release_version }} --no-confirm --allow-native-diffs --allow-asset-diffs
+          else
+            shorebird patch ios --no-confirm --allow-native-diffs --allow-asset-diffs
+          fi
