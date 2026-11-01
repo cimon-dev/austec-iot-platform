@@ -41,7 +41,7 @@ export type CreateStaffDto = z.infer<typeof CreateStaffSchema>;
 export const CreateCustomerSchema = z.object({
   fullName: z.string().min(1, 'Họ tên không được để trống'),
   phoneNumber: z.string().min(8, 'Số điện thoại không được để trống'),
-  email: z.string().email('Email không đúng định dạng'),
+  email: z.string().email('Email không đúng định dạng').optional().or(z.literal('')),
   password: z.string().optional(),
   address: z.string().optional(),
   province: z.string().optional(),

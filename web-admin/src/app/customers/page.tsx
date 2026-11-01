@@ -109,14 +109,25 @@ function CustomersPageContent() {
     }
 
     try {
-      await customersService.toggleCustomerStatus(customerId, newStatus);
+      const res = await customersService.toggleCustomerStatus(customerId, newStatus);
+      if (!res.success) {
+        // Rollback state on error
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === customerId ? { ...c, isActive: !newStatus } : c))
+        );
+        if (viewCustomer?.id === customerId) {
+          setViewCustomer((prev) => (prev ? { ...prev, isActive: !newStatus } : null));
+        }
+        toast.error(`Lỗi cập nhật trạng thái: ${res.error || 'Thao tác thất bại'}`);
+        return;
+      }
       if (newStatus) {
         toast.success(`Đã mở khóa tài khoản ${cust.fullName}`);
       } else {
         toast.warning(`Đã tạm khóa tài khoản ${cust.fullName}`);
       }
-    } catch {
-      toast.error("Lỗi đồng bộ trạng thái tài khoản vào PostgreSQL!");
+    } catch (err: any) {
+      toast.error(`Lỗi đồng bộ trạng thái tài khoản: ${err.message}`);
     }
   };
 
@@ -154,8 +165,13 @@ function CustomersPageContent() {
           : [],
       };
 
-      await customersService.createCustomer(newCust);
-      setCustomers((prev) => [newCust, ...prev]);
+      const res = await customersService.createCustomer(newCust);
+      if (!res.success) {
+        toast.error(`Lỗi tạo khách hàng: ${res.error || 'Máy chủ không thể lưu khách hàng'}`);
+        return;
+      }
+
+      setCustomers((prev) => [res.customer || newCust, ...prev]);
       setIsAddCustomerModalOpen(false);
       toast.success(`Đã tạo tài khoản khách hàng "${newCust.fullName}" lưu vào PostgreSQL thành công!`);
     } catch (e: any) {

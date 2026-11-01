@@ -62,7 +62,7 @@ export class UsersController {
   @Put('/admin/staff/:id', authenticate, requireRole(['ADMIN']))
   public async updateStaff(req: AuthenticatedRequest, res: Response) {
     try {
-      const staff = this.service.updateStaff(String(req.params.id), req.body, req.user?.email);
+      const staff = await this.service.updateStaff(String(req.params.id), req.body, req.user?.email);
       res.json({ success: true, staff, message: 'Cập nhật cán bộ thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
@@ -72,7 +72,7 @@ export class UsersController {
   @Delete('/admin/staff/:id', authenticate, requireRole(['ADMIN']))
   public async deleteStaff(req: Request, res: Response) {
     try {
-      this.service.deleteStaff(String(req.params.id));
+      await this.service.deleteStaff(String(req.params.id));
       res.json({ success: true, message: 'Đã xóa cán bộ khỏi hệ thống!' });
     } catch (e: any) {
       res.status(404).json({ success: false, error: e.message });
@@ -82,7 +82,7 @@ export class UsersController {
   @Put('/admin/staff/:id/status', authenticate, requireRole(['ADMIN']))
   public async toggleStaffStatus(req: Request, res: Response) {
     try {
-      const staff = this.service.toggleStaffStatus(String(req.params.id), req.body.isActive);
+      const staff = await this.service.toggleStaffStatus(String(req.params.id), req.body.isActive);
       res.json({
         success: true,
         staff,
@@ -111,7 +111,7 @@ export class UsersController {
   @Post('/customers', authenticate, requireRole(['ADMIN', 'CSKH']))
   public async createCustomer(req: AuthenticatedRequest, res: Response) {
     try {
-      const customer = this.service.createCustomer(req.body);
+      const customer = await this.service.createCustomer(req.body);
       res.json({
         success: true,
         customer,

@@ -60,7 +60,7 @@ class AuthService {
           'identifier': cleanInput,
           'password': password,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 && data['success'] == true) {
@@ -71,20 +71,26 @@ class AuthService {
       } else {
         return AuthResult(success: false, error: data['error'] ?? 'Thông tin đăng nhập không hợp lệ');
       }
-    } catch (_) {
-      // Offline fallback: Cho phép đăng nhập tài khoản mẫu khi backend offline
+    } catch (e) {
+      // Offline fallback: Chỉ hỗ trợ khi kết nối thất bại với tài khoản dev mặc định
       final isMainDev = cleanInput.contains('ducduc') || cleanInput == '0944102588';
-      final fallbackUser = UserModel(
-        id: '00000000-0000-0000-0000-000000000001',
-        fullName: isMainDev ? 'Nguyễn Mạnh Đức' : (cleanInput.contains('@') ? cleanInput.split('@')[0] : 'Nguyễn Văn An'),
-        email: isMainDev ? 'ducduc02092005@gmail.com' : (cleanInput.contains('@') ? cleanInput : 'nguyenvana@gmail.com'),
-        phoneNumber: isMainDev ? '0944102588' : (cleanInput.contains('@') ? '0912 345 678' : cleanInput),
-        address: 'Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội',
-        province: 'Hà Nội',
-        token: 'austec-customer-token',
+      if (isMainDev) {
+        final fallbackUser = UserModel(
+          id: '00000000-0000-0000-0000-000000000001',
+          fullName: 'Nguyễn Mạnh Đức',
+          email: 'ducduc02092005@gmail.com',
+          phoneNumber: '0944102588',
+          address: 'Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội',
+          province: 'Hà Nội',
+          token: 'austec-customer-token',
+        );
+        await _saveSession('austec-customer-token', fallbackUser);
+        return AuthResult(success: true, message: 'Đăng nhập thành công (Chế độ Ngoại tuyến Dev)!', user: fallbackUser);
+      }
+      return AuthResult(
+        success: false,
+        error: 'Không thể kết nối tới máy chủ ($_baseUrl). Vui lòng kiểm tra mạng hoặc thử lại: $e',
       );
-      await _saveSession('austec-customer-token', fallbackUser);
-      return AuthResult(success: true, message: 'Đăng nhập thành công (Chế độ Ngoại tuyến)!', user: fallbackUser);
     }
   }
 
@@ -109,7 +115,7 @@ class AuthService {
           'address': address.trim(),
           'province': province,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 15));
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 && data['success'] == true) {
@@ -120,19 +126,11 @@ class AuthService {
       } else {
         return AuthResult(success: false, error: data['error'] ?? 'Không thể đăng ký tài khoản');
       }
-    } catch (_) {
-      // Offline fallback
-      final fallbackUser = UserModel(
-        id: 'USR-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
-        fullName: fullName.trim(),
-        email: email.trim(),
-        phoneNumber: phoneNumber.trim(),
-        address: address.trim().isNotEmpty ? address.trim() : 'Hà Nội, Việt Nam',
-        province: province,
-        token: 'austec-customer-token',
+    } catch (e) {
+      return AuthResult(
+        success: false,
+        error: 'Lỗi kết nối máy chủ khi lưu tài khoản: $e. Vui lòng kiểm tra lại kết nối mạng.',
       );
-      await _saveSession('austec-customer-token', fallbackUser);
-      return AuthResult(success: true, message: 'Đăng ký thành công (Chế độ Ngoại tuyến)!', user: fallbackUser);
     }
   }
 

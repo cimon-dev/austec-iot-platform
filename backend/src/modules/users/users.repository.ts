@@ -27,7 +27,7 @@ export class UsersRepository {
   public async getStaff(): Promise<UserEntity[]> {
     try {
       const res = await this.client.query(
-        "SELECT * FROM users WHERE role IN ('ADMIN', 'CSKH') ORDER BY registered_at DESC"
+        "SELECT * FROM public.users WHERE role IN ('ADMIN', 'CSKH') ORDER BY registered_at DESC"
       );
       if (res.rows.length > 0) {
         return res.rows.map(r => this.mapRowToEntity(r));
@@ -41,7 +41,7 @@ export class UsersRepository {
   public async getCustomers(): Promise<UserEntity[]> {
     try {
       const res = await this.client.query(
-        "SELECT * FROM users WHERE role = 'CUSTOMER' ORDER BY registered_at DESC"
+        "SELECT * FROM public.users WHERE role = 'CUSTOMER' ORDER BY registered_at DESC"
       );
       if (res.rows.length > 0) {
         return res.rows.map(r => this.mapRowToEntity(r));
@@ -61,7 +61,7 @@ export class UsersRepository {
     if (memoryUser) return memoryUser;
 
     try {
-      const res = await this.client.query('SELECT * FROM users WHERE id = $1 OR emp_id = $1 LIMIT 1', [id]);
+      const res = await this.client.query('SELECT * FROM public.users WHERE id = $1 OR emp_id = $1 LIMIT 1', [id]);
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
         this.usersStore.push(entity);
@@ -82,10 +82,36 @@ export class UsersRepository {
     );
   }
 
+  public async findByEmailOrPhoneAsync(email?: string, phone?: string): Promise<UserEntity | null> {
+    const mem = this.findByEmailOrPhone(email, phone);
+    if (mem) return mem;
+
+    const cleanEmail = (email || '').toLowerCase().trim();
+    const cleanPhone = (phone || '').replace(/[\s.-]/g, '');
+
+    try {
+      const res = await this.client.query(
+        `SELECT * FROM public.users 
+         WHERE (LOWER(email) = $1 AND $1 != '') 
+            OR (REPLACE(REPLACE(phone_number, ' ', ''), '-', '') = $2 AND $2 != '') 
+         LIMIT 1`,
+        [cleanEmail, cleanPhone]
+      );
+      if (res.rows.length > 0) {
+        const entity = this.mapRowToEntity(res.rows[0]);
+        this.usersStore.push(entity);
+        return entity;
+      }
+    } catch (e: any) {
+      console.warn('[UsersRepository] findByEmailOrPhoneAsync error:', e.message);
+    }
+    return null;
+  }
+
   public async add(user: UserEntity): Promise<void> {
     try {
       await this.client.query(
-        `INSERT INTO users (id, emp_id, full_name, email, phone_number, company, department, role, role_title, password, address, province, is_active, registered_at, updated_at, updated_by, devices)
+        `INSERT INTO public.users (id, emp_id, full_name, email, phone_number, company, department, role, role_title, password, address, province, is_active, registered_at, updated_at, updated_by, devices)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (id) DO UPDATE SET
            full_name = EXCLUDED.full_name,
@@ -122,7 +148,8 @@ export class UsersRepository {
         ]
       );
     } catch (e: any) {
-      console.warn('[UsersRepository] DB add user failed:', e.message);
+      console.error('[UsersRepository] DB add user failed:', e.message);
+      throw e;
     }
 
     const idx = this.usersStore.findIndex(u => u.id === user.id || (u.email && u.email === user.email));
@@ -145,7 +172,7 @@ export class UsersRepository {
 
     try {
       await this.client.query(
-        `UPDATE users SET
+        `UPDATE public.users SET
            full_name = COALESCE($1, full_name),
            email = COALESCE($2, email),
            phone_number = COALESCE($3, phone_number),
@@ -173,7 +200,8 @@ export class UsersRepository {
         ]
       );
     } catch (e: any) {
-      console.warn('[UsersRepository] DB update user failed:', e.message);
+      console.error('[UsersRepository] DB update user failed:', e.message);
+      throw e;
     }
 
     this.onPersist?.();
@@ -182,9 +210,10 @@ export class UsersRepository {
 
   public async remove(id: string): Promise<boolean> {
     try {
-      await this.client.query('DELETE FROM users WHERE id = $1', [id]);
+      await this.client.query('DELETE FROM public.users WHERE id = $1', [id]);
     } catch (e: any) {
-      console.warn('[UsersRepository] DB delete user failed:', e.message);
+      console.error('[UsersRepository] DB delete user failed:', e.message);
+      throw e;
     }
 
     const idx = this.usersStore.findIndex(u => u.id === id || u.empID === id);
@@ -200,7 +229,7 @@ export class UsersRepository {
       if (roleRes.rows.length > 0) {
         // Query user counts grouped by role
         const countRes = await this.client.query(
-          "SELECT role, COUNT(*)::int as count FROM users GROUP BY role"
+          "SELECT role, COUNT(*)::int as count FROM public.users GROUP BY role"
         );
         const countMap: Record<string, number> = {};
         for (const row of countRes.rows) {
@@ -322,7 +351,38 @@ export class UsersRepository {
     return true;
   }
 
-  public addPermission(permission: DeviceMemberPermission): void {
+  public async addPermission(permission: DeviceMemberPermission): Promise<void> {
+    try {
+      await this.client.query(
+        `INSERT INTO public.device_permissions (id, hardware_id, user_id, member_name, phone_number, role, can_control, can_view_history, can_child_lock, can_config, schedule_limit_active, access_start_time, access_end_time, access_days, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         ON CONFLICT (id) DO UPDATE SET
+           role = EXCLUDED.role,
+           can_control = EXCLUDED.can_control,
+           can_view_history = EXCLUDED.can_view_history,
+           can_child_lock = EXCLUDED.can_child_lock,
+           can_config = EXCLUDED.can_config`,
+        [
+          permission.id,
+          permission.hardwareId,
+          permission.userId,
+          permission.memberName,
+          permission.phoneNumber || null,
+          permission.role,
+          permission.canControl ?? true,
+          permission.canViewHistory ?? true,
+          permission.canChildLock ?? true,
+          permission.canConfig ?? true,
+          permission.scheduleLimitActive ?? false,
+          permission.accessStartTime || '00:00',
+          permission.accessEndTime || '23:59',
+          JSON.stringify(permission.accessDays || [true, true, true, true, true, true, true]),
+          permission.createdAt || new Date().toISOString(),
+        ]
+      );
+    } catch (e: any) {
+      console.warn('[UsersRepository] DB addPermission failed:', e.message);
+    }
     this.permissionsStore.push(permission);
     this.onPersist?.();
   }

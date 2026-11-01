@@ -122,30 +122,43 @@ export default function AdminManagementPage() {
 
     if (editingAdmin) {
       try {
-        await adminService.updateStaff(editingAdmin.id, form);
-        fetchStaff();
+        const res = await adminService.updateStaff(editingAdmin.id, form);
+        if (!res.success) {
+          toast.error(res.error || "Lỗi khi cập nhật thông tin cán bộ");
+          return;
+        }
+        await fetchStaff();
         toast.success("Cập nhật thông tin cán bộ quản trị thành công!");
+        setIsModalOpen(false);
       } catch (err: any) {
         toast.error("Lỗi khi cập nhật thông tin: " + err.message);
       }
     } else {
       try {
-        await adminService.createStaff(form);
-        fetchStaff();
+        const res = await adminService.createStaff(form);
+        if (!res.success) {
+          toast.error(res.error || "Lỗi khi tạo cán bộ mới");
+          return;
+        }
+        await fetchStaff();
         toast.success(`Đã tạo thành công tài khoản cán bộ: ${form.name}`);
+        setIsModalOpen(false);
       } catch (err: any) {
         toast.error("Lỗi khi tạo cán bộ mới: " + err.message);
       }
     }
-    setIsModalOpen(false);
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await adminService.deleteStaff(deleteTarget.id);
-      fetchStaff();
+      const res = await adminService.deleteStaff(deleteTarget.id);
+      if (!res.success) {
+        toast.error(res.error || "Lỗi khi xóa tài khoản quản trị");
+        return;
+      }
+      await fetchStaff();
       toast.success("Đã xóa tài khoản quản trị thành công!");
       setDeleteTarget(null);
     } catch (err: any) {

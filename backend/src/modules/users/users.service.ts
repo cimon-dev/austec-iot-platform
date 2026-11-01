@@ -100,9 +100,9 @@ export class UsersService {
       ],
     };
 
-    this.repo.add(newUser);
+    await this.repo.add(newUser);
 
-    this.repo.addPermission({
+    await this.repo.addPermission({
       id: `PERM-${newId}-OWNER`,
       hardwareId: hwId,
       userId: newUser.id,
@@ -158,7 +158,7 @@ export class UsersService {
     const cleanEmail = dto.email.trim().toLowerCase();
     const cleanPhone = (dto.phoneNumber || dto.phone || '').trim();
 
-    const existing = this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
+    const existing = (await this.repo.findByEmailOrPhoneAsync(cleanEmail, cleanPhone)) || this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
     if (existing) {
       throw new Error('Email hoặc số điện thoại này đã tồn tại trong hệ thống');
     }
@@ -186,12 +186,15 @@ export class UsersService {
       updatedBy: creatorEmail,
     };
 
-    this.repo.add(newStaff);
+    await this.repo.add(newStaff);
     return newStaff;
   }
 
-  public updateStaff(id: string, updates: any, updaterEmail: string = 'austec.admin@gmail.com') {
-    const staff = this.repo.findById(id);
+  public async updateStaff(id: string, updates: any, updaterEmail: string = 'austec.admin@gmail.com') {
+    let staff = this.repo.findById(id);
+    if (!staff) {
+      staff = (await this.repo.findByIdAsync(id)) || undefined;
+    }
     if (!staff || staff.role === 'CUSTOMER') {
       throw new Error('Không tìm thấy cán bộ quản trị');
     }
@@ -207,26 +210,32 @@ export class UsersService {
     staff.updatedAt = new Date().toISOString().split('T')[0];
     staff.updatedBy = updaterEmail;
 
-    this.repo.update(id, staff);
+    await this.repo.update(id, staff);
     return staff;
   }
 
-  public deleteStaff(id: string) {
-    const staff = this.repo.findById(id);
+  public async deleteStaff(id: string) {
+    let staff = this.repo.findById(id);
+    if (!staff) {
+      staff = (await this.repo.findByIdAsync(id)) || undefined;
+    }
     if (!staff || staff.role === 'CUSTOMER') {
       throw new Error('Không tìm thấy cán bộ');
     }
-    return this.repo.remove(id);
+    return await this.repo.remove(id);
   }
 
-  public toggleStaffStatus(id: string, isActive?: boolean) {
-    const staff = this.repo.findById(id);
+  public async toggleStaffStatus(id: string, isActive?: boolean) {
+    let staff = this.repo.findById(id);
+    if (!staff) {
+      staff = (await this.repo.findByIdAsync(id)) || undefined;
+    }
     if (!staff || staff.role === 'CUSTOMER') {
       throw new Error('Không tìm thấy cán bộ');
     }
     staff.isActive = isActive !== undefined ? Boolean(isActive) : !staff.isActive;
     staff.updatedAt = new Date().toISOString().split('T')[0];
-    this.repo.update(id, staff);
+    await this.repo.update(id, staff);
     return staff;
   }
 
@@ -234,11 +243,11 @@ export class UsersService {
     return await this.repo.getCustomers();
   }
 
-  public createCustomer(dto: CreateCustomerDto) {
-    const cleanEmail = dto.email.trim().toLowerCase();
-    const cleanPhone = dto.phoneNumber.trim().replace(/[\s.-]/g, '');
+  public async createCustomer(dto: CreateCustomerDto) {
+    const cleanEmail = (dto.email || '').trim().toLowerCase();
+    const cleanPhone = (dto.phoneNumber || '').trim().replace(/[\s.-]/g, '');
 
-    const existing = this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
+    const existing = (await this.repo.findByEmailOrPhoneAsync(cleanEmail, cleanPhone)) || this.repo.findByEmailOrPhone(cleanEmail, cleanPhone);
     if (existing) {
       throw new Error('Khách hàng với Email hoặc Số điện thoại này đã tồn tại');
     }
@@ -271,9 +280,9 @@ export class UsersService {
       ],
     };
 
-    this.repo.add(newCust);
+    await this.repo.add(newCust);
 
-    this.repo.addPermission({
+    await this.repo.addPermission({
       id: `PERM-${newId}-OWNER`,
       hardwareId: hwId,
       userId: newCust.id,
