@@ -23,15 +23,7 @@ export function getApiBaseUrl(): string {
     return url;
   }
 
-  // 3. Nếu đang chạy trên máy dev (localhost / 127.0.0.1) => Mặc định kết nối backend local port 4000
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return DEFAULT_LOCAL_API_URL;
-    }
-  }
-
-  // 4. Mặc định toàn hệ thống Cloud
+  // 3. Mặc định toàn hệ thống: Kết nối Render Backend Cloud đã deploy và CSDL Supabase
   return DEFAULT_CLOUD_API_URL;
 }
 
