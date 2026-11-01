@@ -1,43 +1,48 @@
 name: Shorebird Patch iOS
 
-on:
+trên:
   push:
-    branches:
+    nhánh:
       - main
       - master
-    paths:
+    đường dẫn:
       - 'mobile-app/lib/**'
       - 'mobile-app/assets/**'
       - 'mobile-app/pubspec.yaml'
-  workflow_dispatch:
-    inputs:
-      release_version:
-        description: 'Release version to patch (leave empty to use pubspec.yaml)'
-        required: false
-        type: string
-        default: ''
+  Workflow_dispatch:
+    đầu vào:
+      Release_version:
+        mô tả: 'Phiên bản phát hành để vá lỗi (để trống cho phiên bản mới nhất)'
+        bắt buộc: sai
+        gõ: chuỗi
+        mặc định: 'mới nhất'
 
-jobs:
+công việc:
   patch-ios:
-    name: Patch iOS via Shorebird
-    runs-on: macos-latest
+    tên: Patch iOS qua Shorebird
+    chạy trên: macos-mới nhất
 
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    bước:
+      - tên: Mã Checkout
+        sử dụng: actions/checkout@v4
 
-      - name: Setup Shorebird
-        uses: shorebirdtech/setup-shorebird@v1
-        with:
+      - tên: Thiết lập Shorebird
+        sử dụng: shorebirdtech/setup-shorebird@v1
+        với:
           cache: true
 
-      - name: Run Shorebird Patch iOS
-        working-directory: mobile-app
+      - tên: Chạy Shorebird Patch iOS
+        Working-directory: mobile-app
         env:
-          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+          SHOREBIRD_TOKEN: ${{ secret.SHOREBIRD_TOKEN }}
         run: |
-          if [ -n "${{ inputs.release_version }}" ]; then
-            shorebird patch ios --release-version ${{ inputs.release_version }} --no-confirm --allow-native-diffs --allow-asset-diffs
-          else
-            shorebird patch ios --no-confirm --allow-native-diffs --allow-asset-diffs
+          TARGET_VERSION="${{ input.release_version }}"
+          if [ -z "$TARGET_VERSION" ]; sau đó
+            TARGET_VERSION="latest"
           fi
+          Shorebird patch ios \
+            --release-version "$TARGET_VERSION" \
+            --no-codesign \
+            --no-confirm \
+            --allow-native-diffs \
+            --allow-asset-diffs
