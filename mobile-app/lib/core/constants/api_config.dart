@@ -1,11 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Quản lý tập trung địa chỉ API & WebSocket cho toàn bộ ứng dụng Mobile Austec IoT
 class ApiConfig {
-  /// Cho phép cấu hình IP máy chủ động khi test trên iPhone / Android
+  /// URL Backend Cloud đã deploy trên Render
+  /// Có thể override khi build/run: flutter run --dart-define=API_URL=https://...
+  static const String defaultCloudUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'https://austec-backend.onrender.com',
+  );
+
+  /// Cho phép cấu hình URL/IP máy chủ tùy chọn lưu trên máy (lưu trong SharedPreferences)
   static String? customServerHost;
 
-  /// Nạp IP máy chủ đã lưu từ SharedPreferences
+  /// Nạp URL máy chủ đã lưu từ SharedPreferences
   static Future<void> loadCustomHost() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -13,9 +21,16 @@ class ApiConfig {
     } catch (_) {}
   }
 
-  /// Cập nhật IP máy chủ mới và lưu vào bộ nhớ máy
+  /// Cập nhật URL/IP máy chủ mới và lưu vào bộ nhớ máy
+  /// Nếu truyền null hoặc rỗng hoặc trùng defaultCloudUrl => Xóa custom để dùng mặc định Cloud
   static Future<void> setCustomHost(String? host) async {
-    customServerHost = host?.trim().isEmpty == true ? null : host?.trim();
+    final cleaned = host?.trim();
+    if (cleaned == null || cleaned.isEmpty || cleaned == defaultCloudUrl) {
+      customServerHost = null;
+    } else {
+      customServerHost = cleaned;
+    }
+
     try {
       final prefs = await SharedPreferences.getInstance();
       if (customServerHost != null && customServerHost!.isNotEmpty) {
@@ -26,35 +41,77 @@ class ApiConfig {
     } catch (_) {}
   }
 
-  /// Cấu hình địa chỉ IP máy chủ Backend tự động:
-  /// - Khi mở qua Web: Tự động trỏ theo host trình duyệt hoặc localhost:4000
-  /// - Khi test Native trên điện thoại Android/iOS qua WiFi nội bộ: Trỏ về IP 192.168.100.6:4000 (hoặc customServerHost)
-  static String get baseUrl {
-    if (customServerHost != null && customServerHost!.isNotEmpty) {
-      return 'http://${customServerHost!}:4000';
+  /// Chuẩn hoá địa chỉ server thông minh:
+  /// - Full URL (https://... hoặc http://...): Giữ nguyên giao thức, bỏ dấu gạch chéo cuối
+  /// - Domain cloud (vd: xxx.onrender.com): Tự động thêm https://, KHÔNG ép cổng 4000
+  /// - IP local kèm port (vd: 192.168.1.100:4000): Tự động thêm http://
+  /// - IP local thuần (vd: 192.168.1.145 hoặc localhost): Tự động thêm http:// và :4000
+  static String formatBaseUrl(String input) {
+    var raw = input.trim().replaceAll(RegExp(r'/+$'), '');
+    if (raw.endsWith('/api')) {
+      raw = raw.substring(0, raw.length - 4);
     }
-    if (kIsWeb) {
-      final host = Uri.base.host;
-      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-        return 'http://$host:4000';
-      }
-      return 'http://localhost:4000';
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
     }
-    return 'http://192.168.1.145:4000';
+
+    // Nếu là tên miền Cloud (Render, Vercel, hoặc domain thông thường không phải IP)
+    final isLikelyDomain = raw.contains('.onrender.com') ||
+        (!raw.contains(':') && raw.contains('.') && !RegExp(r'^\d').hasMatch(raw));
+
+    if (isLikelyDomain) {
+      return 'https://$raw';
+    }
+
+    // Nếu là IP có kèm cổng
+    if (raw.contains(':')) {
+      return 'http://$raw';
+    }
+
+    // Nếu là IP thuần hoặc localhost chưa có cổng
+    return 'http://$raw:4000';
   }
 
-  /// Địa chỉ WebSocket Chat realtime đồng bộ đa nền tảng
-  static String get wsChatUrl {
+  /// Cấu hình địa chỉ HTTP Backend:
+  /// 1. Nếu người dùng nhập custom host => Dùng custom đã format
+  /// 2. Khi chạy Flutter Web => Tự động nhận diện host trình duyệt
+  /// 3. Mặc định toàn hệ thống => Backend Render Cloud (defaultCloudUrl)
+  static String get baseUrl {
     if (customServerHost != null && customServerHost!.isNotEmpty) {
-      return 'ws://${customServerHost!}:4000/ws/chat';
+      return formatBaseUrl(customServerHost!);
     }
     if (kIsWeb) {
       final host = Uri.base.host;
       if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
-        return 'ws://$host:4000/ws/chat';
+        return formatBaseUrl(host);
       }
-      return 'ws://localhost:4000/ws/chat';
     }
-    return 'ws://192.168.1.145:4000/ws/chat';
+    return defaultCloudUrl.isNotEmpty ? defaultCloudUrl : 'http://192.168.1.145:4000';
+  }
+
+  /// Địa chỉ WebSocket Chat realtime đồng bộ đa nền tảng:
+  /// - Nếu baseUrl là https:// => Dùng wss://.../ws/chat (Render SSL an toàn)
+  /// - Nếu baseUrl là http:// => Dùng ws://.../ws/chat (Local dev)
+  static String get wsChatUrl {
+    final base = baseUrl;
+    if (base.startsWith('https://')) {
+      return base.replaceFirst('https://', 'wss://') + '/ws/chat';
+    }
+    if (base.startsWith('http://')) {
+      return base.replaceFirst('http://', 'ws://') + '/ws/chat';
+    }
+    return 'ws://$base/ws/chat';
+  }
+
+  /// Kiểm tra xem hiện tại đang kết nối qua Cloud (Render) hay Local LAN
+  static bool get isUsingCloud {
+    final lower = baseUrl.toLowerCase();
+    return lower.startsWith('https://') || lower.contains('onrender.com');
+  }
+
+  /// Nhãn hiển thị trạng thái kết nối
+  static String get connectionBadgeText {
+    return isUsingCloud ? 'Render Cloud' : 'Local LAN';
   }
 }

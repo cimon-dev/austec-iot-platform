@@ -392,7 +392,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 18),
 
-                  // Server connection IP configuration
+                  // Server connection IP/Cloud configuration
                   Center(
                     child: TextButton.icon(
                       style: TextButton.styleFrom(
@@ -400,10 +400,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       ),
                       onPressed: _showServerConfigDialog,
-                      icon: const Icon(Icons.dns_outlined, size: 13, color: AppTheme.textMuted),
-                      label: Text(
-                        "Máy chủ: ${ApiConfig.baseUrl}",
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      icon: Icon(
+                        ApiConfig.isUsingCloud ? Icons.cloud_done_rounded : Icons.dns_outlined,
+                        size: 13,
+                        color: ApiConfig.isUsingCloud ? AppTheme.cyanAccent : AppTheme.textMuted,
+                      ),
+                      label: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: ApiConfig.isUsingCloud ? AppTheme.cyanAccent : Colors.amber,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Máy chủ [${ApiConfig.connectionBadgeText}]: ${ApiConfig.baseUrl}",
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -418,7 +436,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showServerConfigDialog() {
     final controller = TextEditingController(
-      text: ApiConfig.customServerHost ?? '192.168.100.6',
+      text: ApiConfig.customServerHost ?? ApiConfig.baseUrl,
     );
     showDialog(
       context: context,
@@ -426,9 +444,9 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppTheme.surface,
         title: const Row(
           children: [
-            Icon(Icons.dns_rounded, color: AppTheme.cyanAccent, size: 20),
+            Icon(Icons.cloud_sync_rounded, color: AppTheme.cyanAccent, size: 20),
             SizedBox(width: 8),
-            Text("Cấu hình IP Backend", style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text("Cấu hình Máy chủ Backend", style: TextStyle(color: Colors.white, fontSize: 16)),
           ],
         ),
         content: Column(
@@ -436,7 +454,7 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "Địa chỉ IP máy chủ chạy Backend Node.js / PostgreSQL:",
+              "URL Backend Render đã deploy hoặc IP Localhost / LAN:",
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 12),
@@ -444,12 +462,35 @@ class _LoginScreenState extends State<LoginScreen> {
               controller: controller,
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
-                hintText: "ví dụ: 192.168.100.6 hoặc localhost",
+                hintText: "vd: https://austec-backend.onrender.com",
                 hintStyle: const TextStyle(color: AppTheme.textMuted),
                 filled: true,
                 fillColor: AppTheme.background,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ActionChip(
+                  avatar: const Icon(Icons.cloud_outlined, size: 14, color: AppTheme.cyanAccent),
+                  label: const Text("Render Cloud", style: TextStyle(fontSize: 11, color: Colors.white)),
+                  backgroundColor: AppTheme.cardBorder,
+                  onPressed: () {
+                    controller.text = ApiConfig.defaultCloudUrl;
+                  },
+                ),
+                ActionChip(
+                  avatar: const Icon(Icons.computer_outlined, size: 14, color: Colors.amber),
+                  label: const Text("LAN 192.168.1.145", style: TextStyle(fontSize: 11, color: Colors.white)),
+                  backgroundColor: AppTheme.cardBorder,
+                  onPressed: () {
+                    controller.text = "192.168.1.145";
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -457,6 +498,14 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Hủy", style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          TextButton(
+            onPressed: () async {
+              await ApiConfig.setCustomHost(null);
+              if (mounted) setState(() {});
+              Navigator.of(ctx).pop();
+            },
+            child: const Text("Dùng mặc định Cloud", style: TextStyle(color: AppTheme.cyanAccent)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),

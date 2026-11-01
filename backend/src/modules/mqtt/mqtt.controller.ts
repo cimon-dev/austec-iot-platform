@@ -30,19 +30,21 @@ export class MqttController {
 
   @Get('/wifi/current')
   public async getCurrentWifi(req: Request, res: Response) {
-    let localIp = '192.168.1.145';
-    try {
-      const os = await import('os');
-      const nets = os.networkInterfaces();
-      for (const name of Object.keys(nets)) {
-        for (const net of nets[name] || []) {
-          if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
-            localIp = net.address;
-            break;
+    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || '192.168.1.145';
+    if (!process.env.MQTT_PUBLIC_HOST && !process.env.MQTT_BROKER_HOST) {
+      try {
+        const os = await import('os');
+        const nets = os.networkInterfaces();
+        for (const name of Object.keys(nets)) {
+          for (const net of nets[name] || []) {
+            if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
+              localIp = net.address;
+              break;
+            }
           }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     try {
       const data = await liveScannerService.scanLiveNetworks();
