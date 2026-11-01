@@ -71,11 +71,20 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
-                _gateway.updateDeviceName(device.hardwareId, controller.text.trim());
-                setState(() {});
+                final newName = controller.text.trim();
                 Navigator.of(ctx).pop();
+                final ok = await _gateway.updateDeviceName(device.hardwareId, newName);
+                if (mounted) {
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? "Đã cập nhật tên thiết bị thành công lên CSDL!" : "Đã cập nhật tên thiết bị."),
+                      backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
+                    ),
+                  );
+                }
               }
             },
             child: Text(AppTheme.t("save")),
@@ -111,10 +120,18 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimsonDanger, foregroundColor: Colors.white),
-            onPressed: () {
-              _gateway.removeDevice(device.hardwareId);
-              setState(() {});
+            onPressed: () async {
               Navigator.of(ctx).pop();
+              final ok = await _gateway.unpairDevice(device.hardwareId);
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ok ? "Đã hủy liên kết và xóa thiết bị thành công!" : "Đã gỡ thiết bị khỏi danh sách."),
+                    backgroundColor: AppTheme.crimsonDanger,
+                  ),
+                );
+              }
             },
             child: Text(AppTheme.t("delete_device")),
           ),

@@ -43,6 +43,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     },
   ];
 
+  bool _isSaving = false;
+  bool _isDeleting = false;
+  final Map<String, dynamic> _dynamicPropValues = {};
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +58,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     _accessStartTime = widget.device.accessStartTime;
     _accessEndTime = widget.device.accessEndTime;
     _accessDays = List<bool>.from(widget.device.accessDays);
+
+    // Nạp giá trị ban đầu cho các thuộc tính Mẫu thương phẩm
+    for (final p in widget.device.assignedProperties) {
+      final key = (p['propertyKey'] ?? '').toString();
+      if (key.isNotEmpty) {
+        _dynamicPropValues[key] = widget.device.currentProperties[key];
+      }
+    }
   }
 
   @override
@@ -62,8 +74,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     super.dispose();
   }
 
-  void _saveSettings() {
-    widget.device.name = _nameController.text.trim();
+  Future<void> _saveSettings() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    final newName = _nameController.text.trim();
+    widget.device.name = newName;
     widget.device.openTimeoutSeconds = _openTimeout;
     widget.device.closeTimeoutSeconds = _closeTimeout;
     widget.device.isAutoScheduleActive = _isAutoSchedule;
@@ -72,22 +88,88 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     widget.device.accessEndTime = _accessEndTime;
     widget.device.accessDays = _accessDays;
 
-    _gateway.renameDevice(widget.device.hardwareId, widget.device.name);
+    final Map<String, dynamic> propsToSave = {
+      'open_timeout': _openTimeout,
+      'close_timeout': _closeTimeout,
+      'is_auto_schedule': _isAutoSchedule,
+      'access_limit': _isAccessLimit,
+      'access_start': _accessStartTime,
+      'access_end': _accessEndTime,
+      'access_days': _accessDays,
+      ..._dynamicPropValues,
+    };
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
+    // 1. Gọi API đổi tên
+    final nameOk = await _gateway.updateDeviceName(widget.device.hardwareId, newName);
+    // 2. Gọi API cập nhật thông số thuộc tính
+    final propOk = await _gateway.updateDeviceProperties(widget.device.hardwareId, propsToSave);
+
+    if (mounted) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(nameOk || propOk ? Icons.check_circle_outline : Icons.info_outline, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(nameOk || propOk
+                  ? "Đã lưu cấu hình thiết bị lên CSDL Cloud thành công!"
+                  : "Đã lưu cấu hình cục bộ (ngoại tuyến)!"),
+            ],
+          ),
+          backgroundColor: nameOk || propOk ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _showUnpairDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
+        title: const Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+            Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
             SizedBox(width: 8),
-            Text("Đã lưu cấu hình thiết bị thành công!"),
+            Text("Hủy ghép nối thiết bị", style: TextStyle(color: AppTheme.crimsonDanger, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
-        backgroundColor: AppTheme.emeraldSuccess,
-        behavior: SnackBarBehavior.floating,
+        content: Text(
+          "Bạn có chắc muốn xóa và hủy ghép nối thiết bị '${widget.device.name}' (${widget.device.hardwareId}) khỏi tài khoản?",
+          style: TextStyle(color: AppTheme.isDarkMode ? AppTheme.textSecondary : Colors.grey[700]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Hủy"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimsonDanger, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              setState(() => _isDeleting = true);
+              final ok = await _gateway.unpairDevice(widget.device.hardwareId);
+              if (mounted) {
+                setState(() => _isDeleting = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(ok
+                        ? "Đã xóa và hủy ghép nối thiết bị thành công!"
+                        : "Đã gỡ thiết bị khỏi danh sách."),
+                    backgroundColor: AppTheme.crimsonDanger,
+                  ),
+                );
+                Navigator.of(context).pop();
+              }
+            },
+            child: const Text("Xác nhận Xóa"),
+          ),
+        ],
       ),
     );
-    Navigator.of(context).pop();
   }
 
   Future<void> _pickTime({required bool isStart}) async {
@@ -248,18 +330,29 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          "Cài Đặt Cửa Cuốn",
+          "Cài Đặt ${widget.device.categoryDisplayName}",
           style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
-          TextButton(
-            onPressed: _saveSettings,
-            child: const Text(
-              "Lưu",
-              style: TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-          ),
+          _isSaving
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _saveSettings,
+                  child: const Text(
+                    "Lưu",
+                    style: TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
+                ),
           const SizedBox(width: 8),
         ],
       ),
@@ -607,18 +700,28 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // CARD 6: THUỘC TÍNH MẪU THƯƠNG PHẨM (DYNAMIC SCHEMA TỪ WEB ADMIN)
+            _buildDynamicPropertiesCard(isDark, textCol),
+            const SizedBox(height: 20),
 
             // NÚT LƯU CẤU HÌNH LỚN Ở CUỐI TRANG
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: _saveSettings,
-                icon: const Icon(Icons.save_outlined, color: Colors.white, size: 20),
-                label: const Text(
-                  "LƯU TẤT CẢ CẤU HÌNH",
-                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                onPressed: _isSaving ? null : _saveSettings,
+                icon: _isSaving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.save_outlined, color: Colors.white, size: 20),
+                label: Text(
+                  _isSaving ? "ĐANG LƯU CẤU HÌNH..." : "LƯU TẤT CẢ CẤU HÌNH",
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.blueAccent,
@@ -627,10 +730,175 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+
+            // NÚT HỦY GHÉP NỐI & XÓA THIẾT BỊ
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: _isDeleting ? null : _showUnpairDialog,
+                icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.crimsonDanger, size: 20),
+                label: Text(
+                  _isDeleting ? "ĐANG GỠ BỎ..." : "HỦY GHÉP NỐI & XÓA THIẾT BỊ",
+                  style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppTheme.crimsonDanger, width: 1.2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ),
             const SizedBox(height: 30),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDynamicPropertiesCard(bool isDark, Color textCol) {
+    final assigned = widget.device.assignedProperties;
+    if (assigned.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader("THUỘC TÍNH MẪU THƯƠNG PHẨM (${widget.device.modelName})"),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: _cardBox(isDark),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Các thông số thuộc tính phần cứng được đồng bộ từ Khuôn Mẫu Thương Phẩm Cloud:",
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              ...assigned.map((p) {
+                final key = (p['propertyKey'] ?? '').toString();
+                final name = (p['displayName'] ?? key).toString();
+                final unit = (p['unit'] ?? '').toString();
+                final widgetType = (p['uiWidgetType'] ?? '').toString().toLowerCase();
+                final isCtrl = p['isControllable'] == true;
+                final desc = (p['description'] ?? '').toString();
+                final val = _dynamicPropValues[key] ?? widget.device.currentProperties[key];
+
+                if (widgetType == 'toggle') {
+                  final bool active = val == true || val == 'true' || val == 1 || val == '1';
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.surface.withValues(alpha: 0.5) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
+                              if (desc.isNotEmpty)
+                                Text(desc, style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                            ],
+                          ),
+                        ),
+                        Switch(
+                          value: active,
+                          activeThumbColor: AppTheme.cyanAccent,
+                          onChanged: isCtrl
+                              ? (newVal) {
+                                  setState(() => _dynamicPropValues[key] = newVal);
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                if (widgetType == 'slider') {
+                  final double min = (p['minVal'] as num?)?.toDouble() ?? 0.0;
+                  final double max = (p['maxVal'] as num?)?.toDouble() ?? 100.0;
+                  final double current = (val as num?)?.toDouble() ?? min;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.surface.withValues(alpha: 0.5) : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text("${current.toInt()} $unit", style: const TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontFamily: "monospace")),
+                          ],
+                        ),
+                        Slider(
+                          value: current.clamp(min, max),
+                          min: min,
+                          max: max,
+                          divisions: (max - min).toInt() > 0 ? (max - min).toInt() : 10,
+                          activeColor: AppTheme.cyanAccent,
+                          onChanged: isCtrl
+                              ? (newVal) {
+                                  setState(() => _dynamicPropValues[key] = newVal.toInt());
+                                }
+                              : null,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Default display (read-only status badge / telemetry)
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.surface.withValues(alpha: 0.4) : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                          if (desc.isNotEmpty)
+                            Text(desc, style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.7), fontSize: 10)),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "${val ?? '--'} $unit".trim(),
+                          style: const TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: "monospace"),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -60,6 +60,8 @@ class DeviceItem {
   final String hardwareId;
   String name;
   final String modelName;
+  final String modelCode;
+  final String? imageUrl;
   final DeviceCategory category;
   final String roomName;
   final String badgeText; // e.g. "ÂM TƯỜNG", "GARA", "CHÍNH"
@@ -69,6 +71,10 @@ class DeviceItem {
   final String warrantyCode;
   final FamilyRole userRole;
   String ownerName;
+
+  // Thuộc tính động từ Mẫu thương phẩm (Dynamic Schema)
+  Map<String, dynamic> currentProperties;
+  List<Map<String, dynamic>> assignedProperties;
 
   // Gói dịch vụ & Hạn sử dụng (Mặc định 12 tháng khi KH)
   String subscriptionType; // 'LIMITED' hoặc 'PERPETUAL'
@@ -133,7 +139,11 @@ class DeviceItem {
     required this.hardwareId,
     required this.name,
     required this.modelName,
+    this.modelCode = "DOOR_GERMAN_ALU",
+    this.imageUrl,
     required this.category,
+    Map<String, dynamic>? currentProperties,
+    List<Map<String, dynamic>>? assignedProperties,
     this.roomName = "Tầng 1 - Mặt Tiền",
     this.badgeText = "ÂM TƯỜNG",
     this.deviceNumber = "834",
@@ -179,46 +189,11 @@ class DeviceItem {
     this.isLocked = true,
     this.lastUnlockUser = "Vân tay chủ nhà",
     List<AuditLog>? auditLogs,
-  })  : accessDays = accessDays ?? [true, true, true, true, true, false, false],
+  })  : currentProperties = currentProperties ?? {},
+        assignedProperties = assignedProperties ?? [],
+        accessDays = accessDays ?? [true, true, true, true, true, false, false],
         subChannels = subChannels ?? [true, false, true, true],
-        auditLogs = auditLogs ??
-            [
-              const AuditLog(
-                time: "21/10/2026 15:38:23",
-                action: "Dừng cửa",
-                actionCode: 3,
-                triggeredBy: "Chủ sở hữu",
-                deviceCode: "amtuong1834",
-              ),
-              const AuditLog(
-                time: "21/10/2026 15:38:04",
-                action: "Đóng cửa",
-                actionCode: 2,
-                triggeredBy: "Chủ sở hữu",
-                deviceCode: "amtuong1834",
-              ),
-              const AuditLog(
-                time: "21/10/2026 15:35:11",
-                action: "Mở cửa",
-                actionCode: 1,
-                triggeredBy: "Chủ sở hữu",
-                deviceCode: "amtuong1834",
-              ),
-              const AuditLog(
-                time: "21/10/2026 15:34:23",
-                action: "Đóng cửa",
-                actionCode: 2,
-                triggeredBy: "Chủ sở hữu",
-                deviceCode: "amtuong1834",
-              ),
-              const AuditLog(
-                time: "15/10/2026 20:16:18",
-                action: "Dừng cửa",
-                actionCode: 3,
-                triggeredBy: "Chủ sở hữu",
-                deviceCode: "amtuong1834",
-              ),
-            ];
+        auditLogs = auditLogs ?? [];
 
   String get categoryDisplayName {
     switch (category) {

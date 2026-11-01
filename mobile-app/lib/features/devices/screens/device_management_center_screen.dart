@@ -60,14 +60,20 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
-                _gateway.updateDeviceName(device.hardwareId, controller.text.trim());
-                setState(() {});
+                final newName = controller.text.trim();
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Đã cập nhật tên thiết bị thành công")),
-                );
+                final ok = await _gateway.updateDeviceName(device.hardwareId, newName);
+                if (mounted) {
+                  setState(() {});
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? "Đã lưu tên thiết bị lên CSDL thành công!" : "Đã cập nhật tên thiết bị."),
+                      backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
+                    ),
+                  );
+                }
               }
             },
             child: const Text("Lưu thay đổi"),
