@@ -13,6 +13,11 @@ class ApiConfig {
   /// Cho phép cấu hình URL/IP máy chủ tùy chọn lưu trên máy (lưu trong SharedPreferences)
   static String? customServerHost;
 
+  /// Địa chỉ IP LAN máy chủ dev hiện tại trên mạng Wi-Fi
+  static const String defaultLocalLanUrl = 'http://192.168.100.6:4000';
+  static const String defaultEmulatorUrl = 'http://10.0.2.2:4000';
+  static const String defaultLocalhostUrl = 'http://127.0.0.1:4000';
+
   /// Nạp URL máy chủ đã lưu từ SharedPreferences
   static Future<void> loadCustomHost() async {
     try {
@@ -44,8 +49,8 @@ class ApiConfig {
   /// Chuẩn hoá địa chỉ server thông minh:
   /// - Full URL (https://... hoặc http://...): Giữ nguyên giao thức, bỏ dấu gạch chéo cuối
   /// - Domain cloud (vd: xxx.onrender.com): Tự động thêm https://, KHÔNG ép cổng 4000
-  /// - IP local kèm port (vd: 192.168.1.100:4000): Tự động thêm http://
-  /// - IP local thuần (vd: 192.168.1.145 hoặc localhost): Tự động thêm http:// và :4000
+  /// - IP local kèm port (vd: 192.168.100.6:4000): Tự động thêm http://
+  /// - IP local thuần (vd: 192.168.100.6 hoặc localhost): Tự động thêm http:// và :4000
   static String formatBaseUrl(String input) {
     var raw = input.trim().replaceAll(RegExp(r'/+$'), '');
     if (raw.endsWith('/api')) {
@@ -76,7 +81,7 @@ class ApiConfig {
   /// Cấu hình địa chỉ HTTP Backend:
   /// 1. Nếu người dùng nhập custom host => Dùng custom đã format
   /// 2. Khi chạy Flutter Web => Tự động nhận diện host trình duyệt
-  /// 3. Mặc định toàn hệ thống => Backend Render Cloud (defaultCloudUrl)
+  /// 3. Mặc định toàn hệ thống => Backend Render Cloud (hoặc LAN nếu override)
   static String get baseUrl {
     if (customServerHost != null && customServerHost!.isNotEmpty) {
       return formatBaseUrl(customServerHost!);
@@ -87,7 +92,7 @@ class ApiConfig {
         return formatBaseUrl(host);
       }
     }
-    return defaultCloudUrl.isNotEmpty ? defaultCloudUrl : 'http://192.168.1.145:4000';
+    return defaultCloudUrl.isNotEmpty ? defaultCloudUrl : defaultLocalLanUrl;
   }
 
   /// Địa chỉ WebSocket Chat realtime đồng bộ đa nền tảng:
@@ -112,6 +117,9 @@ class ApiConfig {
 
   /// Nhãn hiển thị trạng thái kết nối
   static String get connectionBadgeText {
-    return isUsingCloud ? 'Render Cloud' : 'Local LAN';
+    if (isUsingCloud) return 'Render Cloud';
+    if (baseUrl.contains('192.168.100.6')) return 'LAN 192.168.100.6';
+    if (baseUrl.contains('10.0.2.2')) return 'Android Emulator';
+    return 'Local Dev';
   }
 }

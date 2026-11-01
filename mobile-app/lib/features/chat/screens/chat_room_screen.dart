@@ -6,6 +6,7 @@ import '../models/conversation_item.dart';
 import '../models/chat_message_model.dart';
 import '../models/chat_attachment.dart';
 import '../services/chat_service.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/chat_bubble.dart';
 import '../widgets/attachment_sheet.dart';
 
@@ -196,6 +197,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         onAttachTelemetry: _attachDeviceTelemetry,
       ),
     );
+  }
+
+  Future<void> _pickQuickPhoto() async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 85,
+      );
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final att = await _chatService.uploadAttachment(bytes, image.name);
+        if (att != null && mounted) {
+          setState(() {
+            _pendingAttachments.add(att);
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[ChatRoomScreen] _pickQuickPhoto error: $e');
+    }
   }
 
   void _attachDeviceTelemetry() {
@@ -714,6 +738,12 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.cyanAccent, size: 24),
             tooltip: "Đính kèm tệp / ảnh / video",
             onPressed: _openAttachmentSheet,
+          ),
+          // Nút chụp ảnh nhanh
+          IconButton(
+            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white70, size: 22),
+            tooltip: "Chụp ảnh nhanh từ camera",
+            onPressed: _pickQuickPhoto,
           ),
 
           // Ô nhập nội dung

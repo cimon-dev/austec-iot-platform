@@ -73,7 +73,11 @@
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Ứng dụng cần quyền mạng cục bộ để kết nối và cài đặt WiFi cho cửa cuốn Austec qua WiFi trực tiếp.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Ứng dụng cần quyền Camera để quét mã QR tem bảo hành và ghép nối thiết bị Austec.</string>
+	<string>Ứng dụng cần quyền Camera để chụp ảnh/video hiện trường và quét mã QR thiết bị Austec.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập Thư viện ảnh để chọn ảnh và video đính kèm khi nhắn tin và gửi yêu cầu kỹ thuật.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng cần quyền Microphone để quay video hiện trường kèm âm thanh khi gửi hỗ trợ kỹ thuật.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

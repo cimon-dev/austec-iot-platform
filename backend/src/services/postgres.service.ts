@@ -36,11 +36,19 @@ export class PostgresService {
 
   public async connect(): Promise<boolean> {
     try {
+      const isRemote =
+        this.connectionString.includes('supabase.co') ||
+        this.connectionString.includes('pooler.supabase.com') ||
+        (!this.connectionString.includes('127.0.0.1') &&
+          !this.connectionString.includes('localhost') &&
+          !this.connectionString.includes('postgres-db'));
+
       this.pool = new Pool({
         connectionString: this.connectionString,
         max: 20,
         idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 10000,
+        ssl: isRemote ? { rejectUnauthorized: false } : undefined,
       });
 
       const client = await this.pool.connect();
