@@ -70,6 +70,10 @@
 	<string>Ứng dụng cần quyền Bluetooth để tự động dò tìm và kết nối bo mạch cửa cuốn Austec.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Ứng dụng cần quyền Bluetooth để cấu hình thiết bị phần cứng Austec.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền Vị trí để tự động định vị tọa độ GPS chính xác của thiết bị cửa cuốn Austec khi ghép nối.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Ứng dụng cần quyền Vị trí để tự động định vị tọa độ GPS chính xác của thiết bị cửa cuốn Austec khi ghép nối.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Ứng dụng cần quyền mạng cục bộ để kết nối và cài đặt WiFi cho cửa cuốn Austec qua WiFi trực tiếp.</string>
 	<key>NSCameraUsageDescription</key>
