@@ -418,6 +418,11 @@ class IoTGatewayClient {
       if (_devices.isEmpty) {
         await loadDevicesFromLocalCache();
       }
+      // Vì không thể kết nối tới Cloud, đồng bộ trạng thái hiển thị sang Ngoại tuyến (Offline Cloud - Sẵn sàng BLE tầm gần)
+      for (var d in _devices) {
+        d.isOnline = false;
+        _deviceUpdateStream.add(d);
+      }
     }
   }
 

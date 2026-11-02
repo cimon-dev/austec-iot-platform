@@ -193,10 +193,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger,
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
                       boxShadow: [
                         BoxShadow(
-                          color: (_device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger).withValues(alpha: 0.6),
+                          color: (_device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning).withValues(alpha: 0.6),
                           blurRadius: 8,
                           spreadRadius: 2,
                         ),
@@ -205,9 +205,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    _device.isOnline ? "KẾT NỐI TRỰC TUYẾN" : "NGOẠI TUYẾN",
+                    _device.isOnline ? "KẾT NỐI TRỰC TUYẾN" : "NGOẠI TUYẾN (BLE KHẢ DỤNG)",
                     style: TextStyle(
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.roseDanger,
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.8,
@@ -229,6 +229,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               ),
             ],
           ),
+
+          // Banner Hướng Dẫn Ngoại Tuyến (Offline Proximity BLE Guide)
+          if (!_device.isOnline) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 18),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      "Thiết bị đang Ngoại tuyến Wi-Fi. Bạn có thể đến gần (< 10-15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
+                      style: TextStyle(
+                        color: AppTheme.amberWarning,
+                        fontSize: 11,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 14),
           const Divider(color: AppTheme.cardBorder, height: 1),
           const SizedBox(height: 12),

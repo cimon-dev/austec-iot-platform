@@ -104,6 +104,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "OPEN_DOOR");
+    _notifyBleIfOffline("mở cửa");
   }
 
   // 2. ĐÓNG CỬA DẦN DẦN (Đồng bộ ngầm toàn hệ thống)
@@ -120,6 +121,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "CLOSE_DOOR");
+    _notifyBleIfOffline("đóng cửa");
   }
 
   // 3. DỪNG CỬA NGAY TẠI VỊ TRÍ HIỆN TẠI (Immediate STOP)
@@ -132,6 +134,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STOP_DOOR");
+    _notifyBleIfOffline("dừng cửa");
   }
 
   // 4. BẬT / TẮT KHÓA AN TOÀN TRẺ EM
@@ -143,6 +146,32 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "TOGGLE_CHILD_LOCK");
+    _notifyBleIfOffline("chuyển khóa an toàn");
+  }
+
+  void _notifyBleIfOffline(String actionName) {
+    if (!_device.isOnline && mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.bluetooth_audio_rounded, color: Colors.black, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Đang $actionName qua Bluetooth BLE tầm gần...",
+                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.amberWarning,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   void _showLockedWarning() {
@@ -184,15 +213,21 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 Container(
                   width: 7,
                   height: 7,
-                  decoration: const BoxDecoration(
-                    color: AppTheme.emeraldSuccess,
+                  decoration: BoxDecoration(
+                    color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  "Internet • ID: ${_device.hardwareId.replaceAll('amtuong', '')}",
-                  style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11, fontWeight: FontWeight.w600),
+                  _device.isOnline
+                      ? "Trực tuyến Cloud • ID: ${_device.hardwareId.replaceAll('amtuong', '')}"
+                      : "Ngoại tuyến Wi-Fi • Chế độ BLE",
+                  style: TextStyle(
+                    color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -227,6 +262,56 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Banner Hướng Dẫn Ngoại Tuyến (Offline Proximity BLE Guide)
+              if (!_device.isOnline)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(7),
+                        decoration: BoxDecoration(
+                          color: AppTheme.amberWarning.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Thiết bị đang Ngoại tuyến Wi-Fi",
+                              style: TextStyle(
+                                color: AppTheme.amberWarning,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              "Vui lòng đến gần hộp điều khiển (phạm vi < 10 - 15m) và bật Bluetooth trên điện thoại. Bạn vẫn có thể Mở/Đóng/Dừng cửa trực tiếp qua sóng BLE ngoại tuyến.",
+                              style: TextStyle(
+                                color: isDark ? Colors.white.withValues(alpha: 0.85) : Colors.black87,
+                                fontSize: 11.5,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // 1. TRỰC QUAN HÓA CỬA CUỐN CHUYỂN ĐỘNG DẦN DẦN (Nan cửa cuốn di chuyển mượt)
               _buildRollerDoorGraphic(cardBg, cardBorder),
               const SizedBox(height: 16),

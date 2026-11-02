@@ -144,10 +144,27 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
     if (mounted) {
       setState(() => _isProcessing = false);
+      final isBle = !device.isOnline;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("${res.message} • ${res.latencyMs}ms"),
-          backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceGlass : Colors.grey[800],
+          content: Row(
+            children: [
+              if (isBle) ...[
+                const Icon(Icons.bluetooth_audio_rounded, color: Colors.black, size: 18),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  "${res.message}${isBle ? ' (Lệnh phát qua BLE tầm gần)' : ''} • ${res.latencyMs}ms",
+                  style: TextStyle(
+                    color: isBle ? Colors.black : Colors.white,
+                    fontWeight: isBle ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: isBle ? AppTheme.amberWarning : (AppTheme.isDarkMode ? AppTheme.surfaceGlass : Colors.grey[800]),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
@@ -1256,7 +1273,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 1. Trạng thái ON / OFF
+                // 1. Trạng thái ON / OFF & BLE
                 Row(
                   children: [
                     Container(
@@ -1264,14 +1281,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                       height: 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: device.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                        color: device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
                       ),
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      device.isOnline ? "ON" : "OFF",
+                      device.isOnline ? "ON" : "OFF (BLE)",
                       style: TextStyle(
-                        color: device.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                        color: device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
                         fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1310,6 +1327,35 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
               ],
             ),
           ),
+
+          // Note hướng dẫn khi thiết bị Ngoại tuyến (OFF)
+          if (!device.isOnline)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Thiết bị đang Ngoại tuyến Wi-Fi. Hãy đến gần (< 15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
+                      style: TextStyle(
+                        color: isDark ? AppTheme.amberWarning : Colors.orange[900],
+                        fontSize: 10.5,
+                        height: 1.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           const SizedBox(height: 8),
           Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
