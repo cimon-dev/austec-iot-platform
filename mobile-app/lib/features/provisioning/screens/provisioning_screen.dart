@@ -16,6 +16,8 @@ import '../../devices/screens/roller_door_control_screen.dart';
 import '../../devices/screens/device_detail_screen.dart';
 import '../../../core/services/device_location_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProvisioningScreen extends StatefulWidget {
   const ProvisioningScreen({super.key});
@@ -284,36 +286,81 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
   Future<void> _detectCurrentWifi() async {
     setState(() => _isScanningWifi = true);
+
+    String detectedSsid = '';
+    final List<String> detectedNetworks = [];
+
+    // 1. Nạp danh sách mạng Wi-Fi đã từng dùng từ SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final history = prefs.getStringList('saved_wifi_history') ?? [];
+      for (final h in history) {
+        final clean = h.trim();
+        if (clean.isNotEmpty && !detectedNetworks.contains(clean)) {
+          detectedNetworks.add(clean);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Quét Wi-Fi trực tiếp từ phần cứng điện thoại (iOS / Android)
+    try {
+      final networkInfo = NetworkInfo();
+      final rawSsid = await networkInfo.getWifiName();
+      if (rawSsid != null && rawSsid.isNotEmpty) {
+        // iOS/Android thường bọc chuỗi SSID trong dấu ngoặc kép: "MyWiFi"
+        final clean = rawSsid.replaceAll('"', '').trim();
+        if (clean.isNotEmpty && !clean.toLowerCase().contains('unknown') && clean != '0x') {
+          detectedSsid = clean;
+          if (!detectedNetworks.contains(clean)) {
+            detectedNetworks.insert(0, clean);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Native WiFi info read note: $e");
+    }
+
+    // 3. Quét bổ sung từ Backend API (nếu Backend có card Wi-Fi quét sóng)
     try {
       final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/wifi/current')).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['success'] == true) {
-          final ssid = (data['currentSsid'] ?? '').toString();
-          final networks = (data['networks'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final serverSsid = (data['currentSsid'] ?? '').toString().trim();
+          final serverNetworks = (data['networks'] as List?)?.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList() ?? [];
           final bIp = (data['brokerIp'] ?? '').toString();
           final bPort = (data['brokerPort'] as num?)?.toInt() ?? 1883;
 
-          if (mounted) {
-            setState(() {
-              _isScanningWifi = false;
-              _currentWifiSsid = ssid;
-              _availableNetworks = networks;
-              _brokerIp = bIp.isNotEmpty ? bIp : (Uri.tryParse(ApiConfig.baseUrl)?.host ?? '');
-              _brokerPort = bPort;
-              if (_ssidController.text.isEmpty && ssid.isNotEmpty) {
-                _ssidController.text = ssid;
-              }
-            });
-            return;
+          if (detectedSsid.isEmpty && serverSsid.isNotEmpty) {
+            detectedSsid = serverSsid;
           }
+          for (final net in serverNetworks) {
+            if (!detectedNetworks.contains(net)) {
+              detectedNetworks.add(net);
+            }
+          }
+          if (bIp.isNotEmpty) {
+            _brokerIp = bIp;
+          }
+          _brokerPort = bPort;
         }
       }
     } catch (_) {}
 
+    if (_brokerIp.isEmpty) {
+      _brokerIp = Uri.tryParse(ApiConfig.baseUrl)?.host ?? '';
+    }
+
     if (mounted) {
       setState(() {
         _isScanningWifi = false;
+        if (detectedSsid.isNotEmpty) {
+          _currentWifiSsid = detectedSsid;
+          if (_ssidController.text.isEmpty) {
+            _ssidController.text = detectedSsid;
+          }
+        }
+        _availableNetworks = detectedNetworks;
       });
     }
   }
@@ -642,6 +689,17 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           return;
         }
 
+        // Lưu tên Wi-Fi vào lịch sử SharedPreferences để gợi ý cho các lần ghép nối sau
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final history = prefs.getStringList('saved_wifi_history') ?? [];
+          if (!history.contains(ssid)) {
+            history.insert(0, ssid);
+            if (history.length > 8) history.removeLast();
+            await prefs.setStringList('saved_wifi_history', history);
+          }
+        } catch (_) {}
+
         // Tăng dần 1% một chạm 100%
         setState(() {
           _targetProgress = 1.0;
@@ -930,12 +988,32 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 children: [
                   TextField(
                     controller: _ssidController,
-                    readOnly: true,
-                    onTap: _openWifiPickerSheet,
+                    readOnly: false,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: InputDecoration(
                       labelText: "Tên mạng Wi-Fi (SSID)",
-                      hintText: "Chọn mạng Wi-Fi",
-                      suffixIcon: IconButton(icon: const Icon(Icons.arrow_drop_down), onPressed: _openWifiPickerSheet),
+                      hintText: "Nhập hoặc chọn mạng Wi-Fi 2.4GHz",
+                      prefixIcon: const Icon(Icons.wifi_rounded, color: AppTheme.cyanAccent, size: 20),
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isScanningWifi)
+                            const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                              ),
+                            )
+                          else
+                            IconButton(
+                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent),
+                              tooltip: "Chọn từ danh sách quét",
+                              onPressed: _openWifiPickerSheet,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
