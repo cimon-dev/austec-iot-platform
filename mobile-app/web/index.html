@@ -135,6 +135,45 @@
         });
       }
     };
+
+    window.austecLocation = {
+      isSupported: function() {
+        return !!(navigator && navigator.geolocation);
+      },
+      getCurrentPosition: function() {
+        return new Promise(function(resolve) {
+          if (!navigator || !navigator.geolocation) {
+            resolve(JSON.stringify({ supported: false, success: false, error: 'Thiết bị/trình duyệt không hỗ trợ Geolocation' }));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            function(pos) {
+              resolve(JSON.stringify({
+                supported: true,
+                success: true,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy
+              }));
+            },
+            function(err) {
+              console.warn('[Geolocation] Lỗi định vị GPS:', err);
+              var msg = 'Không thể lấy vị trí từ thiết bị';
+              if (err.code === 1) msg = 'Quyền truy cập vị trí bị từ chối trên thiết bị';
+              else if (err.code === 2) msg = 'Không tìm thấy tín hiệu vị trí từ thiết bị';
+              else if (err.code === 3) msg = 'Hết thời gian chờ định vị';
+              resolve(JSON.stringify({
+                supported: true,
+                success: false,
+                code: err.code,
+                error: msg
+              }));
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        });
+      }
+    };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

@@ -115,7 +115,7 @@ export class ProvisioningService {
       customName: req.customName,
       ownerId: req.userId,
       firmwareVersionCurrent: 'v2.4.1',
-      isOnline: true,
+      isOnline: false,
       lastHeartbeat: now.toISOString(),
       currentProperties: {
         open_state: 'CLOSED',

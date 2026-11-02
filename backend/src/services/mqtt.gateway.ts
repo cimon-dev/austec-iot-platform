@@ -136,6 +136,9 @@ export class MqttGateway {
           currentProperties: { is_relay_on: false, relay_state: 'OFF' },
           lastHeartbeat: new Date().toISOString(),
         });
+        try {
+          await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
+        } catch (_) {}
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
@@ -184,6 +187,9 @@ export class MqttGateway {
           currentProperties: { open_state: 'CLOSED', ownerId: user },
           lastHeartbeat: new Date().toISOString(),
         });
+        try {
+          await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
+        } catch (_) {}
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }

@@ -260,7 +260,7 @@ export class DeviceOperationsController {
 
         const instRes = await this.client.query(
           `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
@@ -269,8 +269,7 @@ export class DeviceOperationsController {
              device_type = EXCLUDED.device_type,
              address_display = EXCLUDED.address_display,
              location_lat = EXCLUDED.location_lat,
-             location_lng = EXCLUDED.location_lng,
-             is_online = true
+             location_lng = EXCLUDED.location_lng
            RETURNING *`,
           [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, finalLocation, resolvedDeviceType, finalLat, finalLng]
         );

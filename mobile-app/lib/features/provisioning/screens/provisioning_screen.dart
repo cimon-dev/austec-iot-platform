@@ -14,6 +14,7 @@ import '../widgets/wifi_picker_sheet.dart';
 import '../widgets/pairing_progress_dialog.dart';
 import '../../devices/screens/roller_door_control_screen.dart';
 import '../../devices/screens/device_detail_screen.dart';
+import '../../../core/services/device_location_service.dart';
 
 class ProvisioningScreen extends StatefulWidget {
   const ProvisioningScreen({super.key});
@@ -307,104 +308,34 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
-  /// Lấy tọa độ GPS chính xác và địa chỉ thực tế của thiết bị
+  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại / trình duyệt của người dùng
   Future<void> _getCurrentGpsLocation() async {
     setState(() => _isGettingLocation = true);
     try {
-      // 1. Thử qua backend API /api/location/current
-      try {
-        final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/location/current')).timeout(const Duration(seconds: 3));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body);
-          if (data['success'] == true) {
-            final lat = (data['lat'] as num?)?.toDouble();
-            final lng = (data['lng'] as num?)?.toDouble();
-            final addr = data['address']?.toString();
-            if (lat != null && lng != null) {
-              if (mounted) {
-                setState(() {
-                  _latController.text = lat.toStringAsFixed(6);
-                  _lngController.text = lng.toStringAsFixed(6);
-                  if (addr != null && addr.isNotEmpty && _addressController.text.trim().isEmpty) {
-                    _addressController.text = addr;
-                  }
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Đã định vị tọa độ GPS chính xác: $lat, $lng"),
-                    backgroundColor: AppTheme.emeraldSuccess,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-              return;
-            }
-          }
-        }
-      } catch (_) {}
-
-      // 2. Thử trực tiếp qua ip-api
-      try {
-        final res = await http.get(Uri.parse('http://ip-api.com/json')).timeout(const Duration(seconds: 3));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body);
-          if (data['status'] == 'success') {
-            final lat = (data['lat'] as num?)?.toDouble();
-            final lng = (data['lon'] as num?)?.toDouble();
-            final city = data['city'] ?? 'Hà Nội';
-            if (lat != null && lng != null) {
-              if (mounted) {
-                setState(() {
-                  _latController.text = lat.toStringAsFixed(6);
-                  _lngController.text = lng.toStringAsFixed(6);
-                  if (_addressController.text.trim().isEmpty) {
-                    _addressController.text = "$city, Việt Nam";
-                  }
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Đã lấy tọa độ GPS từ mạng: $lat, $lng ($city)"),
-                    backgroundColor: AppTheme.emeraldSuccess,
-                    duration: const Duration(seconds: 2),
-                  ),
-                );
-              }
-              return;
-            }
-          }
-        }
-      } catch (_) {}
-
-      // 3. Thử qua freeipapi (HTTPS)
-      try {
-        final res = await http.get(Uri.parse('https://freeipapi.com/api/json')).timeout(const Duration(seconds: 3));
-        if (res.statusCode == 200) {
-          final data = jsonDecode(res.body);
-          final lat = (data['latitude'] as num?)?.toDouble();
-          final lng = (data['longitude'] as num?)?.toDouble();
-          final city = data['cityName']?.toString();
-          if (lat != null && lng != null) {
-            if (mounted) {
-              setState(() {
-                _latController.text = lat.toStringAsFixed(6);
-                _lngController.text = lng.toStringAsFixed(6);
-                if (city != null && city.isNotEmpty && _addressController.text.trim().isEmpty) {
-                  _addressController.text = "$city, Việt Nam";
-                }
-              });
-            }
-            return;
-          }
-        }
-      } catch (_) {}
-
-      // 4. Fallback tọa độ mặc định (không gán địa chỉ giả)
-      if (mounted) {
+      final coords = await getDeviceCoordinates();
+      if (coords != null && mounted) {
         setState(() {
-          if (_latController.text.trim().isEmpty) _latController.text = "21.028511";
-          if (_lngController.text.trim().isEmpty) _lngController.text = "105.854167";
+          _latController.text = coords.lat.toStringAsFixed(6);
+          _lngController.text = coords.lng.toStringAsFixed(6);
+          if (coords.address != null && coords.address!.isNotEmpty && _addressController.text.trim().isEmpty) {
+            _addressController.text = coords.address!;
+          }
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              coords.isGpsHardware
+                  ? "Đã định vị GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
+                  : "Đã lấy tọa độ từ thiết bị: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
+            ),
+            backgroundColor: AppTheme.emeraldSuccess,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        return;
       }
+    } catch (e) {
+      debugPrint("Lỗi lấy tọa độ từ thiết bị/điện thoại: $e");
     } finally {
       if (mounted) setState(() => _isGettingLocation = false);
     }

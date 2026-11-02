@@ -45,6 +45,7 @@ class PairingResult {
   final String warrantyCode;
   final String warrantyUntil;
   final String errorMessage;
+  final bool isOnlineWifi;
 
   PairingResult({
     required this.success,
@@ -54,6 +55,7 @@ class PairingResult {
     required this.warrantyCode,
     required this.warrantyUntil,
     this.errorMessage = "",
+    this.isOnlineWifi = false,
   });
 }
 
@@ -430,42 +432,13 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 2: Đồng bộ lên MQTT Broker (Port 1883) & CSDL Cloud PostgreSQL
-    onProgress("Đang đồng bộ bắt tay MQTT 1883 & đăng ký tài khoản khách hàng...", 0.65);
+    // Step 2: Kích hoạt quyền sở hữu thiết bị trên máy chủ CSDL
+    onProgress("Đang kích hoạt quyền sở hữu thiết bị trên máy chủ...", 0.70);
     String warrantyUntil = "2028-10-23";
     String warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '').toUpperCase()}-24M";
     String confirmedOwner = currentUserName;
-
-    try {
-      // 2.1. Gửi gói tin onboard vào MQTT Gateway
-      final onboardRes = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/pairing/simulate-onboard'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $authToken',
-        },
-        body: jsonEncode({
-          'hardwareId': targetDevice.hardwareId,
-          'userId': currentUserId,
-          'modelCode': profile.defaultModelCode,
-          'customerName': targetDevice.modelName,
-          'ownerName': currentUserName,
-        }),
-      ).timeout(const Duration(seconds: 4));
-
-      if (onboardRes.statusCode == 200) {
-        final onboardData = jsonDecode(onboardRes.body);
-        if (onboardData['ownerName'] != null) {
-          confirmedOwner = onboardData['ownerName'].toString();
-        }
-      }
-    } catch (_) {}
-
-    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-
-    // 2.2. Gọi API xác thực ghép nối và lưu quyền sở hữu chính thức
-    onProgress("Đang kích hoạt quyền sở hữu thiết bị trên máy chủ...", 0.80);
     dynamic pairResponseData;
+
     try {
       final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
       final finalLat = lat ?? 21.028511;
@@ -544,8 +517,10 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 3: Nạp danh sách thiết bị THỰC TẾ từ CSDL Backend
-    onProgress("Xác thực xuất xưởng & kích hoạt bảo hành điện tử 24 tháng...", 0.92);
+    // Step 3: Đợi bo mạch khởi động lại và kiểm tra trạng thái Wi-Fi thực tế
+    onProgress("Đang kiểm tra kết nối Wi-Fi & MQTT từ bo mạch...", 0.88);
+    await Future.delayed(const Duration(seconds: 4));
+
     await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
 
     final String serverHwId = (pairResponseData != null && pairResponseData['hardwareId'] != null)
@@ -566,7 +541,7 @@ class BleProvisioningService {
           name: targetDevice.modelName,
           category: targetDevice.profile.category,
           modelName: targetDevice.profile.defaultTitle,
-          isOnline: true,
+          isOnline: false,
           warrantyCode: warrantyCode,
           warrantyUntil: warrantyUntil,
           ownerName: confirmedOwner,
@@ -580,7 +555,12 @@ class BleProvisioningService {
       }
     }
 
-    onProgress("Ghép nối thiết bị thành công 100%!", 1.0);
+    final bool isOnlineWifi = syncedDevice.isOnline;
+    if (isOnlineWifi) {
+      onProgress("Ghép nối thành công & Đã kết nối Wi-Fi trực tuyến!", 1.0);
+    } else {
+      onProgress("Ghép nối hoàn tất! Thiết bị hoạt động ở chế độ Ngoại Tuyến (BLE)", 1.0);
+    }
 
     return PairingResult(
       success: true,
@@ -589,6 +569,7 @@ class BleProvisioningService {
       ownerName: confirmedOwner,
       warrantyCode: warrantyCode,
       warrantyUntil: warrantyUntil,
+      isOnlineWifi: isOnlineWifi,
     );
   }
 

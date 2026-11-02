@@ -71,6 +71,11 @@ export class PostgresService {
     return this.pool;
   }
 
+  public async query(text: string, params?: any[]): Promise<any> {
+    if (!this.pool) return null;
+    return this.pool.query(text, params);
+  }
+
   /**
    * Tạo toàn bộ 18 bảng cấu trúc dữ liệu chuẩn hóa nếu chưa tồn tại
    */
