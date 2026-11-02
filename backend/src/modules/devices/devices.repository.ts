@@ -608,6 +608,9 @@ export class DevicesRepository {
     const id = data.id || `dev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const now = new Date().toISOString();
 
+    const finalLat = (data.lat != null && !isNaN(Number(data.lat))) ? Number(data.lat) : ((data.latitude != null && !isNaN(Number(data.latitude))) ? Number(data.latitude) : 21.028511);
+    const finalLng = (data.lng != null && !isNaN(Number(data.lng))) ? Number(data.lng) : ((data.longitude != null && !isNaN(Number(data.longitude))) ? Number(data.longitude) : 105.854167);
+
     try {
       // 1. Insert into device_inventory
       await this.client.query(
@@ -625,8 +628,9 @@ export class DevicesRepository {
         `INSERT INTO device_instances (
            id, hardware_id, custom_name, device_type, is_online, address_display,
            model_name, group_name, owner_name, owner_phone,
-           warranty_start_at, warranty_end_at, subscription_type, subscription_expires_at, subscription_status, created_at
-         ) VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+           warranty_start_at, warranty_end_at, subscription_type, subscription_expires_at, subscription_status, created_at,
+           location_lat, location_lng
+         ) VALUES ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
          ON CONFLICT (hardware_id) DO UPDATE SET
            custom_name = EXCLUDED.custom_name,
            device_type = EXCLUDED.device_type,
@@ -638,9 +642,11 @@ export class DevicesRepository {
            warranty_end_at = EXCLUDED.warranty_end_at,
            subscription_type = EXCLUDED.subscription_type,
            subscription_expires_at = EXCLUDED.subscription_expires_at,
-           subscription_status = EXCLUDED.subscription_status
+           subscription_status = EXCLUDED.subscription_status,
+           location_lat = COALESCE(EXCLUDED.location_lat, device_instances.location_lat),
+           location_lng = COALESCE(EXCLUDED.location_lng, device_instances.location_lng)
          RETURNING *`,
-        [id, hwId, name, type, address, model, group, owner, phone, now, warranty, subType, subExpires, subStatus, now]
+        [id, hwId, name, type, address, model, group, owner, phone, now, warranty, subType, subExpires, subStatus, now, finalLat, finalLng]
       );
       const r = res.rows[0];
       return {
@@ -707,6 +713,9 @@ export class DevicesRepository {
     const subExpires = data.subscriptionExpiresAt;
     const subStatus = data.subscriptionStatus;
 
+    const lat = data.lat != null ? Number(data.lat) : (data.locationLat != null ? Number(data.locationLat) : null);
+    const lng = data.lng != null ? Number(data.lng) : (data.locationLng != null ? Number(data.locationLng) : null);
+
     try {
       if (model || type) {
         await this.client.query(
@@ -730,10 +739,12 @@ export class DevicesRepository {
            model_name = COALESCE($8, model_name),
            group_name = COALESCE($9, group_name),
            owner_name = COALESCE($10, owner_name),
-           owner_phone = COALESCE($11, owner_phone)
-         WHERE hardware_id = $12
+           owner_phone = COALESCE($11, owner_phone),
+           location_lat = COALESCE($12, location_lat),
+           location_lng = COALESCE($13, location_lng)
+         WHERE hardware_id = $14
          RETURNING *`,
-        [name, type, address, warranty, subType, subExpires, subStatus, model, group, owner, phone, hwId]
+        [name, type, address, warranty, subType, subExpires, subStatus, model, group, owner, phone, lat, lng, hwId]
       );
 
       if (res.rows.length === 0) {
