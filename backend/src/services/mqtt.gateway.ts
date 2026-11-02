@@ -169,7 +169,6 @@ export class MqttGateway {
       // 1. Gói tin ONBOARDING từ chip ESP32
       if (subType === 'onboard' || topic.endsWith('/onboard')) {
         console.log(`[MQTT Gateway] 🚀 Thiết bị [${hwId}] thông báo ONBOARD thành công! Chủ sở hữu: ${user}`);
-        await this.postgresService.registerPairingDevice(hwId, 'DOOR_GERMAN_ALU', user || '00000000-0000-0000-0000-000000000001');
         await this.hotCache.setDeviceState(hwId, {
           isOnline: true,
           currentProperties: { open_state: 'CLOSED', ownerId: user },
