@@ -422,6 +422,25 @@ export class ChatRepository {
   }
 
   /**
+   * Cập nhật vai trò thành viên nhóm (ADMIN <-> MEMBER)
+   */
+  public async updateMemberRole(
+    conversationId: string,
+    targetUserId: string,
+    newRole: 'ADMIN' | 'MEMBER'
+  ): Promise<void> {
+    try {
+      await this.client.query(
+        `UPDATE chat_participants SET role = $1 WHERE conversation_id = $2 AND user_id = $3`,
+        [newRole, conversationId, targetUserId]
+      );
+    } catch (e: any) {
+      console.error('[ChatRepository] updateMemberRole error:', e);
+      throw e;
+    }
+  }
+
+  /**
    * Lấy lịch sử tin nhắn của một cuộc trò chuyện
    */
   public async getMessages(conversationId: string, limit: number = 50, beforeId?: number): Promise<ChatMessageEntity[]> {

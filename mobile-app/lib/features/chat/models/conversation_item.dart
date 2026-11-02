@@ -39,6 +39,8 @@ class ConversationItem {
   final int memberCount;
   final Map<String, dynamic> metadata;
   final List<ChatParticipant> participants;
+  final bool isDraft;
+  final String? draftTargetUserId;
 
   ConversationItem({
     required this.id,
@@ -52,7 +54,41 @@ class ConversationItem {
     this.memberCount = 2,
     this.metadata = const {},
     this.participants = const [],
+    this.isDraft = false,
+    this.draftTargetUserId,
   });
+
+  ConversationItem copyWith({
+    String? id,
+    String? type,
+    String? title,
+    String? avatarUrl,
+    String? creatorId,
+    String? lastMessage,
+    String? lastMessageSenderName,
+    String? lastMessageAt,
+    int? memberCount,
+    Map<String, dynamic>? metadata,
+    List<ChatParticipant>? participants,
+    bool? isDraft,
+    String? draftTargetUserId,
+  }) {
+    return ConversationItem(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      title: title ?? this.title,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      creatorId: creatorId ?? this.creatorId,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageSenderName: lastMessageSenderName ?? this.lastMessageSenderName,
+      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
+      memberCount: memberCount ?? this.memberCount,
+      metadata: metadata ?? this.metadata,
+      participants: participants ?? this.participants,
+      isDraft: isDraft ?? this.isDraft,
+      draftTargetUserId: draftTargetUserId ?? this.draftTargetUserId,
+    );
+  }
 
   bool get isCskh => type == 'CSKH';
   bool get isGroup => type == 'GROUP';

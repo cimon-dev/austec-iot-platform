@@ -7,7 +7,7 @@ import {
   SendChatMessageSchema,
 } from './dto/chat.dto.js';
 import { AuthenticatedRequest } from '../../services/auth.service.js';
-import { Controller, Get, Post, Delete } from '../../core/decorators/index.js';
+import { Controller, Get, Post, Put, Delete } from '../../core/decorators/index.js';
 import { authenticate } from '../../core/middlewares/auth.middleware.js';
 
 @Controller('/chat')
@@ -150,6 +150,26 @@ export class ChatController {
         targetUserId
       );
       res.json({ success: true, message: 'Đã cập nhật danh sách thành viên nhóm!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * PUT /api/chat/conversations/:id/members/:userId/role
+   * Phân quyền vai trò thành viên nhóm (ADMIN <-> MEMBER)
+   */
+  @Put('/conversations/:id/members/:userId/role', authenticate)
+  public async updateMemberRole(req: AuthenticatedRequest, res: Response) {
+    try {
+      const conversationId = req.params.id as string;
+      const targetUserId = req.params.userId as string;
+      const { role } = req.body;
+      if (role !== 'ADMIN' && role !== 'MEMBER') {
+        return res.status(400).json({ success: false, error: 'Vai trò không hợp lệ (phải là ADMIN hoặc MEMBER)' });
+      }
+      await this.service.updateGroupMemberRole(conversationId, targetUserId, role);
+      res.json({ success: true, message: `Đã cập nhật vai trò thành viên thành ${role}!` });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }

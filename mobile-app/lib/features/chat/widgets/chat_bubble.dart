@@ -144,11 +144,74 @@ class ChatBubble extends StatelessWidget {
               ],
             ),
           ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            _buildAvatar(),
-          ],
         ],
+      ),
+    );
+  }
+
+  void _openImageViewer(BuildContext context, String imageUrl, String imageName) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black.withValues(alpha: 0.8),
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 24),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            title: Text(
+              imageName,
+              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.download_rounded, color: AppTheme.cyanAccent),
+                tooltip: "Mở liên kết gốc",
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Liên kết ảnh: $imageUrl"),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.8,
+              maxScale: 4.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+                loadingBuilder: (ctx, child, progress) {
+                  if (progress == null) return child;
+                  return Center(
+                    child: CircularProgressIndicator(
+                      value: progress.expectedTotalBytes != null
+                          ? progress.cumulativeBytesLoaded / progress.expectedTotalBytes!
+                          : null,
+                      color: AppTheme.cyanAccent,
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image, color: Colors.white54, size: 48),
+                    SizedBox(height: 8),
+                    Text("Không thể tải hình ảnh", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -208,45 +271,48 @@ class ChatBubble extends StatelessWidget {
 
   Widget _buildAttachmentItem(BuildContext context, ChatAttachment att) {
     if (att.mediaType == 'image') {
-      return Container(
-        margin: const EdgeInsets.only(top: 4),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: Stack(
-            children: [
-              Image.network(
-                att.url,
-                width: 220,
-                height: 150,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
+      return GestureDetector(
+        onTap: () => _openImageViewer(context, att.url, att.name),
+        child: Container(
+          margin: const EdgeInsets.only(top: 4),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Stack(
+              children: [
+                Image.network(
+                  att.url,
                   width: 220,
-                  height: 100,
-                  color: Colors.black38,
-                  child: const Center(
-                    child: Icon(Icons.broken_image, color: Colors.white54),
+                  height: 150,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 220,
+                    height: 100,
+                    color: Colors.black38,
+                    child: const Center(
+                      child: Icon(Icons.broken_image, color: Colors.white54),
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                bottom: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.6),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.image, size: 11, color: Colors.white70),
-                      SizedBox(width: 3),
-                      Text("Cloudflare R2", style: TextStyle(color: Colors.white70, fontSize: 8.5)),
-                    ],
+                Positioned(
+                  bottom: 6,
+                  right: 6,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.zoom_in_rounded, size: 12, color: Colors.white70),
+                        SizedBox(width: 3),
+                        Text("Chạm xem to", style: TextStyle(color: Colors.white70, fontSize: 8.5)),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );

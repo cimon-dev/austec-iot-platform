@@ -33,6 +33,10 @@ export class ChatService {
     return this.repo.removeMemberFromGroup(conversationId, actorId, actorName, targetUserId);
   }
 
+  public async updateGroupMemberRole(conversationId: string, targetUserId: string, role: 'ADMIN' | 'MEMBER'): Promise<void> {
+    return this.repo.updateMemberRole(conversationId, targetUserId, role);
+  }
+
   public async getMessages(conversationId: string, limit: number = 50, beforeId?: number): Promise<ChatMessageEntity[]> {
     return this.repo.getMessages(conversationId, limit, beforeId);
   }

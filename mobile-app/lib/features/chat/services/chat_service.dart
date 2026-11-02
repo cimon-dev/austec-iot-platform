@@ -120,6 +120,18 @@ class ChatService {
     }
   }
 
+  Future<bool> updateMemberRole(String conversationId, String targetUserId, String role) async {
+    try {
+      final res = await ApiClient().put('/api/chat/conversations/$conversationId/members/$targetUserId/role', body: {
+        'role': role,
+      });
+      return res.success;
+    } catch (e) {
+      debugPrint('[ChatService] updateMemberRole error: $e');
+      return false;
+    }
+  }
+
   Future<List<ChatMessageModel>> fetchMessages(String conversationId) async {
     try {
       final res = await ApiClient().get('/api/chat/conversations/$conversationId/messages');

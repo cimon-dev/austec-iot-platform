@@ -8,7 +8,8 @@ import '../models/chat_attachment.dart';
 import '../services/chat_service.dart';
 import 'package:image_picker/image_picker.dart';
 import '../widgets/chat_bubble.dart';
-import '../widgets/attachment_sheet.dart';
+import '../widgets/file_and_device_sheet.dart';
+import 'chat_settings_screen.dart';
 
 class ChatRoomScreen extends StatefulWidget {
   final ConversationItem conversation;
@@ -49,11 +50,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _textController.text = widget.initialPrompt!;
     }
 
-    // 1. Nạp lịch sử tin nhắn từ REST API
-    _loadMessageHistory();
+    // Nếu là cuộc trò chuyện nháp (chưa gửi tin nhắn nào), không nạp tin nhắn hay socket
+    if (_conversation.isDraft) {
+      _isLoading = false;
+    } else {
+      // 1. Nạp lịch sử tin nhắn từ REST API
+      _loadMessageHistory();
 
-    // 2. KHỞI TẠO WEBSOCKET VÀ VÀO PHÒNG CHAT (CHỈ KHI VÀO MÀN HÌNH NÀY)
-    _initWebSocketRoom();
+      // 2. KHỞI TẠO WEBSOCKET VÀ VÀO PHÒNG CHAT (CHỈ KHI VÀO MÀN HÌNH NÀY)
+      _initWebSocketRoom();
+    }
   }
 
   void _initWebSocketRoom() {
@@ -134,9 +140,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
   }
 
-  void _handleSendMessage() {
+  Future<void> _handleSendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty && _pendingAttachments.isEmpty) return;
+
+    // Nếu đang là phòng nháp (Lazy creation từ tìm kiếm), khởi tạo phòng thật trên backend ngay tại đây!
+    if (_conversation.isDraft && _conversation.draftTargetUserId != null) {
+      final realConvId = await _chatService.createDirectChat(_conversation.draftTargetUserId!);
+      if (realConvId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không thể khởi tạo cuộc trò chuyện, vui lòng thử lại sau!")),
+          );
+        }
+        return;
+      }
+
+      _conversation = _conversation.copyWith(
+        id: realConvId,
+        isDraft: false,
+      );
+      _initWebSocketRoom();
+    }
 
     final user = AuthService().currentUser;
     final currentUserId = user?.id ?? '00000000-0000-0000-0000-000000000001';
@@ -182,66 +207,100 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  void _openAttachmentSheet() {
+  Future<void> _pickFromPhotoGallery() async {
+    try {
+      final picker = ImagePicker();
+      final List<XFile> images = await picker.pickMultiImage(
+        imageQuality: 85,
+        maxWidth: 2048,
+        maxHeight: 2048,
+      );
+      if (images.isNotEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Đang tải ${images.length} hình ảnh lên..."),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+        for (final img in images) {
+          final bytes = await img.readAsBytes();
+          final att = await _chatService.uploadAttachment(bytes, img.name);
+          if (att != null && mounted) {
+            setState(() {
+              _pendingAttachments.add(att);
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[ChatRoomScreen] _pickFromPhotoGallery error: $e');
+    }
+  }
+
+  void _openFileAndDeviceSheet() {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => AttachmentSelectionSheet(
-        showTelemetryOption: _conversation.isCskh,
+      builder: (_) => FileAndDeviceSheet(
         onAttachmentSelected: (att) {
           setState(() {
             _pendingAttachments.add(att);
           });
         },
-        onAttachTelemetry: _attachDeviceTelemetry,
+        onDeviceSelected: (device) {
+          _sendDeviceConsultationMessage(device);
+        },
       ),
     );
   }
 
-  Future<void> _pickQuickPhoto() async {
-    try {
-      final picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 2048,
-        maxHeight: 2048,
-        imageQuality: 85,
-      );
-      if (image != null) {
-        final bytes = await image.readAsBytes();
-        final att = await _chatService.uploadAttachment(bytes, image.name);
-        if (att != null && mounted) {
-          setState(() {
-            _pendingAttachments.add(att);
-          });
+  Future<void> _sendDeviceConsultationMessage(ChatDeviceItem dev) async {
+    // Nếu là phòng nháp, khởi tạo phòng trước
+    if (_conversation.isDraft && _conversation.draftTargetUserId != null) {
+      final realConvId = await _chatService.createDirectChat(_conversation.draftTargetUserId!);
+      if (realConvId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Không thể khởi tạo cuộc trò chuyện, vui lòng thử lại sau!")),
+          );
         }
+        return;
       }
-    } catch (e) {
-      debugPrint('[ChatRoomScreen] _pickQuickPhoto error: $e');
+      _conversation = _conversation.copyWith(
+        id: realConvId,
+        isDraft: false,
+      );
+      _initWebSocketRoom();
     }
-  }
 
-  void _attachDeviceTelemetry() {
-    final dev = _selectedDevice;
     final user = AuthService().currentUser;
     final currentUserId = user?.id ?? '00000000-0000-0000-0000-000000000001';
-    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_snap';
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}_dev';
+    final content = dev.isOwned
+        ? "Yêu cầu hỗ trợ kỹ thuật về thiết bị đang dùng: ${dev.deviceName}"
+        : "Quan tâm tư vấn báo giá & thông số thiết bị hệ thống: ${dev.deviceName}";
 
-    final snapshotMsg = ChatMessageModel(
+    final devMsg = ChatMessageModel(
       id: tempId,
       conversationId: _conversation.id,
       senderId: currentUserId,
-      senderRole: 'CUSTOMER',
+      senderRole: user?.role ?? 'CUSTOMER',
       senderName: user?.fullName ?? 'Tôi',
       messageType: 'DEVICE_SNAPSHOT',
-      content: 'Kèm thông số viễn thám thiết bị từ xa',
+      content: content,
       clientTempId: tempId,
       metadata: {
-        'hardwareId': dev?.hardwareId ?? 'AT-DOOR-88239A01',
-        'model': dev?.modelName ?? 'Cửa cuốn Titadoor A900 Super',
-        'isOnline': true,
-        'signal': '-65 dBm',
+        'hardwareId': dev.hardwareId,
+        'model': dev.modelName,
+        'deviceName': dev.deviceName,
+        'isOwned': dev.isOwned,
+        'price': dev.price,
+        'specs': dev.specs,
+        'categoryTag': dev.categoryTag,
+        'imageUrl': dev.imageUrl,
       },
       createdAt: DateTime.now().toIso8601String(),
       isSending: true,
@@ -249,265 +308,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
 
     setState(() {
-      _messages.add(snapshotMsg);
+      _messages.add(devMsg);
     });
     _scrollToBottom();
 
     _chatService.sendChatMessage(
       conversationId: _conversation.id,
-      content: snapshotMsg.content,
+      content: devMsg.content,
       clientTempId: tempId,
       messageType: 'DEVICE_SNAPSHOT',
-      metadata: snapshotMsg.metadata,
+      metadata: devMsg.metadata,
     );
   }
 
-  void _openGroupDetails() async {
-    final fullConv = await _chatService.fetchConversationById(_conversation.id);
-    if (!mounted) return;
-    final conv = fullConv ?? _conversation;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => _buildGroupDetailsSheet(ctx, conv),
-    );
-  }
-
-  Widget _buildGroupDetailsSheet(BuildContext ctx, ConversationItem conv) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: AppTheme.cardBorder)),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.group_rounded, color: AppTheme.cyanAccent, size: 22),
-                  const SizedBox(width: 8),
-                  Text(
-                    conv.title,
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white60, size: 20),
-                onPressed: () => Navigator.of(ctx).pop(),
-              ),
-            ],
-          ),
-          Text(
-            "${conv.memberCount} thành viên trong nhóm",
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-          ),
-          const SizedBox(height: 12),
-
-          // Nút thêm thành viên
-          ElevatedButton.icon(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _openAddMembersDialog();
-            },
-            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
-            label: const Text("Thêm thành viên theo SĐT / Email"),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.2),
-              foregroundColor: AppTheme.cyanAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: const BorderSide(color: AppTheme.cyanAccent),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          const Text("DANH SÁCH THÀNH VIÊN:", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 220),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: conv.participants.length,
-              itemBuilder: (context, i) {
-                final p = conv.participants[i];
-                final isAdmin = p.chatRole == 'ADMIN';
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceGlass,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.cardBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: isAdmin ? AppTheme.purpleAccent : AppTheme.cyanAccent,
-                        child: Text(
-                          p.fullName.isNotEmpty ? p.fullName[0].toUpperCase() : 'U',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(p.fullName, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                            Text(p.phoneNumber ?? p.email, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                      if (isAdmin) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.purpleAccent.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.5)),
-                          ),
-                          child: const Text("Trưởng nhóm", style: TextStyle(color: AppTheme.purpleAccent, fontSize: 9.5, fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Nút Rời Nhóm
-          OutlinedButton.icon(
-            onPressed: () async {
-              final user = AuthService().currentUser;
-              if (user != null) {
-                await _chatService.removeGroupMember(_conversation.id, user.id);
-                if (mounted) {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).pop();
-                }
-              }
-            },
-            icon: const Icon(Icons.exit_to_app_rounded, color: AppTheme.roseDanger, size: 18),
-            label: const Text("Rời khỏi nhóm", style: TextStyle(color: AppTheme.roseDanger)),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppTheme.roseDanger),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-          ),
-        ],
+  void _openChatSettings() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ChatSettingsScreen(
+          conversation: _conversation,
+          messages: _messages,
+        ),
       ),
     );
-  }
-
-  void _openAddMembersDialog() {
-    final searchCtrl = TextEditingController();
-    List<Map<String, dynamic>> searchResults = [];
-    bool searching = false;
-
-    showDialog(
-      context: context,
-      builder: (dlgCtx) => StatefulBuilder(
-        builder: (context, setDlgState) {
-          void doSearch(String q) async {
-            if (q.trim().isEmpty) return;
-            setDlgState(() => searching = true);
-            final res = await _chatService.searchUsers(q);
-            setDlgState(() {
-              searchResults = res;
-              searching = false;
-            });
-          }
-
-          return AlertDialog(
-            backgroundColor: const Color(0xFF0F172A),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppTheme.cardBorder),
-            ),
-            title: const Text("Thêm thành viên vào nhóm", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-            content: SizedBox(
-              width: 320,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: searchCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                    decoration: InputDecoration(
-                      hintText: "Nhập SĐT hoặc Email...",
-                      hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.search, color: AppTheme.cyanAccent),
-                        onPressed: () => doSearch(searchCtrl.text),
-                      ),
-                      filled: true,
-                      fillColor: Colors.black38,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    ),
-                    onSubmitted: doSearch,
-                  ),
-                  const SizedBox(height: 10),
-                  if (searching)
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
-                    )
-                  else ...[
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: searchResults.length,
-                        itemBuilder: (c, i) {
-                          final u = searchResults[i];
-                          return ListTile(
-                            dense: true,
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(u['fullName'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                            subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5)),
-                            trailing: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.cyanAccent,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              ),
-                              onPressed: () async {
-                                await _chatService.addGroupMembers(_conversation.id, [u['id'].toString()]);
-                                if (context.mounted) {
-                                  Navigator.of(dlgCtx).pop();
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text("Đã thêm ${u['fullName']} vào nhóm!")),
-                                  );
-                                }
-                              },
-                              child: const Text("Thêm", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    if (result == true && mounted) {
+      // Nếu đã rời nhóm hoặc có thay đổi thoát phòng chat
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -523,7 +349,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: InkWell(
-          onTap: _conversation.isGroup ? _openGroupDetails : null,
+          onTap: _openChatSettings,
           child: Row(
             children: [
               _buildAppBarAvatar(),
@@ -565,12 +391,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ),
         ),
         actions: [
-          if (_conversation.isGroup)
-            IconButton(
-              icon: const Icon(Icons.info_outline_rounded, color: Colors.white70, size: 22),
-              tooltip: "Chi tiết nhóm",
-              onPressed: _openGroupDetails,
-            ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, color: Colors.white70, size: 22),
+            tooltip: "Cài đặt cuộc trò chuyện",
+            onPressed: _openChatSettings,
+          ),
         ],
       ),
       body: SafeArea(
@@ -733,17 +558,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       ),
       child: Row(
         children: [
-          // Nút đính kèm ảnh, video, file
+          // Nút 1: Mở trực tiếp kho ảnh người dùng (giống Messenger, Zalo)
           IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.cyanAccent, size: 24),
-            tooltip: "Đính kèm tệp / ảnh / video",
-            onPressed: _openAttachmentSheet,
+            icon: const Icon(Icons.image_rounded, color: AppTheme.cyanAccent, size: 24),
+            tooltip: "Kho ảnh thiết bị",
+            onPressed: _pickFromPhotoGallery,
           ),
-          // Nút chụp ảnh nhanh
+          // Nút 2: Tệp tin & Hỏi tư vấn thiết bị hệ thống
           IconButton(
-            icon: const Icon(Icons.camera_alt_outlined, color: Colors.white70, size: 22),
-            tooltip: "Chụp ảnh nhanh từ camera",
-            onPressed: _pickQuickPhoto,
+            icon: const Icon(Icons.attach_file_rounded, color: Colors.white70, size: 23),
+            tooltip: "Gửi tệp / Hỏi tư vấn thiết bị",
+            onPressed: _openFileAndDeviceSheet,
           ),
 
           // Ô nhập nội dung

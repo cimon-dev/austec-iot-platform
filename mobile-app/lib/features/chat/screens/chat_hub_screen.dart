@@ -164,15 +164,17 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                 foregroundColor: Colors.black,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               ),
-                              onPressed: () async {
-                                final convId = await _chatService.createDirectChat(u['id'].toString());
-                                if (context.mounted && convId != null) {
-                                  Navigator.of(dlgCtx).pop();
-                                  final conv = await _chatService.fetchConversationById(convId);
-                                  if (conv != null && mounted) {
-                                    _openChatRoom(conv);
-                                  }
-                                }
+                              onPressed: () {
+                                Navigator.of(dlgCtx).pop();
+                                final draftConv = ConversationItem(
+                                  id: 'draft_${u['id']}',
+                                  type: 'DIRECT',
+                                  title: u['fullName'] ?? 'Người dùng Austec',
+                                  avatarUrl: u['avatarUrl'],
+                                  isDraft: true,
+                                  draftTargetUserId: u['id'].toString(),
+                                );
+                                _openChatRoom(draftConv);
                               },
                               child: const Text("Nhắn tin", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                             ),
