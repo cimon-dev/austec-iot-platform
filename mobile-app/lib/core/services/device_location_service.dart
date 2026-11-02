@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
@@ -18,38 +19,71 @@ class DeviceCoordinates {
 }
 
 /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại (iOS / Android / Web)
+/// Tự động xử lý an toàn không để bị lỗi MissingPluginException trên các bản build
 Future<DeviceCoordinates?> getDeviceCoordinates() async {
-  // 1. Kiểm tra xem dịch vụ vị trí (GPS) trên thiết bị có đang bật không
-  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-  if (!serviceEnabled) {
-    throw Exception('Dịch vụ định vị GPS trên điện thoại đang tắt. Vui lòng bật GPS trong Cài đặt thiết bị!');
-  }
-
-  // 2. Kiểm tra và yêu cầu quyền truy cập vị trí trên điện thoại
-  LocationPermission permission = await Geolocator.checkPermission();
-  if (permission == LocationPermission.denied) {
-    permission = await Geolocator.requestPermission();
-    if (permission == LocationPermission.denied) {
-      throw Exception('Quyền truy cập vị trí GPS bị từ chối trên thiết bị!');
+  // 1. Thử dùng native Geolocator của điện thoại (iOS / Android / Web)
+  try {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (serviceEnabled) {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 6),
+          ),
+        );
+        return await _reverseGeocode(position.latitude, position.longitude, true, null);
+      }
     }
+  } catch (e) {
+    debugPrint("[LocationService] Native Geolocator chưa liên kết hoặc lỗi: $e");
   }
 
-  if (permission == LocationPermission.deniedForever) {
-    throw Exception('Quyền vị trí bị từ chối vĩnh viễn. Vui lòng vào Cài đặt ứng dụng trên điện thoại để cấp quyền Vị trí!');
+  // 2. Dự phòng an toàn qua HTTPS Geolocation (Không phụ thuộc plugin native, chạy hoàn hảo trên iOS/Android/Web)
+  try {
+    final res = await http.get(Uri.parse('https://ipwho.is/')).timeout(const Duration(seconds: 5));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      if (data['success'] == true) {
+        final double lat = (data['latitude'] as num).toDouble();
+        final double lng = (data['longitude'] as num).toDouble();
+        final city = data['city']?.toString() ?? '';
+        final region = data['region']?.toString() ?? '';
+        final country = data['country']?.toString() ?? 'Việt Nam';
+        final fallbackAddr = [city, region, country].where((s) => s.isNotEmpty).join(', ');
+        return await _reverseGeocode(lat, lng, false, fallbackAddr.isNotEmpty ? fallbackAddr : null);
+      }
+    }
+  } catch (e) {
+    debugPrint("[LocationService] ipwho.is error: $e");
   }
 
-  // 3. Lấy vị trí GPS chính xác cao từ phần cứng điện thoại
-  final position = await Geolocator.getCurrentPosition(
-    locationSettings: const LocationSettings(
-      accuracy: LocationAccuracy.high,
-      timeLimit: Duration(seconds: 15),
-    ),
-  );
+  try {
+    final res = await http.get(Uri.parse('https://freeipapi.com/api/json')).timeout(const Duration(seconds: 5));
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final double? lat = (data['latitude'] as num?)?.toDouble();
+      final double? lng = (data['longitude'] as num?)?.toDouble();
+      if (lat != null && lng != null) {
+        final city = data['cityName']?.toString() ?? '';
+        final region = data['regionName']?.toString() ?? '';
+        final country = data['countryName']?.toString() ?? 'Việt Nam';
+        final fallbackAddr = [city, region, country].where((s) => s.isNotEmpty).join(', ');
+        return await _reverseGeocode(lat, lng, false, fallbackAddr.isNotEmpty ? fallbackAddr : null);
+      }
+    }
+  } catch (e) {
+    debugPrint("[LocationService] freeipapi error: $e");
+  }
 
-  final double lat = position.latitude;
-  final double lng = position.longitude;
+  return null;
+}
 
-  // 4. Reverse geocoding để lấy tên địa chỉ chi tiết
+Future<DeviceCoordinates> _reverseGeocode(double lat, double lng, bool isGps, String? fallbackHint) async {
   String? address;
   try {
     final geoRes = await http.get(
@@ -68,7 +102,7 @@ Future<DeviceCoordinates?> getDeviceCoordinates() async {
   return DeviceCoordinates(
     lat: lat,
     lng: lng,
-    address: address,
-    isGpsHardware: true,
+    address: address ?? fallbackHint ?? "Khu vực toạ độ ($lat, $lng)",
+    isGpsHardware: isGps,
   );
 }

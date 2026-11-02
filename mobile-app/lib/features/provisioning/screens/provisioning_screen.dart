@@ -63,6 +63,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void initState() {
     super.initState();
     _detectCurrentWifi();
+    _getCurrentGpsLocation(isAuto: true);
 
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
@@ -107,6 +108,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     _ssidController.dispose();
     _passwordController.dispose();
     _locationController.dispose();
+    _addressController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
@@ -307,8 +311,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
-  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại / trình duyệt của người dùng
-  Future<void> _getCurrentGpsLocation() async {
+  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng
+  Future<void> _getCurrentGpsLocation({bool isAuto = false}) async {
     setState(() => _isGettingLocation = true);
     try {
       final coords = await getDeviceCoordinates();
@@ -316,26 +320,28 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         setState(() {
           _latController.text = coords.lat.toStringAsFixed(6);
           _lngController.text = coords.lng.toStringAsFixed(6);
-          if (coords.address != null && coords.address!.isNotEmpty && _addressController.text.trim().isEmpty) {
+          if (coords.address != null && coords.address!.isNotEmpty) {
             _addressController.text = coords.address!;
           }
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              coords.isGpsHardware
-                  ? "Đã lấy tọa độ GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
-                  : "Đã lấy tọa độ từ thiết bị: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
+        if (!isAuto) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                coords.isGpsHardware
+                    ? "Đã lấy tọa độ GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
+                    : "Đã lấy tọa độ vị trí hiện tại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
+              ),
+              backgroundColor: AppTheme.emeraldSuccess,
+              duration: const Duration(seconds: 3),
             ),
-            backgroundColor: AppTheme.emeraldSuccess,
-            duration: const Duration(seconds: 3),
-          ),
-        );
+          );
+        }
         return;
-      } else if (mounted) {
+      } else if (mounted && !isAuto) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Không thể lấy vị trí GPS! Hãy cấp quyền Vị trí trên trình duyệt hoặc nhập tọa độ thủ công."),
+            content: Text("Không thể lấy vị trí GPS! Hãy kiểm tra kết nối mạng và quyền vị trí của máy."),
             backgroundColor: AppTheme.roseDanger,
             duration: Duration(seconds: 4),
           ),
@@ -343,13 +349,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       }
     } catch (e) {
       debugPrint("Lỗi lấy tọa độ từ thiết bị/điện thoại: $e");
-      if (mounted) {
-        final errText = e.toString().replaceAll("Exception: ", "").trim();
+      if (mounted && !isAuto) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errText.isNotEmpty ? errText : "Lỗi khi lấy vị trí GPS từ điện thoại!"),
+          const SnackBar(
+            content: Text("Không thể xác định vị trí hiện tại, vui lòng kiểm tra kết nối mạng!"),
             backgroundColor: AppTheme.roseDanger,
-            duration: const Duration(seconds: 4),
+            duration: Duration(seconds: 4),
           ),
         );
       }
@@ -377,11 +382,26 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   }
 
   Future<void> _runProvisioningPipeline() async {
-    if (_selectedDevice == null) return;
+    // 1. Kiểm tra thiết bị BLE đã được chọn
+    if (_selectedDevice == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng chọn thiết bị BLE cần ghép nối từ danh sách phía trên."),
+          backgroundColor: AppTheme.roseDanger,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     final ssid = _ssidController.text.trim();
     final pass = _passwordController.text;
+    final location = _locationController.text.trim();
+    final address = _addressController.text.trim();
+    final latStr = _latController.text.trim();
+    final lngStr = _lngController.text.trim();
 
+    // 2. Kiểm tra tên Wi-Fi
     if (ssid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -392,7 +412,18 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       return;
     }
 
-    if (pass.isEmpty || pass.length < 8) {
+    // 3. Kiểm tra mật khẩu Wi-Fi
+    if (pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng nhập mật khẩu Wi-Fi."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    if (pass.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự."),
@@ -402,9 +433,40 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       return;
     }
 
-    // Tự động lấy tọa độ GPS nếu chưa có
-    if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
-      await _getCurrentGpsLocation();
+    // 4. Kiểm tra vị trí lắp đặt
+    if (location.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng nhập vị trí / khu vực lắp đặt (ví dụ: Cửa chính, Tầng 1, v.v.)."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    // 5. Kiểm tra thông tin GPS bắt buộc
+    if (address.isEmpty || latStr.isEmpty || lngStr.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Chưa có thông tin tọa độ GPS! Đang tự động lấy vị trí, vui lòng đợi trong giây lát..."),
+          backgroundColor: AppTheme.amberWarning,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      await _getCurrentGpsLocation(isAuto: true);
+      // Kiểm tra lại sau khi thử lấy GPS
+      if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Không thể lấy tọa độ GPS! Vui lòng ấn nút 'Lấy GPS' hoặc kiểm tra kết nối mạng."),
+              backgroundColor: AppTheme.roseDanger,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
     }
 
     _progressSmoothTimer?.cancel();
@@ -851,10 +913,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   const SizedBox(height: 10),
                   TextField(
                     controller: _addressController,
-                    decoration: const InputDecoration(
-                      labelText: "Địa chỉ lắp đặt",
-                      prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
-                      hintText: "Nhập địa chỉ lắp đặt",
+                    readOnly: true,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: InputDecoration(
+                      labelText: "Địa chỉ lắp đặt (Tự động GPS)",
+                      prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
+                      hintText: _isGettingLocation ? "Đang tự động xác định địa chỉ..." : "Địa chỉ tự động từ GPS",
+                      suffixIcon: _isGettingLocation
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                              ),
+                            )
+                          : const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -863,11 +937,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                       Expanded(
                         child: TextField(
                           controller: _latController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
+                          readOnly: true,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          decoration: InputDecoration(
                             labelText: "Vĩ độ (Latitude)",
-                            prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: "Tự động nhận diện",
+                            prefixIcon: const Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
+                            hintText: _isGettingLocation ? "Đang lấy..." : "Tự động GPS",
+                            suffixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
                           ),
                         ),
                       ),
@@ -875,11 +951,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                       Expanded(
                         child: TextField(
                           controller: _lngController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          decoration: const InputDecoration(
+                          readOnly: true,
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          decoration: InputDecoration(
                             labelText: "Kinh độ (Longitude)",
-                            prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: "Tự động nhận diện",
+                            prefixIcon: const Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
+                            hintText: _isGettingLocation ? "Đang lấy..." : "Tự động GPS",
+                            suffixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
                           ),
                         ),
                       ),
@@ -901,7 +979,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _selectedDevice != null ? _runProvisioningPipeline : null,
+                onPressed: _runProvisioningPipeline,
                 icon: const Icon(Icons.bolt, size: 20),
                 label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ),
