@@ -189,6 +189,52 @@ class BleProvisioningService {
     return discovered;
   }
 
+  /// Kiểm tra độc lập tính hợp lệ của Wi-Fi trước khi bắt đầu bất kỳ thao tác BLE nào
+  Future<String?> checkWifiValidity({required String ssid, required String password}) async {
+    final cleanSsid = ssid.trim();
+    if (cleanSsid.isEmpty) {
+      return "Vui lòng chọn hoặc nhập tên mạng Wi-Fi (SSID).";
+    }
+
+    final upperSsid = cleanSsid.toUpperCase();
+    if (upperSsid.contains('5G') || upperSsid.contains('5GHZ')) {
+      return "Mạng Wi-Fi '$cleanSsid' có dấu hiệu là băng tần 5GHz. Bo mạch phần cứng Austec (ESP32) chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz.";
+    }
+
+    if (cleanSsid.contains(',') || cleanSsid.contains('/') || password.contains(',') || password.contains('/')) {
+      return "Tên hoặc mật khẩu Wi-Fi không được chứa ký tự phân tách đặc biệt (dấu phẩy ',' hoặc dấu gạch chéo '/') vì sẽ làm sai cú pháp nạp của vi điều khiển ESP32.";
+    }
+
+    if (password.isEmpty || password.length < 8 || password.length > 63) {
+      return "Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự.";
+    }
+
+    // Kiểm tra kết nối mạng của điện thoại với máy chủ / Gateway
+    try {
+      final verifyRes = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/wifi/verify'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'ssid': cleanSsid,
+          'password': password,
+        }),
+      ).timeout(const Duration(seconds: 5));
+
+      if (verifyRes.statusCode == 400) {
+        try {
+          final vData = jsonDecode(verifyRes.body);
+          if (vData['error'] != null && vData['error'].toString().contains('Mật khẩu không chính xác')) {
+            return vData['error'].toString();
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint("Wi-Fi verify API warning (bỏ qua nếu server cloud): $e");
+    }
+
+    return null; // Null nghĩa là Wi-Fi hoàn toàn hợp lệ
+  }
+
   /// Pipeline ghép nối & nạp cấu hình thực tế vào ESP32 và CSDL Cloud
   Future<PairingResult> provisionDevice({
     required DiscoveredHardwareBLE targetDevice,
@@ -214,11 +260,14 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-
-    // 0. Kiểm tra thông tin Wi-Fi trước khi thực hiện ghép nối (Pre-flight Validation)
     final cleanSsid = wifiSsid.trim();
-    if (cleanSsid.isEmpty) {
+
+    // =========================================================================
+    // GIAI ĐOẠN 1: KIỂM TRA MẠNG WI-FI TRƯỚC TẤT CẢ CÁC BƯỚC (TRƯỚC KHI BẬT/KẾT NỐI BLE)
+    // =========================================================================
+    onProgress("Giai đoạn 1/3: Đang kiểm tra tính hợp lệ & kết nối mạng Wi-Fi [$cleanSsid]...", 0.15);
+    final wifiValidationError = await checkWifiValidity(ssid: cleanSsid, password: wifiPassword);
+    if (wifiValidationError != null) {
       return PairingResult(
         success: false,
         hardwareId: targetDevice.hardwareId,
@@ -226,89 +275,31 @@ class BleProvisioningService {
         ownerName: "",
         warrantyCode: "",
         warrantyUntil: "",
-        errorMessage: "Vui lòng chọn hoặc nhập tên mạng Wi-Fi (SSID).",
+        errorMessage: wifiValidationError,
       );
     }
 
-    // 0.1. Kiểm tra băng tần Wi-Fi (Cảnh báo mạng 5GHz)
-    final upperSsid = cleanSsid.toUpperCase();
-    if (upperSsid.contains('5G') || upperSsid.contains('5GHZ')) {
-      return PairingResult(
-        success: false,
-        hardwareId: targetDevice.hardwareId,
-        modelName: targetDevice.modelName,
-        ownerName: "",
-        warrantyCode: "",
-        warrantyUntil: "",
-        errorMessage: "Mạng Wi-Fi '$cleanSsid' có dấu hiệu là băng tần 5GHz. Bo mạch phần cứng Austec (ESP32) chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz.",
-      );
-    }
-
-    // 0.2. Kiểm tra ký tự phân tách chuỗi firmware (tránh làm vỡ parser trên bo mạch)
-    if (cleanSsid.contains(',') || cleanSsid.contains('/') || wifiPassword.contains(',') || wifiPassword.contains('/')) {
-      return PairingResult(
-        success: false,
-        hardwareId: targetDevice.hardwareId,
-        modelName: targetDevice.modelName,
-        ownerName: "",
-        warrantyCode: "",
-        warrantyUntil: "",
-        errorMessage: "Tên hoặc mật khẩu Wi-Fi không được chứa ký tự phân tách đặc biệt (dấu phẩy ',' hoặc dấu gạch chéo '/') vì sẽ làm sai cú pháp nạp của vi điều khiển ESP32.",
-      );
-    }
-
-    // 0.3. Kiểm tra độ dài mật khẩu chuẩn WPA2
-    if (wifiPassword.isEmpty || wifiPassword.length < 8 || wifiPassword.length > 63) {
-      return PairingResult(
-        success: false,
-        hardwareId: targetDevice.hardwareId,
-        modelName: targetDevice.modelName,
-        ownerName: "",
-        warrantyCode: "",
-        warrantyUntil: "",
-        errorMessage: "Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự.",
-      );
-    }
-
-    // 0.4. Kiểm tra xác thực mật khẩu Wi-Fi với máy chủ (nếu khả dụng)
-    onProgress("Đang kiểm tra bảo mật & xác thực mạng Wi-Fi [$cleanSsid]...", 0.15);
-    try {
-      final verifyRes = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/wifi/verify'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'ssid': cleanSsid,
-          'password': wifiPassword,
-        }),
-      ).timeout(const Duration(seconds: 4));
-
-      if (verifyRes.statusCode == 400) {
-        try {
-          final vData = jsonDecode(verifyRes.body);
-          if (vData['error'] != null && vData['error'].toString().contains('Mật khẩu không chính xác')) {
-            return PairingResult(
-              success: false,
-              hardwareId: targetDevice.hardwareId,
-              modelName: targetDevice.modelName,
-              ownerName: "",
-              warrantyCode: "",
-              warrantyUntil: "",
-              errorMessage: vData['error'].toString(),
-            );
-          }
-        } catch (_) {}
-      }
-    } catch (e) {
-      debugPrint("Wi-Fi verify API warning (bỏ qua nếu server cloud): $e");
-    }
+    onProgress("Mạng Wi-Fi [$cleanSsid] hợp lệ! Đang chuẩn bị kết nối BLE...", 0.30);
+    await Future.delayed(const Duration(milliseconds: 650));
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Xác định IP của MQTT Broker
+    // Xác định IP của MQTT Broker thông minh (tránh trỏ nhầm domain Cloud không mở port 1883 hoặc IP container)
     String targetBrokerIp = brokerIp ?? '';
-    if (targetBrokerIp.isEmpty) {
+    final bool isInvalidBroker = targetBrokerIp.isEmpty ||
+        targetBrokerIp.contains('onrender.com') ||
+        targetBrokerIp.contains('render.com') ||
+        targetBrokerIp.startsWith('10.') ||
+        targetBrokerIp.startsWith('172.');
+    if (isInvalidBroker) {
       final host = Uri.tryParse(ApiConfig.baseUrl)?.host ?? '';
-      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
+      if (host.isNotEmpty &&
+          host != 'localhost' &&
+          host != '127.0.0.1' &&
+          !host.contains('onrender.com') &&
+          !host.contains('render.com') &&
+          !host.startsWith('10.') &&
+          !host.startsWith('172.')) {
         targetBrokerIp = host;
       } else {
         targetBrokerIp = '192.168.100.6';
@@ -325,9 +316,11 @@ class BleProvisioningService {
     );
     final String payloadString = profile.buildBlePayload(inputData);
 
-    // Step 1: Truyền thông trực tiếp xuống bo mạch phần cứng thực tế
+    // =========================================================================
+    // GIAI ĐOẠN 2: KẾT NỐI BLUETOOTH BLE VỚI BO MẠCH PHẦN CỨNG THỰC TẾ
+    // =========================================================================
     if (method == PairingMethod.bluetooth) {
-      onProgress("Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.35);
+      onProgress("Giai đoạn 2/3: Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.38);
       
       bool bleSuccess = false;
       bool isWifiCheckFailed = false;
@@ -527,9 +520,11 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 2: Đợi bo mạch khởi động lại, kết nối Wi-Fi và phát tín hiệu MQTT lên Server
+    // =========================================================================
+    // GIAI ĐOẠN 3: ĐỢI BO MẠCH KHỞI ĐỘNG LẠI, KẾT NỐI WI-FI VÀ ĐỒNG BỘ CLOUD MQTT
+    // =========================================================================
     // ESP32 cần ~10 - 18 giây để hoàn thành chu kỳ: reboot -> dò sóng Wi-Fi -> WPA2 Handshake -> nhận IP DHCP -> kết nối MQTT Broker
-    onProgress("Đang đợi bo mạch kết nối vào mạng Wi-Fi [$cleanSsid] & máy chủ...", 0.60);
+    onProgress("Giai đoạn 3/3: Bo mạch đang kết nối vào mạng Wi-Fi [$cleanSsid] & máy chủ...", 0.60);
 
     bool hardwareIsOnline = false;
     const int maxWaitAttempts = 18; // Thử trong ~25 giây (18 * 1400ms)
@@ -541,11 +536,11 @@ class BleProvisioningService {
       final currentProgress = 0.60 + ((i + 1) / maxWaitAttempts) * 0.25;
 
       if (i < 4) {
-        onProgress("Bo mạch đang khởi động lại và kết nối Wi-Fi [$cleanSsid]...", currentProgress);
+        onProgress("Giai đoạn 3/3: Bo mạch đang khởi động lại và kết nối Wi-Fi [$cleanSsid]...", currentProgress);
       } else if (i < 10) {
-        onProgress("Đang kiểm tra kết nối mạng Wi-Fi từ bo mạch (${i + 1}/$maxWaitAttempts)...", currentProgress);
+        onProgress("Giai đoạn 3/3: Đang kiểm tra kết nối mạng Wi-Fi từ bo mạch (${i + 1}/$maxWaitAttempts)...", currentProgress);
       } else {
-        onProgress("Đang xác thực tín hiệu trực tuyến từ máy chủ (${i + 1}/$maxWaitAttempts)...", currentProgress);
+        onProgress("Giai đoạn 3/3: Đang xác thực tín hiệu trực tuyến từ máy chủ (${i + 1}/$maxWaitAttempts)...", currentProgress);
       }
 
       try {

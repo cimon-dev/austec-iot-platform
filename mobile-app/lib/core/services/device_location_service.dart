@@ -35,28 +35,11 @@ class LocationFetchResult {
 }
 
 /// Lấy tọa độ GPS chính xác trực tiếp từ phần cứng điện thoại (iOS / Android / Web)
-/// Có xin quyền người dùng rõ ràng, không âm thầm gán IP sai lệch
+/// Xin quyền trực tiếp từ người dùng, tuyệt đối KHÔNG tự ý gán vị trí IP mạng sai lệch
 Future<LocationFetchResult> getDeviceGpsLocation({
   bool requestPermissionIfDenied = true,
-  bool allowIpFallback = false,
 }) async {
-  // 1. Kiểm tra Dịch vụ Vị trí (GPS Toggle trong Cài đặt của điện thoại)
-  try {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (!allowIpFallback) {
-        return LocationFetchResult(
-          success: false,
-          needsOpenSettings: true,
-          errorMessage: "Dịch vụ định vị GPS trên điện thoại đang TẮT. Vui lòng bật Vị trí (GPS) trong Cài đặt của máy để lấy tọa độ chính xác.",
-        );
-      }
-    }
-  } catch (e) {
-    debugPrint("[LocationService] isLocationServiceEnabled check error: $e");
-  }
-
-  // 2. Kiểm tra & Xin Quyền truy cập Vị trí từ hệ điều hành (Popup OS)
+  // 1. Kiểm tra & Xin Quyền truy cập Vị trí từ hệ điều hành (Popup của iOS / Android)
   try {
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied && requestPermissionIfDenied) {
@@ -64,26 +47,32 @@ Future<LocationFetchResult> getDeviceGpsLocation({
     }
 
     if (permission == LocationPermission.denied) {
-      if (!allowIpFallback) {
-        return LocationFetchResult(
-          success: false,
-          needsOpenSettings: false,
-          errorMessage: "Ứng dụng chưa được cấp quyền Vị trí. Vui lòng cho phép quyền Vị trí trên điện thoại.",
-        );
-      }
+      return LocationFetchResult(
+        success: false,
+        needsOpenSettings: false,
+        errorMessage: "Ứng dụng chưa được cấp quyền Vị trí. Vui lòng cho phép quyền Vị trí trên điện thoại.",
+      );
     }
 
     if (permission == LocationPermission.deniedForever) {
-      if (!allowIpFallback) {
-        return LocationFetchResult(
-          success: false,
-          needsOpenSettings: true,
-          errorMessage: "Quyền Vị trí đã bị từ chối vĩnh viễn trên điện thoại. Vui lòng mở Cài đặt ứng dụng để bật quyền Vị trí.",
-        );
-      }
+      return LocationFetchResult(
+        success: false,
+        needsOpenSettings: true,
+        errorMessage: "Quyền Vị trí đã bị từ chối vĩnh viễn trên điện thoại. Vui lòng mở Cài đặt ứng dụng để bật quyền Vị trí.",
+      );
     }
 
-    // 3. Nếu quyền hợp lệ: Đọc tọa độ GPS vệ tinh độ chính xác cao từ phần cứng
+    // 2. Kiểm tra Dịch vụ Vị trí (GPS Toggle trong Cài đặt của điện thoại)
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return LocationFetchResult(
+        success: false,
+        needsOpenSettings: true,
+        errorMessage: "Dịch vụ định vị GPS trên điện thoại đang TẮT. Vui lòng bật Vị trí (GPS) trong Cài đặt của máy để lấy tọa độ chính xác.",
+      );
+    }
+
+    // 3. Nếu quyền hợp lệ & GPS đang bật: Đọc tọa độ GPS vệ tinh phần cứng độ chính xác cao
     if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
       Position? position;
       try {
@@ -116,47 +105,16 @@ Future<LocationFetchResult> getDeviceGpsLocation({
     debugPrint("[LocationService] Native Geolocator lỗi: $e");
   }
 
-  // 4. Nếu không cho phép fallback qua IP hoặc muốn vị trí GPS thật
-  if (!allowIpFallback) {
-    return LocationFetchResult(
-      success: false,
-      needsOpenSettings: true,
-      errorMessage: "Không thể nhận diện vệ tinh GPS. Vui lòng bật định vị GPS trên điện thoại và thử lại.",
-    );
-  }
-
-  // 5. Dự phòng qua Geolocation IP (Chỉ dùng khi cho phép fallback)
-  try {
-    final res = await http.get(Uri.parse('https://ipwho.is/')).timeout(const Duration(seconds: 4));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      if (data['success'] == true) {
-        final double lat = (data['latitude'] as num).toDouble();
-        final double lng = (data['longitude'] as num).toDouble();
-        final city = data['city']?.toString() ?? '';
-        final region = data['region']?.toString() ?? '';
-        final country = data['country']?.toString() ?? 'Việt Nam';
-        final fallbackAddr = [city, region, country].where((s) => s.isNotEmpty).join(', ');
-        final coords = await _reverseGeocode(lat, lng, false, fallbackAddr.isNotEmpty ? fallbackAddr : null);
-        return LocationFetchResult(
-          success: true,
-          coordinates: coords,
-          isGpsHardware: false,
-          errorMessage: "Vị trí ước tính theo mạng Internet (chưa bật GPS phần cứng)",
-        );
-      }
-    }
-  } catch (_) {}
-
   return LocationFetchResult(
     success: false,
-    errorMessage: "Không thể xác định vị trí hiện tại. Vui lòng bật GPS trên máy.",
+    needsOpenSettings: true,
+    errorMessage: "Không thể nhận diện vệ tinh GPS. Vui lòng bật định vị GPS trên điện thoại và thử lại.",
   );
 }
 
 /// Tương thích ngược với các module khác
-Future<DeviceCoordinates?> getDeviceCoordinates({bool allowIpFallback = false}) async {
-  final res = await getDeviceGpsLocation(requestPermissionIfDenied: true, allowIpFallback: allowIpFallback);
+Future<DeviceCoordinates?> getDeviceCoordinates() async {
+  final res = await getDeviceGpsLocation(requestPermissionIfDenied: true);
   return res.coordinates;
 }
 

@@ -46,7 +46,7 @@ export class MqttController {
 
   @Get('/wifi/current')
   public async getCurrentWifi(req: Request, res: Response) {
-    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || '192.168.1.145';
+    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || '192.168.100.6';
     if (!process.env.MQTT_PUBLIC_HOST && !process.env.MQTT_BROKER_HOST) {
       try {
         const os = await import('os');
@@ -54,6 +54,10 @@ export class MqttController {
         for (const name of Object.keys(nets)) {
           for (const net of nets[name] || []) {
             if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
+              // Bỏ qua dải IP ảo container Linux / Docker / Render (10.x, 172.x)
+              if (process.platform !== 'win32' && (net.address.startsWith('10.') || net.address.startsWith('172.'))) {
+                continue;
+              }
               localIp = net.address;
               break;
             }

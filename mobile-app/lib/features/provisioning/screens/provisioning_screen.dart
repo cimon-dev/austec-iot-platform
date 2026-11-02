@@ -64,7 +64,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void initState() {
     super.initState();
     _detectCurrentWifi();
-    _getCurrentGpsLocation(isAuto: true);
+
+    // Tự động xin quyền và lấy tọa độ GPS vệ tinh ngay khi người dùng vào màn hình Thêm Thiết Bị
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: false);
+      }
+    });
 
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
@@ -312,14 +318,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
-  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng (Xin quyền OS chuẩn)
-  Future<void> _getCurrentGpsLocation({bool isAuto = false}) async {
+  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng (Xin quyền OS chuẩn ngay khi mở)
+  Future<void> _getCurrentGpsLocation({bool promptIfDenied = true, bool showSuccessSnackbar = false}) async {
     setState(() => _isGettingLocation = true);
     try {
-      final result = await getDeviceGpsLocation(
-        requestPermissionIfDenied: !isAuto,
-        allowIpFallback: isAuto,
-      );
+      final result = await getDeviceGpsLocation(requestPermissionIfDenied: promptIfDenied);
 
       if (result.success && result.coordinates != null && mounted) {
         final coords = result.coordinates!;
@@ -331,14 +334,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           }
         });
 
-        if (!isAuto) {
+        if (showSuccessSnackbar) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                result.isGpsHardware
-                    ? "Đã lấy tọa độ GPS vệ tinh điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
-                    : "Đã lấy tọa độ vị trí: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
-              ),
+              content: Text("Đã lấy tọa độ GPS vệ tinh điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"),
               backgroundColor: AppTheme.emeraldSuccess,
               duration: const Duration(seconds: 3),
             ),
@@ -347,7 +346,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         return;
       }
 
-      if (!isAuto && mounted) {
+      if (promptIfDenied && mounted) {
         if (result.needsOpenSettings) {
           _showLocationSettingsDialog(result.errorMessage ?? "Vui lòng bật định vị GPS trong Cài đặt của điện thoại để lấy tọa độ chính xác.");
         } else {
@@ -362,7 +361,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       }
     } catch (e) {
       debugPrint("Lỗi lấy tọa độ từ thiết bị/điện thoại: $e");
-      if (mounted && !isAuto) {
+      if (promptIfDenied && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Không thể xác định vị trí hiện tại. Vui lòng thử lại!"),
@@ -525,6 +524,21 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       return;
     }
 
+    // 3.1. Kiểm tra tính hợp lệ & kết nối Wi-Fi TRƯỚC TẤT CẢ CÁC BƯỚC (Trước khi kết nối BLE với thiết bị)
+    final wifiPreCheck = await _bleService.checkWifiValidity(ssid: ssid, password: pass);
+    if (wifiPreCheck != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Kiểm tra Wi-Fi thất bại: $wifiPreCheck"),
+            backgroundColor: AppTheme.roseDanger,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+
     // 4. Kiểm tra vị trí lắp đặt
     if (location.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -545,7 +559,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           duration: Duration(seconds: 3),
         ),
       );
-      await _getCurrentGpsLocation(isAuto: false);
+      await _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: false);
       // Kiểm tra lại sau khi thử lấy GPS
       if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
         if (mounted) {
@@ -565,8 +579,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     setState(() {
       _isProvisioning = true;
       _provisioningProgress = 0.01;
-      _targetProgress = 0.05;
-      _provisioningStep = "Đang kiểm tra bảo mật và chuẩn bị ghép nối...";
+      _targetProgress = 0.15;
+      _provisioningStep = "Giai đoạn 1/3: Đang kiểm tra tính hợp lệ & kết nối mạng Wi-Fi [$ssid]...";
       _pairingResult = null;
     });
 
@@ -976,7 +990,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                       InkWell(
-                        onTap: _isGettingLocation ? null : _getCurrentGpsLocation,
+                        onTap: _isGettingLocation
+                            ? null
+                            : () => _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: true),
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
