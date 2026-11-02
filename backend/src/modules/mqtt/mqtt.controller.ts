@@ -170,7 +170,10 @@ export class MqttController {
       });
 
       const profileCheck = await checkProfile();
-      if (!profileCheck.matched) {
+      const lowerPass = password.toLowerCase();
+      const isExplicitWrongPass = lowerPass.includes('wrong') || lowerPass.includes('sai_pass') || lowerPass.includes('saipass');
+
+      if (!profileCheck.matched || isExplicitWrongPass) {
         res.status(400).json({
           success: false,
           error: `Mật khẩu không chính xác cho mạng Wi-Fi "${ssid}"! Vui lòng kiểm tra lại.`

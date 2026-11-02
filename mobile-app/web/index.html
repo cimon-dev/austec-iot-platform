@@ -125,9 +125,54 @@
 
             var encoder = new TextEncoder();
             var data = encoder.encode(payloadString);
-            return rxChar.writeValue(data);
-          }).then(function() {
-            resolve(JSON.stringify({ success: true, message: 'Đã truyền gói tin onboard thành công qua BLE!' }));
+
+            // Đăng ký nhận phản hồi xác thực Wi-Fi từ bo mạch ESP32
+            var checkWifiPromise = new Promise(function(notifyResolve) {
+              var onNotify = function(event) {
+                try {
+                  var val = new TextDecoder().decode(event.target.value);
+                  console.log('[WebBLE Bo Mạch Phản Hồi]:', val);
+                  if (val.indexOf('WIFI_FAIL') !== -1) {
+                    cleanup();
+                    notifyResolve({
+                      success: false,
+                      isWrongWifi: true,
+                      error: 'Mật khẩu Wi-Fi không chính xác hoặc bo mạch không kết nối được tới Router này!'
+                    });
+                  } else if (val.indexOf('WIFI_OK') !== -1 || val.indexOf('PAIRED_OK') !== -1) {
+                    cleanup();
+                    notifyResolve({
+                      success: true,
+                      isWrongWifi: false,
+                      message: 'Bo mạch đã xác thực mật khẩu Wi-Fi thành công!'
+                    });
+                  }
+                } catch (_) {}
+              };
+
+              var timer = setTimeout(function() {
+                cleanup();
+                notifyResolve({ success: true, isWrongWifi: false, message: 'Đã nạp gói tin cấu hình Wi-Fi' });
+              }, 9500);
+
+              var cleanup = function() {
+                clearTimeout(timer);
+                try {
+                  rxChar.removeEventListener('characteristicvaluechanged', onNotify);
+                } catch (_) {}
+              };
+
+              if (rxChar.properties.notify) {
+                rxChar.addEventListener('characteristicvaluechanged', onNotify);
+                rxChar.startNotifications().catch(function(_) {});
+              }
+            });
+
+            return rxChar.writeValue(data).then(function() {
+              return checkWifiPromise;
+            });
+          }).then(function(result) {
+            resolve(JSON.stringify(result || { success: true }));
           }).catch(function(err) {
             console.warn('[WebBLE] Lỗi ghi Characteristic BLE:', err);
             resolve(JSON.stringify({ success: false, error: (err && err.message) ? err.message : 'Lỗi kết nối BLE' }));

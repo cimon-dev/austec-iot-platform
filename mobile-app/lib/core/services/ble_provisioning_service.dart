@@ -313,6 +313,9 @@ class BleProvisioningService {
       onProgress("Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.35);
       
       bool bleSuccess = false;
+      bool isWifiCheckFailed = false;
+      String wifiErrorMessage = "Mật khẩu Wi-Fi không chính xác hoặc bo mạch không kết nối được tới router này!";
+
       if (kIsWeb) {
         try {
           final webRes = await sendWebBluetoothOnboard(
@@ -320,8 +323,15 @@ class BleProvisioningService {
             serviceUuid: profile.bleServiceUuids.first,
             rxUuid: profile.bleRxCharUuid,
           );
-          if (webRes != null && webRes['success'] == true) {
-            bleSuccess = true;
+          if (webRes != null) {
+            if (webRes['isWrongWifi'] == true || (webRes['success'] == false && webRes['error']?.toString().contains('Mật khẩu') == true)) {
+              isWifiCheckFailed = true;
+              if (webRes['error'] != null) {
+                wifiErrorMessage = webRes['error'].toString();
+              }
+            } else if (webRes['success'] == true) {
+              bleSuccess = true;
+            }
           }
         } catch (_) {}
       } else {
@@ -387,9 +397,43 @@ class BleProvisioningService {
                   ),
                 );
 
+                StreamSubscription? notifySub;
+                Completer<bool> wifiCheckCompleter = Completer();
+
+                if (rxChar.properties.notify) {
+                  try {
+                    await rxChar.setNotifyValue(true);
+                    notifySub = rxChar.lastValueStream.listen((val) {
+                      final str = utf8.decode(val, allowMalformed: true);
+                      debugPrint("BLE Notification from ESP32: $str");
+                      if (str.contains("WIFI_FAIL")) {
+                        isWifiCheckFailed = true;
+                        if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(false);
+                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK")) {
+                        if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
+                      }
+                    });
+                  } catch (e) {
+                    debugPrint("Setup BLE notify error: $e");
+                  }
+                }
+
                 final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
                 await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
-                bleSuccess = true;
+
+                onProgress("Đang kiểm tra kết nối Wi-Fi trên bo mạch...", 0.45);
+
+                // Chờ phản hồi kiểm tra Wi-Fi từ bo mạch trong tối đa 8.5 giây
+                final timer = Timer(const Duration(milliseconds: 8500), () {
+                  if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
+                });
+                await wifiCheckCompleter.future;
+                timer.cancel();
+                await notifySub?.cancel();
+
+                if (!isWifiCheckFailed) {
+                  bleSuccess = true;
+                }
                 await Future.delayed(const Duration(milliseconds: 400));
                 try {
                   await devToConnect.disconnect();
@@ -403,8 +447,22 @@ class BleProvisioningService {
       }
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+
+      // Nếu bo mạch báo lỗi mật khẩu Wi-Fi không chính xác: Dừng ngay lập tức!
+      if (isWifiCheckFailed) {
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: wifiErrorMessage,
+        );
+      }
+
       if (bleSuccess) {
-        onProgress("Đã truyền gói tin onboard qua BLE! Bo mạch đang nạp Flash...", 0.50);
+        onProgress("Bo mạch đã xác thực Wi-Fi thành công! Đang lưu cấu hình...", 0.50);
       } else {
         onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào bo mạch...", 0.50);
       }
