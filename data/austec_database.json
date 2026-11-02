@@ -389,40 +389,6 @@
   ],
   "deviceInstances": [
     {
-      "id": "20000000-0000-0000-0000-000000000001",
-      "hardwareId": "AT-DOOR-88239A01",
-      "customName": "Cửa cuốn Gara Đức Mạnh",
-      "ownerId": "00000000-0000-0000-0000-000000000001",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-11-01T21:03:13.024Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92,
-        "positionPercent": 0
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Cửa cuốn",
-      "installationAddress": {
-        "street": "Số 45 Lê Duẩn",
-        "ward": "Bến Nghé",
-        "district": "Hoàn Kiếm",
-        "province": "Hà Nội",
-        "fullText": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội"
-      },
-      "locationLat": 21.0285,
-      "locationLng": 105.8542,
-      "addressDisplay": "Số 45 Lê Duẩn, Bến Nghé, Hoàn Kiếm, Hà Nội",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
       "id": "20000000-0000-0000-0000-000000000002",
       "hardwareId": "AT-LOCK-77124B02",
       "customName": "Khóa chính Dan Phung",

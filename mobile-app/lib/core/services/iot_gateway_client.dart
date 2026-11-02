@@ -103,8 +103,93 @@ class IoTGatewayClient {
 
   // Danh sách thiết bị người dùng sở hữu (Khởi tạo trắng 100%, nạp động từ CSDL Backend khi đăng nhập / ghép nối)
   final List<DeviceItem> _devices = [];
+  final StreamController<DeviceItem> _deviceUpdateStream = StreamController<DeviceItem>.broadcast();
+  Stream<DeviceItem> get onDeviceUpdated => _deviceUpdateStream.stream;
+  final Map<String, Timer> _doorMotionTimers = {};
 
   List<DeviceItem> get devices => List.unmodifiable(_devices);
+
+  void notifyDeviceChanged(DeviceItem device) {
+    _deviceUpdateStream.add(device);
+  }
+
+  /// Khởi chạy tiến trình di chuyển cửa cuốn chạy ngầm đồng bộ thời gian thực
+  void startDoorMotion({required String hardwareId, required String direction}) {
+    final device = findByHardwareId(hardwareId);
+    if (device == null) return;
+
+    _doorMotionTimers[hardwareId]?.cancel();
+    _doorMotionTimers.remove(hardwareId);
+
+    if (direction == "STOP") {
+      device.isMoving = false;
+      device.movingDirection = 'stop';
+      _deviceUpdateStream.add(device);
+      return;
+    }
+
+    if (direction == "OPEN") {
+      if (device.positionPercent >= 100) {
+        device.isMoving = false;
+        device.movingDirection = 'stop';
+        _deviceUpdateStream.add(device);
+        return;
+      }
+      device.isMoving = true;
+      device.movingDirection = 'up';
+      _deviceUpdateStream.add(device);
+
+      const tickMs = 80;
+      final int timeoutSec = (device.openTimeoutSeconds > 0 ? device.openTimeoutSeconds : 20).clamp(6, 60);
+      final totalTicks = (timeoutSec * 1000 / tickMs).clamp(40, 250);
+      final double step = (100.0 - device.positionPercent) / totalTicks;
+      double currentPos = device.positionPercent.toDouble();
+
+      _doorMotionTimers[hardwareId] = Timer.periodic(const Duration(milliseconds: tickMs), (timer) {
+        currentPos += step;
+        if (currentPos >= 100.0) {
+          device.positionPercent = 100;
+          device.isMoving = false;
+          device.movingDirection = 'stop';
+          timer.cancel();
+          _doorMotionTimers.remove(hardwareId);
+        } else {
+          device.positionPercent = currentPos.round();
+        }
+        _deviceUpdateStream.add(device);
+      });
+    } else if (direction == "CLOSE") {
+      if (device.positionPercent <= 0) {
+        device.isMoving = false;
+        device.movingDirection = 'stop';
+        _deviceUpdateStream.add(device);
+        return;
+      }
+      device.isMoving = true;
+      device.movingDirection = 'down';
+      _deviceUpdateStream.add(device);
+
+      const tickMs = 80;
+      final int timeoutSec = (device.closeTimeoutSeconds > 0 ? device.closeTimeoutSeconds : 20).clamp(6, 60);
+      final totalTicks = (timeoutSec * 1000 / tickMs).clamp(40, 250);
+      final double step = (device.positionPercent > 0 ? device.positionPercent : 100) / totalTicks;
+      double currentPos = device.positionPercent.toDouble();
+
+      _doorMotionTimers[hardwareId] = Timer.periodic(const Duration(milliseconds: tickMs), (timer) {
+        currentPos -= step;
+        if (currentPos <= 0.0) {
+          device.positionPercent = 0;
+          device.isMoving = false;
+          device.movingDirection = 'stop';
+          timer.cancel();
+          _doorMotionTimers.remove(hardwareId);
+        } else {
+          device.positionPercent = currentPos.round();
+        }
+        _deviceUpdateStream.add(device);
+      });
+    }
+  }
 
   List<DeviceItem> getDevicesByCategory(DeviceCategory category) {
     return _devices.where((d) => d.category == category).toList();
@@ -247,7 +332,7 @@ class IoTGatewayClient {
   /// Nạp danh sách thiết bị thật từ Backend theo quyền sở hữu của người dùng hiện tại
   Future<void> fetchDevicesFromBackend({String? token}) async {
     try {
-      final authToken = token ?? 'austec-customer-token';
+      final authToken = token ?? (AuthService().token ?? 'austec-customer-token');
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/my'),
         headers: {'Authorization': 'Bearer $authToken'},
@@ -257,15 +342,14 @@ class IoTGatewayClient {
         final data = jsonDecode(res.body);
         if (data['success'] == true && data['devices'] is List) {
           final List list = data['devices'];
+          _devices.clear();
           if (list.isNotEmpty) {
-            final List<DeviceItem> parsed = [];
             for (var d in list) {
-              parsed.add(_parseDeviceFromJson(d));
+              _devices.add(_parseDeviceFromJson(d));
             }
-            _devices.clear();
-            _devices.addAll(parsed);
-          } else {
-            _devices.clear();
+          }
+          for (var d in _devices) {
+            _deviceUpdateStream.add(d);
           }
         }
       }
@@ -472,9 +556,15 @@ class IoTGatewayClient {
       final nowStr = "${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year} ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
 
       if (action == "OPEN_DOOR") {
-        device.positionPercent = 100;
-        device.isMoving = false;
-        device.movingDirection = 'stop';
+        if (device.isChildLockActive) {
+          return CommandResult(
+            success: false,
+            latencyMs: 15,
+            message: "Cửa đang KHÓA AN TOÀN TRẺ EM! Không thể mở.",
+            cryptoSignature: cryptoSig,
+          );
+        }
+        startDoorMotion(hardwareId: hardwareId, direction: "OPEN");
         final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
@@ -486,10 +576,22 @@ class IoTGatewayClient {
             deviceCode: device.hardwareId,
           ),
         );
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đang mở cửa cuốn...",
+          cryptoSignature: cryptoSig,
+        );
       } else if (action == "CLOSE_DOOR") {
-        device.positionPercent = 0;
-        device.isMoving = false;
-        device.movingDirection = 'stop';
+        if (device.isChildLockActive) {
+          return CommandResult(
+            success: false,
+            latencyMs: 15,
+            message: "Cửa đang KHÓA AN TOÀN TRẺ EM! Không thể đóng.",
+            cryptoSignature: cryptoSig,
+          );
+        }
+        startDoorMotion(hardwareId: hardwareId, direction: "CLOSE");
         final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
@@ -501,9 +603,14 @@ class IoTGatewayClient {
             deviceCode: device.hardwareId,
           ),
         );
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đang đóng cửa cuốn...",
+          cryptoSignature: cryptoSig,
+        );
       } else if (action == "STOP_DOOR") {
-        device.isMoving = false;
-        device.movingDirection = 'stop';
+        startDoorMotion(hardwareId: hardwareId, direction: "STOP");
         final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
@@ -515,14 +622,34 @@ class IoTGatewayClient {
             deviceCode: device.hardwareId,
           ),
         );
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đã dừng cửa cuốn tại vị trí ${device.positionPercent}%",
+          cryptoSignature: cryptoSig,
+        );
       } else if (action == "SET_POSITION") {
         final target = parameters?["position"] as int? ?? 50;
         device.positionPercent = target;
+        _deviceUpdateStream.add(device);
       } else if (action == "TOGGLE_CHILD_LOCK") {
         device.isChildLockActive = !device.isChildLockActive;
+        if (device.isChildLockActive) {
+          startDoorMotion(hardwareId: hardwareId, direction: "STOP");
+        }
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: device.isChildLockActive
+              ? "ĐÃ KHÓA AN TOÀN TRẺ EM! Các nút điều khiển đã bị khóa."
+              : "ĐÃ MỞ KHÓA! Hệ thống sẵn sàng vận hành.",
+          cryptoSignature: cryptoSig,
+        );
       } else if (action == "UPDATE_TIMEOUTS") {
         device.openTimeoutSeconds = parameters?["openTimeout"] ?? device.openTimeoutSeconds;
         device.closeTimeoutSeconds = parameters?["closeTimeout"] ?? device.closeTimeoutSeconds;
+        _deviceUpdateStream.add(device);
       } else if (action == "UPDATE_ACCESS_CONTROL") {
         device.isAccessLimitActive = parameters?["isActive"] ?? device.isAccessLimitActive;
         device.accessStartTime = parameters?["startTime"] ?? device.accessStartTime;

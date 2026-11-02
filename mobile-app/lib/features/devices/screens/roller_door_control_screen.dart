@@ -35,12 +35,28 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   late AnimationController _pulseController;
 
+  StreamSubscription<DeviceItem>? _deviceUpdateSub;
+
   @override
   void initState() {
     super.initState();
     _device = widget.device;
     _currentPercent = _device.positionPercent.toDouble();
-    _isStopped = true;
+    _isOpening = _device.isMoving && _device.movingDirection == 'up';
+    _isClosing = _device.isMoving && _device.movingDirection == 'down';
+    _isStopped = !_device.isMoving;
+
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((updatedDev) {
+      if (updatedDev.hardwareId == _device.hardwareId && mounted) {
+        setState(() {
+          _device = updatedDev;
+          _currentPercent = updatedDev.positionPercent.toDouble();
+          _isOpening = updatedDev.isMoving && updatedDev.movingDirection == 'up';
+          _isClosing = updatedDev.isMoving && updatedDev.movingDirection == 'down';
+          _isStopped = !updatedDev.isMoving;
+        });
+      }
+    });
 
     _linkedCameraHwId = _device.currentProperties['linked_camera_id']?.toString();
     if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
@@ -62,6 +78,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   @override
   void dispose() {
+    _deviceUpdateSub?.cancel();
     _travelTimer?.cancel();
     _doorCamSnapshotTimer?.cancel();
     _pulseController.dispose();
@@ -73,13 +90,12 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     super.dispose();
   }
 
-  // 1. MỞ CỬA DẦN DẦN (Real-time Gradual Travel UP)
+  // 1. MỞ CỬA DẦN DẦN (Đồng bộ ngầm toàn hệ thống)
   void _startOpenDoor() {
     if (_device.isChildLockActive) {
       _showLockedWarning();
       return;
     }
-    _travelTimer?.cancel();
 
     setState(() {
       _isOpening = true;
@@ -88,39 +104,14 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "OPEN_DOOR");
-
-    // Tốc độ di chuyển dựa trên timeout mở (mặc định 23s, mô phỏng mượt mà ~6-8s hoàn thành)
-    const tickMs = 60;
-    final totalTicks = (_device.openTimeoutSeconds * 1000 / tickMs).clamp(60, 160);
-    final step = (100.0 - _currentPercent) / totalTicks;
-
-    _travelTimer = Timer.periodic(const Duration(milliseconds: tickMs), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        _currentPercent += step;
-        if (_currentPercent >= 100.0) {
-          _currentPercent = 100.0;
-          _isOpening = false;
-          _isStopped = true;
-          _travelTimer?.cancel();
-          _device.positionPercent = 100;
-        } else {
-          _device.positionPercent = _currentPercent.round();
-        }
-      });
-    });
   }
 
-  // 2. ĐÓNG CỬA DẦN DẦN (Real-time Gradual Travel DOWN)
+  // 2. ĐÓNG CỬA DẦN DẦN (Đồng bộ ngầm toàn hệ thống)
   void _startCloseDoor() {
     if (_device.isChildLockActive) {
       _showLockedWarning();
       return;
     }
-    _travelTimer?.cancel();
 
     setState(() {
       _isClosing = true;
@@ -129,34 +120,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "CLOSE_DOOR");
-
-    const tickMs = 60;
-    final totalTicks = (_device.closeTimeoutSeconds * 1000 / tickMs).clamp(60, 160);
-    final step = _currentPercent / totalTicks;
-
-    _travelTimer = Timer.periodic(const Duration(milliseconds: tickMs), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() {
-        _currentPercent -= step;
-        if (_currentPercent <= 0.0) {
-          _currentPercent = 0.0;
-          _isClosing = false;
-          _isStopped = true;
-          _travelTimer?.cancel();
-          _device.positionPercent = 0;
-        } else {
-          _device.positionPercent = _currentPercent.round();
-        }
-      });
-    });
   }
 
   // 3. DỪNG CỬA NGAY TẠI VỊ TRÍ HIỆN TẠI (Immediate STOP)
   void _stopDoor() {
-    _travelTimer?.cancel();
     setState(() {
       _isOpening = false;
       _isClosing = false;
@@ -165,19 +132,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STOP_DOOR");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Đã dừng cửa cuốn tại vị trí ${_currentPercent.round()}%"),
-        duration: const Duration(seconds: 1),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   // 4. BẬT / TẮT KHÓA AN TOÀN TRẺ EM
   void _toggleLock() {
-    _travelTimer?.cancel();
     setState(() {
       _device.isChildLockActive = !_device.isChildLockActive;
       _isOpening = false;
@@ -186,17 +144,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     });
 
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "TOGGLE_CHILD_LOCK");
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_device.isChildLockActive
-            ? "ĐÃ KHÓA AN TOÀN TRẺ EM! Vô hiệu hóa remote RF và nút bấm."
-            : "ĐÃ MỞ KHÓA CỬA! Hệ thống sẵn sàng vận hành."),
-        backgroundColor: _device.isChildLockActive ? AppTheme.amberWarning : AppTheme.emeraldSuccess,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   void _showLockedWarning() {
@@ -614,43 +561,51 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // 3 Nút Bấm Lớn Trực Quan: MỞ - DỪNG - ĐÓNG
   Widget _buildVisualControlButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        // 1. NÚT MỞ CỬA (ACTIVE KHI ĐANG MỞ)
-        _buildActiveActionButton(
-          label: _isOpening ? "ĐANG MỞ..." : AppTheme.t("open"),
-          icon: Icons.arrow_upward_rounded,
-          isActive: _isOpening,
-          activeColor: AppTheme.cyanAccent,
-          gradient: AppTheme.cyanGradient,
-          onTap: _startOpenDoor,
-        ),
+    final isLocked = _device.isChildLockActive;
 
-        // 2. NÚT DỪNG LẠI (ACTIVE KHI ĐÃ DỪNG)
-        _buildActiveActionButton(
-          label: AppTheme.t("stop"),
-          icon: Icons.stop_rounded,
-          isActive: _isStopped && !_isOpening && !_isClosing,
-          activeColor: AppTheme.amberWarning,
-          gradient: AppTheme.amberGradient,
-          onTap: _stopDoor,
-        ),
+    return Opacity(
+      opacity: isLocked ? 0.35 : 1.0,
+      child: IgnorePointer(
+        ignoring: isLocked,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // 1. NÚT MỞ CỬA (ACTIVE KHI ĐANG MỞ)
+            _buildActiveActionButton(
+              label: _isOpening ? "ĐANG MỞ..." : AppTheme.t("open"),
+              icon: Icons.arrow_upward_rounded,
+              isActive: _isOpening,
+              activeColor: AppTheme.cyanAccent,
+              gradient: AppTheme.cyanGradient,
+              onTap: _startOpenDoor,
+            ),
 
-        // 3. NÚT ĐÓNG CỬA (ACTIVE KHI ĐANG ĐÓNG)
-        _buildActiveActionButton(
-          label: _isClosing ? "ĐANG ĐÓNG..." : AppTheme.t("close"),
-          icon: Icons.arrow_downward_rounded,
-          isActive: _isClosing,
-          activeColor: Colors.orangeAccent,
-          gradient: const LinearGradient(
-            colors: [Color(0xFF64748B), Color(0xFF334155)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-          onTap: _startCloseDoor,
+            // 2. NÚT DỪNG LẠI (ACTIVE KHI ĐÃ DỪNG)
+            _buildActiveActionButton(
+              label: AppTheme.t("stop"),
+              icon: Icons.stop_rounded,
+              isActive: _isStopped && !_isOpening && !_isClosing,
+              activeColor: AppTheme.amberWarning,
+              gradient: AppTheme.amberGradient,
+              onTap: _stopDoor,
+            ),
+
+            // 3. NÚT ĐÓNG CỬA (ACTIVE KHI ĐANG ĐÓNG)
+            _buildActiveActionButton(
+              label: _isClosing ? "ĐANG ĐÓNG..." : AppTheme.t("close"),
+              icon: Icons.arrow_downward_rounded,
+              isActive: _isClosing,
+              activeColor: Colors.orangeAccent,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF64748B), Color(0xFF334155)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              onTap: _startCloseDoor,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -1068,11 +1023,13 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
                       icon: const Icon(Icons.add),
                       label: const Text("Ghép nối camera mới"),
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.of(ctx).pop();
-                        Navigator.of(context).push(
+                        await Navigator.of(context).push(
                           MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                        ).then((_) => setState(() {}));
+                        );
+                        await _gateway.fetchDevicesFromBackend();
+                        if (mounted) setState(() {});
                       },
                     ),
                   ],

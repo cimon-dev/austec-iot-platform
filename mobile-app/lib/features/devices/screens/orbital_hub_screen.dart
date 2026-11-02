@@ -593,10 +593,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                               AppTheme.t("add_device"),
                               style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
                             ),
-                            onPressed: () {
-                              Navigator.of(context).push(
+                            onPressed: () async {
+                              await Navigator.of(context).push(
                                 MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
                               );
+                              await _gateway.fetchDevicesFromBackend();
+                              if (mounted) setState(() {});
                             },
                           ),
                         ],

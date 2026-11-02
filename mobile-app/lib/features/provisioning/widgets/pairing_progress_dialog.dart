@@ -9,6 +9,7 @@ class PairingProgressDialog extends StatelessWidget {
   final PairingResult? pairingResult;
   final String wifiSsid;
   final VoidCallback onCancel;
+  final VoidCallback? onDone;
   final Function(String hardwareId) onControlDoor;
 
   const PairingProgressDialog({
@@ -19,6 +20,7 @@ class PairingProgressDialog extends StatelessWidget {
     required this.pairingResult,
     required this.wifiSsid,
     required this.onCancel,
+    this.onDone,
     required this.onControlDoor,
   });
 
@@ -129,7 +131,10 @@ class PairingProgressDialog extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          onPressed: () => Navigator.of(context).pop(),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onDone?.call();
+                          },
                           child: const Text("Đóng", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),

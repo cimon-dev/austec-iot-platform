@@ -43,6 +43,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   final TextEditingController _qrCodeController = TextEditingController();
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController(text: "Gara");
+  final List<String> _locationSuggestions = const ["Gara", "Cổng chính", "Tầng 1", "Phòng khách", "Sân trước", "Kho hàng"];
 
   bool _obscurePassword = true;
   Timer? _progressSmoothTimer;
@@ -100,6 +102,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     _qrCodeController.dispose();
     _ssidController.dispose();
     _passwordController.dispose();
+    _locationController.dispose();
     super.dispose();
   }
 
@@ -373,10 +376,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       }
     });
 
+    final locationStr = _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : "Gara";
+
     _bleService.provisionDevice(
       targetDevice: _selectedDevice!,
       wifiSsid: ssid,
       wifiPassword: pass,
+      location: locationStr,
       method: _selectedMethod,
       brokerIp: _brokerIp,
       brokerPort: _brokerPort,
@@ -462,6 +468,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 _pairingResult = null;
               });
               Navigator.of(ctx).pop();
+            },
+            onDone: () async {
+              await IoTGatewayClient().fetchDevicesFromBackend();
+              if (mounted) {
+                Navigator.of(context).pop(true);
+              }
             },
             onControlDoor: (hwId) async {
               await IoTGatewayClient().fetchDevicesFromBackend();
@@ -706,6 +718,50 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            // Vị trí lắp đặt thiết bị
+            const Text("VỊ TRÍ / KHU VỰC LẮP ĐẶT", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: AppTheme.glassBox(radius: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _locationController,
+                    decoration: const InputDecoration(
+                      labelText: "Tên phòng / Vị trí thực tế",
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
+                      hintText: "VD: Gara, Cổng chính, Tầng 1...",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text("Gợi ý nhanh:", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _locationSuggestions.map((loc) {
+                      final isChosen = _locationController.text == loc;
+                      return ChoiceChip(
+                        label: Text(loc, style: TextStyle(fontSize: 11.5, color: isChosen ? Colors.black : Colors.white70, fontWeight: isChosen ? FontWeight.bold : FontWeight.normal)),
+                        selected: isChosen,
+                        selectedColor: AppTheme.cyanAccent,
+                        backgroundColor: AppTheme.surface,
+                        showCheckmark: false,
+                        onSelected: (selected) {
+                          if (selected) setState(() => _locationController.text = loc);
+                        },
+                      );
+                    }).toList(),
                   ),
                 ],
               ),

@@ -70,6 +70,9 @@ export class DeviceOperationsController {
           description: p.description || '',
         }));
 
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+        const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+
         if (result.rows.length > 0) {
           const devices = result.rows.map(r => {
             let assignedProps: any[] = [];
@@ -137,8 +140,6 @@ export class DeviceOperationsController {
           }
 
           const total = filtered.length;
-          const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
-          const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
           const pagedDevices = limit !== undefined ? filtered.slice(offset, offset + limit) : filtered;
 
           res.json({
@@ -148,6 +149,16 @@ export class DeviceOperationsController {
             offset,
             limit: limit || total,
             hasMore: limit !== undefined ? (offset + pagedDevices.length < total) : false,
+          });
+          return;
+        } else {
+          res.json({
+            success: true,
+            devices: [],
+            total: 0,
+            offset: 0,
+            limit: limit || 0,
+            hasMore: false,
           });
           return;
         }

@@ -121,7 +121,7 @@ class FamilySharingService {
         canViewHistory: true,
         canChildLock: false,
         canConfig: false,
-        sourceDeviceNames: ["Cửa cuốn Gara Đức Mạnh"],
+        sourceDeviceNames: ["Cửa cuốn Gia đình"],
       ),
       SuggestedMember(
         userId: "USER-SUB-003",
@@ -135,7 +135,7 @@ class FamilySharingService {
         scheduleLimitActive: true,
         accessStartTime: "07:30",
         accessEndTime: "18:30",
-        sourceDeviceNames: ["Cửa cuốn Gara Đức Mạnh"],
+        sourceDeviceNames: ["Cửa cuốn Gia đình"],
       ),
     ];
   }

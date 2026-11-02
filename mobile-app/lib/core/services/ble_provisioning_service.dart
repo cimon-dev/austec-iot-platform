@@ -192,6 +192,7 @@ class BleProvisioningService {
     required DiscoveredHardwareBLE targetDevice,
     required String wifiSsid,
     required String wifiPassword,
+    String location = "Gara",
     PairingMethod method = PairingMethod.bluetooth,
     String? brokerIp,
     int brokerPort = 1883,
@@ -450,6 +451,8 @@ class BleProvisioningService {
           'hardwareId': targetDevice.hardwareId,
           'customName': targetDevice.modelName,
           'wifiSsid': wifiSsid,
+          'location': location,
+          'addressDisplay': location,
         }),
       ).timeout(const Duration(seconds: 5));
 

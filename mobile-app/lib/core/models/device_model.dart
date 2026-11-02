@@ -219,10 +219,12 @@ class DeviceItem {
     switch (category) {
       case DeviceCategory.rollerDoor:
         if (isMoving) {
-          return movingDirection == 'up' ? "Đang mở..." : "Đang đóng...";
+          return movingDirection == 'up'
+              ? "Đang mở ($positionPercent%)..."
+              : "Đang đóng ($positionPercent%)...";
         }
-        if (positionPercent == 0) return "Đang đóng kín (0%)";
-        if (positionPercent == 100) return "Mở hoàn toàn (100%)";
+        if (positionPercent <= 0) return "Đang đóng kín (0%)";
+        if (positionPercent >= 100) return "Mở hoàn toàn (100%)";
         return "Mở hé $positionPercent%";
 
       case DeviceCategory.energyManage:

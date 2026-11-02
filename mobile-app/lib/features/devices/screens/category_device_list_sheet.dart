@@ -32,11 +32,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
   static const int _batchSize = 5; // 4-6 camera mỗi lần
   Timer? _snapshotRefreshTimer;
   int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
+  StreamSubscription<DeviceItem>? _deviceUpdateSub;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
+      if (mounted) setState(() {});
+    });
 
     if (widget.categoryMeta.category == DeviceCategory.camera) {
       _loadInitialCameraBatch();
@@ -54,6 +59,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _deviceUpdateSub?.cancel();
     _scrollController.dispose();
     _snapshotRefreshTimer?.cancel();
 
@@ -475,10 +481,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline, color: AppTheme.cyanAccent),
                   tooltip: AppTheme.t("add_device"),
-                  onPressed: () {
-                    Navigator.of(context).push(
+                  onPressed: () async {
+                    await Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                    ).then((_) => setState(() {}));
+                    );
+                    await _gateway.fetchDevicesFromBackend();
+                    if (mounted) setState(() {});
                   },
                 ),
               ],
@@ -514,10 +522,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
                               icon: const Icon(Icons.add),
                               label: Text(AppTheme.t("add_device")),
-                              onPressed: () {
-                                Navigator.of(context).push(
+                              onPressed: () async {
+                                await Navigator.of(context).push(
                                   MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                                ).then((_) => setState(() {}));
+                                );
+                                await _gateway.fetchDevicesFromBackend();
+                                if (mounted) setState(() {});
                               },
                             ),
                           ],
@@ -1351,38 +1361,69 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
+  void _showLockedNotice() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Cửa đang KHÓA AN TOÀN TRẺ EM! Các nút Mở/Dừng/Đóng đã bị vô hiệu hóa. Vui lòng mở khóa trước."),
+        backgroundColor: AppTheme.amberWarning,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   // 1. Cửa cuốn 4 preview buttons: KHÓA, MỞ, DỪNG, ĐÓNG (như ảnh 02b1a042-72b5-4938-86b5-a7a5c803018a.jpg)
   Widget _buildRollerDoorPreviewButtons(DeviceItem device) {
+    final isChildLock = device.isChildLockActive;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // 1. Khóa
         _buildCompactActionButton(
           label: AppTheme.t("lock"),
-          icon: device.isChildLockActive ? Icons.lock_rounded : Icons.lock_open_rounded,
-          color: device.isChildLockActive ? AppTheme.amberWarning : AppTheme.purpleAccent,
+          icon: isChildLock ? Icons.lock_rounded : Icons.lock_open_rounded,
+          color: isChildLock ? AppTheme.amberWarning : AppTheme.purpleAccent,
           onTap: () => _executePreviewAction(device, "TOGGLE_CHILD_LOCK"),
         ),
-        // 2. Mở
-        _buildCompactActionButton(
-          label: AppTheme.t("open"),
-          icon: Icons.arrow_upward_rounded,
-          color: AppTheme.cyanAccent,
-          onTap: () => _executePreviewAction(device, "OPEN_DOOR"),
+        // 2. Mở (Bị mờ và không ấn được khi khóa an toàn)
+        Opacity(
+          opacity: isChildLock ? 0.35 : 1.0,
+          child: _buildCompactActionButton(
+            label: AppTheme.t("open"),
+            icon: Icons.arrow_upward_rounded,
+            color: AppTheme.cyanAccent,
+            isDisabled: isChildLock,
+            onTap: isChildLock
+                ? _showLockedNotice
+                : () => _executePreviewAction(device, "OPEN_DOOR"),
+          ),
         ),
-        // 3. Dừng
-        _buildCompactActionButton(
-          label: AppTheme.t("stop"),
-          icon: Icons.stop_rounded,
-          color: AppTheme.amberWarning,
-          onTap: () => _executePreviewAction(device, "STOP_DOOR"),
+        // 3. Dừng (Bị mờ và không ấn được khi khóa an toàn)
+        Opacity(
+          opacity: isChildLock ? 0.35 : 1.0,
+          child: _buildCompactActionButton(
+            label: AppTheme.t("stop"),
+            icon: Icons.stop_rounded,
+            color: AppTheme.amberWarning,
+            isDisabled: isChildLock,
+            onTap: isChildLock
+                ? _showLockedNotice
+                : () => _executePreviewAction(device, "STOP_DOOR"),
+          ),
         ),
-        // 4. Đóng
-        _buildCompactActionButton(
-          label: AppTheme.t("close"),
-          icon: Icons.arrow_downward_rounded,
-          color: Colors.blueGrey,
-          onTap: () => _executePreviewAction(device, "CLOSE_DOOR"),
+        // 4. Đóng (Bị mờ và không ấn được khi khóa an toàn)
+        Opacity(
+          opacity: isChildLock ? 0.35 : 1.0,
+          child: _buildCompactActionButton(
+            label: AppTheme.t("close"),
+            icon: Icons.arrow_downward_rounded,
+            color: Colors.blueGrey,
+            isDisabled: isChildLock,
+            onTap: isChildLock
+                ? _showLockedNotice
+                : () => _executePreviewAction(device, "CLOSE_DOOR"),
+          ),
         ),
       ],
     );
@@ -1393,9 +1434,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    bool isDisabled = false,
   }) {
     return InkWell(
-      onTap: _isProcessing ? null : onTap,
+      onTap: (_isProcessing || isDisabled) ? (isDisabled ? onTap : null) : onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         width: 72,
