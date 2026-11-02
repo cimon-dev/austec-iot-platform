@@ -25,7 +25,8 @@ export class MqttGateway {
   ) {}
 
   public start(port: number = 1883): Promise<boolean> {
-    this.brokerUrl = process.env.MQTT_BROKER_URL || `mqtt://127.0.0.1:${port}`;
+    const isCloudEnv = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
+    this.brokerUrl = process.env.MQTT_BROKER_URL || (isCloudEnv ? 'mqtt://broker.emqx.io:1883' : `mqtt://127.0.0.1:${port}`);
     return new Promise((resolve) => {
       console.log(`[MQTT Gateway] 🔌 Đang kết nối tới EMQX MQTT Broker tại ${this.brokerUrl}...`);
       

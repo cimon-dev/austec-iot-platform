@@ -46,7 +46,20 @@ export class MqttController {
 
   @Get('/wifi/current')
   public async getCurrentWifi(req: Request, res: Response) {
-    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || (req.hostname && req.hostname !== 'localhost' ? req.hostname : '');
+    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST;
+    if (!localIp && process.env.MQTT_BROKER_URL) {
+      try {
+        const parsed = new URL(process.env.MQTT_BROKER_URL);
+        localIp = parsed.hostname;
+      } catch (_) {}
+    }
+    if (!localIp) {
+      if (req.hostname && req.hostname.includes('onrender.com')) {
+        localIp = 'broker.emqx.io';
+      } else {
+        localIp = (req.hostname && req.hostname !== 'localhost' ? req.hostname : '');
+      }
+    }
     if (!localIp && process.platform === 'win32') {
       try {
         const os = await import('os');
