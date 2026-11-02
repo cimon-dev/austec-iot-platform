@@ -43,12 +43,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   final TextEditingController _qrCodeController = TextEditingController();
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController(text: "Gara");
-  final TextEditingController _addressController = TextEditingController(text: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội");
-  final TextEditingController _latController = TextEditingController(text: "21.0184");
-  final TextEditingController _lngController = TextEditingController(text: "105.8461");
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _latController = TextEditingController();
+  final TextEditingController _lngController = TextEditingController();
   bool _isGettingLocation = false;
-  final List<String> _locationSuggestions = const ["Gara", "Cổng chính", "Tầng 1", "Phòng khách", "Sân trước", "Kho hàng"];
 
   bool _obscurePassword = true;
   Timer? _progressSmoothTimer;
@@ -326,7 +325,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 setState(() {
                   _latController.text = lat.toStringAsFixed(6);
                   _lngController.text = lng.toStringAsFixed(6);
-                  if (addr != null && addr.isNotEmpty) {
+                  if (addr != null && addr.isNotEmpty && _addressController.text.trim().isEmpty) {
                     _addressController.text = addr;
                   }
                 });
@@ -358,7 +357,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 setState(() {
                   _latController.text = lat.toStringAsFixed(6);
                   _lngController.text = lng.toStringAsFixed(6);
-                  _addressController.text = "$city, Việt Nam";
+                  if (_addressController.text.trim().isEmpty) {
+                    _addressController.text = "$city, Việt Nam";
+                  }
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -374,12 +375,34 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         }
       } catch (_) {}
 
-      // 3. Fallback mặc định
+      // 3. Thử qua freeipapi (HTTPS)
+      try {
+        final res = await http.get(Uri.parse('https://freeipapi.com/api/json')).timeout(const Duration(seconds: 3));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          final lat = (data['latitude'] as num?)?.toDouble();
+          final lng = (data['longitude'] as num?)?.toDouble();
+          final city = data['cityName']?.toString();
+          if (lat != null && lng != null) {
+            if (mounted) {
+              setState(() {
+                _latController.text = lat.toStringAsFixed(6);
+                _lngController.text = lng.toStringAsFixed(6);
+                if (city != null && city.isNotEmpty && _addressController.text.trim().isEmpty) {
+                  _addressController.text = "$city, Việt Nam";
+                }
+              });
+            }
+            return;
+          }
+        }
+      } catch (_) {}
+
+      // 4. Fallback tọa độ mặc định (không gán địa chỉ giả)
       if (mounted) {
         setState(() {
-          _latController.text = "21.028511";
-          _lngController.text = "105.854167";
-          _addressController.text = "Số 88, Phố Huế, Q. Hai Bà Trưng, Hà Nội";
+          if (_latController.text.trim().isEmpty) _latController.text = "21.028511";
+          if (_lngController.text.trim().isEmpty) _lngController.text = "105.854167";
         });
       }
     } finally {
@@ -405,7 +428,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     );
   }
 
-  void _runProvisioningPipeline() {
+  Future<void> _runProvisioningPipeline() async {
     if (_selectedDevice == null) return;
 
     final ssid = _ssidController.text.trim();
@@ -429,6 +452,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         ),
       );
       return;
+    }
+
+    // Tự động lấy tọa độ GPS nếu chưa có
+    if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
+      await _getCurrentGpsLocation();
     }
 
     _progressSmoothTimer?.cancel();
@@ -460,16 +488,19 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       }
     });
 
-    final locationStr = _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : "Gara";
+    final locationStr = _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : "Khu vực chính";
+    final addressStr = _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : locationStr;
+    final double lat = double.tryParse(_latController.text.trim()) ?? 21.028511;
+    final double lng = double.tryParse(_lngController.text.trim()) ?? 105.854167;
 
     _bleService.provisionDevice(
       targetDevice: _selectedDevice!,
       wifiSsid: ssid,
       wifiPassword: pass,
       location: locationStr,
-      address: _addressController.text.trim(),
-      lat: double.tryParse(_latController.text.trim()) ?? 21.028511,
-      lng: double.tryParse(_lngController.text.trim()) ?? 105.854167,
+      address: addressStr,
+      lat: lat,
+      lng: lng,
       method: _selectedMethod,
       brokerIp: _brokerIp,
       brokerPort: _brokerPort,
@@ -787,6 +818,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     onTap: _openWifiPickerSheet,
                     decoration: InputDecoration(
                       labelText: "Tên mạng Wi-Fi (SSID)",
+                      hintText: "Chọn mạng Wi-Fi",
                       suffixIcon: IconButton(icon: const Icon(Icons.arrow_drop_down), onPressed: _openWifiPickerSheet),
                     ),
                   ),
@@ -796,6 +828,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: "Mật khẩu Wi-Fi",
+                      hintText: "Nhập mật khẩu Wi-Fi",
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -825,32 +858,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   TextField(
                     controller: _locationController,
                     decoration: const InputDecoration(
-                      labelText: "Tên phòng / Vị trí thực tế",
+                      labelText: "Vị trí lắp đặt",
                       prefixIcon: Icon(Icons.meeting_room_outlined, color: AppTheme.cyanAccent, size: 20),
-                      hintText: "VD: Gara, Cổng chính, Tầng 1...",
+                      hintText: "Nhập vị trí lắp đặt",
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text("Gợi ý nhanh:", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: _locationSuggestions.map((loc) {
-                      final isChosen = _locationController.text == loc;
-                      return ChoiceChip(
-                        label: Text(loc, style: TextStyle(fontSize: 11.5, color: isChosen ? Colors.black : Colors.white70, fontWeight: isChosen ? FontWeight.bold : FontWeight.normal)),
-                        selected: isChosen,
-                        selectedColor: AppTheme.cyanAccent,
-                        backgroundColor: AppTheme.surface,
-                        showCheckmark: false,
-                        onSelected: (selected) {
-                          if (selected) setState(() => _locationController.text = loc);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
                   Divider(color: AppTheme.cardBorder, height: 1),
                   const SizedBox(height: 14),
                   Row(
@@ -891,9 +904,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   TextField(
                     controller: _addressController,
                     decoration: const InputDecoration(
-                      labelText: "Địa chỉ lắp đặt chi tiết",
+                      labelText: "Địa chỉ lắp đặt",
                       prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
-                      hintText: "Số nhà, tên đường, phường/xã, quận/huyện...",
+                      hintText: "Nhập địa chỉ lắp đặt",
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -906,7 +919,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                           decoration: const InputDecoration(
                             labelText: "Vĩ độ (Latitude)",
                             prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: "21.0184",
+                            hintText: "Tự động nhận diện",
                           ),
                         ),
                       ),
@@ -918,7 +931,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                           decoration: const InputDecoration(
                             labelText: "Kinh độ (Longitude)",
                             prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: "105.8461",
+                            hintText: "Tự động nhận diện",
                           ),
                         ),
                       ),

@@ -540,10 +540,14 @@ class IoTGatewayClient {
       assignedProperties: assignedProps,
       badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : cat == DeviceCategory.camera ? "AI CAM" : cat == DeviceCategory.lightSwitch ? "CÔNG TẮC" : "SMART",
       deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
-      roomName: d['addressDisplay']?.toString() ??
+      roomName: (d['location'] ?? d['roomName'] ?? d['addressDisplay'] ??
           (d['installationAddress'] is Map
-              ? (d['installationAddress']['fullText'] ?? "Phòng khách").toString()
-              : "Phòng khách"),
+              ? d['installationAddress']['fullText']
+              : d['installationAddress']) ?? "Khu vực chính").toString(),
+      installationAddress: (d['addressDisplay'] ??
+          (d['installationAddress'] is Map
+              ? d['installationAddress']['fullText']
+              : d['installationAddress']) ?? "").toString(),
       isOnline: d['isOnline'] == true,
       positionPercent: pos,
       batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,

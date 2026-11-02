@@ -204,8 +204,8 @@ export class MqttController {
       success: true,
       lat: 21.028511,
       lng: 105.854167,
-      city: 'Hà Nội',
-      address: 'Số 88, Phố Huế, Q. Hai Bà Trưng, Hà Nội',
+      city: '',
+      address: '',
     });
   }
 }
