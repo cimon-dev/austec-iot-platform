@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device_model.dart';
 import '../constants/app_theme.dart';
 import '../constants/api_config.dart';
@@ -209,6 +210,46 @@ class IoTGatewayClient {
     }
   }
 
+  static const String _cachedDevicesKey = 'austec_cached_user_devices';
+
+  /// Lưu danh sách thiết bị vào bộ nhớ cục bộ máy (Offline Storage)
+  Future<void> saveDevicesToLocalCache([List? rawList]) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (rawList != null) {
+        await prefs.setString(_cachedDevicesKey, jsonEncode(rawList));
+      } else {
+        final listToSave = _devices.map((d) => d.toMap()).toList();
+        await prefs.setString(_cachedDevicesKey, jsonEncode(listToSave));
+      }
+    } catch (e) {
+      debugPrint('[IoTGatewayClient] Lỗi lưu Local Cache: $e');
+    }
+  }
+
+  /// Nạp danh sách thiết bị lưu cục bộ (Local Offline Cache)
+  Future<void> loadDevicesFromLocalCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedJson = prefs.getString(_cachedDevicesKey);
+      if (cachedJson != null && cachedJson.isNotEmpty) {
+        final dynamic decoded = jsonDecode(cachedJson);
+        if (decoded is List && decoded.isNotEmpty) {
+          _devices.clear();
+          for (var d in decoded) {
+            _devices.add(_parseDeviceFromJson(d));
+          }
+          for (var d in _devices) {
+            _deviceUpdateStream.add(d);
+          }
+          debugPrint('[IoTGatewayClient] 📦 Nạp thành công ${_devices.length} thiết bị từ Local Cache (Offline Ready)');
+        }
+      }
+    } catch (e) {
+      debugPrint('[IoTGatewayClient] Lỗi nạp Local Cache: $e');
+    }
+  }
+
   void addDevice(DeviceItem device) {
     final idx = _devices.indexWhere((d) => d.hardwareId == device.hardwareId);
     if (idx >= 0) {
@@ -216,16 +257,19 @@ class IoTGatewayClient {
     } else {
       _devices.insert(0, device);
     }
+    unawaited(saveDevicesToLocalCache());
   }
 
   void removeDevice(String hardwareId) {
     _devices.removeWhere((d) => d.hardwareId == hardwareId);
+    unawaited(saveDevicesToLocalCache());
   }
 
   void renameDevice(String hardwareId, String newName) {
     final dev = findByHardwareId(hardwareId);
     if (dev != null) {
       dev.name = newName;
+      unawaited(saveDevicesToLocalCache());
     }
   }
 
@@ -337,6 +381,12 @@ class IoTGatewayClient {
 
   /// Nạp danh sách thiết bị thật từ Backend theo quyền sở hữu của người dùng hiện tại
   Future<void> fetchDevicesFromBackend({String? token}) async {
+    // 1. Nếu chưa có thiết bị trong bộ nhớ RAM, nạp ngay tức thì từ Local Cache để UI không bị trắng
+    if (_devices.isEmpty) {
+      await loadDevicesFromLocalCache();
+    }
+
+    // 2. Thử đồng bộ từ Backend Cloud / PostgreSQL
     try {
       final authToken = token ?? (AuthService().token ?? 'austec-customer-token');
       final res = await http.get(
@@ -354,12 +404,21 @@ class IoTGatewayClient {
               _devices.add(_parseDeviceFromJson(d));
             }
           }
+          // Lưu đồng bộ ngay vào Local Cache phòng khi mất mạng
+          await saveDevicesToLocalCache(list);
+
           for (var d in _devices) {
             _deviceUpdateStream.add(d);
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[IoTGatewayClient] Không thể kết nối Backend (Chế độ Ngoại tuyến Offline): $e');
+      // Khi mất toàn bộ mạng, đảm bảo nạp từ Local Cache để người dùng vẫn điều khiển được qua BLE
+      if (_devices.isEmpty) {
+        await loadDevicesFromLocalCache();
+      }
+    }
   }
 
   /// Nạp danh sách camera phân trang theo yêu cầu (mỗi lượt 4-6 cái)

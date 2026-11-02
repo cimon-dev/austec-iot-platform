@@ -253,6 +253,44 @@ class DeviceItem {
   }
 
   int get openPercentage => positionPercent;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'hardwareId': hardwareId,
+      'name': name,
+      'customName': name,
+      'modelName': modelName,
+      'modelCode': modelCode,
+      'imageUrl': imageUrl,
+      'deviceType': categoryDisplayName,
+      'currentProperties': {
+        ...currentProperties,
+        'position_percent': positionPercent,
+        'is_child_lock': isChildLockActive,
+        'is_locked': isLocked,
+        'is_relay_on': isRelayOn,
+        'open_timeout': openTimeoutSeconds,
+        'close_timeout': closeTimeoutSeconds,
+        'is_auto_schedule': isAutoScheduleActive,
+        'is_access_limit': isAccessLimitActive,
+        'access_start': accessStartTime,
+        'access_end': accessEndTime,
+        'access_days': accessDays,
+      },
+      'assignedProperties': assignedProperties,
+      'isOnline': isOnline,
+      'addressDisplay': roomName,
+      'ownerName': ownerName,
+      'warrantyUntil': warrantyUntil,
+      'warrantyCode': warrantyCode,
+      'subscriptionType': subscriptionType,
+      'subscriptionExpiresAt': subscriptionExpiresAt,
+      'subscriptionStatus': subscriptionStatus,
+      'lat': locationLat,
+      'lng': locationLng,
+    };
+  }
 }
 
 // Product model for native shop
