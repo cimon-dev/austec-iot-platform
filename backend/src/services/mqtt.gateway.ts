@@ -40,15 +40,21 @@ export class MqttGateway {
         this.isRunning = true;
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
         
-        // Đăng ký nhận chính xác các kênh của Austec (Cửa cuốn & Kênh nghiệp vụ của Austec)
-        // Format cửa cuốn firmware: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
+        // Đăng ký nhận chính xác các kênh của Austec:
+        // 1. Cửa cuốn: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
+        // 2. Camera AI: devices/+/status, devices/+/camera/#
+        // 3. Ổ cắm thông minh: +/status, +/response (có filter OCAM lọc người lạ)
         this.client?.subscribe([
           '+/+/pub/#',
           '+/+/onboard',
           'austec/#',
+          'devices/+/status',
+          'devices/+/camera/#',
+          '+/status',
+          '+/response',
         ], (err) => {
           if (!err) {
-            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn trên EMQX!');
+            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm Austec trên EMQX!');
           }
         });
         resolve(true);
@@ -116,8 +122,10 @@ export class MqttGateway {
     if (slashCount === 1) {
       const [hwId, subAction] = topic.split('/');
       
-      // 1. Ổ cắm báo Online: {deviceName}/status
-      if (subAction === 'status') {
+      // CHỈ xử lý nếu đúng là ổ cắm Austec (định danh OCAM...)
+      if (hwId.startsWith('OCAM')) {
+        // 1. Ổ cắm báo Online: {deviceName}/status
+        if (subAction === 'status') {
         console.log(`[MQTT Gateway] 🔌 Ổ cắm [${hwId}] thông báo ONLINE! Payload: ${payload}`);
         await this.hotCache.setDeviceState(hwId, {
           isOnline: true,
@@ -158,6 +166,7 @@ export class MqttGateway {
         return;
       }
     }
+  }
 
     // D. XỬ LÝ CỬA CUỐN AUSTEC (CodeCuaCuonBLE chuẩn)
     const parts = topic.split('/');
