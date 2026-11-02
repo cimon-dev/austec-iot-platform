@@ -5,6 +5,7 @@ import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../cskh/cskh.dart';
+import '../../provisioning/screens/provisioning_screen.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final DeviceItem device;
@@ -234,25 +235,51 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           if (!_device.isOnline) ...[
             const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppTheme.amberWarning.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 18),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      "Thiết bị đang Ngoại tuyến Wi-Fi. Bạn có thể đến gần (< 10-15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
-                      style: TextStyle(
-                        color: AppTheme.amberWarning,
-                        fontSize: 11,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
+                  const Row(
+                    children: [
+                      Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 18),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          "Thiết bị đang Ngoại tuyến Wi-Fi. Bạn có thể đến gần (< 10-15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
+                          style: TextStyle(
+                            color: AppTheme.amberWarning,
+                            fontSize: 11,
+                            height: 1.3,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 32,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.amberWarning),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      icon: const Icon(Icons.wifi_password, size: 14, color: AppTheme.amberWarning),
+                      label: const Text(
+                        "Cấu Hình Lại Mạng Wi-Fi (Nạp lại BLE)",
+                        style: TextStyle(fontSize: 11, color: AppTheme.amberWarning, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                        );
+                      },
                     ),
                   ),
                 ],

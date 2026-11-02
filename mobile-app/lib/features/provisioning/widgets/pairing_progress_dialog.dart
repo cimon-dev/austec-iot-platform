@@ -132,7 +132,27 @@ class PairingProgressDialog extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
+                  if (!pairingResult!.isOnlineWifi) ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.amberWarning,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 11),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.wifi_password, size: 16),
+                        label: const Text("Nhập Lại Mật Khẩu Wi-Fi (Nạp lại BLE)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          onCancel();
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Row(
                     children: [
                       Expanded(

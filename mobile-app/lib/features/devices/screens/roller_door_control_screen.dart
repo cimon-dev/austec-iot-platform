@@ -305,6 +305,27 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                                 height: 1.35,
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 30,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: AppTheme.amberWarning),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                ),
+                                icon: const Icon(Icons.wifi_password, size: 14, color: AppTheme.amberWarning),
+                                label: const Text(
+                                  "Cấu Hình Lại Mạng Wi-Fi (Nạp lại BLE)",
+                                  style: TextStyle(fontSize: 11, color: AppTheme.amberWarning, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                                  );
+                                },
+                              ),
+                            ),
                           ],
                         ),
                       ),
