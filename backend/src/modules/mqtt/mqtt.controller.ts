@@ -99,18 +99,73 @@ export class MqttController {
         return;
       }
 
+      const cleanSsid = ssid.trim();
+
       // Kiểm tra xem mật khẩu có khớp với profile Wi-Fi đã lưu trên máy chủ hay không
-      const checkProfile = () => new Promise<{ matched: boolean; actualKey?: string }>((resolve) => {
-        exec(`netsh wlan show profile name="${ssid.replace(/["\\]/g, '')}" key=clear`, (err, stdout) => {
-          if (err || !stdout) return resolve({ matched: true }); // Không có profile trên máy chủ -> bỏ qua
-          const keyMatch = stdout.match(/^\s*Key Content\s*:\s*(.+)$/m);
-          if (keyMatch && keyMatch[1]) {
-            const actualKey = keyMatch[1].trim();
-            if (actualKey.length > 0) {
-              return resolve({ matched: actualKey === password, actualKey });
+      const checkProfile = () => new Promise<{ matched: boolean; actualKey?: string; found: boolean }>((resolve) => {
+        const parseKey = (text: string) => {
+          const keyMatch = text.match(/^\s*(?:Key Content|Nội dung khóa)\s*:\s*(.+)$/im);
+          return keyMatch && keyMatch[1] ? keyMatch[1].trim() : null;
+        };
+
+        exec(`netsh wlan show profile name="${cleanSsid.replace(/["\\]/g, '')}" key=clear`, (err, stdout) => {
+          if (!err && stdout) {
+            const actualKey = parseKey(stdout);
+            if (actualKey) {
+              return resolve({ matched: actualKey === password, actualKey, found: true });
             }
           }
-          resolve({ matched: true });
+
+          // Thử tìm trong danh sách profiles đã lưu
+          exec(`netsh wlan show profiles`, (errList, stdoutList) => {
+            if (errList || !stdoutList) {
+              return resolve({ matched: true, found: false });
+            }
+
+            const cleanTarget = cleanSsid.toLowerCase().replace(/\s+/g, '');
+            const lines = stdoutList.split('\n');
+            let matchedProfileName: string | null = null;
+
+            for (const line of lines) {
+              const m = line.match(/All User Profile\s*:\s*(.+)$/i);
+              if (m && m[1]) {
+                const pName = m[1].trim();
+                if (
+                  pName.toLowerCase().replace(/\s+/g, '') === cleanTarget ||
+                  pName.toLowerCase() === cleanSsid.toLowerCase()
+                ) {
+                  matchedProfileName = pName;
+                  break;
+                }
+              }
+            }
+
+            if (matchedProfileName) {
+              exec(`netsh wlan show profile name="${matchedProfileName.replace(/["\\]/g, '')}" key=clear`, (err2, stdout2) => {
+                if (!err2 && stdout2) {
+                  const actualKey = parseKey(stdout2);
+                  if (actualKey) {
+                    return resolve({ matched: actualKey === password, actualKey, found: true });
+                  }
+                }
+                resolve({ matched: false, found: true });
+              });
+              return;
+            }
+
+            // Kiểm tra xem có trùng với interface Wi-Fi đang kết nối hiện tại không
+            exec(`netsh wlan show interfaces`, (errInt, stdoutInt) => {
+              if (!errInt && stdoutInt) {
+                const ifMatch = stdoutInt.match(/^\s*SSID\s*:\s*(.+)$/im);
+                const currentIfSsid = ifMatch && ifMatch[1] ? ifMatch[1].trim() : '';
+                if (currentIfSsid && currentIfSsid.toLowerCase() === cleanSsid.toLowerCase()) {
+                  // Mạng này đang kết nối trực tiếp nhưng không khớp mật khẩu => sai
+                  return resolve({ matched: false, found: true });
+                }
+              }
+              resolve({ matched: true, found: false });
+            });
+          });
         });
       });
 
