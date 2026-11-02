@@ -43,10 +43,15 @@ export class PostgresService {
           !this.connectionString.includes('localhost') &&
           !this.connectionString.includes('postgres-db'));
 
+      let connStr = this.connectionString;
+      if (connStr.includes('pooler.supabase.com:5432')) {
+        connStr = connStr.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+      }
+
       this.pool = new Pool({
-        connectionString: this.connectionString,
-        max: 20,
-        idleTimeoutMillis: 30000,
+        connectionString: connStr,
+        max: 5,
+        idleTimeoutMillis: 5000,
         connectionTimeoutMillis: 10000,
         ssl: isRemote ? { rejectUnauthorized: false } : undefined,
       });
