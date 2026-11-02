@@ -25,6 +25,7 @@ class PairingProgressDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = pairingResult != null && pairingResult!.success;
+    final isError = pairingResult != null && !pairingResult!.success;
     final pctInt = (provisioningProgress * 100).toInt();
 
     return Dialog(
@@ -40,12 +41,21 @@ class PairingProgressDialog extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isCompleted ? AppTheme.emeraldSuccess : AppTheme.cyanAccent,
+            color: isError
+                ? AppTheme.roseDanger
+                : isCompleted
+                    ? AppTheme.emeraldSuccess
+                    : AppTheme.cyanAccent,
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: (isCompleted ? AppTheme.emeraldSuccess : AppTheme.cyanAccent).withValues(alpha: 0.25),
+              color: (isError
+                      ? AppTheme.roseDanger
+                      : isCompleted
+                          ? AppTheme.emeraldSuccess
+                          : AppTheme.cyanAccent)
+                  .withValues(alpha: 0.25),
               blurRadius: 30,
               spreadRadius: 4,
             ),
@@ -143,19 +153,82 @@ class PairingProgressDialog extends StatelessWidget {
                   ),
                 ],
               )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            : isError
+                ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const SizedBox(width: 24),
-                      const Row(
+                      Container(
+                        width: 68,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppTheme.roseDanger.withValues(alpha: 0.15),
+                          border: Border.all(color: AppTheme.roseDanger, width: 2.5),
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.error_outline_rounded, color: AppTheme.roseDanger, size: 40),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const Text(
+                        "GHÉP NỐI THẤT BẠI!",
+                        style: TextStyle(
+                          color: AppTheme.roseDanger,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          pairingResult?.errorMessage.isNotEmpty == true
+                              ? pairingResult!.errorMessage
+                              : provisioningStep,
+                          style: const TextStyle(color: Colors.white, fontSize: 12, height: 1.4),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.roseDanger,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onCancel();
+                          },
+                          child: const Text("Đóng & Thử Lại", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(Icons.wifi_tethering_rounded, color: AppTheme.cyanAccent, size: 18),
-                          SizedBox(width: 8),
-                          Text(
-                            "TIẾN TRÌNH GHÉP NỐI THỰC TẾ",
+                          const SizedBox(width: 24),
+                          const Row(
+                            children: [
+                              Icon(Icons.wifi_tethering_rounded, color: AppTheme.cyanAccent, size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                "TIẾN TRÌNH GHÉP NỐI THỰC TẾ",
                             style: TextStyle(
                               color: AppTheme.cyanAccent,
                               fontSize: 12.5,

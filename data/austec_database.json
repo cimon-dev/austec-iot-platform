@@ -361,19 +361,6 @@
       "createdAt": "2026-08-15T00:00:00Z"
     },
     {
-      "id": "10000000-0000-0000-0000-000000000007",
-      "hardwareId": "AT-CAM-00109A01",
-      "macAddress": "FC:F5:C4:11:22:33",
-      "modelId": 4,
-      "batchNumber": "LOT-2026-Q3-01",
-      "supplier": "Austec Global Factory",
-      "status": "ACTIVATED",
-      "producedAt": "2026-08-15",
-      "warrantyMonths": 24,
-      "qrCodeHash": "HASH_AT-CAM-00109A01_SECRET_2026",
-      "createdAt": "2026-08-15T00:00:00Z"
-    },
-    {
       "id": "10000000-0000-0000-0000-000000000008",
       "hardwareId": "AT-DOOR-88239A99",
       "macAddress": "FC:F5:C4:88:23:99",
@@ -601,39 +588,6 @@
       "locationLat": 21.078500000000002,
       "locationLng": 105.9042,
       "addressDisplay": "Bản Mòn, Phường Chiềng Cơi, TP. Sơn La",
-      "createdAt": "2026-09-01T00:00:00Z"
-    },
-    {
-      "id": "20000000-0000-0000-0000-000000000007",
-      "hardwareId": "AT-CAM-00109A01",
-      "customName": "Camera Cổng Chính Biệt Thự Đức",
-      "ownerId": "00000000-0000-0000-0000-000000000001",
-      "firmwareVersionCurrent": "v2.4.1",
-      "isOnline": true,
-      "lastHeartbeat": "2026-11-01T21:03:13.024Z",
-      "ipAddress": "192.168.1.100",
-      "rssiSignal": -65,
-      "currentProperties": {
-        "on_off_status": true,
-        "is_locked": false,
-        "battery_level": 92
-      },
-      "warrantyStartAt": "2026-09-01T00:00:00Z",
-      "warrantyEndAt": "2028-09-01T00:00:00Z",
-      "subscriptionType": "LIMITED",
-      "subscriptionExpiresAt": "2027-09-01T00:00:00Z",
-      "subscriptionStatus": "ACTIVE",
-      "deviceType": "Camera AI",
-      "installationAddress": {
-        "street": "Số 45 Lê Duẩn",
-        "ward": "Bến Nghé",
-        "district": "Hoàn Kiếm",
-        "province": "Hà Nội",
-        "fullText": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội"
-      },
-      "locationLat": 21.0885,
-      "locationLng": 105.91420000000001,
-      "addressDisplay": "Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội",
       "createdAt": "2026-09-01T00:00:00Z"
     }
   ],

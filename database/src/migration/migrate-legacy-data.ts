@@ -305,19 +305,6 @@ export class LegacyDataMigrator {
         subMonths: 12,
         address: { street: 'Bản Mòn', ward: 'Chiềng Cơi', district: 'TP. Sơn La', province: 'Sơn La', fullText: 'Bản Mòn, Phường Chiềng Cơi, TP. Sơn La' }
       },
-      { 
-        hwId: 'AT-CAM-00109A01', 
-        mac: 'FC:F5:C4:11:22:33', 
-        modelId: 4, 
-        ownerIdx: 0, 
-        name: 'Camera Cổng Chính Biệt Thự Đức', 
-        deviceType: 'Camera AI',
-        status: 'ACTIVATED', 
-        isOnline: true, 
-        subType: 'LIMITED',
-        subMonths: 12,
-        address: { street: 'Số 45 Lê Duẩn', ward: 'Bến Nghé', district: 'Hoàn Kiếm', province: 'Hà Nội', fullText: 'Số 45 Lê Duẩn, Hoàn Kiếm, Hà Nội' }
-      },
       // Thiết bị tồn kho
       { 
         hwId: 'AT-DOOR-88239A99', 

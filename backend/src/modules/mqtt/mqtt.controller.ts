@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { exec } from 'child_process';
 import { Controller, Get, Post } from '../../core/decorators/index.js';
 import { MqttGateway } from '../../services/mqtt.gateway.js';
 import { liveScannerService } from '../../services/live-scanner.service.js';
@@ -77,6 +78,52 @@ export class MqttController {
     try {
       const devices = await liveScannerService.getDiscoveredDevices();
       res.json({ success: true, devices });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  @Post('/wifi/verify')
+  public async verifyWifi(req: Request, res: Response) {
+    try {
+      const { ssid, password } = req.body;
+      if (!ssid || typeof ssid !== 'string' || !ssid.trim()) {
+        res.status(400).json({ success: false, error: 'Vui lòng chọn tên mạng Wi-Fi (SSID)' });
+        return;
+      }
+      if (!password || typeof password !== 'string' || password.length < 8) {
+        res.status(400).json({
+          success: false,
+          error: 'Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự.'
+        });
+        return;
+      }
+
+      // Kiểm tra xem mật khẩu có khớp với profile Wi-Fi đã lưu trên máy chủ hay không
+      const checkProfile = () => new Promise<{ matched: boolean; actualKey?: string }>((resolve) => {
+        exec(`netsh wlan show profile name="${ssid.replace(/["\\]/g, '')}" key=clear`, (err, stdout) => {
+          if (err || !stdout) return resolve({ matched: true }); // Không có profile trên máy chủ -> bỏ qua
+          const keyMatch = stdout.match(/^\s*Key Content\s*:\s*(.+)$/m);
+          if (keyMatch && keyMatch[1]) {
+            const actualKey = keyMatch[1].trim();
+            if (actualKey.length > 0) {
+              return resolve({ matched: actualKey === password, actualKey });
+            }
+          }
+          resolve({ matched: true });
+        });
+      });
+
+      const profileCheck = await checkProfile();
+      if (!profileCheck.matched) {
+        res.status(400).json({
+          success: false,
+          error: `Mật khẩu không chính xác cho mạng Wi-Fi "${ssid}"! Vui lòng kiểm tra lại.`
+        });
+        return;
+      }
+
+      res.json({ success: true, message: `Mật khẩu Wi-Fi "${ssid}" hợp lệ và sẵn sàng kết nối.` });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

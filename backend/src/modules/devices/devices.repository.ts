@@ -777,10 +777,31 @@ export class DevicesRepository {
   public async deleteDevice(hardwareId: string): Promise<boolean> {
     try {
       const hwId = hardwareId.trim();
-      await this.client.query('DELETE FROM device_instances WHERE hardware_id = $1', [hwId]);
-      await this.client.query('DELETE FROM device_inventory WHERE hardware_id = $1', [hwId]);
-      await this.client.query('DELETE FROM device_permissions WHERE hardware_id = $1', [hwId]);
-      await this.client.query('DELETE FROM device_rf_remotes WHERE hardware_id = $1', [hwId]);
+      // Xóa toàn bộ liên kết quyền sở hữu của người dùng đối với thiết bị
+      await this.client.query('DELETE FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1)', [hwId]);
+      await this.client.query('DELETE FROM device_rf_remotes WHERE LOWER(hardware_id) = LOWER($1)', [hwId]);
+
+      // Cập nhật lại device_instances: Xóa thông tin khách hàng, đưa về kho tổng
+      await this.client.query(
+        `UPDATE device_instances
+         SET owner_id = NULL,
+             owner_name = 'Chưa gán',
+             owner_phone = '---',
+             address_display = 'Kho tổng Austec',
+             is_online = false,
+             current_properties = '{}'::jsonb
+         WHERE LOWER(hardware_id) = LOWER($1)`,
+        [hwId]
+      );
+
+      // Cập nhật lại device_inventory: Đưa về trạng thái kho sẵn sàng
+      await this.client.query(
+        `UPDATE device_inventory
+         SET status = 'IN_WAREHOUSE',
+             installed_at = NULL
+         WHERE LOWER(hardware_id) = LOWER($1)`,
+        [hwId]
+      );
       return true;
     } catch (e: any) {
       console.warn('[DevicesRepository] deleteDevice error:', e.message);

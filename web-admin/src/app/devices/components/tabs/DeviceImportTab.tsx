@@ -137,7 +137,7 @@ export function DeviceImportTab({
           validRows.push({
             hardwareId: normalizedHwId,
             customName: name || `Thiết bị ${normalizedHwId}`,
-            modelName: model || "AUSTEC-A900",
+            modelName: model || "",
             group,
             deviceType: type,
             owner,

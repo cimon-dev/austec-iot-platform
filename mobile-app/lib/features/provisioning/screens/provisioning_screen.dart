@@ -44,6 +44,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  bool _obscurePassword = true;
+  Timer? _progressSmoothTimer;
+  double _targetProgress = 0.0;
+
   bool _isProvisioning = false;
   double _provisioningProgress = 0.0;
   String _provisioningStep = "";
@@ -84,6 +88,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
   @override
   void dispose() {
+    _progressSmoothTimer?.cancel();
     _autoDiscoveryTimer?.cancel();
     _scanResultSub?.cancel();
     _adapterStateSub?.cancel();
@@ -316,19 +321,62 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void _runProvisioningPipeline() {
     if (_selectedDevice == null) return;
 
+    final ssid = _ssidController.text.trim();
+    final pass = _passwordController.text;
+
+    if (ssid.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng chọn hoặc nhập tên mạng Wi-Fi (SSID)."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    if (pass.isEmpty || pass.length < 8) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    _progressSmoothTimer?.cancel();
     setState(() {
       _isProvisioning = true;
-      _provisioningProgress = 0.05;
-      _provisioningStep = "Đang kết nối Bluetooth BLE với [${_selectedDevice!.hardwareId}]...";
+      _provisioningProgress = 0.01;
+      _targetProgress = 0.05;
+      _provisioningStep = "Đang kiểm tra bảo mật và chuẩn bị ghép nối...";
       _pairingResult = null;
     });
 
     StateSetter? dialogSetState;
 
+    // Timer chạy mượt mà từng 1% một (0% -> 100%)
+    _progressSmoothTimer = Timer.periodic(const Duration(milliseconds: 32), (timer) {
+      if (!mounted || !_isProvisioning) {
+        timer.cancel();
+        return;
+      }
+      if (_provisioningProgress < _targetProgress) {
+        final next = (_provisioningProgress + 0.01).clamp(0.0, 1.0);
+        final rounded = double.parse(next.toStringAsFixed(2));
+        setState(() {
+          _provisioningProgress = rounded;
+        });
+        dialogSetState?.call(() {});
+      } else if (_provisioningProgress >= 1.0 && _pairingResult != null) {
+        timer.cancel();
+      }
+    });
+
     _bleService.provisionDevice(
       targetDevice: _selectedDevice!,
-      wifiSsid: _ssidController.text.trim(),
-      wifiPassword: _passwordController.text,
+      wifiSsid: ssid,
+      wifiPassword: pass,
       method: _selectedMethod,
       brokerIp: _brokerIp,
       brokerPort: _brokerPort,
@@ -337,26 +385,58 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         if (mounted && _isProvisioning) {
           setState(() {
             _provisioningStep = step;
-            _provisioningProgress = progress;
+            _targetProgress = progress;
           });
           dialogSetState?.call(() {});
         }
       },
     ).then((result) async {
-      await IoTGatewayClient().fetchDevicesFromBackend();
       if (mounted && _isProvisioning) {
+        if (!result.success) {
+          _progressSmoothTimer?.cancel();
+          setState(() {
+            _isProvisioning = false;
+            _pairingResult = result;
+          });
+          dialogSetState?.call(() {});
+          return;
+        }
+
+        // Tăng dần 1% một chạm 100%
         setState(() {
-          _isProvisioning = false;
-          _pairingResult = result;
-          _provisioningProgress = 1.0;
+          _targetProgress = 1.0;
+          _provisioningStep = "Ghép nối thiết bị thành công 100%!";
         });
         dialogSetState?.call(() {});
+
+        while (mounted && _isProvisioning && _provisioningProgress < 1.0) {
+          await Future.delayed(const Duration(milliseconds: 30));
+        }
+
+        if (mounted) {
+          _progressSmoothTimer?.cancel();
+          setState(() {
+            _isProvisioning = false;
+            _provisioningProgress = 1.0;
+            _pairingResult = result;
+          });
+          dialogSetState?.call(() {});
+        }
       }
     }).catchError((err) {
       if (mounted && _isProvisioning) {
+        _progressSmoothTimer?.cancel();
         setState(() {
           _isProvisioning = false;
-          _provisioningStep = "Lỗi ghép nối: $err";
+          _pairingResult = PairingResult(
+            success: false,
+            hardwareId: _selectedDevice?.hardwareId ?? "",
+            modelName: _selectedDevice?.modelName ?? "",
+            ownerName: "",
+            warrantyCode: "",
+            warrantyUntil: "",
+            errorMessage: "Lỗi ghép nối thiết bị: $err",
+          );
         });
         dialogSetState?.call(() {});
       }
@@ -375,6 +455,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             pairingResult: _pairingResult,
             wifiSsid: _ssidController.text,
             onCancel: () {
+              _progressSmoothTimer?.cancel();
               setState(() {
                 _isProvisioning = false;
                 _provisioningProgress = 0.0;
@@ -386,25 +467,25 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               await IoTGatewayClient().fetchDevicesFromBackend();
               DeviceItem? dev = IoTGatewayClient().findByHardwareId(hwId);
               if (dev == null) {
-                dev = DeviceItem(
-                  id: hwId,
-                  hardwareId: hwId,
-                  name: _selectedDevice?.modelName ?? 'Cửa cuốn Austec',
-                  modelName: _selectedDevice?.modelName ?? 'Austec Titadoor',
-                  category: _selectedDevice?.category ?? DeviceCategory.rollerDoor,
-                  isOnline: true,
-                );
-                IoTGatewayClient().addDevice(dev);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Không tìm thấy thông tin thiết bị [$hwId] từ máy chủ CSDL."),
+                      backgroundColor: AppTheme.roseDanger,
+                    ),
+                  );
+                }
+                return;
               }
 
               if (mounted) {
                 if (dev.category == DeviceCategory.rollerDoor) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev!)),
+                    MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev)),
                   );
                 } else {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev!)),
+                    MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev)),
                   );
                 }
               }
@@ -613,10 +694,17 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
                       labelText: "Mật khẩu Wi-Fi",
-                      prefixIcon: Icon(Icons.lock_outline, size: 18),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          size: 20,
+                          color: AppTheme.textMuted,
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
                   ),
                 ],

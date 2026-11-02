@@ -264,28 +264,67 @@ export function DeviceModelTab({
 
   // Tự động kế thừa và check các thuộc tính mặc định của Loại phần cứng khi được chọn
   const handleTypeSelect = (selectedTypeId: string | number, isCreate: boolean) => {
+    if (!selectedTypeId) {
+      if (isCreate) {
+        setCreateForm((prev) => ({ ...prev, typeId: "", assignedProperties: [] }));
+      } else {
+        setEditForm((prev) => ({ ...prev, typeId: "", assignedProperties: [] }));
+      }
+      return;
+    }
+
     const matchedType = deviceTypes.find((t) => String(t.id) === String(selectedTypeId));
-    const typeProps = (matchedType?.assignedProperties || (matchedType as any)?.default_properties || []) as (number | string)[];
+    const rawTypeProps = (matchedType?.assignedProperties || (matchedType as any)?.default_properties || []) as (number | string)[];
+
+    let resolvedProps: (number | string)[] = [];
+
+    if (rawTypeProps.length > 0) {
+      resolvedProps = rawTypeProps.map((val) => {
+        const found = properties.find((p) => p.id === val || String(p.id) === String(val) || p.propertyKey === val);
+        return found ? found.id : val;
+      });
+    } else if (matchedType) {
+      // Smart Auto-selection nếu loại phần cứng chưa được gán sẵn thuộc tính trong CSDL
+      const typeStr = `${matchedType.typeName || ""} ${matchedType.typeCode || ""} ${matchedType.description || ""}`.toLowerCase();
+      if (typeStr.includes("cửa") || typeStr.includes("door") || typeStr.includes("roller")) {
+        const doorKeys = ["door_state", "position_percent", "is_locked", "is_child_lock", "motor_current", "ac_voltage", "rf_list"];
+        resolvedProps = properties.filter((p) => doorKeys.includes(p.propertyKey)).map((p) => p.id);
+      } else if (typeStr.includes("cam") || typeStr.includes("camera") || typeStr.includes("video")) {
+        resolvedProps = properties
+          .filter((p) =>
+            p.propertyKey.toLowerCase().includes("cam") ||
+            p.propertyKey.toLowerCase().includes("stream") ||
+            p.propertyKey.toLowerCase().includes("photo") ||
+            p.propertyKey.toLowerCase().includes("resolution")
+          )
+          .map((p) => p.id);
+      } else if (typeStr.includes("công tắc") || typeStr.includes("ổ cắm") || typeStr.includes("socket") || typeStr.includes("switch")) {
+        const switchKeys = ["is_relay_on", "relay_state", "ac_voltage", "motor_current", "power_w"];
+        resolvedProps = properties.filter((p) => switchKeys.includes(p.propertyKey)).map((p) => p.id);
+      } else if (typeStr.includes("khóa") || typeStr.includes("lock")) {
+        const lockKeys = ["is_locked", "battery_pct", "is_child_lock", "rf_list"];
+        resolvedProps = properties.filter((p) => lockKeys.includes(p.propertyKey)).map((p) => p.id);
+      }
+    }
 
     if (isCreate) {
-      setCreateForm((prev) => {
-        // Hợp nhất các thuộc tính mặc định của loại phần cứng vào danh sách thuộc tính của mẫu
-        const merged = Array.from(new Set([...prev.assignedProperties, ...typeProps]));
-        return {
-          ...prev,
-          typeId: selectedTypeId,
-          assignedProperties: merged,
-        };
-      });
+      setCreateForm((prev) => ({
+        ...prev,
+        typeId: selectedTypeId,
+        assignedProperties: resolvedProps.length > 0 ? resolvedProps : prev.assignedProperties,
+      }));
+      if (resolvedProps.length > 0 && matchedType) {
+        toast.info(`Đã tự động chọn ${resolvedProps.length} thuộc tính cho loại "${matchedType.typeName}"`);
+      }
     } else {
-      setEditForm((prev) => {
-        const merged = Array.from(new Set([...prev.assignedProperties, ...typeProps]));
-        return {
-          ...prev,
-          typeId: selectedTypeId,
-          assignedProperties: merged,
-        };
-      });
+      setEditForm((prev) => ({
+        ...prev,
+        typeId: selectedTypeId,
+        assignedProperties: resolvedProps.length > 0 ? Array.from(new Set([...prev.assignedProperties, ...resolvedProps])) : prev.assignedProperties,
+      }));
+      if (resolvedProps.length > 0 && matchedType) {
+        toast.info(`Đã tự động gán thuộc tính của loại "${matchedType.typeName}"`);
+      }
     }
   };
 

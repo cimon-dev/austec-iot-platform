@@ -208,6 +208,67 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
+    // 0. Kiểm tra thông tin Wi-Fi trước khi thực hiện ghép nối
+    if (wifiSsid.trim().isEmpty) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Vui lòng chọn hoặc nhập tên mạng Wi-Fi (SSID).",
+      );
+    }
+
+    if (wifiPassword.isEmpty || wifiPassword.length < 8) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự.",
+      );
+    }
+
+    // 0.1. Kiểm tra xác thực mật khẩu Wi-Fi với máy chủ / Gateway
+    onProgress("Đang kiểm tra bảo mật & xác thực mật khẩu Wi-Fi [$wifiSsid]...", 0.15);
+    try {
+      final verifyRes = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/api/wifi/verify'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'ssid': wifiSsid.trim(),
+          'password': wifiPassword,
+        }),
+      ).timeout(const Duration(seconds: 5));
+
+      if (verifyRes.statusCode != 200) {
+        String errMessage = "Mật khẩu Wi-Fi không chính xác hoặc không thể kết nối tới mạng Wi-Fi.";
+        try {
+          final vData = jsonDecode(verifyRes.body);
+          if (vData['error'] != null) {
+            errMessage = vData['error'].toString();
+          }
+        } catch (_) {}
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: errMessage,
+        );
+      }
+    } catch (e) {
+      debugPrint("Wi-Fi verify API warning: $e");
+    }
+
+    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+
     final String targetBrokerIp = (brokerIp != null && brokerIp.isNotEmpty) ? brokerIp : '192.168.100.6';
     final profile = targetDevice.profile;
     final inputData = ProvisioningInputData(
@@ -221,7 +282,7 @@ class BleProvisioningService {
 
     // Step 1: Truyền thông trực tiếp xuống bo mạch phần cứng thực tế
     if (method == PairingMethod.bluetooth) {
-      onProgress("Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.20);
+      onProgress("Đang kết nối Bluetooth BLE với ${profile.defaultTitle} [${targetDevice.hardwareId}]...", 0.35);
       
       bool bleSuccess = false;
       if (kIsWeb) {
@@ -315,14 +376,14 @@ class BleProvisioningService {
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
       if (bleSuccess) {
-        onProgress("Đã truyền gói tin onboard qua BLE! Bo mạch đang nạp Flash...", 0.45);
+        onProgress("Đã truyền gói tin onboard qua BLE! Bo mạch đang nạp Flash...", 0.50);
       } else {
-        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào bo mạch...", 0.45);
+        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào bo mạch...", 0.50);
       }
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 500));
     } else {
       // WiFi SoftAP: Bo mạch phát Access Point tại 192.168.4.1
-      onProgress("Đang gửi thông số qua Wi-Fi SoftAP tới bo mạch (192.168.4.1)...", 0.25);
+      onProgress("Đang gửi thông số qua Wi-Fi SoftAP tới bo mạch (192.168.4.1)...", 0.35);
       bool apSuccess = false;
       try {
         final apUri = profile.buildSoftApUri(inputData, apHost: '192.168.4.1');
@@ -334,23 +395,23 @@ class BleProvisioningService {
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
       if (apSuccess) {
-        onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.45);
+        onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.50);
       } else {
-        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] qua kênh SoftAP...", 0.45);
+        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] qua kênh SoftAP...", 0.50);
       }
-      await Future.delayed(const Duration(milliseconds: 700));
+      await Future.delayed(const Duration(milliseconds: 500));
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 3: Đồng bộ lên MQTT Broker (Port 1883) & CSDL Cloud PostgreSQL
-    onProgress("Đang đồng bộ bắt tay MQTT 1883 & đăng ký tài khoản khách hàng...", 0.70);
+    // Step 2: Đồng bộ lên MQTT Broker (Port 1883) & CSDL Cloud PostgreSQL
+    onProgress("Đang đồng bộ bắt tay MQTT 1883 & đăng ký tài khoản khách hàng...", 0.65);
     String warrantyUntil = "2028-10-23";
     String warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '').toUpperCase()}-24M";
     String confirmedOwner = currentUserName;
 
     try {
-      // 3.1. Gửi gói tin onboard vào MQTT Gateway & CSDL
+      // 2.1. Gửi gói tin onboard vào MQTT Gateway
       final onboardRes = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/pairing/simulate-onboard'),
         headers: {
@@ -372,8 +433,13 @@ class BleProvisioningService {
           confirmedOwner = onboardData['ownerName'].toString();
         }
       }
+    } catch (_) {}
 
-      // 3.2. Gọi API xác thực ghép nối và lưu quyền sở hữu chính thức
+    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+
+    // 2.2. Gọi API xác thực ghép nối và lưu quyền sở hữu chính thức
+    onProgress("Đang kích hoạt quyền sở hữu thiết bị trên máy chủ...", 0.80);
+    try {
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/pair'),
         headers: {
@@ -385,52 +451,76 @@ class BleProvisioningService {
           'customName': targetDevice.modelName,
           'wifiSsid': wifiSsid,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 5));
 
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['success'] == true) {
-          if (data['device'] != null && data['device']['warrantyUntil'] != null) {
-            warrantyUntil = data['device']['warrantyUntil'].toString();
+      if (res.statusCode != 200) {
+        String errorMsg = "Không thể ghép nối thiết bị lên hệ thống (Lỗi HTTP ${res.statusCode}).";
+        try {
+          final errBody = jsonDecode(res.body);
+          if (errBody['error'] != null) {
+            errorMsg = errBody['error'].toString();
           }
-          if (data['device'] != null && data['device']['warrantyCode'] != null) {
-            warrantyCode = data['device']['warrantyCode'].toString();
-          }
-        }
+        } catch (_) {}
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: errorMsg,
+        );
       }
-    } catch (_) {
-      // Fallback nếu ngoại tuyến tạm thời
-      await Future.delayed(const Duration(milliseconds: 400));
+
+      final data = jsonDecode(res.body);
+      if (data['success'] != true) {
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: data['error'] ?? "Ghép nối thất bại từ máy chủ.",
+        );
+      }
+
+      if (data['device'] != null && data['device']['warrantyUntil'] != null) {
+        warrantyUntil = data['device']['warrantyUntil'].toString();
+      }
+      if (data['device'] != null && data['device']['warrantyCode'] != null) {
+        warrantyCode = data['device']['warrantyCode'].toString();
+      }
+    } catch (e) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Lỗi kết nối tới máy chủ khi kích hoạt thiết bị: $e",
+      );
     }
 
-    // Step 4: Kích hoạt bảo hành điện tử chính hãng 24 tháng
-    onProgress("Xác thực xuất xưởng & kích hoạt bảo hành điện tử 24 tháng...", 0.90);
-    await Future.delayed(const Duration(milliseconds: 500));
+    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Thêm thiết bị vào danh sách sở hữu của tài khoản hiện tại
-    final newDevice = DeviceItem(
-      id: "DEV-${DateTime.now().millisecondsSinceEpoch}",
-      hardwareId: targetDevice.hardwareId,
-      name: targetDevice.modelName,
-      modelName: targetDevice.modelName,
-      category: targetDevice.category,
-      badgeText: "AUSTEC",
-      deviceNumber: targetDevice.hardwareId.length > 3
-          ? targetDevice.hardwareId.substring(targetDevice.hardwareId.length - 3)
-          : "834",
-      isOnline: true,
-      ownerName: confirmedOwner,
-      userRole: FamilyRole.owner,
-      warrantyUntil: warrantyUntil,
-      warrantyCode: warrantyCode,
-      subscriptionType: 'LIMITED',
-      subscriptionExpiresAt: warrantyUntil,
-      subscriptionStatus: 'ACTIVE',
-    );
-    IoTGatewayClient().addDevice(newDevice);
+    // Step 3: Nạp danh sách thiết bị THỰC TẾ từ CSDL Backend (Không dùng fallback ảo)
+    onProgress("Xác thực xuất xưởng & kích hoạt bảo hành điện tử 24 tháng...", 0.92);
     await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
 
-    final syncedDevice = IoTGatewayClient().findByHardwareId(targetDevice.hardwareId) ?? newDevice;
+    final syncedDevice = IoTGatewayClient().findByHardwareId(targetDevice.hardwareId);
+    if (syncedDevice == null) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Không tìm thấy thiết bị thực tế trên máy chủ sau khi ghép nối.",
+      );
+    }
 
     onProgress("Ghép nối thiết bị thành công 100%!", 1.0);
 

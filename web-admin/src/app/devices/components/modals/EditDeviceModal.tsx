@@ -48,7 +48,7 @@ export function EditDeviceModal({
     customName: "",
     modelName: "",
     group: "",
-    deviceType: "DOOR",
+    deviceType: "",
     owner: "",
     phone: "",
     addressDisplay: "",
@@ -65,7 +65,7 @@ export function EditDeviceModal({
         customName: device.customName || device.name || "",
         modelName: device.modelName || device.model || "",
         group: device.groupName || device.group || "",
-        deviceType: device.deviceType || device.type || "DOOR",
+        deviceType: device.deviceType || device.type || "",
         owner: device.ownerName || device.owner || "",
         phone: device.ownerPhone || device.phone || "",
         addressDisplay: device.addressDisplay || device.address || "",
@@ -200,6 +200,7 @@ export function EditDeviceModal({
                 onChange={(e) => setForm({ ...form, modelName: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
+                <option value="">-- Chưa gán Model --</option>
                 {models.map(m => (
                   <option key={m.id || m.modelCode} value={m.modelCode}>
                     {m.modelName} ({m.modelCode})
@@ -217,6 +218,7 @@ export function EditDeviceModal({
                 onChange={(e) => setForm({ ...form, group: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
+                <option value="">-- Chưa gán Nhóm --</option>
                 {groups.map(g => (
                   <option key={g.id || g.code} value={g.groupName}>
                     {g.groupName}
@@ -236,7 +238,8 @@ export function EditDeviceModal({
                 onChange={(e) => setForm({ ...form, deviceType: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
               >
-                {internalTypes && internalTypes.length > 0 ? (
+                <option value="">-- Chưa gán Loại --</option>
+                {internalTypes && internalTypes.length > 0 && (
                   internalTypes.map((t: any) => {
                     const code = t.typeCode || t.code || t.type_code;
                     const name = t.typeName || t.name || t.type_name || code;
@@ -246,14 +249,6 @@ export function EditDeviceModal({
                       </option>
                     );
                   })
-                ) : (
-                  <>
-                    <option value="DOOR">Cửa cuốn thông minh (DOOR)</option>
-                    <option value="SMART_LOCK">Khóa cửa Masaru (SMART_LOCK)</option>
-                    <option value="UPS">Bộ lưu điện (UPS)</option>
-                    <option value="CAM">Camera AI giám sát (CAM)</option>
-                    <option value="SENSOR">Cảm biến môi trường (SENSOR)</option>
-                  </>
                 )}
                 {form.deviceType && internalTypes && !internalTypes.some((t: any) => (t.typeCode || t.code || t.type_code) === form.deviceType) && (
                   <option value={form.deviceType}>{form.deviceType}</option>

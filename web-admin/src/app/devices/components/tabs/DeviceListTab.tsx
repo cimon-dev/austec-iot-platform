@@ -303,15 +303,32 @@ export function DeviceListTab({
       });
       const data = await res.json();
       if (data.success) {
-        setDevices(prev => prev.filter(d => getHwId(d) !== hwId));
+        setDevices(prev => prev.map(d => getHwId(d) === hwId ? {
+          ...d,
+          owner_name: 'Chưa gán',
+          owner: 'Chưa gán',
+          customer_name: 'Chưa gán',
+          owner_phone: '---',
+          phone: '---',
+          status: 'in_stock',
+          is_online: false
+        } : d));
         if (selectedDevice && getHwId(selectedDevice) === hwId) {
-          setSelectedDevice(null);
+          setSelectedDevice((prev: any) => prev ? {
+            ...prev,
+            owner_name: 'Chưa gán',
+            owner: 'Chưa gán',
+            customer_name: 'Chưa gán',
+            owner_phone: '---',
+            phone: '---',
+            status: 'in_stock',
+            is_online: false
+          } : null);
         }
-        if (onDeviceDeleted) onDeviceDeleted(hwId);
-        toast.success(`Đã xóa thiết bị ${getName(deletingDevice) || hwId} khỏi CSDL!`);
+        toast.success(`Đã xóa thông tin khách hàng khỏi thiết bị ${getName(deletingDevice) || hwId}, thiết bị đã chuyển về kho tổng!`);
         setDeletingDevice(null);
       } else {
-        toast.error(data.error || "Không thể xóa thiết bị khỏi CSDL");
+        toast.error(data.error || "Không thể cập nhật trạng thái thiết bị");
       }
     } catch (e: any) {
       toast.error("Lỗi kết nối khi xóa: " + e.message);
@@ -759,7 +776,7 @@ export function DeviceListTab({
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Mã Model (SKU)</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-300">{selectedDevice.modelCode || matchedModel?.modelCode || "AUSTEC-A900"}</span>
+                    <span className="font-mono text-slate-700 dark:text-slate-300">{selectedDevice.modelCode || matchedModel?.modelCode || "---"}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Nhóm Sản Phẩm</span>
@@ -1081,8 +1098,8 @@ export function DeviceListTab({
           onClose={() => setDeletingDevice(null)}
           onConfirm={handleDeleteConfirm}
           itemName={getName(deletingDevice) || getHwId(deletingDevice)}
-          itemType="thiết bị"
-          description={`Bạn có chắc chắn muốn xóa thiết bị "${getName(deletingDevice) || getHwId(deletingDevice)}" (${getHwId(deletingDevice)}) khỏi CSDL?`}
+          itemType="khách hàng khỏi thiết bị"
+          description={`Bạn có chắc chắn muốn xóa thông tin khách hàng và chuyển thiết bị "${getName(deletingDevice) || getHwId(deletingDevice)}" (${getHwId(deletingDevice)}) về kho tổng?`}
           isDeleting={isDeleting}
         />
       )}

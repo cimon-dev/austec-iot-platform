@@ -421,10 +421,22 @@ export class DeviceOperationsController {
         );
 
         if (isOwner) {
-          // Xóa tất cả quyền và instance, đưa kho về IN_STOCK
+          // Xóa toàn bộ quyền sở hữu của người dùng đối với thiết bị này
           await this.client.query(`DELETE FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1)`, [hardwareId]);
-          await this.client.query(`DELETE FROM device_instances WHERE LOWER(hardware_id) = LOWER($1)`, [hardwareId]);
-          await this.client.query(`UPDATE device_inventory SET status = 'IN_STOCK' WHERE LOWER(hardware_id) = LOWER($1)`, [hardwareId]);
+          // Cập nhật thiết bị trong CSDL: Xóa chủ sở hữu, xóa thông tin khách hàng, đưa về kho
+          await this.client.query(
+            `UPDATE device_instances
+             SET owner_id = NULL,
+                 owner_name = 'Chưa gán',
+                 owner_phone = '---',
+                 address_display = 'Kho tổng Austec',
+                 custom_name = COALESCE((SELECT model_name FROM device_inventory WHERE LOWER(hardware_id) = LOWER($1) LIMIT 1), 'Thiết bị Austec'),
+                 is_online = false,
+                 current_properties = '{}'::jsonb
+             WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hardwareId]
+          );
+          await this.client.query(`UPDATE device_inventory SET status = 'IN_WAREHOUSE' WHERE LOWER(hardware_id) = LOWER($1)`, [hardwareId]);
         }
 
         this.wss?.clients?.forEach((c: any) => {
