@@ -284,7 +284,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
-  Future<void> _detectCurrentWifi() async {
+  Future<void> _detectCurrentWifi({bool showFeedback = false}) async {
     setState(() => _isScanningWifi = true);
 
     String detectedSsid = '';
@@ -362,6 +362,26 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         }
         _availableNetworks = detectedNetworks;
       });
+
+      if (showFeedback) {
+        if (detectedSsid.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Đã nhận diện Wi-Fi máy đang kết nối: $detectedSsid"),
+              backgroundColor: AppTheme.emeraldSuccess,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Chưa tự động đọc được tên Wi-Fi. Bạn hãy gõ trực tiếp tên Wi-Fi vào ô bên dưới."),
+              backgroundColor: AppTheme.amberWarning,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -380,6 +400,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             _addressController.text = coords.address!;
           }
         });
+
+        // Tự động nhận diện Wi-Fi ngay sau khi đã được cấp quyền vị trí trên iOS/Android
+        _detectCurrentWifi();
 
         if (showSuccessSnackbar) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -978,43 +1001,124 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             const SizedBox(height: 18),
 
             // Wi-Fi Configuration Card
-            const Text("CẤU HÌNH MẠNG WI-FI 2.4GHZ", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  "CẤU HÌNH MẠNG WI-FI 2.4GHZ",
+                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                InkWell(
+                  onTap: _isScanningWifi
+                      ? null
+                      : () => _detectCurrentWifi(showFeedback: true),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isScanningWifi
+                            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
+                            : const Icon(Icons.wifi_find_rounded, color: AppTheme.cyanAccent, size: 14),
+                        const SizedBox(width: 4),
+                        const Text(
+                          "Lấy Wi-Fi Máy",
+                          style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
 
             Container(
               padding: const EdgeInsets.all(14),
               decoration: AppTheme.glassBox(radius: 14),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Gợi ý nhanh các mạng Wi-Fi đã bắt được hoặc lưu trước đó
+                  if (_availableNetworks.isNotEmpty || _currentWifiSsid.isNotEmpty) ...[
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (_currentWifiSsid.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6, bottom: 8),
+                              child: ActionChip(
+                                avatar: const Icon(Icons.wifi_rounded, size: 14, color: AppTheme.emeraldSuccess),
+                                label: Text(
+                                  "Đang bắt: $_currentWifiSsid",
+                                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                backgroundColor: AppTheme.emeraldSuccess.withValues(alpha: 0.18),
+                                side: BorderSide(color: AppTheme.emeraldSuccess.withValues(alpha: 0.5)),
+                                onPressed: () {
+                                  setState(() {
+                                    _ssidController.text = _currentWifiSsid;
+                                  });
+                                },
+                              ),
+                            ),
+                          ..._availableNetworks
+                              .where((n) => n != _currentWifiSsid && n.trim().isNotEmpty)
+                              .take(4)
+                              .map((net) => Padding(
+                                    padding: const EdgeInsets.only(right: 6, bottom: 8),
+                                    child: ActionChip(
+                                      avatar: const Icon(Icons.wifi, size: 13, color: AppTheme.cyanAccent),
+                                      label: Text(net, style: const TextStyle(fontSize: 11, color: Colors.white70)),
+                                      backgroundColor: AppTheme.cardBorder,
+                                      onPressed: () {
+                                        setState(() {
+                                          _ssidController.text = net;
+                                        });
+                                      },
+                                    ),
+                                  )),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   TextField(
                     controller: _ssidController,
                     readOnly: false,
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                     decoration: InputDecoration(
                       labelText: "Tên mạng Wi-Fi (SSID)",
-                      hintText: "Nhập hoặc chọn mạng Wi-Fi 2.4GHz",
+                      hintText: "Nhập hoặc chọn tên mạng Wi-Fi",
                       prefixIcon: const Icon(Icons.wifi_rounded, color: AppTheme.cyanAccent, size: 20),
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (_isScanningWifi)
-                            const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
-                              ),
-                            )
-                          else
+                          if (_ssidController.text.isNotEmpty)
                             IconButton(
-                              icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent),
-                              tooltip: "Chọn từ danh sách quét",
-                              onPressed: _openWifiPickerSheet,
+                              icon: const Icon(Icons.clear, size: 16, color: AppTheme.textMuted),
+                              onPressed: () => setState(() => _ssidController.clear()),
                             ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent),
+                            tooltip: "Xem tất cả mạng Wi-Fi",
+                            onPressed: _openWifiPickerSheet,
+                          ),
                         ],
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "💡 Bạn có thể nhập trực tiếp tên Wi-Fi bằng bàn phím hoặc nhấn vào gợi ý mạng ở trên.",
+                    style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontStyle: FontStyle.italic),
                   ),
                   const SizedBox(height: 12),
                   TextField(
