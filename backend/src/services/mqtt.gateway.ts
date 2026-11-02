@@ -40,22 +40,15 @@ export class MqttGateway {
         this.isRunning = true;
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
         
-        // Đăng ký nhận toàn bộ các kênh thiết bị:
-        // 1. Cửa cuốn: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
-        // 2. Camera AI: devices/+/status, devices/+/camera/#
-        // 3. Ổ cắm thông minh: +/status, +/response, +/set
+        // Đăng ký nhận chính xác các kênh của Austec (Cửa cuốn & Kênh nghiệp vụ của Austec)
+        // Format cửa cuốn firmware: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
         this.client?.subscribe([
           '+/+/pub/#',
           '+/+/onboard',
           'austec/#',
-          'devices/+/status',
-          'devices/+/camera/#',
-          '+/status',
-          '+/response',
-          '+/set',
         ], (err) => {
           if (!err) {
-            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm trên EMQX!');
+            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn trên EMQX!');
           }
         });
         resolve(true);
@@ -107,16 +100,13 @@ export class MqttGateway {
       const parts = topic.split('/');
       const hwId = parts[1];
       console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${payload}`);
-      try {
-        await this.postgresService.registerPairingDevice(hwId, 'AI_CAMERA_360', '00000000-0000-0000-0000-000000000001', `Camera AI ${hwId}`);
-      } catch (_) {}
       await this.hotCache.setDeviceState(hwId, {
         isOnline: true,
         currentProperties: { hasStream: true, streamResolution: 'VGA 640x480' },
         lastHeartbeat: new Date().toISOString(),
       });
       if (this.onStateChangeCallback) {
-        this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
+        this.onStateChangeCallback(hwId, { isOnline: true });
       }
       return;
     }
@@ -129,9 +119,6 @@ export class MqttGateway {
       // 1. Ổ cắm báo Online: {deviceName}/status
       if (subAction === 'status') {
         console.log(`[MQTT Gateway] 🔌 Ổ cắm [${hwId}] thông báo ONLINE! Payload: ${payload}`);
-        try {
-          await this.postgresService.registerPairingDevice(hwId, 'SMART_SOCKET_ECO', '00000000-0000-0000-0000-000000000001', `Ổ cắm ${hwId}`);
-        } catch (_) {}
         await this.hotCache.setDeviceState(hwId, {
           isOnline: true,
           currentProperties: { is_relay_on: false, relay_state: 'OFF' },
@@ -141,7 +128,7 @@ export class MqttGateway {
           await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
         } catch (_) {}
         if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
+          this.onStateChangeCallback(hwId, { isOnline: true });
         }
         return;
       }
