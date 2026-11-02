@@ -15,6 +15,7 @@ import '../widgets/pairing_progress_dialog.dart';
 import '../../devices/screens/roller_door_control_screen.dart';
 import '../../devices/screens/device_detail_screen.dart';
 import '../../../core/services/device_location_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class ProvisioningScreen extends StatefulWidget {
   const ProvisioningScreen({super.key});
@@ -311,12 +312,17 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
-  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng
+  /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng (Xin quyền OS chuẩn)
   Future<void> _getCurrentGpsLocation({bool isAuto = false}) async {
     setState(() => _isGettingLocation = true);
     try {
-      final coords = await getDeviceCoordinates();
-      if (coords != null && mounted) {
+      final result = await getDeviceGpsLocation(
+        requestPermissionIfDenied: !isAuto,
+        allowIpFallback: isAuto,
+      );
+
+      if (result.success && result.coordinates != null && mounted) {
+        final coords = result.coordinates!;
         setState(() {
           _latController.text = coords.lat.toStringAsFixed(6);
           _lngController.text = coords.lng.toStringAsFixed(6);
@@ -324,13 +330,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
             _addressController.text = coords.address!;
           }
         });
+
         if (!isAuto) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                coords.isGpsHardware
-                    ? "Đã lấy tọa độ GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
-                    : "Đã lấy tọa độ vị trí hiện tại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
+                result.isGpsHardware
+                    ? "Đã lấy tọa độ GPS vệ tinh điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
+                    : "Đã lấy tọa độ vị trí: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
               ),
               backgroundColor: AppTheme.emeraldSuccess,
               duration: const Duration(seconds: 3),
@@ -338,21 +345,27 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           );
         }
         return;
-      } else if (mounted && !isAuto) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Không thể lấy vị trí GPS! Hãy kiểm tra kết nối mạng và quyền vị trí của máy."),
-            backgroundColor: AppTheme.roseDanger,
-            duration: Duration(seconds: 4),
-          ),
-        );
+      }
+
+      if (!isAuto && mounted) {
+        if (result.needsOpenSettings) {
+          _showLocationSettingsDialog(result.errorMessage ?? "Vui lòng bật định vị GPS trong Cài đặt của điện thoại để lấy tọa độ chính xác.");
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.errorMessage ?? "Không thể lấy vị trí GPS! Hãy kiểm tra quyền vị trí trên máy."),
+              backgroundColor: AppTheme.roseDanger,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint("Lỗi lấy tọa độ từ thiết bị/điện thoại: $e");
       if (mounted && !isAuto) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Không thể xác định vị trí hiện tại, vui lòng kiểm tra kết nối mạng!"),
+            content: Text("Không thể xác định vị trí hiện tại. Vui lòng thử lại!"),
             backgroundColor: AppTheme.roseDanger,
             duration: Duration(seconds: 4),
           ),
@@ -361,6 +374,60 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     } finally {
       if (mounted) setState(() => _isGettingLocation = false);
     }
+  }
+
+  void _showLocationSettingsDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppTheme.amberWarning, width: 1.5),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.location_off_rounded, color: AppTheme.amberWarning, size: 24),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Yêu Cầu Bật Định Vị GPS",
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Đóng", style: TextStyle(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.cyanAccent,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                final opened = await Geolocator.openAppSettings();
+                if (!opened) {
+                  await Geolocator.openLocationSettings();
+                }
+              } catch (_) {
+                await Geolocator.openLocationSettings();
+              }
+            },
+            child: const Text("Mở Cài Đặt", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openWifiPickerSheet() {
@@ -401,12 +468,37 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     final latStr = _latController.text.trim();
     final lngStr = _lngController.text.trim();
 
-    // 2. Kiểm tra tên Wi-Fi
+    // 2. Kiểm tra tính hợp lệ của Wi-Fi (SSID)
     if (ssid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Vui lòng chọn hoặc nhập tên mạng Wi-Fi (SSID)."),
           backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    // 2.1. Cảnh báo mạng 5GHz không tương thích bo mạch ESP32
+    final upperSsid = ssid.toUpperCase();
+    if (upperSsid.contains('5G') || upperSsid.contains('5GHZ')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Cảnh báo: Mạng Wi-Fi '$ssid' có vẻ là băng tần 5GHz. Bo mạch ESP32 chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz để ghép nối thành công."),
+          backgroundColor: AppTheme.amberWarning,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // 2.2. Kiểm tra ký tự phân tách đặc biệt (tránh làm vỡ cú pháp nạp của bo mạch)
+    if (ssid.contains(',') || ssid.contains('/') || pass.contains(',') || pass.contains('/')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Tên Wi-Fi hoặc mật khẩu không được chứa dấu phẩy ',' hoặc gạch chéo '/' vì sẽ làm sai cú pháp phân tích của vi điều khiển ESP32."),
+          backgroundColor: AppTheme.roseDanger,
+          duration: Duration(seconds: 4),
         ),
       );
       return;
@@ -423,10 +515,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       return;
     }
 
-    if (pass.length < 8) {
+    if (pass.length < 8 || pass.length > 63) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự."),
+          content: Text("Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự."),
           backgroundColor: AppTheme.roseDanger,
         ),
       );
@@ -448,18 +540,18 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (address.isEmpty || latStr.isEmpty || lngStr.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Chưa có thông tin tọa độ GPS! Đang tự động lấy vị trí, vui lòng đợi trong giây lát..."),
+          content: Text("Chưa có thông tin tọa độ GPS! Đang tự động xin quyền và lấy vị trí, vui lòng đợi trong giây lát..."),
           backgroundColor: AppTheme.amberWarning,
           duration: Duration(seconds: 3),
         ),
       );
-      await _getCurrentGpsLocation(isAuto: true);
+      await _getCurrentGpsLocation(isAuto: false);
       // Kiểm tra lại sau khi thử lấy GPS
       if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Không thể lấy tọa độ GPS! Vui lòng ấn nút 'Lấy GPS' hoặc kiểm tra kết nối mạng."),
+              content: Text("Không thể lấy tọa độ GPS! Vui lòng ấn nút 'Lấy GPS' hoặc bật định vị trên máy."),
               backgroundColor: AppTheme.roseDanger,
               duration: Duration(seconds: 4),
             ),

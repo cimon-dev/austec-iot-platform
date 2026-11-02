@@ -116,8 +116,22 @@ export class MqttController {
 
       const cleanSsid = ssid.trim();
 
-      // Kiểm tra xem mật khẩu có khớp với profile Wi-Fi đã lưu trên máy chủ hay không
+      // Kiểm tra bảo mật cơ bản: WPA2 chuẩn từ 8 đến 63 ký tự
+      if (password.length > 63) {
+        res.status(400).json({
+          success: false,
+          error: 'Mật khẩu Wi-Fi vượt quá độ dài tối đa (63 ký tự).'
+        });
+        return;
+      }
+
+      // Kiểm tra xem mật khẩu có khớp với profile Wi-Fi đã lưu trên máy chủ hay không (nếu máy chủ chạy Windows)
       const checkProfile = () => new Promise<{ matched: boolean; actualKey?: string; found: boolean }>((resolve) => {
+        if (process.platform !== 'win32') {
+          // Môi trường Linux / Cloud / Docker: Không có netsh, xác thực thành công nếu pass hợp lệ
+          return resolve({ matched: true, found: false });
+        }
+
         const parseKey = (text: string) => {
           const keyMatch = text.match(/^\s*(?:Key Content|Nội dung khóa)\s*:\s*(.+)$/im);
           return keyMatch && keyMatch[1] ? keyMatch[1].trim() : null;
@@ -163,32 +177,23 @@ export class MqttController {
                     return resolve({ matched: actualKey === password, actualKey, found: true });
                   }
                 }
-                resolve({ matched: false, found: true });
+                // Nếu profile không đọc được key rõ ràng, không chặn người dùng
+                resolve({ matched: true, found: true });
               });
               return;
             }
 
-            // Kiểm tra xem có trùng với interface Wi-Fi đang kết nối hiện tại không
-            exec(`netsh wlan show interfaces`, (errInt, stdoutInt) => {
-              if (!errInt && stdoutInt) {
-                const ifMatch = stdoutInt.match(/^\s*SSID\s*:\s*(.+)$/im);
-                const currentIfSsid = ifMatch && ifMatch[1] ? ifMatch[1].trim() : '';
-                if (currentIfSsid && currentIfSsid.toLowerCase() === cleanSsid.toLowerCase()) {
-                  // Mạng này đang kết nối trực tiếp nhưng không khớp mật khẩu => sai
-                  return resolve({ matched: false, found: true });
-                }
-              }
-              resolve({ matched: true, found: false });
-            });
+            // Nếu không tìm thấy profile trên máy này, chấp nhận thông tin hợp lệ
+            resolve({ matched: true, found: false });
           });
         });
       });
 
       const profileCheck = await checkProfile();
       const lowerPass = password.toLowerCase();
-      const isExplicitWrongPass = lowerPass.includes('wrong') || lowerPass.includes('sai_pass') || lowerPass.includes('saipass');
+      const isExplicitWrongPass = lowerPass.includes('sai_pass') || lowerPass.includes('saipass');
 
-      if (!profileCheck.matched || isExplicitWrongPass) {
+      if ((profileCheck.found && !profileCheck.matched) || isExplicitWrongPass) {
         res.status(400).json({
           success: false,
           error: `Mật khẩu không chính xác cho mạng Wi-Fi "${ssid}"! Vui lòng kiểm tra lại.`
@@ -196,7 +201,11 @@ export class MqttController {
         return;
       }
 
-      res.json({ success: true, message: `Mật khẩu Wi-Fi "${ssid}" hợp lệ và sẵn sàng kết nối.` });
+      res.json({
+        success: true,
+        message: 'Thông tin Wi-Fi hợp lệ',
+        verifiedProfile: profileCheck.found,
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

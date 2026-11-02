@@ -214,8 +214,11 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // 0. Kiểm tra thông tin Wi-Fi trước khi thực hiện ghép nối
-    if (wifiSsid.trim().isEmpty) {
+    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+
+    // 0. Kiểm tra thông tin Wi-Fi trước khi thực hiện ghép nối (Pre-flight Validation)
+    final cleanSsid = wifiSsid.trim();
+    if (cleanSsid.isEmpty) {
       return PairingResult(
         success: false,
         hardwareId: targetDevice.hardwareId,
@@ -227,7 +230,9 @@ class BleProvisioningService {
       );
     }
 
-    if (wifiPassword.isEmpty || wifiPassword.length < 8) {
+    // 0.1. Kiểm tra băng tần Wi-Fi (Cảnh báo mạng 5GHz)
+    final upperSsid = cleanSsid.toUpperCase();
+    if (upperSsid.contains('5G') || upperSsid.contains('5GHZ')) {
       return PairingResult(
         success: false,
         hardwareId: targetDevice.hardwareId,
@@ -235,72 +240,84 @@ class BleProvisioningService {
         ownerName: "",
         warrantyCode: "",
         warrantyUntil: "",
-        errorMessage: "Mật khẩu Wi-Fi không chính xác! Chuẩn bảo mật WPA2 yêu cầu tối thiểu 8 ký tự.",
+        errorMessage: "Mạng Wi-Fi '$cleanSsid' có dấu hiệu là băng tần 5GHz. Bo mạch phần cứng Austec (ESP32) chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz.",
       );
     }
 
-    // 0.1. Kiểm tra xác thực mật khẩu Wi-Fi với máy chủ / Gateway
-    onProgress("Đang kiểm tra bảo mật & xác thực mật khẩu Wi-Fi [$wifiSsid]...", 0.15);
+    // 0.2. Kiểm tra ký tự phân tách chuỗi firmware (tránh làm vỡ parser trên bo mạch)
+    if (cleanSsid.contains(',') || cleanSsid.contains('/') || wifiPassword.contains(',') || wifiPassword.contains('/')) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Tên hoặc mật khẩu Wi-Fi không được chứa ký tự phân tách đặc biệt (dấu phẩy ',' hoặc dấu gạch chéo '/') vì sẽ làm sai cú pháp nạp của vi điều khiển ESP32.",
+      );
+    }
+
+    // 0.3. Kiểm tra độ dài mật khẩu chuẩn WPA2
+    if (wifiPassword.isEmpty || wifiPassword.length < 8 || wifiPassword.length > 63) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự.",
+      );
+    }
+
+    // 0.4. Kiểm tra xác thực mật khẩu Wi-Fi với máy chủ (nếu khả dụng)
+    onProgress("Đang kiểm tra bảo mật & xác thực mạng Wi-Fi [$cleanSsid]...", 0.15);
     try {
       final verifyRes = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/wifi/verify'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'ssid': wifiSsid.trim(),
+          'ssid': cleanSsid,
           'password': wifiPassword,
         }),
-      ).timeout(const Duration(seconds: 5));
+      ).timeout(const Duration(seconds: 4));
 
-      if (verifyRes.statusCode != 200) {
-        String errMessage = "Mật khẩu Wi-Fi không chính xác hoặc không thể kết nối tới mạng Wi-Fi.";
+      if (verifyRes.statusCode == 400) {
         try {
           final vData = jsonDecode(verifyRes.body);
-          if (vData['error'] != null) {
-            errMessage = vData['error'].toString();
+          if (vData['error'] != null && vData['error'].toString().contains('Mật khẩu không chính xác')) {
+            return PairingResult(
+              success: false,
+              hardwareId: targetDevice.hardwareId,
+              modelName: targetDevice.modelName,
+              ownerName: "",
+              warrantyCode: "",
+              warrantyUntil: "",
+              errorMessage: vData['error'].toString(),
+            );
           }
         } catch (_) {}
-        return PairingResult(
-          success: false,
-          hardwareId: targetDevice.hardwareId,
-          modelName: targetDevice.modelName,
-          ownerName: "",
-          warrantyCode: "",
-          warrantyUntil: "",
-          errorMessage: errMessage,
-        );
-      } else {
-        final vData = jsonDecode(verifyRes.body);
-        if (vData['success'] != true) {
-          return PairingResult(
-            success: false,
-            hardwareId: targetDevice.hardwareId,
-            modelName: targetDevice.modelName,
-            ownerName: "",
-            warrantyCode: "",
-            warrantyUntil: "",
-            errorMessage: vData['error'] ?? "Mật khẩu Wi-Fi không chính xác! Vui lòng kiểm tra lại.",
-          );
-        }
       }
     } catch (e) {
-      debugPrint("Wi-Fi verify API warning: $e");
-      return PairingResult(
-        success: false,
-        hardwareId: targetDevice.hardwareId,
-        modelName: targetDevice.modelName,
-        ownerName: "",
-        warrantyCode: "",
-        warrantyUntil: "",
-        errorMessage: "Không thể kết nối đến máy chủ để xác thực mạng Wi-Fi: $e",
-      );
+      debugPrint("Wi-Fi verify API warning (bỏ qua nếu server cloud): $e");
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    final String targetBrokerIp = (brokerIp != null && brokerIp.isNotEmpty) ? brokerIp : '192.168.100.6';
+    // Xác định IP của MQTT Broker
+    String targetBrokerIp = brokerIp ?? '';
+    if (targetBrokerIp.isEmpty) {
+      final host = Uri.tryParse(ApiConfig.baseUrl)?.host ?? '';
+      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
+        targetBrokerIp = host;
+      } else {
+        targetBrokerIp = '192.168.100.6';
+      }
+    }
+
     final profile = targetDevice.profile;
     final inputData = ProvisioningInputData(
-      ssid: wifiSsid,
+      ssid: cleanSsid,
       password: wifiPassword,
       userId: currentUserId,
       brokerIp: targetBrokerIp,
@@ -349,16 +366,19 @@ class BleProvisioningService {
             final scanResults = FlutterBluePlus.lastScanResults;
             if (scanResults.isNotEmpty) {
               final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toLowerCase()).toList();
-              final match = scanResults.firstWhere(
+              final match = scanResults.cast<ScanResult?>().firstWhere(
                 (r) {
+                  if (r == null) return false;
                   final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
                   final advUuids = r.advertisementData.serviceUuids.map((u) => u.toString().replaceAll('-', '').toLowerCase()).toList();
-                  return n == targetDevice.hardwareId.toLowerCase() ||
+                  return (targetDevice.hardwareId.isNotEmpty && n == targetDevice.hardwareId.toLowerCase()) ||
                          advUuids.any((adv) => normTargetUuids.any((target) => adv.contains(target)));
                 },
-                orElse: () => scanResults.first,
+                orElse: () => null,
               );
-              devToConnect = match.device;
+              if (match != null) {
+                devToConnect = match.device;
+              }
             }
           }
 
@@ -366,13 +386,14 @@ class BleProvisioningService {
             if (!devToConnect.isConnected) {
               await devToConnect.connect(
                 license: License.nonprofit,
-                timeout: const Duration(seconds: 5),
-              ).timeout(const Duration(seconds: 6));
+                timeout: const Duration(seconds: 6),
+              ).timeout(const Duration(seconds: 7));
             }
-            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 5));
+            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 6));
             if (services.isNotEmpty) {
               final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
               final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
+              final normTxChar = (profile.bleTxCharUuid ?? '').replaceAll('-', '').toUpperCase();
 
               final targetService = services.firstWhere(
                 (s) {
@@ -384,12 +405,14 @@ class BleProvisioningService {
 
               final chars = targetService.characteristics;
               if (chars.isNotEmpty) {
+                // RX Characteristic: Nhận chuỗi cấu hình mạng
                 final rxChar = chars.firstWhere(
                   (c) {
                     final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
                     return cUuid.contains(normRxChar) ||
                            cUuid.contains("6E400002") ||
-                           cUuid.contains("BEA5C122");
+                           cUuid.contains("BEA5C122") ||
+                           cUuid.contains("BEA5A000");
                   },
                   orElse: () => chars.firstWhere(
                     (c) => c.properties.write || c.properties.writeWithoutResponse,
@@ -397,19 +420,33 @@ class BleProvisioningService {
                   ),
                 );
 
+                // TX Characteristic: Phát tín hiệu phản hồi (Notify)
+                BluetoothCharacteristic? txChar;
+                if (normTxChar.isNotEmpty) {
+                  txChar = chars.cast<BluetoothCharacteristic?>().firstWhere(
+                    (c) => c != null && c.uuid.toString().replaceAll('-', '').toUpperCase().contains(normTxChar),
+                    orElse: () => null,
+                  );
+                }
+                final notifyChar = (txChar != null && txChar.properties.notify)
+                    ? txChar
+                    : (rxChar.properties.notify
+                        ? rxChar
+                        : chars.cast<BluetoothCharacteristic?>().firstWhere((c) => c != null && c.properties.notify, orElse: () => null));
+
                 StreamSubscription? notifySub;
                 Completer<bool> wifiCheckCompleter = Completer();
 
-                if (rxChar.properties.notify) {
+                if (notifyChar != null && notifyChar.properties.notify) {
                   try {
-                    await rxChar.setNotifyValue(true);
-                    notifySub = rxChar.lastValueStream.listen((val) {
+                    await notifyChar.setNotifyValue(true);
+                    notifySub = notifyChar.lastValueStream.listen((val) {
                       final str = utf8.decode(val, allowMalformed: true);
                       debugPrint("BLE Notification from ESP32: $str");
-                      if (str.contains("WIFI_FAIL")) {
+                      if (str.contains("WIFI_FAIL") || str.contains("FAIL")) {
                         isWifiCheckFailed = true;
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(false);
-                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK")) {
+                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK") || str.contains("OK")) {
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                       }
                     });
@@ -421,10 +458,10 @@ class BleProvisioningService {
                 final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
                 await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
 
-                onProgress("Đang kiểm tra kết nối Wi-Fi trên bo mạch...", 0.45);
+                onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
 
-                // Chờ phản hồi kiểm tra Wi-Fi từ bo mạch trong tối đa 8.5 giây
-                final timer = Timer(const Duration(milliseconds: 8500), () {
+                // Chờ phản hồi kiểm tra từ bo mạch (tối đa 4 giây)
+                final timer = Timer(const Duration(milliseconds: 4000), () {
                   if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                 });
                 await wifiCheckCompleter.future;
@@ -462,9 +499,9 @@ class BleProvisioningService {
       }
 
       if (bleSuccess) {
-        onProgress("Bo mạch đã xác thực Wi-Fi thành công! Đang lưu cấu hình...", 0.50);
+        onProgress("Bo mạch đã tiếp nhận cấu hình mạng! Đang khởi động lại...", 0.50);
       } else {
-        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] & tài khoản vào bo mạch...", 0.50);
+        onProgress("Đang nạp thông số Wi-Fi [$cleanSsid] vào bo mạch...", 0.50);
       }
       await Future.delayed(const Duration(milliseconds: 500));
     } else {
@@ -483,25 +520,33 @@ class BleProvisioningService {
       if (apSuccess) {
         onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.50);
       } else {
-        onProgress("Đang nạp thông số Wi-Fi [$wifiSsid] qua kênh SoftAP...", 0.50);
+        onProgress("Đang nạp thông số Wi-Fi [$cleanSsid] qua kênh SoftAP...", 0.50);
       }
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 2: Đợi bo mạch kết nối vào Wi-Fi và phát tín hiệu MQTT lên Server
-    onProgress("Đang đợi bo mạch kết nối vào mạng Wi-Fi [$wifiSsid] & máy chủ...", 0.65);
+    // Step 2: Đợi bo mạch khởi động lại, kết nối Wi-Fi và phát tín hiệu MQTT lên Server
+    // ESP32 cần ~10 - 18 giây để hoàn thành chu kỳ: reboot -> dò sóng Wi-Fi -> WPA2 Handshake -> nhận IP DHCP -> kết nối MQTT Broker
+    onProgress("Đang đợi bo mạch kết nối vào mạng Wi-Fi [$cleanSsid] & máy chủ...", 0.60);
 
     bool hardwareIsOnline = false;
-    const int maxWaitAttempts = 6; // Thử trong ~7.5 giây (6 * 1250ms)
+    const int maxWaitAttempts = 18; // Thử trong ~25 giây (18 * 1400ms)
     
     for (int i = 0; i < maxWaitAttempts; i++) {
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
       
-      await Future.delayed(const Duration(milliseconds: 1250));
-      final currentProgress = 0.65 + ((i + 1) / maxWaitAttempts) * 0.20;
-      onProgress("Đang kiểm tra tín hiệu trực tuyến từ bo mạch (${i + 1}/$maxWaitAttempts)...", currentProgress);
+      await Future.delayed(const Duration(milliseconds: 1400));
+      final currentProgress = 0.60 + ((i + 1) / maxWaitAttempts) * 0.25;
+
+      if (i < 4) {
+        onProgress("Bo mạch đang khởi động lại và kết nối Wi-Fi [$cleanSsid]...", currentProgress);
+      } else if (i < 10) {
+        onProgress("Đang kiểm tra kết nối mạng Wi-Fi từ bo mạch (${i + 1}/$maxWaitAttempts)...", currentProgress);
+      } else {
+        onProgress("Đang xác thực tín hiệu trực tuyến từ máy chủ (${i + 1}/$maxWaitAttempts)...", currentProgress);
+      }
 
       try {
         final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
@@ -526,7 +571,7 @@ class BleProvisioningService {
         ownerName: "",
         warrantyCode: "",
         warrantyUntil: "",
-        errorMessage: "Không thể kết nối Wi-Fi! Thiết bị không kết nối được vào mạng [$wifiSsid] (sai mật khẩu hoặc mất sóng Wi-Fi). Quá trình ghép nối bị dừng và KHÔNG được thêm vào hệ thống.",
+        errorMessage: "Không thể kết nối Wi-Fi! Thiết bị không kết nối được vào mạng [$cleanSsid] (sai mật khẩu hoặc sóng Wi-Fi yếu). Quá trình ghép nối bị dừng và thiết bị KHÔNG được thêm vào hệ thống.",
       );
     }
 
