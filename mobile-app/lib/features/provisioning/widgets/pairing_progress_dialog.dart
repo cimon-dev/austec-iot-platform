@@ -85,10 +85,10 @@ class PairingProgressDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(
-                    pairingResult!.isOnlineWifi ? "KÍCH HOẠT THÀNH CÔNG!" : "GHÉP NỐI BLUETOOTH THÀNH CÔNG!",
+                  const Text(
+                    "KÍCH HOẠT THÀNH CÔNG!",
                     style: TextStyle(
-                      color: pairingResult!.isOnlineWifi ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                      color: AppTheme.emeraldSuccess,
                       fontSize: 17,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 0.8,
@@ -97,9 +97,7 @@ class PairingProgressDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    pairingResult!.isOnlineWifi
-                        ? "Bo mạch đã kết nối Wi-Fi [$wifiSsid], đồng bộ MQTT trực tuyến và kích hoạt bảo hành."
-                        : "Đã nạp cấu hình qua BLE. Thiết bị hiện chưa có kết nối Wi-Fi (sai mật khẩu hoặc mất sóng). Bạn có thể điều khiển trực tiếp qua Bluetooth BLE.",
+                    "Bo mạch đã kết nối Wi-Fi [$wifiSsid], đồng bộ MQTT trực tuyến và kích hoạt bảo hành.",
                     style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                     textAlign: TextAlign.center,
                   ),
@@ -119,8 +117,8 @@ class PairingProgressDialog extends StatelessWidget {
                         const SizedBox(height: 8),
                         _buildInfoRow(
                           "Trạng thái:",
-                          pairingResult!.isOnlineWifi ? "🟢 ON (Wi-Fi Trực tuyến)" : "🟠 OFF (BLE Ngoại Tuyến)",
-                          textColor: pairingResult!.isOnlineWifi ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                          "🟢 ON (Wi-Fi Trực tuyến)",
+                          textColor: AppTheme.emeraldSuccess,
                           isBold: true,
                         ),
                         const SizedBox(height: 8),
@@ -133,26 +131,6 @@ class PairingProgressDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (!pairingResult!.isOnlineWifi) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.amberWarning,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 11),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.wifi_password, size: 16),
-                        label: const Text("Nhập Lại Mật Khẩu Wi-Fi (Nạp lại BLE)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          onCancel();
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
                   Row(
                     children: [
                       Expanded(

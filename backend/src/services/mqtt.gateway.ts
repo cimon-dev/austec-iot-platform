@@ -340,6 +340,23 @@ export class MqttGateway {
     };
   }
 
+  public async isHardwareOnline(hwId: string): Promise<boolean> {
+    const cleanId = hwId.trim().toLowerCase();
+    try {
+      const state = await this.hotCache.getDeviceState(hwId);
+      if (state && state.isOnline) return true;
+    } catch (_) {}
+
+    const hasRecentMsg = this.messageHistory.some((m) => {
+      const top = m.topic.toLowerCase();
+      return (
+        m.direction === 'INCOMING' &&
+        (top.includes(`/${cleanId}/`) || top.startsWith(`${cleanId}/`) || top.includes(cleanId))
+      );
+    });
+    return hasRecentMsg;
+  }
+
   public close(): Promise<void> {
     return new Promise((resolve) => {
       if (this.client) {

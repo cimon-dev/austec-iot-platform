@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'device_location_service_stub.dart';
 export 'device_location_service_stub.dart';
@@ -49,28 +50,16 @@ Future<DeviceCoordinates?> getDeviceCoordinates() async {
             isGpsHardware: true,
           );
         }
+      } else {
+        final err = parsed['error']?.toString() ?? "Quyền vị trí bị từ chối";
+        throw Exception(err);
       }
     }
-  } catch (_) {}
-
-  // Fallback: Lấy vị trí từ mạng IP của chính thiết bị người dùng (Client-side, không qua Server BE)
-  try {
-    final res = await http.get(Uri.parse('https://freeipapi.com/api/json')).timeout(const Duration(seconds: 4));
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body);
-      final lat = (data['latitude'] as num?)?.toDouble();
-      final lng = (data['longitude'] as num?)?.toDouble();
-      final city = data['cityName']?.toString();
-      if (lat != null && lng != null) {
-        return DeviceCoordinates(
-          lat: lat,
-          lng: lng,
-          address: (city != null && city.isNotEmpty) ? "$city, Việt Nam" : null,
-          isGpsHardware: false,
-        );
-      }
-    }
-  } catch (_) {}
+  } catch (e) {
+    debugPrint("Lỗi GPS thiết bị: $e");
+    rethrow;
+  }
 
   return null;
 }
+

@@ -63,7 +63,6 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void initState() {
     super.initState();
     _detectCurrentWifi();
-    _getCurrentGpsLocation();
 
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
@@ -325,17 +324,35 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           SnackBar(
             content: Text(
               coords.isGpsHardware
-                  ? "Đã định vị GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
+                  ? "Đã lấy tọa độ GPS từ điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"
                   : "Đã lấy tọa độ từ thiết bị: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}",
             ),
             backgroundColor: AppTheme.emeraldSuccess,
-            duration: const Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
           ),
         );
         return;
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Không thể lấy vị trí GPS! Hãy cấp quyền Vị trí trên trình duyệt hoặc nhập tọa độ thủ công."),
+            backgroundColor: AppTheme.roseDanger,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
     } catch (e) {
       debugPrint("Lỗi lấy tọa độ từ thiết bị/điện thoại: $e");
+      if (mounted) {
+        final errText = e.toString().replaceAll("Exception: ", "").trim();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errText.isNotEmpty ? errText : "Lỗi khi lấy vị trí GPS từ điện thoại!"),
+            backgroundColor: AppTheme.roseDanger,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isGettingLocation = false);
     }

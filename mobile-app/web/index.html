@@ -188,7 +188,11 @@
       getCurrentPosition: function() {
         return new Promise(function(resolve) {
           if (!navigator || !navigator.geolocation) {
-            resolve(JSON.stringify({ supported: false, success: false, error: 'Thiết bị/trình duyệt không hỗ trợ Geolocation' }));
+            resolve(JSON.stringify({
+              supported: false,
+              success: false,
+              error: 'Trình duyệt/thiết bị yêu cầu kết nối bảo mật (HTTPS hoặc localhost) hoặc đang tắt Geolocation. Vui lòng bật vị trí trong Cài đặt trình duyệt hoặc nhập tọa độ thủ công.'
+            }));
             return;
           }
           navigator.geolocation.getCurrentPosition(
@@ -204,9 +208,9 @@
             function(err) {
               console.warn('[Geolocation] Lỗi định vị GPS:', err);
               var msg = 'Không thể lấy vị trí từ thiết bị';
-              if (err.code === 1) msg = 'Quyền truy cập vị trí bị từ chối trên thiết bị';
-              else if (err.code === 2) msg = 'Không tìm thấy tín hiệu vị trí từ thiết bị';
-              else if (err.code === 3) msg = 'Hết thời gian chờ định vị';
+              if (err.code === 1) msg = 'Quyền truy cập vị trí bị từ chối! Vui lòng cho phép quyền Vị trí trên trình duyệt.';
+              else if (err.code === 2) msg = 'Không tìm thấy tín hiệu vệ tinh GPS từ thiết bị.';
+              else if (err.code === 3) msg = 'Hết thời gian chờ nhận tín hiệu GPS (Timeout).';
               resolve(JSON.stringify({
                 supported: true,
                 success: false,
@@ -214,7 +218,7 @@
                 error: msg
               }));
             },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
           );
         });
       }

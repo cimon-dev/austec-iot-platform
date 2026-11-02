@@ -490,8 +490,48 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 2: Kích hoạt quyền sở hữu thiết bị trên máy chủ CSDL
-    onProgress("Đang kích hoạt quyền sở hữu thiết bị trên máy chủ...", 0.70);
+    // Step 2: Đợi bo mạch kết nối vào Wi-Fi và phát tín hiệu MQTT lên Server
+    onProgress("Đang đợi bo mạch kết nối vào mạng Wi-Fi [$wifiSsid] & máy chủ...", 0.65);
+
+    bool hardwareIsOnline = false;
+    const int maxWaitAttempts = 6; // Thử trong ~7.5 giây (6 * 1250ms)
+    
+    for (int i = 0; i < maxWaitAttempts; i++) {
+      if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+      
+      await Future.delayed(const Duration(milliseconds: 1250));
+      final currentProgress = 0.65 + ((i + 1) / maxWaitAttempts) * 0.20;
+      onProgress("Đang kiểm tra tín hiệu trực tuyến từ bo mạch (${i + 1}/$maxWaitAttempts)...", currentProgress);
+
+      try {
+        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
+        final checkRes = await http.get(checkUri).timeout(const Duration(seconds: 3));
+        if (checkRes.statusCode == 200) {
+          final body = jsonDecode(checkRes.body);
+          if (body['success'] == true && body['isOnline'] == true) {
+            hardwareIsOnline = true;
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ĐIỀU KIỆN TIÊN QUYẾT: NẾU THIẾT BỊ KHÔNG KẾT NỐI ĐƯỢC WIFI -> DỪNG NGAY LẬP TỨC!
+    // TUYỆT ĐỐI KHÔNG GỌI /api/devices/pair, KHÔNG LƯU CƠ SỞ DỮ LIỆU, KHÔNG CẬP NHẬT LÊN SERVER!
+    if (!hardwareIsOnline) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Không thể kết nối Wi-Fi! Thiết bị không kết nối được vào mạng [$wifiSsid] (sai mật khẩu hoặc mất sóng Wi-Fi). Quá trình ghép nối bị dừng và KHÔNG được thêm vào hệ thống.",
+      );
+    }
+
+    // Step 3: CHỈ KHI THIẾT BỊ ĐÃ KẾT NỐI WIFI THÀNH CÔNG -> MỚI LƯU VÀO CSDL MÁY CHỦ
+    onProgress("Bo mạch đã kết nối Wi-Fi thành công! Đang kích hoạt quyền sở hữu...", 0.90);
     String warrantyUntil = "2028-10-23";
     String warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '').toUpperCase()}-24M";
     String confirmedOwner = currentUserName;
@@ -575,10 +615,6 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 3: Đợi bo mạch khởi động lại và kiểm tra trạng thái Wi-Fi thực tế
-    onProgress("Đang kiểm tra kết nối Wi-Fi & MQTT từ bo mạch...", 0.88);
-    await Future.delayed(const Duration(seconds: 4));
-
     await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
 
     final String serverHwId = (pairResponseData != null && pairResponseData['hardwareId'] != null)
@@ -589,36 +625,27 @@ class BleProvisioningService {
                                IoTGatewayClient().findByHardwareId(targetDevice.hardwareId);
 
     if (syncedDevice == null) {
-      if (pairResponseData != null && pairResponseData['device'] != null && pairResponseData['device'] is Map) {
-        syncedDevice = IoTGatewayClient().parseAndAddDevice(pairResponseData['device']);
-      } else {
-        final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
-        final newDev = DeviceItem(
-          id: serverHwId,
-          hardwareId: serverHwId,
-          name: targetDevice.modelName,
-          category: targetDevice.profile.category,
-          modelName: targetDevice.profile.defaultTitle,
-          isOnline: false,
-          warrantyCode: warrantyCode,
-          warrantyUntil: warrantyUntil,
-          ownerName: confirmedOwner,
-          roomName: finalAddress,
-          installationAddress: finalAddress,
-          locationLat: lat ?? 21.028511,
-          locationLng: lng ?? 105.854167,
-        );
-        IoTGatewayClient().addDevice(newDev);
-        syncedDevice = newDev;
-      }
+      final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
+      final newDev = DeviceItem(
+        id: serverHwId,
+        hardwareId: serverHwId,
+        name: targetDevice.modelName,
+        category: targetDevice.profile.category,
+        modelName: targetDevice.profile.defaultTitle,
+        isOnline: true,
+        warrantyCode: warrantyCode,
+        warrantyUntil: warrantyUntil,
+        ownerName: confirmedOwner,
+        roomName: finalAddress,
+        installationAddress: finalAddress,
+        locationLat: lat ?? 21.028511,
+        locationLng: lng ?? 105.854167,
+      );
+      IoTGatewayClient().addDevice(newDev);
+      syncedDevice = newDev;
     }
 
-    final bool isOnlineWifi = syncedDevice.isOnline;
-    if (isOnlineWifi) {
-      onProgress("Ghép nối thành công & Đã kết nối Wi-Fi trực tuyến!", 1.0);
-    } else {
-      onProgress("Ghép nối hoàn tất! Thiết bị hoạt động ở chế độ Ngoại Tuyến (BLE)", 1.0);
-    }
+    onProgress("Ghép nối thành công & Đã kết nối Wi-Fi trực tuyến!", 1.0);
 
     return PairingResult(
       success: true,
@@ -627,7 +654,7 @@ class BleProvisioningService {
       ownerName: confirmedOwner,
       warrantyCode: warrantyCode,
       warrantyUntil: warrantyUntil,
-      isOnlineWifi: isOnlineWifi,
+      isOnlineWifi: true,
     );
   }
 

@@ -29,6 +29,21 @@ export class MqttController {
     }
   }
 
+  @Get('/devices/hardware-online-check')
+  public async checkHardwareOnline(req: Request, res: Response) {
+    try {
+      const hwId = (req.query.hardwareId || '').toString().trim();
+      if (!hwId) {
+        res.status(400).json({ success: false, isOnline: false, error: 'hardwareId is required' });
+        return;
+      }
+      const isOnline = await this.mqttGateway.isHardwareOnline(hwId);
+      res.json({ success: true, hardwareId: hwId, isOnline });
+    } catch (e: any) {
+      res.status(500).json({ success: false, isOnline: false, error: e.message });
+    }
+  }
+
   @Get('/wifi/current')
   public async getCurrentWifi(req: Request, res: Response) {
     let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || '192.168.1.145';
