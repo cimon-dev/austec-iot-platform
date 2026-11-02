@@ -18,9 +18,9 @@ export interface DiscoveredBleDevice {
 class LiveScannerService {
   private lastScanTime = 0;
   private cachedNetworks: ScannedWifi[] = [];
-  private cachedCurrentSsid = 'Manh Duc';
-  private cachedBand = '2.4 GHz';
-  private cachedSignal = '90%';
+  private cachedCurrentSsid = '';
+  private cachedBand = '';
+  private cachedSignal = '';
   private isScanning = false;
 
   private scriptPath = path.resolve(__dirname, '../scripts/trigger_wlan_scan.ps1');
@@ -39,7 +39,17 @@ class LiveScannerService {
     }
 
     return new Promise((resolve) => {
-      // 1. Lấy thông tin mạng Wi-Fi hiện tại đang kết nối
+      // 1. Lấy thông tin mạng Wi-Fi hiện tại đang kết nối (chỉ chạy trên Windows nếu có card Wi-Fi)
+      if (process.platform !== 'win32') {
+        return resolve({
+          currentSsid: '',
+          band: '',
+          signal: '',
+          networks: [],
+          networkDetails: [],
+        });
+      }
+
       exec('netsh wlan show interfaces', (errCurrent, stdoutCurrent) => {
         if (!errCurrent && stdoutCurrent) {
           const ssidMatch = stdoutCurrent.match(/^\s*SSID\s*:\s*(.+)$/m);
@@ -75,8 +85,7 @@ class LiveScannerService {
             } catch (_) {}
           }
 
-          // Fallback an toàn: nếu không quét được gì mới thì giữ mạng đang kết nối thực tế
-          if (this.cachedNetworks.length === 0) {
+          if (this.cachedCurrentSsid && this.cachedCurrentSsid.length > 0) {
             this.cachedNetworks = [
               { ssid: this.cachedCurrentSsid, signal: this.cachedSignal, band: this.cachedBand }
             ];

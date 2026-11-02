@@ -547,43 +547,13 @@ class _LoginScreenState extends State<LoginScreen> {
               runSpacing: 6,
               children: [
                 ActionChip(
-                  avatar: const Icon(Icons.wifi_rounded,
-                      size: 14, color: AppTheme.emeraldSuccess),
-                  label: const Text("LAN (192.168.100.6)",
-                      style: TextStyle(fontSize: 11, color: Colors.white)),
-                  backgroundColor: AppTheme.cardBorder,
-                  onPressed: () {
-                    controller.text = ApiConfig.defaultLocalLanUrl;
-                  },
-                ),
-                ActionChip(
                   avatar: const Icon(Icons.cloud_outlined,
                       size: 14, color: AppTheme.cyanAccent),
-                  label: const Text("Render Cloud",
+                  label: const Text("Render Cloud (Mặc định)",
                       style: TextStyle(fontSize: 11, color: Colors.white)),
                   backgroundColor: AppTheme.cardBorder,
                   onPressed: () {
                     controller.text = ApiConfig.defaultCloudUrl;
-                  },
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.phone_android_rounded,
-                      size: 14, color: Colors.amber),
-                  label: const Text("Android Emulator (10.0.2.2)",
-                      style: TextStyle(fontSize: 11, color: Colors.white)),
-                  backgroundColor: AppTheme.cardBorder,
-                  onPressed: () {
-                    controller.text = ApiConfig.defaultEmulatorUrl;
-                  },
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.laptop_rounded,
-                      size: 14, color: AppTheme.purpleAccent),
-                  label: const Text("Localhost",
-                      style: TextStyle(fontSize: 11, color: Colors.white)),
-                  backgroundColor: AppTheme.cardBorder,
-                  onPressed: () {
-                    controller.text = ApiConfig.defaultLocalhostUrl;
                   },
                 ),
               ],

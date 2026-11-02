@@ -39,7 +39,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   List<String> _availableNetworks = [];
 
   PairingMethod _selectedMethod = PairingMethod.bluetooth;
-  String _brokerIp = "192.168.100.6";
+  String _brokerIp = "";
   int _brokerPort = 1883;
 
   final TextEditingController _qrCodeController = TextEditingController();
@@ -291,7 +291,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         if (data['success'] == true) {
           final ssid = (data['currentSsid'] ?? '').toString();
           final networks = (data['networks'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          final bIp = (data['brokerIp'] ?? '192.168.100.6').toString();
+          final bIp = (data['brokerIp'] ?? '').toString();
           final bPort = (data['brokerPort'] as num?)?.toInt() ?? 1883;
 
           if (mounted) {
@@ -299,7 +299,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               _isScanningWifi = false;
               _currentWifiSsid = ssid;
               _availableNetworks = networks;
-              _brokerIp = bIp;
+              _brokerIp = bIp.isNotEmpty ? bIp : (Uri.tryParse(ApiConfig.baseUrl)?.host ?? '');
               _brokerPort = bPort;
               if (_ssidController.text.isEmpty && ssid.isNotEmpty) {
                 _ssidController.text = ssid;

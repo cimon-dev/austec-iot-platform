@@ -46,8 +46,8 @@ export class MqttController {
 
   @Get('/wifi/current')
   public async getCurrentWifi(req: Request, res: Response) {
-    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || '192.168.100.6';
-    if (!process.env.MQTT_PUBLIC_HOST && !process.env.MQTT_BROKER_HOST) {
+    let localIp = process.env.MQTT_PUBLIC_HOST || process.env.MQTT_BROKER_HOST || (req.hostname && req.hostname !== 'localhost' ? req.hostname : '');
+    if (!localIp && process.platform === 'win32') {
       try {
         const os = await import('os');
         const nets = os.networkInterfaces();
@@ -59,31 +59,13 @@ export class MqttController {
                  l.includes('loopback') || l.includes('docker') || l.includes('vbox');
         };
 
-        // 1. Ưu tiên quét card mạng Wi-Fi vật lý thật trước
+        // Ưu tiên card mạng Wi-Fi vật lý thật
         let found = false;
         for (const name of Object.keys(nets)) {
           const l = name.toLowerCase();
           if ((l.includes('wi-fi') || l.includes('wlan') || l.includes('wireless')) && !isVirtual(name)) {
             for (const net of nets[name] || []) {
               if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
-                localIp = net.address;
-                found = true;
-                break;
-              }
-            }
-            if (found) break;
-          }
-        }
-
-        // 2. Nếu không thấy Wi-Fi, tìm các card Ethernet vật lý khác (loại trừ máy ảo)
-        if (!found) {
-          for (const name of Object.keys(nets)) {
-            if (isVirtual(name)) continue;
-            for (const net of nets[name] || []) {
-              if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
-                if (process.platform !== 'win32' && (net.address.startsWith('10.') || net.address.startsWith('172.'))) {
-                  continue;
-                }
                 localIp = net.address;
                 found = true;
                 break;
@@ -104,18 +86,18 @@ export class MqttController {
         signal: data.signal,
         networks: data.networks,
         networkDetails: data.networkDetails,
-        brokerIp: localIp,
+        brokerIp: localIp || req.hostname || '',
         brokerPort: 1883,
       });
     } catch (e: any) {
       res.json({
         success: true,
-        currentSsid: 'Manh Duc',
-        band: '2.4 GHz',
-        signal: '90%',
-        networks: ['Manh Duc', 'Manh Duc_5G'],
-        networkDetails: [{ ssid: 'Manh Duc', signal: '90%', band: '2.4 GHz' }],
-        brokerIp: localIp,
+        currentSsid: '',
+        band: '',
+        signal: '',
+        networks: [],
+        networkDetails: [],
+        brokerIp: localIp || req.hostname || '',
         brokerPort: 1883,
       });
     }

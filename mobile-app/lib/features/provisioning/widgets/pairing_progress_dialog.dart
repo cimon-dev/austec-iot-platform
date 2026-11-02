@@ -97,7 +97,9 @@ class PairingProgressDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    "Bo mạch đã kết nối Wi-Fi [$wifiSsid], đồng bộ MQTT trực tuyến và kích hoạt bảo hành.",
+                    pairingResult!.isOnlineWifi
+                        ? "Bo mạch đã kết nối Wi-Fi [$wifiSsid], đồng bộ MQTT trực tuyến và kích hoạt bảo hành."
+                        : "Đã nạp thông số Wi-Fi sang bo mạch & kích hoạt bảo hành thành công (Sẵn sàng điều khiển qua BLE).",
                     style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                     textAlign: TextAlign.center,
                   ),
@@ -117,8 +119,12 @@ class PairingProgressDialog extends StatelessWidget {
                         const SizedBox(height: 8),
                         _buildInfoRow(
                           "Trạng thái:",
-                          "🟢 ON (Wi-Fi Trực tuyến)",
-                          textColor: AppTheme.emeraldSuccess,
+                          pairingResult!.isOnlineWifi
+                              ? "🟢 ON (Wi-Fi Trực tuyến)"
+                              : "🔵 BLE (Sẵn sàng / Chờ mạng)",
+                          textColor: pairingResult!.isOnlineWifi
+                              ? AppTheme.emeraldSuccess
+                              : AppTheme.cyanAccent,
                           isBold: true,
                         ),
                         const SizedBox(height: 8),

@@ -13,11 +13,6 @@ class ApiConfig {
   /// Cho phép cấu hình URL/IP máy chủ tùy chọn lưu trên máy (lưu trong SharedPreferences)
   static String? customServerHost;
 
-  /// Địa chỉ IP LAN máy chủ dev hiện tại trên mạng Wi-Fi
-  static const String defaultLocalLanUrl = 'http://192.168.100.6:4000';
-  static const String defaultEmulatorUrl = 'http://10.0.2.2:4000';
-  static const String defaultLocalhostUrl = 'http://127.0.0.1:4000';
-
   /// Nạp URL máy chủ đã lưu từ SharedPreferences
   static Future<void> loadCustomHost() async {
     try {
@@ -49,8 +44,8 @@ class ApiConfig {
   /// Chuẩn hoá địa chỉ server thông minh:
   /// - Full URL (https://... hoặc http://...): Giữ nguyên giao thức, bỏ dấu gạch chéo cuối
   /// - Domain cloud (vd: xxx.onrender.com): Tự động thêm https://, KHÔNG ép cổng 4000
-  /// - IP local kèm port (vd: 192.168.100.6:4000): Tự động thêm http://
-  /// - IP local thuần (vd: 192.168.100.6 hoặc localhost): Tự động thêm http:// và :4000
+  /// - IP local kèm port (vd: 192.168.1.50:4000): Tự động thêm http://
+  /// - IP local thuần (vd: 192.168.1.50 hoặc localhost): Tự động thêm http:// và :4000
   static String formatBaseUrl(String input) {
     var raw = input.trim().replaceAll(RegExp(r'/+$'), '');
     if (raw.endsWith('/api')) {
@@ -95,7 +90,7 @@ class ApiConfig {
         return formatBaseUrl(host);
       }
     }
-    return defaultCloudUrl.isNotEmpty ? defaultCloudUrl : defaultLocalLanUrl;
+    return defaultCloudUrl;
   }
 
   /// Địa chỉ WebSocket Chat realtime đồng bộ đa nền tảng:
@@ -112,7 +107,7 @@ class ApiConfig {
     return 'ws://$base/ws/chat';
   }
 
-  /// Kiểm tra xem hiện tại đang kết nối qua Cloud (Render) hay Local LAN
+  /// Kiểm tra xem hiện tại đang kết nối qua Cloud (Render) hay Server tùy chỉnh
   static bool get isUsingCloud {
     final lower = baseUrl.toLowerCase();
     return lower.startsWith('https://') || lower.contains('onrender.com');
@@ -121,8 +116,6 @@ class ApiConfig {
   /// Nhãn hiển thị trạng thái kết nối
   static String get connectionBadgeText {
     if (isUsingCloud) return 'Render Cloud';
-    if (baseUrl.contains('192.168.100.6')) return 'LAN 192.168.100.6';
-    if (baseUrl.contains('10.0.2.2')) return 'Android Emulator';
-    return 'Local Dev';
+    return 'Máy chủ riêng';
   }
 }
