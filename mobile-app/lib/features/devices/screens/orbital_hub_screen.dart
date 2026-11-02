@@ -48,6 +48,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   String _timeString = "";
   String _dateString = "";
 
+  StreamSubscription? _deviceUpdateSub;
+
   @override
   void initState() {
     super.initState();
@@ -61,8 +63,13 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+
+    // Lắng nghe luồng cập nhật thiết bị thời gian thực & Local Cache
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
+      if (mounted) setState(() {});
+    });
     
-    // Nạp danh sách thiết bị thật của người dùng từ Backend API
+    // Nạp danh sách thiết bị thật của người dùng từ Backend API (kèm offline fallback)
     _gateway.fetchDevicesFromBackend(token: AuthService().token).then((_) {
       if (mounted) setState(() {});
     });
@@ -82,6 +89,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   void dispose() {
     _pulseController.dispose();
     _clockTimer.cancel();
+    _deviceUpdateSub?.cancel();
     super.dispose();
   }
 

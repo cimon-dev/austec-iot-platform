@@ -216,11 +216,13 @@ class IoTGatewayClient {
   Future<void> saveDevicesToLocalCache([List? rawList]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (rawList != null) {
+      if (rawList != null && rawList.isNotEmpty) {
         await prefs.setString(_cachedDevicesKey, jsonEncode(rawList));
-      } else {
+        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${rawList.length} thiết bị vào Local Cache từ Raw List');
+      } else if (_devices.isNotEmpty) {
         final listToSave = _devices.map((d) => d.toMap()).toList();
         await prefs.setString(_cachedDevicesKey, jsonEncode(listToSave));
+        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${listToSave.length} thiết bị vào Local Cache từ _devices');
       }
     } catch (e) {
       debugPrint('[IoTGatewayClient] Lỗi lưu Local Cache: $e');
@@ -258,11 +260,16 @@ class IoTGatewayClient {
       _devices.insert(0, device);
     }
     unawaited(saveDevicesToLocalCache());
+    _deviceUpdateStream.add(device);
   }
 
-  void removeDevice(String hardwareId) {
+  Future<void> removeDevice(String hardwareId) async {
     _devices.removeWhere((d) => d.hardwareId == hardwareId);
-    unawaited(saveDevicesToLocalCache());
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listToSave = _devices.map((d) => d.toMap()).toList();
+      await prefs.setString(_cachedDevicesKey, jsonEncode(listToSave));
+    } catch (_) {}
   }
 
   void renameDevice(String hardwareId, String newName) {
@@ -381,10 +388,12 @@ class IoTGatewayClient {
 
   /// Nạp danh sách thiết bị thật từ Backend theo quyền sở hữu của người dùng hiện tại
   Future<void> fetchDevicesFromBackend({String? token}) async {
-    // 1. Nếu chưa có thiết bị trong bộ nhớ RAM, nạp ngay tức thì từ Local Cache để UI không bị trắng
+    // 1. Luôn đảm bảo nạp từ Local Cache nếu trong RAM chưa có thiết bị
     if (_devices.isEmpty) {
       await loadDevicesFromLocalCache();
     }
+
+    bool syncSuccess = false;
 
     // 2. Thử đồng bộ từ Backend Cloud / PostgreSQL
     try {
@@ -398,27 +407,36 @@ class IoTGatewayClient {
         final data = jsonDecode(res.body);
         if (data['success'] == true && data['devices'] is List) {
           final List list = data['devices'];
-          _devices.clear();
           if (list.isNotEmpty) {
+            _devices.clear();
             for (var d in list) {
               _devices.add(_parseDeviceFromJson(d));
             }
-          }
-          // Lưu đồng bộ ngay vào Local Cache phòng khi mất mạng
-          await saveDevicesToLocalCache(list);
+            // Lưu đồng bộ ngay vào Local Cache
+            await saveDevicesToLocalCache();
 
-          for (var d in _devices) {
-            _deviceUpdateStream.add(d);
+            for (var d in _devices) {
+              _deviceUpdateStream.add(d);
+            }
+            syncSuccess = true;
+          } else {
+            // Nếu Backend trả về mảng rỗng (hoặc khi mất kết nối nội bộ DB), giữ lại dữ liệu local cache
+            if (_devices.isEmpty) {
+              await loadDevicesFromLocalCache();
+            }
           }
         }
       }
     } catch (e) {
       debugPrint('[IoTGatewayClient] Không thể kết nối Backend (Chế độ Ngoại tuyến Offline): $e');
-      // Khi mất toàn bộ mạng, đảm bảo nạp từ Local Cache để người dùng vẫn điều khiển được qua BLE
+    }
+
+    // 3. Nếu không thể kết nối hoặc status != 200 (mất mạng / lỗi 500 khi Supabase offline):
+    if (!syncSuccess) {
       if (_devices.isEmpty) {
         await loadDevicesFromLocalCache();
       }
-      // Vì không thể kết nối tới Cloud, đồng bộ trạng thái hiển thị sang Ngoại tuyến (Offline Cloud - Sẵn sàng BLE tầm gần)
+      // Đồng bộ trạng thái ngoại tuyến cho toàn bộ thiết bị
       for (var d in _devices) {
         d.isOnline = false;
         _deviceUpdateStream.add(d);
