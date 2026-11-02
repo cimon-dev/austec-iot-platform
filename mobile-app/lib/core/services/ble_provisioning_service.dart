@@ -290,7 +290,9 @@ class BleProvisioningService {
         targetBrokerIp.contains('onrender.com') ||
         targetBrokerIp.contains('render.com') ||
         targetBrokerIp.startsWith('10.') ||
-        targetBrokerIp.startsWith('172.');
+        targetBrokerIp.startsWith('172.') ||
+        targetBrokerIp.startsWith('192.168.160.') ||
+        targetBrokerIp.startsWith('192.168.56.');
     if (isInvalidBroker) {
       final host = Uri.tryParse(ApiConfig.baseUrl)?.host ?? '';
       if (host.isNotEmpty &&

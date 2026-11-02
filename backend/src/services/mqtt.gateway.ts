@@ -195,7 +195,23 @@ export class MqttGateway {
         }
       }
 
-      // 2. Gói tin Báo Cảm Biến / Hành Trình Cửa: {user}/{hwId}/pub/action
+      // 2. Gói tin Phản Hồi Trạng Thái Trực Tuyến: {user}/{hwId}/pub/isonline
+      if (subType === 'pub' && parts[3] === 'isonline') {
+        console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi IS_ONLINE: ${payload}`);
+        await this.hotCache.setDeviceState(hwId, {
+          isOnline: true,
+          currentProperties: { isOnline: true, ownerId: user },
+          lastHeartbeat: new Date().toISOString(),
+        });
+        try {
+          await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
+        } catch (_) {}
+        if (this.onStateChangeCallback) {
+          this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
+        }
+      }
+
+      // 3. Gói tin Báo Cảm Biến / Hành Trình Cửa: {user}/{hwId}/pub/action
       if (subType === 'pub' && parts[3] === 'action') {
         console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi rơ-le/cảm biến: Action = ${payload}`);
         let openState = 'MOVING';
@@ -354,7 +370,16 @@ export class MqttGateway {
         (top.includes(`/${cleanId}/`) || top.startsWith(`${cleanId}/`) || top.includes(cleanId))
       );
     });
-    return hasRecentMsg;
+    if (hasRecentMsg) return true;
+
+    // Chủ động phát gói thăm dò (ping) xuống topic sub/isonline của Cửa cuốn / Ổ cắm
+    try {
+      this.publishMessage(`+/${hwId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`00000000-0000-0000-0000-000000000001/${hwId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`austec/${hwId}/sub/isonline`, '1').catch(() => {});
+    } catch (_) {}
+
+    return false;
   }
 
   public close(): Promise<void> {

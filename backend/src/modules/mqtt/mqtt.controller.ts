@@ -51,16 +51,45 @@ export class MqttController {
       try {
         const os = await import('os');
         const nets = os.networkInterfaces();
+
+        const isVirtual = (name: string) => {
+          const l = name.toLowerCase();
+          return l.includes('vethernet') || l.includes('wsl') || l.includes('hyper-v') ||
+                 l.includes('virtual') || l.includes('vmware') || l.includes('bluetooth') ||
+                 l.includes('loopback') || l.includes('docker') || l.includes('vbox');
+        };
+
+        // 1. Ưu tiên quét card mạng Wi-Fi vật lý thật trước
+        let found = false;
         for (const name of Object.keys(nets)) {
-          for (const net of nets[name] || []) {
-            if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
-              // Bỏ qua dải IP ảo container Linux / Docker / Render (10.x, 172.x)
-              if (process.platform !== 'win32' && (net.address.startsWith('10.') || net.address.startsWith('172.'))) {
-                continue;
+          const l = name.toLowerCase();
+          if ((l.includes('wi-fi') || l.includes('wlan') || l.includes('wireless')) && !isVirtual(name)) {
+            for (const net of nets[name] || []) {
+              if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
+                localIp = net.address;
+                found = true;
+                break;
               }
-              localIp = net.address;
-              break;
             }
+            if (found) break;
+          }
+        }
+
+        // 2. Nếu không thấy Wi-Fi, tìm các card Ethernet vật lý khác (loại trừ máy ảo)
+        if (!found) {
+          for (const name of Object.keys(nets)) {
+            if (isVirtual(name)) continue;
+            for (const net of nets[name] || []) {
+              if (net.family === 'IPv4' && !net.internal && !net.address.startsWith('169.254')) {
+                if (process.platform !== 'win32' && (net.address.startsWith('10.') || net.address.startsWith('172.'))) {
+                  continue;
+                }
+                localIp = net.address;
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
           }
         }
       } catch (_) {}
