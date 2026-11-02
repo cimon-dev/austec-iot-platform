@@ -128,4 +128,30 @@ export class MqttController {
       res.status(500).json({ success: false, error: e.message });
     }
   }
+
+  @Get('/location/current')
+  public async getCurrentLocation(_req: Request, res: Response) {
+    try {
+      const response = await fetch('http://ip-api.com/json');
+      const data = await response.json();
+      if (data && data.status === 'success') {
+        res.json({
+          success: true,
+          lat: data.lat,
+          lng: data.lon,
+          city: data.city,
+          address: `${data.city}, ${data.country}`,
+        });
+        return;
+      }
+    } catch (_) {}
+    res.json({
+      success: true,
+      lat: 21.028511,
+      lng: 105.854167,
+      city: 'Hà Nội',
+      address: 'Số 88, Phố Huế, Q. Hai Bà Trưng, Hà Nội',
+    });
+  }
 }
+

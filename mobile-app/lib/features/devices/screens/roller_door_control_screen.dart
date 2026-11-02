@@ -137,7 +137,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   // 4. BẬT / TẮT KHÓA AN TOÀN TRẺ EM
   void _toggleLock() {
     setState(() {
-      _device.isChildLockActive = !_device.isChildLockActive;
       _isOpening = false;
       _isClosing = false;
       _isStopped = true;

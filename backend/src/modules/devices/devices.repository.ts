@@ -578,6 +578,10 @@ export class DevicesRepository {
         subscriptionStatus: r.subscription_status || 'ACTIVE',
         address: r.address_display || 'Kho tổng Austec',
         addressDisplay: r.address_display || 'Kho tổng Austec',
+        lat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
+        lng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
+        locationLat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
+        locationLng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
         createdAt: r.created_at,
       }));
 

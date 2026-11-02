@@ -88,7 +88,10 @@ class ApiConfig {
     }
     if (kIsWeb) {
       final host = Uri.base.host;
-      if (host.isNotEmpty && host != 'localhost' && host != '127.0.0.1') {
+      if (host == 'localhost' || host == '127.0.0.1') {
+        return 'http://127.0.0.1:4000';
+      }
+      if (host.isNotEmpty) {
         return formatBaseUrl(host);
       }
     }

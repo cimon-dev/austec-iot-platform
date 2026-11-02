@@ -115,6 +115,10 @@ export class DeviceOperationsController {
               currentProperties: r.current_properties || {},
               assignedProperties: assignedProps,
               addressDisplay: r.address_display || 'Nhà riêng',
+              locationLat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
+              locationLng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
+              lat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
+              lng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
             };
           });
 
@@ -222,7 +226,7 @@ export class DeviceOperationsController {
   @Post('/pair', authenticate)
   public async pairDevice(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { hardwareId, qrHash, deviceName, location, customName } = req.body;
+      const { hardwareId, qrHash, deviceName, location, customName, lat, lng, latitude, longitude, address } = req.body;
       const targetUser = req.user!;
       if (!hardwareId) {
         res.status(400).json({ success: false, error: 'Thiếu thông tin Hardware ID' });
@@ -232,6 +236,9 @@ export class DeviceOperationsController {
       const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
       const defaultDeviceType = isCam ? 'Camera AI' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
       const finalName = customName || deviceName || (isCam ? `Camera AI ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
+      const finalLocation = location || address || 'Nhà riêng';
+      const finalLat = (lat != null && !isNaN(Number(lat))) ? Number(lat) : ((latitude != null && !isNaN(Number(latitude))) ? Number(latitude) : 21.028511);
+      const finalLng = (lng != null && !isNaN(Number(lng))) ? Number(lng) : ((longitude != null && !isNaN(Number(longitude))) ? Number(longitude) : 105.854167);
 
       if (this.client.getConnected()) {
         const invRes = await this.client.query(
@@ -252,8 +259,8 @@ export class DeviceOperationsController {
         const ownerPhone = dbUser?.phone_number || '---';
 
         const instRes = await this.client.query(
-          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
@@ -261,15 +268,17 @@ export class DeviceOperationsController {
              custom_name = EXCLUDED.custom_name,
              device_type = EXCLUDED.device_type,
              address_display = EXCLUDED.address_display,
+             location_lat = EXCLUDED.location_lat,
+             location_lng = EXCLUDED.location_lng,
              is_online = true
            RETURNING *`,
-          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, location || 'Nhà riêng', resolvedDeviceType]
+          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, finalLocation, resolvedDeviceType, finalLat, finalLng]
         );
         const permId = `PERM-${resolvedHwId}-${targetUser.id.slice(0, 8)}`;
         await this.client.query(
           `INSERT INTO device_permissions (id, hardware_id, user_id, member_name, phone_number, role, can_control, can_view_history, can_child_lock, can_config, created_at)
            VALUES ($1, $2, $3, $4, $5, 'OWNER', true, true, true, true, NOW()::text)
-           ON CONFLICT (id) DO UPDATE SET can_control = true, role = 'OWNER', member_name = EXCLUDED.member_name, phone_number = EXCLUDED.phone_number`,
+           ON CONFLICT (id) DO UPDATE SET can_control = true, can_child_lock = true, can_config = true, role = 'OWNER', member_name = EXCLUDED.member_name, phone_number = EXCLUDED.phone_number`,
           [permId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone]
         );
         const inst = instRes.rows[0];
@@ -279,9 +288,17 @@ export class DeviceOperationsController {
         res.json({
           success: true,
           message: 'Ghép nối thiết bị và kích hoạt bảo hành điện tử thành công!',
+          hardwareId: resolvedHwId,
           instance: inst,
           device: {
             ...inst,
+            hardwareId: resolvedHwId,
+            customName: finalName,
+            addressDisplay: finalLocation,
+            lat: finalLat,
+            lng: finalLng,
+            locationLat: finalLat,
+            locationLng: finalLng,
             warrantyUntil,
             warrantyCode,
           },
@@ -603,6 +620,18 @@ export class DeviceOperationsController {
                  last_heartbeat = NOW()
              WHERE LOWER(hardware_id) = LOWER($2) OR hardware_id = $2`,
             [JSON.stringify(isStreaming), hardwareId]
+          );
+        } else if (command === 'TOGGLE_CHILD_LOCK') {
+          await this.client.query(
+            `UPDATE device_instances 
+             SET current_properties = jsonb_set(
+                   COALESCE(current_properties, '{}'::jsonb),
+                   '{is_child_lock}',
+                   to_jsonb(NOT COALESCE((current_properties->>'is_child_lock')::boolean, false))
+                 ),
+                 last_heartbeat = NOW()
+             WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1`,
+            [hardwareId]
           );
         } else {
           await this.client.query(

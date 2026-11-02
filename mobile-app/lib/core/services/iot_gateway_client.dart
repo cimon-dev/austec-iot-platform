@@ -197,7 +197,13 @@ class IoTGatewayClient {
 
   DeviceItem? findByHardwareId(String hardwareId) {
     try {
-      return _devices.firstWhere((d) => d.hardwareId == hardwareId);
+      final norm = hardwareId.trim().toLowerCase();
+      final cleanNorm = norm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
+      return _devices.firstWhere((d) {
+        final dNorm = d.hardwareId.trim().toLowerCase();
+        final dClean = dNorm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
+        return dNorm == norm || dClean == cleanNorm || dNorm.endsWith(cleanNorm) || norm.endsWith(dClean);
+      });
     } catch (_) {
       return null;
     }
@@ -479,7 +485,16 @@ class IoTGatewayClient {
       subscriptionType: (d['subscriptionType'] ?? 'LIMITED').toString(),
       subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-23').toString(),
       subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
+      locationLat: (d['lat'] ?? d['locationLat'] ?? d['location_lat'] as num?)?.toDouble() ?? 21.028511,
+      locationLng: (d['lng'] ?? d['locationLng'] ?? d['location_lng'] as num?)?.toDouble() ?? 105.854167,
     );
+  }
+
+  /// Nạp trực tiếp đối tượng thiết bị từ JSON máy chủ vào bộ nhớ hoạt động
+  DeviceItem parseAndAddDevice(dynamic d) {
+    final dev = _parseDeviceFromJson(d);
+    addDevice(dev);
+    return dev;
   }
 
   void clearDevices() {

@@ -81,6 +81,8 @@ class DeviceItem {
   String? subscriptionExpiresAt;
   String subscriptionStatus; // 'ACTIVE', 'EXPIRED', 'LIFETIME'
   String installationAddress;
+  double locationLat;
+  double locationLng;
 
   bool get isPerpetual => subscriptionType == 'PERPETUAL';
   bool get isExpired => subscriptionStatus == 'EXPIRED';
@@ -156,6 +158,8 @@ class DeviceItem {
     this.subscriptionExpiresAt = '2027-10-21T00:00:00.000Z',
     this.subscriptionStatus = 'ACTIVE',
     this.installationAddress = 'Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội',
+    this.locationLat = 21.028511,
+    this.locationLng = 105.854167,
     this.positionPercent = 0,
     this.isChildLockActive = false,
     this.isMoving = false,

@@ -132,6 +132,7 @@ export class CommandService {
       if (req.command === 'STOP') updatedProperties.open_state = 'PAUSED';
       if (req.command === 'LOCK') updatedProperties.is_locked = true;
       if (req.command === 'UNLOCK') updatedProperties.is_locked = false;
+      if (req.command === 'TOGGLE_CHILD_LOCK') updatedProperties.is_child_lock = !updatedProperties.is_child_lock;
     }
 
     await this.hotCache.setDeviceState(req.hardwareId, {

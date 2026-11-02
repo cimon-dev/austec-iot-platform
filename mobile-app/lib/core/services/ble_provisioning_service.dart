@@ -193,6 +193,9 @@ class BleProvisioningService {
     required String wifiSsid,
     required String wifiPassword,
     String location = "Gara",
+    String? address,
+    double? lat,
+    double? lng,
     PairingMethod method = PairingMethod.bluetooth,
     String? brokerIp,
     int brokerPort = 1883,
@@ -263,9 +266,31 @@ class BleProvisioningService {
           warrantyUntil: "",
           errorMessage: errMessage,
         );
+      } else {
+        final vData = jsonDecode(verifyRes.body);
+        if (vData['success'] != true) {
+          return PairingResult(
+            success: false,
+            hardwareId: targetDevice.hardwareId,
+            modelName: targetDevice.modelName,
+            ownerName: "",
+            warrantyCode: "",
+            warrantyUntil: "",
+            errorMessage: vData['error'] ?? "Mật khẩu Wi-Fi không chính xác! Vui lòng kiểm tra lại.",
+          );
+        }
       }
     } catch (e) {
       debugPrint("Wi-Fi verify API warning: $e");
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Không thể kết nối đến máy chủ để xác thực mạng Wi-Fi: $e",
+      );
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
@@ -440,7 +465,12 @@ class BleProvisioningService {
 
     // 2.2. Gọi API xác thực ghép nối và lưu quyền sở hữu chính thức
     onProgress("Đang kích hoạt quyền sở hữu thiết bị trên máy chủ...", 0.80);
+    dynamic pairResponseData;
     try {
+      final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
+      final finalLat = lat ?? 21.028511;
+      final finalLng = lng ?? 105.854167;
+
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/pair'),
         headers: {
@@ -452,7 +482,12 @@ class BleProvisioningService {
           'customName': targetDevice.modelName,
           'wifiSsid': wifiSsid,
           'location': location,
-          'addressDisplay': location,
+          'addressDisplay': finalAddress,
+          'address': finalAddress,
+          'lat': finalLat,
+          'lng': finalLng,
+          'latitude': finalLat,
+          'longitude': finalLng,
         }),
       ).timeout(const Duration(seconds: 5));
 
@@ -476,6 +511,7 @@ class BleProvisioningService {
       }
 
       final data = jsonDecode(res.body);
+      pairResponseData = data;
       if (data['success'] != true) {
         return PairingResult(
           success: false,
@@ -508,28 +544,47 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Step 3: Nạp danh sách thiết bị THỰC TẾ từ CSDL Backend (Không dùng fallback ảo)
+    // Step 3: Nạp danh sách thiết bị THỰC TẾ từ CSDL Backend
     onProgress("Xác thực xuất xưởng & kích hoạt bảo hành điện tử 24 tháng...", 0.92);
     await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
 
-    final syncedDevice = IoTGatewayClient().findByHardwareId(targetDevice.hardwareId);
+    final String serverHwId = (pairResponseData != null && pairResponseData['hardwareId'] != null)
+        ? pairResponseData['hardwareId'].toString()
+        : targetDevice.hardwareId;
+
+    DeviceItem? syncedDevice = IoTGatewayClient().findByHardwareId(serverHwId) ??
+                               IoTGatewayClient().findByHardwareId(targetDevice.hardwareId);
+
     if (syncedDevice == null) {
-      return PairingResult(
-        success: false,
-        hardwareId: targetDevice.hardwareId,
-        modelName: targetDevice.modelName,
-        ownerName: "",
-        warrantyCode: "",
-        warrantyUntil: "",
-        errorMessage: "Không tìm thấy thiết bị thực tế trên máy chủ sau khi ghép nối.",
-      );
+      if (pairResponseData != null && pairResponseData['device'] != null && pairResponseData['device'] is Map) {
+        syncedDevice = IoTGatewayClient().parseAndAddDevice(pairResponseData['device']);
+      } else {
+        final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
+        final newDev = DeviceItem(
+          id: serverHwId,
+          hardwareId: serverHwId,
+          name: targetDevice.modelName,
+          category: targetDevice.profile.category,
+          modelName: targetDevice.profile.defaultTitle,
+          isOnline: true,
+          warrantyCode: warrantyCode,
+          warrantyUntil: warrantyUntil,
+          ownerName: confirmedOwner,
+          roomName: finalAddress,
+          installationAddress: finalAddress,
+          locationLat: lat ?? 21.028511,
+          locationLng: lng ?? 105.854167,
+        );
+        IoTGatewayClient().addDevice(newDev);
+        syncedDevice = newDev;
+      }
     }
 
     onProgress("Ghép nối thiết bị thành công 100%!", 1.0);
 
     return PairingResult(
       success: true,
-      hardwareId: targetDevice.hardwareId,
+      hardwareId: serverHwId,
       modelName: syncedDevice.name,
       ownerName: confirmedOwner,
       warrantyCode: warrantyCode,

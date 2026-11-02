@@ -44,6 +44,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   final TextEditingController _ssidController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _locationController = TextEditingController(text: "Gara");
+  final TextEditingController _addressController = TextEditingController(text: "Số 88, Phố Huế, P. Ngô Thì Nhậm, Q. Hai Bà Trưng, Hà Nội");
+  final TextEditingController _latController = TextEditingController(text: "21.0184");
+  final TextEditingController _lngController = TextEditingController(text: "105.8461");
+  bool _isGettingLocation = false;
   final List<String> _locationSuggestions = const ["Gara", "Cổng chính", "Tầng 1", "Phòng khách", "Sân trước", "Kho hàng"];
 
   bool _obscurePassword = true;
@@ -59,6 +63,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   void initState() {
     super.initState();
     _detectCurrentWifi();
+    _getCurrentGpsLocation();
 
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
@@ -303,6 +308,85 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
   }
 
+  /// Lấy tọa độ GPS chính xác và địa chỉ thực tế của thiết bị
+  Future<void> _getCurrentGpsLocation() async {
+    setState(() => _isGettingLocation = true);
+    try {
+      // 1. Thử qua backend API /api/location/current
+      try {
+        final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/location/current')).timeout(const Duration(seconds: 3));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data['success'] == true) {
+            final lat = (data['lat'] as num?)?.toDouble();
+            final lng = (data['lng'] as num?)?.toDouble();
+            final addr = data['address']?.toString();
+            if (lat != null && lng != null) {
+              if (mounted) {
+                setState(() {
+                  _latController.text = lat.toStringAsFixed(6);
+                  _lngController.text = lng.toStringAsFixed(6);
+                  if (addr != null && addr.isNotEmpty) {
+                    _addressController.text = addr;
+                  }
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Đã định vị tọa độ GPS chính xác: $lat, $lng"),
+                    backgroundColor: AppTheme.emeraldSuccess,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 2. Thử trực tiếp qua ip-api
+      try {
+        final res = await http.get(Uri.parse('http://ip-api.com/json')).timeout(const Duration(seconds: 3));
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (data['status'] == 'success') {
+            final lat = (data['lat'] as num?)?.toDouble();
+            final lng = (data['lon'] as num?)?.toDouble();
+            final city = data['city'] ?? 'Hà Nội';
+            if (lat != null && lng != null) {
+              if (mounted) {
+                setState(() {
+                  _latController.text = lat.toStringAsFixed(6);
+                  _lngController.text = lng.toStringAsFixed(6);
+                  _addressController.text = "$city, Việt Nam";
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Đã lấy tọa độ GPS từ mạng: $lat, $lng ($city)"),
+                    backgroundColor: AppTheme.emeraldSuccess,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+              return;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 3. Fallback mặc định
+      if (mounted) {
+        setState(() {
+          _latController.text = "21.028511";
+          _lngController.text = "105.854167";
+          _addressController.text = "Số 88, Phố Huế, Q. Hai Bà Trưng, Hà Nội";
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isGettingLocation = false);
+    }
+  }
+
   void _openWifiPickerSheet() {
     showModalBottomSheet(
       context: context,
@@ -383,6 +467,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       wifiSsid: ssid,
       wifiPassword: pass,
       location: locationStr,
+      address: _addressController.text.trim(),
+      lat: double.tryParse(_latController.text.trim()) ?? 21.028511,
+      lng: double.tryParse(_lngController.text.trim()) ?? 105.854167,
       method: _selectedMethod,
       brokerIp: _brokerIp,
       brokerPort: _brokerPort,
@@ -739,7 +826,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     controller: _locationController,
                     decoration: const InputDecoration(
                       labelText: "Tên phòng / Vị trí thực tế",
-                      prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
+                      prefixIcon: Icon(Icons.meeting_room_outlined, color: AppTheme.cyanAccent, size: 20),
                       hintText: "VD: Gara, Cổng chính, Tầng 1...",
                     ),
                   ),
@@ -762,6 +849,80 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         },
                       );
                     }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  Divider(color: AppTheme.cardBorder, height: 1),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "TỌA ĐỘ GPS (BẢN ĐỒ DASHBOARD)",
+                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                      InkWell(
+                        onTap: _isGettingLocation ? null : _getCurrentGpsLocation,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _isGettingLocation
+                                  ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
+                                  : const Icon(Icons.my_location, color: AppTheme.cyanAccent, size: 14),
+                              const SizedBox(width: 4),
+                              const Text(
+                                "Lấy GPS",
+                                style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: "Địa chỉ lắp đặt chi tiết",
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
+                      hintText: "Số nhà, tên đường, phường/xã, quận/huyện...",
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _latController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: "Vĩ độ (Latitude)",
+                            prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
+                            hintText: "21.0184",
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _lngController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            labelText: "Kinh độ (Longitude)",
+                            prefixIcon: Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
+                            hintText: "105.8461",
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
