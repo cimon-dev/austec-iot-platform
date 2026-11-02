@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import 'device_detail_screen.dart';
+import 'device_settings_screen.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'roller_door_control_screen.dart';
 
@@ -15,9 +18,116 @@ class CategoryDeviceListSheet extends StatefulWidget {
   State<CategoryDeviceListSheet> createState() => _CategoryDeviceListSheetState();
 }
 
-class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
+class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with WidgetsBindingObserver {
   final IoTGatewayClient _gateway = IoTGatewayClient();
   bool _isProcessing = false;
+
+  // Quản lý phân trang & luồng trực tiếp Camera (4-6 thiết bị / lần)
+  final ScrollController _scrollController = ScrollController();
+  final Set<String> _activeStreamingCameras = {};
+  final List<DeviceItem> _pagedCameras = [];
+  bool _isLoadingCameras = false;
+  bool _hasMoreCameras = true;
+  int _cameraOffset = 0;
+  static const int _batchSize = 5; // 4-6 camera mỗi lần
+  Timer? _snapshotRefreshTimer;
+  int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    if (widget.categoryMeta.category == DeviceCategory.camera) {
+      _loadInitialCameraBatch();
+      _scrollController.addListener(_onScroll);
+      _snapshotRefreshTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+        if (mounted) {
+          setState(() {
+            _snapshotKey = DateTime.now().millisecondsSinceEpoch;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
+    _snapshotRefreshTimer?.cancel();
+
+    // Dừng toàn bộ luồng camera khi thoát danh sách (Gửi mã 14)
+    if (widget.categoryMeta.category == DeviceCategory.camera) {
+      for (final hwId in _activeStreamingCameras) {
+        _gateway.sendCommand(hardwareId: hwId, action: "STREAM_STOP");
+      }
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (widget.categoryMeta.category == DeviceCategory.camera) {
+      if (state == AppLifecycleState.paused || state == AppLifecycleState.detached || state == AppLifecycleState.hidden) {
+        // Đóng ứng dụng hoặc xuống nền: Gửi mã 14 dừng stream
+        for (final hwId in _activeStreamingCameras) {
+          _gateway.sendCommand(hardwareId: hwId, action: "STREAM_STOP");
+        }
+      } else if (state == AppLifecycleState.resumed) {
+        // Mở lại ứng dụng: Kích hoạt lại mã 13
+        for (final hwId in _activeStreamingCameras) {
+          _gateway.sendCommand(hardwareId: hwId, action: "STREAM_START");
+        }
+      }
+    }
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 80) {
+      _loadMoreCameras();
+    }
+  }
+
+  Future<void> _loadInitialCameraBatch() async {
+    setState(() => _isLoadingCameras = true);
+    final batch = await _gateway.fetchCamerasPaged(limit: _batchSize, offset: 0);
+    if (!mounted) return;
+    setState(() {
+      _pagedCameras.clear();
+      _pagedCameras.addAll(batch);
+      _cameraOffset = batch.length;
+      _hasMoreCameras = batch.length >= _batchSize;
+      _isLoadingCameras = false;
+    });
+
+    // Gửi mã 13 (STREAM_START) cho đợt camera đầu tiên
+    for (final cam in batch) {
+      _activeStreamingCameras.add(cam.hardwareId);
+      _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+    }
+  }
+
+  Future<void> _loadMoreCameras() async {
+    if (_isLoadingCameras || !_hasMoreCameras) return;
+    setState(() => _isLoadingCameras = true);
+    final nextBatch = await _gateway.fetchCamerasPaged(limit: _batchSize, offset: _cameraOffset);
+    if (!mounted) return;
+    setState(() {
+      _pagedCameras.addAll(nextBatch);
+      _cameraOffset += nextBatch.length;
+      _hasMoreCameras = nextBatch.length >= _batchSize;
+      _isLoadingCameras = false;
+    });
+
+    // Gửi mã 13 (STREAM_START) CHỈ cho các camera mới được tải
+    for (final cam in nextBatch) {
+      if (!_activeStreamingCameras.contains(cam.hardwareId)) {
+        _activeStreamingCameras.add(cam.hardwareId);
+        _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+      }
+    }
+  }
 
   Future<void> _executePreviewAction(DeviceItem device, String action, [Map<String, dynamic>? params]) async {
     setState(() => _isProcessing = true);
@@ -147,20 +257,148 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
       ).then((_) => setState(() {}));
     } else {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: device)),
+        MaterialPageRoute(
+          builder: (context) => DeviceDetailScreen(
+            device: device,
+            isAlreadyStreaming: _activeStreamingCameras.contains(device.hardwareId),
+          ),
+        ),
       ).then((_) => setState(() {}));
     }
   }
 
+  void _navigateToSettings(DeviceItem device) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: device)),
+    ).then((_) => setState(() {}));
+  }
+
+  void _showZoomDialog(DeviceItem device) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: double.infinity,
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.78),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.cyanAccent, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyanAccent.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 6.0,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  child: Image.network(
+                    "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.videocam_outlined, color: AppTheme.cyanAccent, size: 64),
+                          const SizedBox(height: 12),
+                          Text(
+                            device.name,
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text("Đang truyền luồng video từ camera...", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Header overlay
+            Positioned(
+              top: 14,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.emeraldSuccess),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "${device.name} • Thu phóng 1x - 6x",
+                          style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 22),
+                    style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            // Tip overlay
+            Positioned(
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Text(
+                  "Chụm / Mở 2 ngón tay để phóng to và di chuyển để soi chi tiết",
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final devices = _gateway.getDevicesByCategory(widget.categoryMeta.category);
+    final isCameraCategory = widget.categoryMeta.category == DeviceCategory.camera;
+    final isSwitchCategory = widget.categoryMeta.category == DeviceCategory.lightSwitch;
+    final devices = isCameraCategory
+        ? _pagedCameras
+        : _gateway.getDevicesByCategory(widget.categoryMeta.category);
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
 
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.88),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.90),
       decoration: BoxDecoration(
         color: bgCol,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -221,7 +459,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
                           ),
                         ),
                         Text(
-                          "${widget.categoryMeta.subtitle} • ${devices.length} ${AppTheme.t("devices")}",
+                          isCameraCategory
+                              ? "Tải theo đợt 4-6 cam • Lướt để xem thêm"
+                              : "${widget.categoryMeta.subtitle} • ${devices.length} ${AppTheme.t("devices")}",
                           style: TextStyle(
                             color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
                             fontSize: 11,
@@ -250,43 +490,573 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> {
 
           // Danh Sách Thiết Bị Sở Hữu
           Expanded(
-            child: devices.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            child: (devices.isEmpty && isCameraCategory && _isLoadingCameras)
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppTheme.cyanAccent),
+                  )
+                : devices.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.devices_other,
+                              color: (isDark ? AppTheme.textMuted : Colors.grey).withValues(alpha: 0.5),
+                              size: 48,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "Chưa có thiết bị nào trong danh mục này",
+                              style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+                              icon: const Icon(Icons.add),
+                              label: Text(AppTheme.t("add_device")),
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                                ).then((_) => setState(() {}));
+                              },
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: isCameraCategory ? _scrollController : null,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: devices.length + (isCameraCategory && _isLoadingCameras ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index >= devices.length) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      "Đang tải thêm camera...",
+                                      style: TextStyle(color: isDark ? AppTheme.textSecondary : Colors.grey[700], fontSize: 11.5),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+
+                          final dev = devices[index];
+                          if (isCameraCategory || dev.category == DeviceCategory.camera) {
+                            return _buildCameraDeviceCard(dev, isDark, textCol);
+                          } else if (isSwitchCategory || dev.category == DeviceCategory.lightSwitch) {
+                            return _buildLightSwitchBlock(dev, isDark, textCol);
+                          }
+                          return _buildDeviceCard(dev, isDark, textCol);
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 1. Khối Giao Diện Công Tắc Dạng 1 Khối Có Tên Và Nút Toggle Bật/Tắt
+  Widget _buildLightSwitchBlock(DeviceItem device, bool isDark, Color textCol) {
+    final isOn = device.isRelayOn;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isOn
+        ? AppTheme.cyanAccent.withValues(alpha: 0.6)
+        : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder, width: isOn ? 1.6 : 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: isOn
+                ? AppTheme.cyanAccent.withValues(alpha: isDark ? 0.2 : 0.08)
+                : Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
+            blurRadius: isOn ? 14 : 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Icon công tắc
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: isOn
+                  ? AppTheme.cyanAccent.withValues(alpha: 0.18)
+                  : (isDark ? Colors.white10 : Colors.grey[200]),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isOn ? AppTheme.cyanAccent : Colors.transparent,
+                width: 1.2,
+              ),
+            ),
+            child: Icon(
+              Icons.power_settings_new_rounded,
+              color: isOn ? AppTheme.cyanAccent : Colors.grey,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: 14),
+
+          // Tên khối công tắc & thông tin phụ
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  device.name,
+                  style: TextStyle(
+                    color: textCol,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isOn ? "ĐANG BẬT" : "ĐANG TẮT",
+                      style: TextStyle(
+                        color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "• ${device.roomName}",
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                        fontSize: 10.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Menu 3 chấm
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: isDark ? AppTheme.textSecondary : Colors.grey[700], size: 19),
+            color: isDark ? AppTheme.surfaceDark : Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            onSelected: (val) {
+              if (val == 'rename') _showRenameDialog(device);
+              if (val == 'delete') _showDeleteDialog(device);
+              if (val == 'details') _navigateToDetail(device);
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'details',
+                child: Row(
+                  children: [
+                    const Icon(Icons.tune_rounded, size: 18, color: AppTheme.cyanAccent),
+                    const SizedBox(width: 8),
+                    Text("Xem chi tiết", style: TextStyle(color: textCol)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'rename',
+                child: Row(
+                  children: [
+                    const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
+                    const SizedBox(width: 8),
+                    Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
+                    const SizedBox(width: 8),
+                    Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 6),
+
+          // NÚT TOGGLE BẬT TẮT DẠNG KHỐI
+          Transform.scale(
+            scale: 1.05,
+            child: Switch(
+              value: isOn,
+              activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.5),
+              activeThumbColor: AppTheme.cyanAccent,
+              inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              inactiveThumbColor: Colors.grey,
+              onChanged: _isProcessing
+                  ? null
+                  : (newVal) {
+                      setState(() {
+                        device.isRelayOn = newVal;
+                      });
+                      _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                    },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 2. Thẻ Hiển Thị Camera Sở Hữu (Hỗ Trợ Live Stream, Thu Phóng, Chi Tiết, Cài Đặt)
+  Widget _buildCameraDeviceCard(DeviceItem device, bool isDark, Color textCol) {
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _activeStreamingCameras.contains(device.hardwareId)
+              ? AppTheme.cyanAccent.withValues(alpha: 0.6)
+              : cardBorder,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.cyanAccent.withValues(alpha: isDark ? 0.12 : 0.04),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tiêu đề & 3-dots popup menu
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.35)),
+                ),
+                child: const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Icon(
-                          Icons.devices_other,
-                          color: (isDark ? AppTheme.textMuted : Colors.grey).withValues(alpha: 0.5),
-                          size: 48,
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: device.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          "Chưa có thiết bị nào trong danh mục này",
-                          style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
-                        ),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
-                          icon: const Icon(Icons.add),
-                          label: Text(AppTheme.t("add_device")),
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                            ).then((_) => setState(() {}));
-                          },
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            device.name,
+                            style: TextStyle(
+                              color: textCol,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: devices.length,
-                    itemBuilder: (context, index) {
-                      final dev = devices[index];
-                      return _buildDeviceCard(dev, isDark, textCol);
-                    },
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            "AI CAMERA",
+                            style: TextStyle(
+                              color: AppTheme.cyanAccent,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          device.hardwareId,
+                          style: const TextStyle(
+                            color: AppTheme.cyanAccent,
+                            fontSize: 11,
+                            fontFamily: "monospace",
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.emeraldSuccess.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.emeraldSuccess),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      "LIVE",
+                      style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: isDark ? AppTheme.textSecondary : Colors.grey[700], size: 20),
+                color: isDark ? AppTheme.surfaceDark : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (val) {
+                  if (val == 'rename') _showRenameDialog(device);
+                  if (val == 'delete') _showDeleteDialog(device);
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'rename',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
+                        const SizedBox(width: 8),
+                        Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
+                      ],
+                    ),
                   ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
+                        const SizedBox(width: 8),
+                        Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Màn hình xem Camera trực tiếp (Live Stream Container)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: () => _showZoomDialog(device),
+              child: Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 44),
+                            const SizedBox(height: 6),
+                            Text(
+                              "LIVE STREAM • ${device.streamResolution}",
+                              style: const TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text("Đang lấy khung hình ESP32-CAM...", style: TextStyle(color: Colors.white38, fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.circle, color: Colors.white, size: 8),
+                            SizedBox(width: 4),
+                            Text(
+                              "LIVE REC",
+                              style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: InkWell(
+                        onTap: () => _showZoomDialog(device),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.65),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6)),
+                          ),
+                          child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 20),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              device.roomName,
+                              style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600),
+                            ),
+                            const Text(
+                              "Nhấn để phóng to",
+                              style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Hàng 3 nút điều khiển theo yêu cầu: Phóng to, Xem chi tiết, Cài đặt
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                    foregroundColor: AppTheme.cyanAccent,
+                    side: const BorderSide(color: AppTheme.cyanAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.zoom_in_rounded, size: 16),
+                  label: const Text("Phóng to", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  onPressed: () => _showZoomDialog(device),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.purpleAccent.withValues(alpha: 0.15),
+                    foregroundColor: AppTheme.purpleAccent,
+                    side: const BorderSide(color: AppTheme.purpleAccent),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.info_outline_rounded, size: 16),
+                  label: const Text("Chi tiết", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  onPressed: () => _navigateToDetail(device),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    side: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[400]!),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.settings_outlined, size: 16),
+                  label: const Text("Cài đặt", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  onPressed: () => _navigateToSettings(device),
+                ),
+              ),
+            ],
           ),
         ],
       ),

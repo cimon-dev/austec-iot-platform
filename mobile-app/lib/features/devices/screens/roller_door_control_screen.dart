@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
+import '../../provisioning/screens/provisioning_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 
@@ -26,6 +28,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   bool _isClosing = false;
   bool _isStopped = true;
 
+  // Quản lý Camera giám sát liên kết với cửa cuốn
+  String? _linkedCameraHwId;
+  Timer? _doorCamSnapshotTimer;
+  int _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
+
   late AnimationController _pulseController;
 
   @override
@@ -34,6 +41,18 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     _device = widget.device;
     _currentPercent = _device.positionPercent.toDouble();
     _isStopped = true;
+
+    _linkedCameraHwId = _device.currentProperties['linked_camera_id']?.toString();
+    if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
+      _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_START");
+      _doorCamSnapshotTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+        if (mounted) {
+          setState(() {
+            _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
+          });
+        }
+      });
+    }
 
     _pulseController = AnimationController(
       vsync: this,
@@ -44,7 +63,13 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   @override
   void dispose() {
     _travelTimer?.cancel();
+    _doorCamSnapshotTimer?.cancel();
     _pulseController.dispose();
+
+    if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
+      _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_STOP");
+    }
+
     super.dispose();
   }
 
@@ -274,6 +299,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
               // 5. THẺ THÔNG SỐ VẬN HÀNH ĐỒNG BỘ
               _buildOperationalCard(cardBg, cardBorder, textCol),
+              const SizedBox(height: 20),
+
+              // 6. CAMERA GIÁM SÁT CỬA CUỐN (THÊM / GỠ CAMERA THEO DÕI & CHECK KHÓA)
+              _buildDoorCameraSection(cardBg, cardBorder, textCol),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -720,6 +750,556 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // 6. GIAO DIỆN CAMERA GIÁM SÁT CỬA CUỐN (THÊM / GỠ CAMERA THEO YÊU CẦU)
+  Widget _buildDoorCameraSection(Color cardBg, Color cardBorder, Color textCol) {
+    if (_linkedCameraHwId == null || _linkedCameraHwId!.isEmpty) {
+      return _buildAddCameraButton(cardBg, cardBorder);
+    }
+
+    final linkedCam = _gateway.findByHardwareId(_linkedCameraHwId!);
+    final camName = linkedCam?.name ?? "AI Camera ($_linkedCameraHwId)";
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tiêu đề & badge LIVE
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                    ),
+                    child: const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        camName,
+                        style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const Text(
+                        "Camera hướng góc cửa cuốn • Check khóa",
+                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppTheme.emeraldSuccess.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: AppTheme.emeraldSuccess, size: 8),
+                    SizedBox(width: 4),
+                    Text(
+                      "LIVE",
+                      style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Khung xem video camera chiếu vào cửa cuốn (hỗ trợ bấm vào để phóng to)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: () => _showDoorCameraZoomDialog(camName),
+              child: Container(
+                height: 180,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                ),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 40),
+                            const SizedBox(height: 6),
+                            const Text(
+                              "Đang kết nối luồng camera cửa cuốn...",
+                              style: TextStyle(color: Colors.white70, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 18),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        color: Colors.black.withValues(alpha: 0.65),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "Góc chiếu cửa cuốn",
+                              style: TextStyle(color: Colors.white70, fontSize: 10),
+                            ),
+                            Text(
+                              "Chạm để phóng to xem khóa",
+                              style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Nút gỡ camera khỏi cửa cuốn (Có dialog xác nhận hỏi lại trước khi gỡ)
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.crimsonDanger,
+                side: BorderSide(color: AppTheme.crimsonDanger.withValues(alpha: 0.7)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.link_off_rounded, size: 16),
+              label: const Text(
+                "Gỡ camera khỏi cửa cuốn",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              onPressed: () => _showUnlinkConfirmationDialog(camName),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Nút Thêm Camera Giám Sát Cửa Cuốn
+  Widget _buildAddCameraButton(Color cardBg, Color cardBorder) {
+    return InkWell(
+      onTap: _showAddCameraBottomSheet,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.4),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.cyanAccent.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+              ),
+              child: const Icon(Icons.add_a_photo_outlined, color: AppTheme.cyanAccent, size: 24),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Thêm camera giám sát",
+                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    "Chiếu vào cửa cuốn để check xem đã khóa & đóng kín chưa",
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.cyanAccent,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.add, color: Colors.black, size: 16),
+                  SizedBox(width: 4),
+                  Text(
+                    "Thêm cam",
+                    style: TextStyle(color: Colors.black, fontSize: 11.5, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Modal chọn camera người dùng sở hữu để gán vào cửa cuốn
+  void _showAddCameraBottomSheet() {
+    final cameras = _gateway.getDevicesByCategory(DeviceCategory.camera);
+    final isDark = AppTheme.isDarkMode;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.surfaceDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.5)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey[500], borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.videocam_outlined, color: AppTheme.cyanAccent, size: 22),
+                SizedBox(width: 8),
+                Text(
+                  "Chọn Camera Giám Sát Cửa Cuốn",
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              "Chọn camera đang chiếu vào cửa cuốn này để kiểm tra khóa an toàn",
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
+            ),
+            const SizedBox(height: 16),
+            if (cameras.isEmpty) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceGlass,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.cardBorder),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Bạn chưa có thiết bị camera nào trong tài khoản",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 10),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+                      icon: const Icon(Icons.add),
+                      label: const Text("Ghép nối camera mới"),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                        ).then((_) => setState(() {}));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ] else ...[
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: cameras.length,
+                  itemBuilder: (context, index) {
+                    final cam = cameras[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceGlass,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 20),
+                        ),
+                        title: Text(cam.name, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold)),
+                        subtitle: Text("${cam.hardwareId} • ${cam.roomName}", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                        trailing: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.cyanAccent,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            minimumSize: const Size(0, 32),
+                          ),
+                          onPressed: () {
+                            Navigator.of(ctx).pop();
+                            _linkCamera(cam);
+                          },
+                          child: const Text("Liên kết", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _linkCamera(DeviceItem cam) {
+    setState(() {
+      _linkedCameraHwId = cam.hardwareId;
+      _device.currentProperties['linked_camera_id'] = cam.hardwareId;
+    });
+
+    _gateway.updateDeviceProperties(_device.hardwareId, {'linked_camera_id': cam.hardwareId});
+    _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+
+    _doorCamSnapshotTimer?.cancel();
+    _doorCamSnapshotTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+      if (mounted) {
+        setState(() {
+          _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
+        });
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Đã liên kết camera '${cam.name}' với cửa cuốn này thành công!"),
+        backgroundColor: AppTheme.emeraldSuccess,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Dialog xác nhận hỏi lại trước khi gỡ camera
+  void _showUnlinkConfirmationDialog(String camName) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
+            SizedBox(width: 8),
+            Text("Gỡ camera giám sát?"),
+          ],
+        ),
+        content: Text(
+          "Bạn có chắc chắn muốn gỡ camera '$camName' khỏi cửa cuốn này không? Bạn có thể thêm lại camera bất cứ lúc nào.",
+          style: TextStyle(color: AppTheme.isDarkMode ? AppTheme.textSecondary : Colors.grey[700]),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Hủy"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimsonDanger, foregroundColor: Colors.white),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _unlinkCamera();
+            },
+            child: const Text("Gỡ camera"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _unlinkCamera() {
+    if (_linkedCameraHwId != null) {
+      _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_STOP");
+    }
+
+    _doorCamSnapshotTimer?.cancel();
+
+    setState(() {
+      _linkedCameraHwId = null;
+      _device.currentProperties.remove('linked_camera_id');
+    });
+
+    _gateway.updateDeviceProperties(_device.hardwareId, {'linked_camera_id': null});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Đã gỡ camera khỏi cửa cuốn."),
+        backgroundColor: AppTheme.blueAccent,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  // Phóng to camera giám sát cửa cuốn để soi chi tiết khóa
+  void _showDoorCameraZoomDialog(String camName) {
+    if (_linkedCameraHwId == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: double.infinity,
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.78),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppTheme.cyanAccent, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.cyanAccent.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 6.0,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  child: Image.network(
+                    "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Text("Đang kết nối camera...", style: TextStyle(color: Colors.white70)),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 14,
+              left: 16,
+              right: 16,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                    ),
+                    child: Text(
+                      "$camName • Soi khóa cửa cuốn (1x - 6x)",
+                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 22),
+                    style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              bottom: 12,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  "Chụm / Mở 2 ngón tay để soi cận cảnh chốt khóa cửa cuốn",
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

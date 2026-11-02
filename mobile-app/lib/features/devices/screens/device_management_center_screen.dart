@@ -99,14 +99,17 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
             return ListTile(
               title: Text(room, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 13)),
               trailing: isCurrent ? const Icon(Icons.check, color: AppTheme.cyanAccent) : null,
-              onTap: () {
+              onTap: () async {
                 setState(() {
-                  // In mock we can't edit final roomName directly, but acknowledge
+                  device.roomName = room;
                 });
                 Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Đã gán thiết bị vào khu vực '$room'")),
-                );
+                await IoTGatewayClient().updateDeviceLocation(device.hardwareId, room);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Đã lưu khu vực '$room' lên máy chủ Austec")),
+                  );
+                }
               },
             );
           }).toList(),

@@ -136,7 +136,7 @@ class DeviceProvisioningCatalog {
       "4fafc201-1fb5-459e-8fcc-c5c9c331914b", // UUID BLE trong code camera OV2640
       "4fafc201",
     ],
-    nameKeywords: ["esp32-cam", "camera", "cam", "ov2640", "setup"],
+    nameKeywords: ["esp32-cam", "camera", "cam", "cam_", "ov2640", "setup", "ble-cam"],
     bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
     bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
     // Cú pháp nạp Camera: {ssid},{pass},{mqtt_ip}
@@ -149,7 +149,31 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 3. KHÓA THÔNG MINH MASARU (Mẫu chuẩn bị mở rộng trong tương lai)
+  // 3. Ổ CẮM THÔNG MINH AUSTEC (ESP32 Relay - OCAM)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile smartSocketProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.lightSwitch,
+    defaultTitle: "Ổ Cắm Thông Minh Austec",
+    defaultModelCode: "SMART_SOCKET_ECO",
+    icon: Icons.power_rounded,
+    accentColor: AppTheme.amberWarning,
+    bleServiceUuids: [
+      "4faac861-11a3-45d6-964d-c57406320509", // UUID chuẩn trong OCAM.txt
+      "4faac861",
+    ],
+    nameKeywords: ["ocam", "socket", "switch", "relay", "ocamping"],
+    bleRxCharUuid: "bea5a000-15d5-4240-b4d7-5a830bed4136",
+    bleTxCharUuid: "bea5a000-15d5-4240-b4d7-5a830bed4136",
+    // Cú pháp nạp Ổ cắm qua BLE: {ssid},{pass},{brokerIp}
+    buildBlePayload: (data) =>
+        "${data.ssid},${data.password},${data.brokerIp}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&MQTT=${Uri.encodeComponent(data.brokerIp)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 4. KHÓA THÔNG MINH MASARU (Mẫu chuẩn bị mở rộng trong tương lai)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartLockProfile = DeviceProvisioningProfile(
     category: DeviceCategory.othersControl,
@@ -169,9 +193,10 @@ class DeviceProvisioningCatalog {
 
   /// Danh sách toàn bộ các Profile có trong hệ thống
   static final List<DeviceProvisioningProfile> allProfiles = [
-    rollerDoorProfile, // Ưu tiên số 1: Cửa cuốn
-    cameraProfile,     // Ưu tiên số 2: Camera
-    smartLockProfile,  // Ưu tiên số 3: Khóa thông minh
+    rollerDoorProfile,  // Ưu tiên 1: Cửa cuốn
+    cameraProfile,      // Ưu tiên 2: Camera
+    smartSocketProfile, // Ưu tiên 3: Ổ cắm thông minh OCAM
+    smartLockProfile,   // Ưu tiên 4: Khóa thông minh
   ];
 
   /// Hàm tự động tìm và khớp Profile cho một thiết bị quét được

@@ -100,13 +100,30 @@ class LiveScannerService {
     const discovered: DiscoveredBleDevice[] = [];
 
     // Tìm kiếm trong các mạng Wi-Fi thực tế đang phát sóng trong không trung
-    // Firmware ESP32 khi vào chế độ cài đặt sẽ phát Access Point với tên device_id (VD: amtuong1994)
+    // Firmware ESP32 khi vào chế độ cài đặt sẽ phát Access Point với tên device_id (VD: amtuong1994, CAM_..., OCAM...)
     for (const net of scan.networkDetails) {
       const lower = net.ssid.toLowerCase();
-      if (lower === 'amtuong1994' || lower.startsWith('amtuong') || lower.startsWith('austec') || lower.startsWith('esp32')) {
-        const sigNum = parseInt(net.signal.replace('%', ''), 10) || 75;
-        // Chuyển phần trăm sóng thành dBm (VD: 90% -> -40 dBm, 50% -> -70 dBm)
-        const rssi = Math.round(-100 + (sigNum * 0.6));
+      const sigNum = parseInt(net.signal.replace('%', ''), 10) || 75;
+      // Chuyển phần trăm sóng thành dBm (VD: 90% -> -40 dBm, 50% -> -70 dBm)
+      const rssi = Math.round(-100 + (sigNum * 0.6));
+
+      if (lower.startsWith('cam_') || lower.startsWith('cam') || lower.includes('camera')) {
+        discovered.push({
+          hardwareId: net.ssid,
+          modelName: `Camera Thông Minh Austec (${net.ssid})`,
+          rssi,
+          category: 'camera',
+          isRealHardware: true,
+        });
+      } else if (lower.startsWith('ocam') || lower.startsWith('socket') || lower.includes('congtac') || lower.includes('switch')) {
+        discovered.push({
+          hardwareId: net.ssid,
+          modelName: `Ổ Cắm / Công Tắc Austec (${net.ssid})`,
+          rssi,
+          category: 'lightswitch',
+          isRealHardware: true,
+        });
+      } else if (lower === 'amtuong1994' || lower.startsWith('amtuong') || lower.startsWith('austec') || lower.startsWith('esp32') || lower.includes('door')) {
         discovered.push({
           hardwareId: net.ssid,
           modelName: `Cửa Cuốn Austec ECO (${net.ssid})`,

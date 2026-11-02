@@ -54,7 +54,11 @@
           }
           navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
-            optionalServices: ['6e400001-b5a3-f393-e0a9-e50e24dcca9e']
+            optionalServices: [
+              '6e400001-b5a3-f393-e0a9-e50e24dcca9e', // Cửa cuốn
+              '4fafc201-1fb5-459e-8fcc-c5c9c331914b', // Camera AI
+              '4faac861-11a3-45d6-964d-c57406320509'  // Ổ cắm thông minh OCAM
+            ]
           }).then(function(device) {
             resolve(JSON.stringify({
               supported: true,
@@ -69,28 +73,59 @@
           });
         });
       },
-      sendBleOnboardPayload: function(payloadString) {
+      sendBleOnboardPayload: function(payloadString, targetServiceUuid, targetRxUuid) {
         return new Promise(function(resolve) {
           if (!navigator || !navigator.bluetooth || !navigator.bluetooth.requestDevice) {
             resolve(JSON.stringify({ supported: false, success: false, error: 'Web Bluetooth không hỗ trợ trên trình duyệt này' }));
             return;
           }
-          var SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-          var RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-          
+          var allServices = [
+            '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+            '4fafc201-1fb5-459e-8fcc-c5c9c331914b',
+            '4faac861-11a3-45d6-964d-c57406320509'
+          ];
+          if (targetServiceUuid && allServices.indexOf(targetServiceUuid.toLowerCase()) === -1) {
+            allServices.push(targetServiceUuid.toLowerCase());
+          }
+
           navigator.bluetooth.requestDevice({
             acceptAllDevices: true,
-            optionalServices: [SERVICE_UUID]
+            optionalServices: allServices
           }).then(function(device) {
             return device.gatt.connect();
-          }).then(function(server) {
-            return server.getPrimaryService(SERVICE_UUID);
-          }).then(function(service) {
-            return service.getCharacteristic(RX_UUID);
-          }).then(function(characteristic) {
+          }).then(async function(server) {
+            var service = null;
+            var rxChar = null;
+            var servicesToTry = targetServiceUuid ? [targetServiceUuid.toLowerCase()].concat(allServices) : allServices;
+            for (var i = 0; i < servicesToTry.length; i++) {
+              try {
+                service = await server.getPrimaryService(servicesToTry[i]);
+                if (service) break;
+              } catch (_) {}
+            }
+            if (!service) throw new Error('Không tìm thấy Service BLE tương thích trên bo mạch');
+
+            var chars = await service.getCharacteristics();
+            for (var j = 0; j < chars.length; j++) {
+              var c = chars[j];
+              var cUuid = c.uuid.toLowerCase();
+              if (targetRxUuid && cUuid.indexOf(targetRxUuid.toLowerCase().replace(/-/g, '')) !== -1) {
+                rxChar = c;
+                break;
+              }
+              if (cUuid.indexOf('6e400002') !== -1 || cUuid.indexOf('bea5c122') !== -1 || cUuid.indexOf('bea5a000') !== -1) {
+                rxChar = c;
+                break;
+              }
+              if (c.properties.write || c.properties.writeWithoutResponse) {
+                rxChar = c;
+              }
+            }
+            if (!rxChar) throw new Error('Không tìm thấy Characteristic ghi dữ liệu BLE');
+
             var encoder = new TextEncoder();
             var data = encoder.encode(payloadString);
-            return characteristic.writeValue(data);
+            return rxChar.writeValue(data);
           }).then(function() {
             resolve(JSON.stringify({ success: true, message: 'Đã truyền gói tin onboard thành công qua BLE!' }));
           }).catch(function(err) {

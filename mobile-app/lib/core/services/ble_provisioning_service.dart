@@ -226,7 +226,11 @@ class BleProvisioningService {
       bool bleSuccess = false;
       if (kIsWeb) {
         try {
-          final webRes = await sendWebBluetoothOnboard(payloadString);
+          final webRes = await sendWebBluetoothOnboard(
+            payloadString,
+            serviceUuid: profile.bleServiceUuids.first,
+            rxUuid: profile.bleRxCharUuid,
+          );
           if (webRes != null && webRes['success'] == true) {
             bleSuccess = true;
           }

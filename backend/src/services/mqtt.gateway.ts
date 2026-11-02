@@ -15,6 +15,7 @@ export class MqttGateway {
   private messageHistory: MqttMessageEvent[] = [];
   private isRunning: boolean = false;
   private brokerUrl: string = 'mqtt://127.0.0.1:1883';
+  private cameraSnapshots: Map<string, { buffer: Buffer; timestamp: number }> = new Map();
 
   constructor(
     private postgresService: PostgresService,
@@ -39,18 +40,28 @@ export class MqttGateway {
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
         
         // Đăng ký nhận toàn bộ các kênh thiết bị:
-        // Topic của CodeCuaCuonBLE: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
-        this.client?.subscribe(['+/+/pub/#', '+/+/onboard', 'austec/#'], (err) => {
+        // 1. Cửa cuốn: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
+        // 2. Camera AI: devices/+/status, devices/+/camera/#
+        // 3. Ổ cắm thông minh: +/status, +/response, +/set
+        this.client?.subscribe([
+          '+/+/pub/#',
+          '+/+/onboard',
+          'austec/#',
+          'devices/+/status',
+          'devices/+/camera/#',
+          '+/status',
+          '+/response',
+          '+/set',
+        ], (err) => {
           if (!err) {
-            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe toàn bộ Topic cảm biến & Onboarding trên EMQX!');
+            console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm trên EMQX!');
           }
         });
         resolve(true);
       });
 
       this.client.on('message', async (topic: string, message: Buffer) => {
-        const payload = message.toString('utf-8');
-        await this.handleIncomingMessage(topic, payload);
+        await this.handleIncomingMessage(topic, message);
       });
 
       let lastErrorLogTime = 0;
@@ -64,11 +75,100 @@ export class MqttGateway {
     });
   }
 
-  private async handleIncomingMessage(topic: string, payload: string) {
+  private async handleIncomingMessage(topic: string, message: Buffer) {
     if (topic.startsWith('$SYS')) return;
 
+    // A. XỬ LÝ KHUNG HÌNH CAMERA (JPEG BINARY BUFFER)
+    if (topic.includes('/camera/photo')) {
+      const parts = topic.split('/');
+      // topic: devices/{hwId}/camera/photo
+      const hwId = parts.length >= 2 ? parts[1] : 'CAM_UNKNOWN';
+      this.cameraSnapshots.set(hwId, { buffer: message, timestamp: Date.now() });
+      this.recordMessage(topic, `[JPEG Photo: ${message.length} bytes]`, 'INCOMING');
+      console.log(`[MQTT Gateway] 📸 [${hwId}] Nhận khung hình Camera JPEG: ${message.length} bytes`);
+
+      await this.hotCache.setDeviceState(hwId, {
+        isOnline: true,
+        currentProperties: { hasStream: true, lastPhotoAt: new Date().toISOString(), photoSize: message.length },
+        lastHeartbeat: new Date().toISOString(),
+      });
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(hwId, { cameraFrame: true, size: message.length });
+      }
+      return;
+    }
+
+    const payload = message.toString('utf-8');
     this.recordMessage(topic, payload, 'INCOMING');
 
+    // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status
+    if (topic.startsWith('devices/') && topic.endsWith('/status')) {
+      const parts = topic.split('/');
+      const hwId = parts[1];
+      console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${payload}`);
+      try {
+        await this.postgresService.registerPairingDevice(hwId, 'AI_CAMERA_360', '00000000-0000-0000-0000-000000000001', `Camera AI ${hwId}`);
+      } catch (_) {}
+      await this.hotCache.setDeviceState(hwId, {
+        isOnline: true,
+        currentProperties: { hasStream: true, streamResolution: 'VGA 640x480' },
+        lastHeartbeat: new Date().toISOString(),
+      });
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
+      }
+      return;
+    }
+
+    // C. XỬ LÝ TRẠNG THÁI CỦA Ổ CẮM / RƠ-LE: {deviceName}/status & {deviceName}/response
+    const slashCount = (topic.match(/\//g) || []).length;
+    if (slashCount === 1) {
+      const [hwId, subAction] = topic.split('/');
+      
+      // 1. Ổ cắm báo Online: {deviceName}/status
+      if (subAction === 'status') {
+        console.log(`[MQTT Gateway] 🔌 Ổ cắm [${hwId}] thông báo ONLINE! Payload: ${payload}`);
+        try {
+          await this.postgresService.registerPairingDevice(hwId, 'SMART_SOCKET_ECO', '00000000-0000-0000-0000-000000000001', `Ổ cắm ${hwId}`);
+        } catch (_) {}
+        await this.hotCache.setDeviceState(hwId, {
+          isOnline: true,
+          currentProperties: { is_relay_on: false, relay_state: 'OFF' },
+          lastHeartbeat: new Date().toISOString(),
+        });
+        if (this.onStateChangeCallback) {
+          this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
+        }
+        return;
+      }
+
+      // 2. Ổ cắm phản hồi kết quả rơ-le: {deviceName}/response ("3" = Bật, "4" = Tắt)
+      if (subAction === 'response') {
+        const isRelayOn = payload.trim() === '3';
+        console.log(`[MQTT Gateway] ⚡ [${hwId}] Ổ cắm phản hồi trạng thái Rơ-le: ${isRelayOn ? 'BẬT (3)' : 'TẮT (4)'}`);
+        await this.hotCache.setDeviceState(hwId, {
+          isOnline: true,
+          currentProperties: { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' },
+          lastHeartbeat: new Date().toISOString(),
+        });
+        await this.postgresService.logBlackbox({
+          hardwareId: hwId,
+          actorId: '00000000-0000-0000-0000-000000000001',
+          actorRole: 'CUSTOMER',
+          actorName: 'Ổ cắm thông minh',
+          actionType: isRelayOn ? 'RELAY_TURNED_ON' : 'RELAY_TURNED_OFF',
+          payloadSent: { action: payload, isRelayOn },
+          ackStatus: 'SUCCESS',
+          latencyMs: 25,
+        });
+        if (this.onStateChangeCallback) {
+          this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+        }
+        return;
+      }
+    }
+
+    // D. XỬ LÝ CỬA CUỐN AUSTEC (CodeCuaCuonBLE chuẩn)
     const parts = topic.split('/');
     if (parts.length >= 2) {
       const user = parts[0];
@@ -133,24 +233,42 @@ export class MqttGateway {
   }
 
   /**
-   * Phát lệnh điều khiển xuống mạch ESP32: topic {user}/{device_id}/sub/action
-   * Action: "1" (Mở), "2" (Đóng), "3" (Dừng), "11" (Học RF), "12" (Xóa RF)
+   * Lấy khung hình chụp Camera JPEG mới nhất trong cache bộ nhớ
+   */
+  public getCameraSnapshot(hwId: string): { buffer: Buffer; timestamp: number } | undefined {
+    return this.cameraSnapshots.get(hwId);
+  }
+
+  /**
+   * Phát lệnh điều khiển xuống mạch ESP32:
+   * 1. Cửa cuốn: topic {user}/{device_id}/sub/action
+   * 2. Camera: topic devices/{device_id}/camera/cmd
+   * 3. Ổ cắm: topic {device_id}/set
    */
   public async publishAction(userId: string, hwId: string, actionNumber: string): Promise<boolean> {
-    const candidateTopics = new Set<string>([
-      `${userId || 'austec'}/${hwId}/sub/action`,
-      `austec/${hwId}/sub/action`,
-      `amtuong/${hwId}/sub/action`,
-      `${hwId}/sub/action`,
-    ]);
+    const isCamera = hwId.toUpperCase().startsWith('CAM_') || hwId.toUpperCase().includes('CAM');
+    const isSocket = hwId.toUpperCase().startsWith('OCAM') || hwId.toUpperCase().includes('OCAM') || hwId.toUpperCase().includes('SOCKET');
 
-    try {
-      const state = await this.hotCache.getDeviceState(hwId);
-      const knownOwner = (state?.currentProperties as any)?.ownerId;
-      if (knownOwner) {
-        candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
-      }
-    } catch (_) {}
+    const candidateTopics = new Set<string>();
+
+    if (isCamera) {
+      candidateTopics.add(`devices/${hwId}/camera/cmd`);
+    } else if (isSocket) {
+      candidateTopics.add(`${hwId}/set`);
+    } else {
+      candidateTopics.add(`${userId || 'austec'}/${hwId}/sub/action`);
+      candidateTopics.add(`austec/${hwId}/sub/action`);
+      candidateTopics.add(`amtuong/${hwId}/sub/action`);
+      candidateTopics.add(`${hwId}/sub/action`);
+
+      try {
+        const state = await this.hotCache.getDeviceState(hwId);
+        const knownOwner = (state?.currentProperties as any)?.ownerId;
+        if (knownOwner) {
+          candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
+        }
+      } catch (_) {}
+    }
 
     let anySuccess = false;
     for (const topic of candidateTopics) {

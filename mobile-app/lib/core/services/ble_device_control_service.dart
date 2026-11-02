@@ -178,4 +178,59 @@ class BleDeviceControlService {
     }
     return false;
   }
+
+  /// Gửi lệnh điều khiển trực tiếp tới Ổ cắm thông minh OCAM qua BLE:
+  /// Cú pháp firmware OCAM.txt (MyCharacteristicCallbacks):
+  ///   "3": Đóng rơ-le mức cao (Bật điện)
+  ///   "4": Ngắt rơ-le mức thấp (Tắt điện)
+  Future<bool> sendSocketAction({
+    required String hardwareId,
+    required String actionNumber, // "3" hoặc "4"
+  }) async {
+    if (kIsWeb) return false;
+
+    try {
+      BluetoothDevice? targetDevice;
+      final connectedList = FlutterBluePlus.connectedDevices;
+      for (final dev in connectedList) {
+        final n = dev.platformName.toLowerCase();
+        if (n == hardwareId.toLowerCase() || n.contains(hardwareId.toLowerCase())) {
+          targetDevice = dev;
+          break;
+        }
+      }
+
+      if (targetDevice == null) {
+        final scanResults = FlutterBluePlus.lastScanResults;
+        for (final r in scanResults) {
+          final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+          if (n == hardwareId.toLowerCase() || n.contains(hardwareId.toLowerCase())) {
+            targetDevice = r.device;
+            break;
+          }
+        }
+      }
+
+      if (targetDevice != null) {
+        if (!targetDevice.isConnected) {
+          await targetDevice.connect(license: License.nonprofit, timeout: const Duration(seconds: 4));
+        }
+        final services = await targetDevice.discoverServices();
+        for (final s in services) {
+          for (final c in s.characteristics) {
+            final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+            if (cUuid.contains("BEA5A000") || cUuid.contains("BEA5")) {
+              final bool withoutResp = c.properties.writeWithoutResponse && !c.properties.write;
+              await c.write(utf8.encode(actionNumber), withoutResponse: withoutResp);
+              debugPrint("[BLE Socket Control] ⚡ Đã gửi lệnh rơ-le ổ cắm $hardwareId: $actionNumber");
+              return true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("[BLE Socket Control] ⚠️ Lỗi gửi lệnh ổ cắm qua BLE: $e");
+    }
+    return false;
+  }
 }

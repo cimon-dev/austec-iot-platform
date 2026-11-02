@@ -2461,13 +2461,27 @@ export class PostgresService {
       finalOwnerName = 'Chủ sở hữu';
     }
 
-    // 2. Kiểm tra hoặc thêm vào device_inventory
+    // 2. Xác định cấu hình theo loại thiết bị (Camera, Ổ cắm, Cửa cuốn)
+    const isCam = modelCode === 'AI_CAMERA_360' || hwId.toUpperCase().startsWith('CAM');
+    const isSocket = modelCode === 'SMART_SOCKET_ECO' || hwId.toUpperCase().startsWith('OCAM');
+
+    const defaultModelName = isCam ? 'CAMERA AN NINH AI OV2640'
+      : isSocket ? 'Ổ CẮM THÔNG MINH AUSTEC'
+      : 'CỬA CUỐN NHÔM CÔNG NGHỆ ĐỨC';
+    const defaultDeviceType = isCam ? 'Camera AI'
+      : isSocket ? 'Ổ cắm'
+      : 'Cửa cuốn';
+    const defaultCustomName = customName || (isCam ? `Camera AI ${hwId}` : isSocket ? `Ổ cắm ${hwId}` : `Cửa cuốn ${hwId}`);
+    const defaultProperties = isCam ? { hasStream: true, streamResolution: 'VGA 640x480' }
+      : isSocket ? { is_relay_on: false, relay_state: 'OFF' }
+      : { open_state: 'CLOSED', is_locked: false, battery_pct: 100 };
+
     const now = new Date().toISOString();
     await this.pool.query(
       `INSERT INTO device_inventory (hardware_id, mac_address, model_id, model_name, device_type, batch_number, qr_code_hash, production_date, status)
-       VALUES ($1, $2, 1, 'CỬA CUỐN NHÔM CÔNG NGHỆ ĐỨC', 'Cửa cuốn', 'BATCH-2026-LAB', $3, '2026-10-23', 'INSTALLED')
-       ON CONFLICT (hardware_id) DO UPDATE SET status = 'INSTALLED'`,
-      [hwId, `FC:B4:67:${hwId.slice(0, 4)}`, `qr-${hwId}`]
+       VALUES ($1, $2, 1, $3, $4, 'BATCH-2026-LAB', $5, '2026-10-23', 'INSTALLED')
+       ON CONFLICT (hardware_id) DO UPDATE SET status = 'INSTALLED', device_type = EXCLUDED.device_type, model_name = EXCLUDED.model_name`,
+      [hwId, `FC:B4:67:${hwId.slice(0, 4)}`, defaultModelName, defaultDeviceType, `qr-${hwId}`]
     );
 
     // 3. Thêm vào device_instances để hiển thị ở trang thiết bị khách hàng
@@ -2475,10 +2489,11 @@ export class PostgresService {
     const today = new Date().toISOString().slice(0, 10);
     await this.pool.query(
       `INSERT INTO device_instances (id, hardware_id, custom_name, owner_id, device_type, firmware_version_current, is_online, last_heartbeat, current_properties, warranty_start_at, warranty_end_at, subscription_type, subscription_expires_at, subscription_status, installation_address)
-       VALUES ($1, $1, $2, $3, 'Cửa cuốn', 'v1.0.0', true, $4, $5, $6, $7, 'LIMITED', $7, 'ACTIVE', $8)
+       VALUES ($1, $1, $2, $3, $4, 'v1.0.0', true, $5, $6, $7, $8, 'LIMITED', $8, 'ACTIVE', $9)
        ON CONFLICT (hardware_id) DO UPDATE SET
          owner_id = EXCLUDED.owner_id,
          custom_name = EXCLUDED.custom_name,
+         device_type = EXCLUDED.device_type,
          is_online = true,
          last_heartbeat = EXCLUDED.last_heartbeat,
          warranty_end_at = EXCLUDED.warranty_end_at,
@@ -2487,10 +2502,11 @@ export class PostgresService {
          installation_address = EXCLUDED.installation_address`,
       [
         hwId,
-        customName || `Cửa cuốn ${hwId}`,
+        defaultCustomName,
         customerId,
+        defaultDeviceType,
         now,
-        JSON.stringify({ open_state: 'CLOSED', is_locked: false, battery_pct: 100 }),
+        JSON.stringify(defaultProperties),
         today,
         warrantyUntil,
         JSON.stringify({ fullText: 'Hà Nội, Việt Nam', ownerName: finalOwnerName }),

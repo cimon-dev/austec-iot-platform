@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../cskh/cskh.dart';
@@ -7,7 +9,9 @@ import '../../cskh/cskh.dart';
 class DeviceDetailScreen extends StatefulWidget {
   final DeviceItem device;
 
-  const DeviceDetailScreen({super.key, required this.device});
+  final bool isAlreadyStreaming;
+
+  const DeviceDetailScreen({super.key, required this.device, this.isAlreadyStreaming = false});
 
   @override
   State<DeviceDetailScreen> createState() => _DeviceDetailScreenState();
@@ -17,11 +21,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   final IoTGatewayClient _gateway = IoTGatewayClient();
   late DeviceItem _device;
   bool _isBusy = false;
+  int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
+  Timer? _snapshotRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _device = widget.device;
+
+    if (_device.category == DeviceCategory.camera) {
+      if (!widget.isAlreadyStreaming) {
+        // Chỉ gửi mã 13 nếu chưa phát stream từ trước
+        _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_START");
+      }
+      _snapshotRefreshTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
+        if (mounted) {
+          setState(() {
+            _snapshotKey = DateTime.now().millisecondsSinceEpoch;
+          });
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _snapshotRefreshTimer?.cancel();
+    if (!widget.isAlreadyStreaming && _device.category == DeviceCategory.camera) {
+      // Dừng stream nếu màn hình này tự phát stream
+      _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_STOP");
+    }
+    super.dispose();
   }
 
   Future<void> _triggerAction(String action, [Map<String, dynamic>? params]) async {
@@ -496,36 +526,46 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 180,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 48),
-                      const SizedBox(height: 8),
-                      Text("LIVE STREAM • ${_device.streamResolution}", style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                    ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+              ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.network(
+                      "${ApiConfig.baseUrl}/api/devices/${_device.hardwareId}/camera/snapshot?t=$_snapshotKey",
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 48),
+                            const SizedBox(height: 8),
+                            Text("LIVE STREAM • ${_device.streamResolution}", style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                            const SizedBox(height: 4),
+                            const Text("Đang chờ khung hình từ ESP32-CAM...", style: TextStyle(color: Colors.white38, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.roseDanger, borderRadius: BorderRadius.circular(6)),
-                    child: const Text("REC LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: AppTheme.roseDanger, borderRadius: BorderRadius.circular(6)),
+                      child: const Text("REC LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -534,20 +574,27 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             children: [
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
-                icon: const Icon(Icons.camera_alt),
-                label: const Text("Chụp Ảnh", style: TextStyle(fontWeight: FontWeight.bold)),
+                icon: const Icon(Icons.play_arrow_rounded),
+                label: const Text("Bật Stream", style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã lưu ảnh snapshot vào thư viện!")));
+                  _triggerAction("STREAM_START");
+                  setState(() => _snapshotKey = DateTime.now().millisecondsSinceEpoch);
                 },
               ),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _device.isAlarmActive ? AppTheme.roseDanger : AppTheme.amberWarning,
-                  foregroundColor: Colors.white,
-                ),
-                icon: const Icon(Icons.warning_amber),
-                label: Text(_device.isAlarmActive ? "Tắt Báo Động" : "Bật Còi Hú", style: const TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () => _triggerAction("TOGGLE_ALARM"),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: Colors.white),
+                icon: const Icon(Icons.stop_rounded),
+                label: const Text("Dừng", style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () => _triggerAction("STREAM_STOP"),
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.purpleAccent, foregroundColor: Colors.white),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text("Chụp", style: TextStyle(fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  _triggerAction("TAKE_SNAPSHOT");
+                  setState(() => _snapshotKey = DateTime.now().millisecondsSinceEpoch);
+                },
               ),
             ],
           ),

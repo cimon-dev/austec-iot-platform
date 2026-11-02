@@ -63,7 +63,7 @@ class DeviceItem {
   final String modelCode;
   final String? imageUrl;
   final DeviceCategory category;
-  final String roomName;
+  String roomName;
   final String badgeText; // e.g. "ÂM TƯỜNG", "GARA", "CHÍNH"
   final String deviceNumber; // e.g. "834", "1834"
   bool isOnline;

@@ -114,13 +114,47 @@ export class DeviceOperationsController {
               addressDisplay: r.address_display || 'Nhà riêng',
             };
           });
-          res.json({ success: true, devices, total: devices.length });
+
+          // Lọc theo danh mục nếu được yêu cầu
+          const category = (req.query.category as string || '').toLowerCase().trim();
+          let filtered = devices;
+          if (category === 'camera') {
+            filtered = devices.filter(d =>
+              (d.deviceType || '').toLowerCase().includes('cam') ||
+              (d.hardwareId || '').toLowerCase().includes('cam') ||
+              (d.modelCode || '').toLowerCase().includes('cam') ||
+              (d.name || '').toLowerCase().includes('cam')
+            );
+          } else if (category === 'lightswitch' || category === 'socket') {
+            filtered = devices.filter(d =>
+              (d.deviceType || '').toLowerCase().includes('công tắc') ||
+              (d.deviceType || '').toLowerCase().includes('ổ cắm') ||
+              (d.hardwareId || '').toLowerCase().includes('ocam') ||
+              (d.modelCode || '').toLowerCase().includes('socket') ||
+              (d.name || '').toLowerCase().includes('ổ cắm') ||
+              (d.name || '').toLowerCase().includes('công tắc')
+            );
+          }
+
+          const total = filtered.length;
+          const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+          const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+          const pagedDevices = limit !== undefined ? filtered.slice(offset, offset + limit) : filtered;
+
+          res.json({
+            success: true,
+            devices: pagedDevices,
+            total,
+            offset,
+            limit: limit || total,
+            hasMore: limit !== undefined ? (offset + pagedDevices.length < total) : false,
+          });
           return;
         }
       }
 
       const rawDevices = this.provisioningService ? this.provisioningService.getDevicesByOwner(targetUser.id) : [];
-      const devices = rawDevices.map((d: any) => ({
+      let devices = rawDevices.map((d: any) => ({
         id: d.id,
         hardwareId: d.hardwareId,
         customName: d.customName,
@@ -135,7 +169,36 @@ export class DeviceOperationsController {
         currentProperties: d.currentProperties || {},
         assignedProperties: [],
       }));
-      res.json({ success: true, devices, total: devices.length });
+
+      const category = (req.query.category as string || '').toLowerCase().trim();
+      if (category === 'camera') {
+        devices = devices.filter((d: any) =>
+          (d.deviceType || '').toLowerCase().includes('cam') ||
+          (d.hardwareId || '').toLowerCase().includes('cam') ||
+          (d.name || '').toLowerCase().includes('cam')
+        );
+      } else if (category === 'lightswitch' || category === 'socket') {
+        devices = devices.filter((d: any) =>
+          (d.deviceType || '').toLowerCase().includes('công tắc') ||
+          (d.deviceType || '').toLowerCase().includes('ổ cắm') ||
+          (d.hardwareId || '').toLowerCase().includes('ocam') ||
+          (d.name || '').toLowerCase().includes('ổ cắm')
+        );
+      }
+
+      const total = devices.length;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+      const pagedDevices = limit !== undefined ? devices.slice(offset, offset + limit) : devices;
+
+      res.json({
+        success: true,
+        devices: pagedDevices,
+        total,
+        offset,
+        limit: limit || total,
+        hasMore: limit !== undefined ? (offset + pagedDevices.length < total) : false,
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -154,7 +217,10 @@ export class DeviceOperationsController {
         res.status(400).json({ success: false, error: 'Thiếu thông tin Hardware ID' });
         return;
       }
-      const finalName = customName || deviceName || 'Cửa Cuốn Gia Đình';
+      const isCam = hardwareId.toUpperCase().startsWith('CAM');
+      const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
+      const defaultDeviceType = isCam ? 'Camera AI' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
+      const finalName = customName || deviceName || (isCam ? `Camera AI ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
 
       if (this.client.getConnected()) {
         const invRes = await this.client.query(
@@ -162,10 +228,11 @@ export class DeviceOperationsController {
           [hardwareId]
         );
         const resolvedHwId = invRes.rows.length > 0 ? invRes.rows[0].hardware_id : hardwareId;
+        const resolvedDeviceType = invRes.rows.length > 0 && invRes.rows[0].device_type ? invRes.rows[0].device_type : defaultDeviceType;
 
         await this.client.query(
-          `UPDATE device_inventory SET status = 'ACTIVE' WHERE hardware_id = $1`,
-          [resolvedHwId]
+          `UPDATE device_inventory SET status = 'ACTIVE', device_type = COALESCE(device_type, $2) WHERE hardware_id = $1`,
+          [resolvedHwId, resolvedDeviceType]
         );
 
         const uRes = await this.client.query(`SELECT id, full_name, phone_number, email FROM users WHERE id = $1`, [targetUser.id]);
@@ -174,17 +241,18 @@ export class DeviceOperationsController {
         const ownerPhone = dbUser?.phone_number || '---';
 
         const instRes = await this.client.query(
-          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
              owner_phone = EXCLUDED.owner_phone,
              custom_name = EXCLUDED.custom_name,
+             device_type = EXCLUDED.device_type,
              address_display = EXCLUDED.address_display,
              is_online = true
            RETURNING *`,
-          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, location || 'Nhà riêng']
+          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, location || 'Nhà riêng', resolvedDeviceType]
         );
         const permId = `PERM-${resolvedHwId}-${targetUser.id.slice(0, 8)}`;
         await this.client.query(
@@ -489,13 +557,39 @@ export class DeviceOperationsController {
       });
 
       if (this.client.getConnected()) {
-        await this.client.query(
-          `UPDATE device_instances 
-           SET current_properties = jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{door_state}', to_jsonb($1::text)),
-               last_heartbeat = NOW()
-           WHERE hardware_id = $2`,
-          [command, hardwareId]
-        );
+        const isCam = hardwareId.toUpperCase().startsWith('CAM');
+        const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
+
+        if (isSocket || command === '3' || command === '4' || command === 'ON' || command === 'OFF' || command === 'TURN_ON' || command === 'TURN_OFF') {
+          const isRelayOn = command === '3' || command === 'ON' || command === 'TURN_ON';
+          await this.client.query(
+            `UPDATE device_instances 
+             SET current_properties = jsonb_set(
+                   jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{is_relay_on}', $1::jsonb),
+                   '{relay_state}', $2::jsonb
+                 ),
+                 last_heartbeat = NOW()
+             WHERE LOWER(hardware_id) = LOWER($3) OR hardware_id = $3`,
+            [JSON.stringify(isRelayOn), JSON.stringify(isRelayOn ? 'ON' : 'OFF'), hardwareId]
+          );
+        } else if (isCam || command === '13' || command === '14') {
+          const isStreaming = command === '13' || command === 'STREAM_START';
+          await this.client.query(
+            `UPDATE device_instances 
+             SET current_properties = jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{is_streaming}', $1::jsonb),
+                 last_heartbeat = NOW()
+             WHERE LOWER(hardware_id) = LOWER($2) OR hardware_id = $2`,
+            [JSON.stringify(isStreaming), hardwareId]
+          );
+        } else {
+          await this.client.query(
+            `UPDATE device_instances 
+             SET current_properties = jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{door_state}', to_jsonb($1::text)),
+                 last_heartbeat = NOW()
+             WHERE LOWER(hardware_id) = LOWER($2) OR hardware_id = $2`,
+            [command, hardwareId]
+          );
+        }
 
         // Ghi nhật ký vận hành thực tế vào blackbox_logs
         const actorName = targetUser.fullName || targetUser.email || 'Chủ nhà';
@@ -530,6 +624,32 @@ export class DeviceOperationsController {
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
+  }
+
+  /**
+   * GET /api/devices/:hardwareId/camera/snapshot
+   * Lấy khung hình JPEG mới nhất từ Camera AI qua MQTT
+   */
+  @Get('/:hardwareId/camera/snapshot')
+  public async getCameraSnapshot(req: Request, res: Response): Promise<void> {
+    const hwId = req.params.hardwareId;
+    const snapshot = this.mqttGateway?.getCameraSnapshot(hwId);
+    if (snapshot && snapshot.buffer) {
+      res.setHeader('Content-Type', 'image/jpeg');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.send(snapshot.buffer);
+      return;
+    }
+    // Placeholder SVG khi chưa có frame ảnh
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+      <rect width="640" height="480" fill="#0b0f19"/>
+      <circle cx="320" cy="210" r="45" fill="none" stroke="#00f2fe" stroke-width="3"/>
+      <circle cx="320" cy="210" r="16" fill="#00f2fe"/>
+      <text x="320" y="300" text-anchor="middle" fill="#00f2fe" font-family="sans-serif" font-size="16" font-weight="bold">CAMERA AI STANDBY</text>
+      <text x="320" y="330" text-anchor="middle" fill="#8892b0" font-family="sans-serif" font-size="13">Đang chờ khung hình từ thiết bị [${hwId}]...</text>
+    </svg>`);
   }
 
   /**
@@ -981,8 +1101,10 @@ export class DevicePairingController {
         return;
       }
       const targetUser = userId || '00000000-0000-0000-0000-000000000001';
-      const targetModel = modelCode || 'DOOR_GERMAN_ALU';
-      const finalCustomerName = customerName || `Cửa cuốn ${hardwareId}`;
+      const isCam = hardwareId.toUpperCase().startsWith('CAM');
+      const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
+      const targetModel = modelCode || (isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU');
+      const finalCustomerName = customerName || (isCam ? `Camera AI ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : `Cửa cuốn ${hardwareId}`);
       const finalOwnerName = ownerName || customerName || 'Chủ sở hữu';
 
       if (this.postgresService && this.client.getConnected()) {

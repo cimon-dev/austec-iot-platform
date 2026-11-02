@@ -186,6 +186,37 @@ class IoTGatewayClient {
     return false;
   }
 
+  /// Đổi vị trí / phòng đặt thiết bị (API thực tế lưu CSDL)
+  Future<bool> updateDeviceLocation(String hardwareId, String newLocation) async {
+    try {
+      final token = AuthService().token ?? 'austec-customer-token';
+      final res = await http.patch(
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'location': newLocation, 'addressDisplay': newLocation}),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final dev = findByHardwareId(hardwareId);
+        if (dev != null) {
+          dev.roomName = newLocation;
+        }
+        return true;
+      }
+    } catch (e) {
+      debugPrint('[IoTGatewayClient] updateDeviceLocation error: $e');
+    }
+    final dev = findByHardwareId(hardwareId);
+    if (dev != null) {
+      dev.roomName = newLocation;
+    }
+    return false;
+  }
+
   /// Cập nhật các thông số cài đặt / thuộc tính động của thiết bị (API thực tế)
   Future<bool> updateDeviceProperties(String hardwareId, Map<String, dynamic> properties) async {
     try {
@@ -229,91 +260,7 @@ class IoTGatewayClient {
           if (list.isNotEmpty) {
             final List<DeviceItem> parsed = [];
             for (var d in list) {
-              final hwId = (d['hardwareId'] ?? '').toString();
-              final name = (d['customName'] ?? d['deviceName'] ?? d['name'] ?? d['modelName'] ?? 'Cửa cuốn Austec').toString();
-              final modelName = (d['modelName'] ?? d['model_name'] ?? 'Austec Smart Device').toString();
-              final modelCode = (d['modelCode'] ?? d['model_code'] ?? 'DOOR_GERMAN_ALU').toString();
-              final typeStr = (d['deviceType'] ?? '').toString();
-              DeviceCategory cat = DeviceCategory.rollerDoor;
-              if (typeStr.contains('Khóa') || hwId.contains('LOCK')) {
-                cat = DeviceCategory.othersControl;
-              } else if (typeStr.contains('điện') || hwId.contains('UPS')) {
-                cat = DeviceCategory.energyManage;
-              } else if (typeStr.contains('biến') || hwId.contains('SENSOR')) {
-                cat = DeviceCategory.environment;
-              } else if (typeStr.contains('Camera') || hwId.contains('CAM')) {
-                cat = DeviceCategory.camera;
-              }
-
-              final props = d['currentProperties'] is Map ? Map<String, dynamic>.from(d['currentProperties']) : <String, dynamic>{};
-              final assignedPropsRaw = d['assignedProperties'] is List ? d['assignedProperties'] as List : [];
-              final List<Map<String, dynamic>> assignedProps = [];
-              for (var p in assignedPropsRaw) {
-                if (p is Map) {
-                  assignedProps.add(Map<String, dynamic>.from(p));
-                }
-              }
-
-              final doorState = (props['door_state'] ?? 'CLOSED').toString();
-              final int pos = props['position_percent'] is num
-                  ? (props['position_percent'] as num).toInt()
-                  : (doorState == 'CLOSED' ? 0 : doorState == 'OPEN' ? 100 : 50);
-
-              final int openTimeout = (props['open_timeout'] ?? props['openTimeoutSeconds'] ?? 23) is num
-                  ? (props['open_timeout'] ?? props['openTimeoutSeconds'] ?? 23).toInt()
-                  : 23;
-              final int closeTimeout = (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20) is num
-                  ? (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20).toInt()
-                  : 20;
-              final bool autoSchedule = props['is_auto_schedule'] == true || props['auto_schedule'] == true;
-              final bool accessLimit = props['access_limit'] == true || props['is_access_limit'] == true;
-              final String accessStart = (props['access_start'] ?? props['accessStartTime'] ?? '08:00').toString();
-              final String accessEnd = (props['access_end'] ?? props['accessEndTime'] ?? '17:00').toString();
-
-              List<bool>? accessDays;
-              if (props['access_days'] is List) {
-                accessDays = (props['access_days'] as List).map((x) => x == true).toList();
-              }
-
-              parsed.add(DeviceItem(
-                id: d['id']?.toString() ?? hwId,
-                hardwareId: hwId,
-                name: name,
-                modelName: modelName,
-                modelCode: modelCode,
-                imageUrl: d['imageUrl']?.toString(),
-                category: cat,
-                currentProperties: props,
-                assignedProperties: assignedProps,
-                badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : "SMART",
-                deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
-                roomName: d['addressDisplay']?.toString() ??
-                    (d['installationAddress'] is Map
-                        ? (d['installationAddress']['fullText'] ?? "Phòng khách").toString()
-                        : "Phòng khách"),
-                isOnline: d['isOnline'] == true,
-                positionPercent: pos,
-                batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,
-                motorCurrentA: (props['motor_current'] as num?)?.toDouble() ?? 2.4,
-                acVoltage: (props['ac_voltage'] as num?)?.toDouble() ?? 220.0,
-                isChildLockActive: props['is_child_lock'] == true,
-                isLocked: props['is_locked'] == true,
-                openTimeoutSeconds: openTimeout,
-                closeTimeoutSeconds: closeTimeout,
-                isAutoScheduleActive: autoSchedule,
-                isAccessLimitActive: accessLimit,
-                accessStartTime: accessStart,
-                accessEndTime: accessEnd,
-                accessDays: accessDays,
-                ownerName: (d['ownerName'] ?? (AuthService().currentUser?.fullName ?? 'Chủ sở hữu')).toString(),
-                warrantyUntil: (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().length >= 10
-                    ? (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().substring(0, 10)
-                    : '2028-10-23',
-                warrantyCode: (d['warrantyCode'] ?? 'EW-${hwId.replaceAll('-', '').toUpperCase()}-24M').toString(),
-                subscriptionType: (d['subscriptionType'] ?? 'LIMITED').toString(),
-                subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-23').toString(),
-                subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
-              ));
+              parsed.add(_parseDeviceFromJson(d));
             }
             _devices.clear();
             _devices.addAll(parsed);
@@ -323,6 +270,132 @@ class IoTGatewayClient {
         }
       }
     } catch (_) {}
+  }
+
+  /// Nạp danh sách camera phân trang theo yêu cầu (mỗi lượt 4-6 cái)
+  Future<List<DeviceItem>> fetchCamerasPaged({int limit = 6, int offset = 0, String? token}) async {
+    try {
+      final authToken = token ?? 'austec-customer-token';
+      final res = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/api/devices/my?category=camera&limit=$limit&offset=$offset'),
+        headers: {'Authorization': 'Bearer $authToken'},
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['devices'] is List) {
+          final List list = data['devices'];
+          final List<DeviceItem> parsedList = [];
+          for (var d in list) {
+            final dev = _parseDeviceFromJson(d);
+            parsedList.add(dev);
+            addDevice(dev); // Đồng bộ vào bộ nhớ
+          }
+          return parsedList;
+        }
+      }
+    } catch (e) {
+      debugPrint('[IoTGatewayClient] fetchCamerasPaged error: $e');
+    }
+
+    // Fallback: Lấy từ bộ nhớ thiết bị camera hiện có
+    final allCams = getDevicesByCategory(DeviceCategory.camera);
+    if (offset >= allCams.length) return [];
+    return allCams.skip(offset).take(limit).toList();
+  }
+
+  DeviceItem _parseDeviceFromJson(dynamic d) {
+    final hwId = (d['hardwareId'] ?? '').toString();
+    final name = (d['customName'] ?? d['deviceName'] ?? d['name'] ?? d['modelName'] ?? 'Thiết bị Austec').toString();
+    final modelName = (d['modelName'] ?? d['model_name'] ?? 'Austec Smart Device').toString();
+    final modelCode = (d['modelCode'] ?? d['model_code'] ?? 'DOOR_GERMAN_ALU').toString();
+    final typeStr = (d['deviceType'] ?? '').toString();
+
+    DeviceCategory cat = DeviceCategory.rollerDoor;
+    if (typeStr.contains('Khóa') || hwId.toUpperCase().contains('LOCK')) {
+      cat = DeviceCategory.othersControl;
+    } else if (typeStr.contains('điện') || hwId.toUpperCase().contains('UPS')) {
+      cat = DeviceCategory.energyManage;
+    } else if (typeStr.contains('biến') || hwId.toUpperCase().contains('SENSOR')) {
+      cat = DeviceCategory.environment;
+    } else if (typeStr.contains('Camera') || hwId.toUpperCase().contains('CAM') || modelCode.contains('CAM')) {
+      cat = DeviceCategory.camera;
+    } else if (typeStr.contains('công tắc') || typeStr.contains('ổ cắm') || hwId.toUpperCase().contains('OCAM') || modelCode.contains('SOCKET') || name.toLowerCase().contains('ổ cắm') || name.toLowerCase().contains('công tắc')) {
+      cat = DeviceCategory.lightSwitch;
+    }
+
+    final props = d['currentProperties'] is Map ? Map<String, dynamic>.from(d['currentProperties']) : <String, dynamic>{};
+    final assignedPropsRaw = d['assignedProperties'] is List ? d['assignedProperties'] as List : [];
+    final List<Map<String, dynamic>> assignedProps = [];
+    for (var p in assignedPropsRaw) {
+      if (p is Map) {
+        assignedProps.add(Map<String, dynamic>.from(p));
+      }
+    }
+
+    final doorState = (props['door_state'] ?? 'CLOSED').toString();
+    final int pos = props['position_percent'] is num
+        ? (props['position_percent'] as num).toInt()
+        : (doorState == 'CLOSED' ? 0 : doorState == 'OPEN' ? 100 : 50);
+
+    final int openTimeout = (props['open_timeout'] ?? props['openTimeoutSeconds'] ?? 23) is num
+        ? (props['open_timeout'] ?? props['openTimeoutSeconds'] ?? 23).toInt()
+        : 23;
+    final int closeTimeout = (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20) is num
+        ? (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20).toInt()
+        : 20;
+    final bool autoSchedule = props['is_auto_schedule'] == true || props['auto_schedule'] == true;
+    final bool accessLimit = props['access_limit'] == true || props['is_access_limit'] == true;
+    final String accessStart = (props['access_start'] ?? props['accessStartTime'] ?? '08:00').toString();
+    final String accessEnd = (props['access_end'] ?? props['accessEndTime'] ?? '17:00').toString();
+
+    List<bool>? accessDays;
+    if (props['access_days'] is List) {
+      accessDays = (props['access_days'] as List).map((x) => x == true).toList();
+    }
+
+    final bool isRelayOn = props['is_relay_on'] == true || props['relay_state'] == 'ON' || props['state'] == 'ON';
+
+    return DeviceItem(
+      id: d['id']?.toString() ?? hwId,
+      hardwareId: hwId,
+      name: name,
+      modelName: modelName,
+      modelCode: modelCode,
+      imageUrl: d['imageUrl']?.toString(),
+      category: cat,
+      currentProperties: props,
+      assignedProperties: assignedProps,
+      badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : cat == DeviceCategory.camera ? "AI CAM" : cat == DeviceCategory.lightSwitch ? "CÔNG TẮC" : "SMART",
+      deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
+      roomName: d['addressDisplay']?.toString() ??
+          (d['installationAddress'] is Map
+              ? (d['installationAddress']['fullText'] ?? "Phòng khách").toString()
+              : "Phòng khách"),
+      isOnline: d['isOnline'] == true,
+      positionPercent: pos,
+      batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,
+      motorCurrentA: (props['motor_current'] as num?)?.toDouble() ?? 2.4,
+      acVoltage: (props['ac_voltage'] as num?)?.toDouble() ?? 220.0,
+      isChildLockActive: props['is_child_lock'] == true,
+      isLocked: props['is_locked'] == true,
+      isRelayOn: isRelayOn,
+      openTimeoutSeconds: openTimeout,
+      closeTimeoutSeconds: closeTimeout,
+      isAutoScheduleActive: autoSchedule,
+      isAccessLimitActive: accessLimit,
+      accessStartTime: accessStart,
+      accessEndTime: accessEnd,
+      accessDays: accessDays,
+      ownerName: (d['ownerName'] ?? (AuthService().currentUser?.fullName ?? 'Chủ sở hữu')).toString(),
+      warrantyUntil: (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().length >= 10
+          ? (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().substring(0, 10)
+          : '2028-10-23',
+      warrantyCode: (d['warrantyCode'] ?? 'EW-${hwId.replaceAll('-', '').toUpperCase()}-24M').toString(),
+      subscriptionType: (d['subscriptionType'] ?? 'LIMITED').toString(),
+      subscriptionExpiresAt: (d['subscriptionExpiresAt'] ?? '2028-10-23').toString(),
+      subscriptionStatus: (d['subscriptionStatus'] ?? 'ACTIVE').toString(),
+    );
   }
 
   void clearDevices() {
@@ -340,12 +413,18 @@ class IoTGatewayClient {
     int netLatency = 120;
 
     // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
-    final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
-        : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"
-        : (action == "STOP_DOOR" || action == "STOP" || action == "3") ? "3"
-        : null;
-    if (bleAction != null) {
-      unawaited(BleDeviceControlService().sendDoorAction(hardwareId: hardwareId, actionNumber: bleAction));
+    final isSocket = hardwareId.toUpperCase().startsWith("OCAM") || hardwareId.toUpperCase().contains("SOCKET");
+    if (isSocket) {
+      final sAction = (action == "TURN_ON" || action == "ON" || action == "3") ? "3" : "4";
+      unawaited(BleDeviceControlService().sendSocketAction(hardwareId: hardwareId, actionNumber: sAction));
+    } else {
+      final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
+          : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"
+          : (action == "STOP_DOOR" || action == "STOP" || action == "3") ? "3"
+          : null;
+      if (bleAction != null) {
+        unawaited(BleDeviceControlService().sendDoorAction(hardwareId: hardwareId, actionNumber: bleAction));
+      }
     }
 
     // 2. Kênh Cloud MQTT Gateway: Cập nhật CSDL PostgreSQL & đồng bộ Web Admin qua API
@@ -451,8 +530,32 @@ class IoTGatewayClient {
         if (parameters?["days"] != null) {
           device.accessDays = List<bool>.from(parameters!["days"]);
         }
-      } else if (action == "TOGGLE_RELAY") {
-        device.isRelayOn = !device.isRelayOn;
+      } else if (action == "TOGGLE_RELAY" || action == "TURN_ON" || action == "TURN_OFF") {
+        final bool turnOn = action == "TURN_ON" ? true : (action == "TURN_OFF" ? false : !device.isRelayOn);
+        device.isRelayOn = turnOn;
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
+        device.auditLogs.insert(
+          0,
+          AuditLog(
+            time: nowStr,
+            action: turnOn ? "Bật rơ-le / ổ cắm" : "Tắt rơ-le / ổ cắm",
+            actionCode: turnOn ? 3 : 4,
+            triggeredBy: currentActor,
+            deviceCode: device.hardwareId,
+          ),
+        );
+      } else if (action == "STREAM_START" || action == "TAKE_SNAPSHOT" || action == "STREAM_STOP") {
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
+        device.auditLogs.insert(
+          0,
+          AuditLog(
+            time: nowStr,
+            action: action == "STREAM_START" ? "Kích hoạt Stream Camera" : action == "STREAM_STOP" ? "Dừng Stream Camera" : "Chụp ảnh Snapshot Camera",
+            actionCode: action == "STREAM_STOP" ? 14 : 13,
+            triggeredBy: currentActor,
+            deviceCode: device.hardwareId,
+          ),
+        );
       } else if (action == "TOGGLE_DISCHARGE") {
         device.isDischarging = !device.isDischarging;
       } else if (action == "TOGGLE_LOCK") {
