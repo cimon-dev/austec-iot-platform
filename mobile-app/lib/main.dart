@@ -5,6 +5,7 @@ import 'package:austec_iot_mobile/core/services/auth_service.dart';
 import 'package:austec_iot_mobile/core/services/iot_gateway_client.dart';
 import 'package:austec_iot_mobile/features/devices/devices.dart';
 import 'package:austec_iot_mobile/features/auth/auth.dart';
+import 'package:austec_iot_mobile/features/splash/splash.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +29,22 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
   }
 
   Future<void> _bootstrap() async {
+    final startTime = DateTime.now();
     try {
-      await ApiConfig.loadCustomHost();
-      await AuthService().init();
-      await IoTGatewayClient().loadDevicesFromLocalCache();
+      await Future.wait([
+        ApiConfig.loadCustomHost(),
+        AuthService().init(),
+        IoTGatewayClient().loadDevicesFromLocalCache(),
+      ]);
     } catch (_) {}
+
+    // Ensure a minimum splash screen duration of 1.2s for smooth radar sweep perception
+    final elapsed = DateTime.now().difference(startTime);
+    final remainingDelay = const Duration(milliseconds: 1200) - elapsed;
+    if (remainingDelay > Duration.zero) {
+      await Future.delayed(remainingDelay);
+    }
+
     if (mounted) {
       setState(() => _initialized = true);
     }
@@ -46,31 +58,24 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: AppTheme.background,
-        primaryColor: AppTheme.cyanAccent,
+        primaryColor: AppTheme.textPrimary,
         colorScheme: const ColorScheme.dark(
-          primary: AppTheme.cyanAccent,
-          secondary: AppTheme.blueAccent,
+          primary: AppTheme.textPrimary,
+          secondary: AppTheme.textSecondary,
           surface: AppTheme.surface,
         ),
         useMaterial3: true,
       ),
-      home: !_initialized
-          ? const Scaffold(
-              backgroundColor: AppTheme.background,
-              body: Center(
-                child: SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: AppTheme.cyanAccent,
-                  ),
-                ),
-              ),
-            )
-          : (AuthService().isLoggedIn
-              ? const OrbitalHubScreen()
-              : const LoginScreen()),
+      home: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeIn,
+        switchOutCurve: Curves.easeOut,
+        child: !_initialized
+            ? const AustecSplashScreen(key: ValueKey('splash'))
+            : (AuthService().isLoggedIn
+                ? const OrbitalHubScreen(key: ValueKey('hub'))
+                : const LoginScreen(key: ValueKey('login'))),
+      ),
     );
   }
 }
