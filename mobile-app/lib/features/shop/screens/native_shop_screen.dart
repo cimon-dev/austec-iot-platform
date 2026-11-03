@@ -207,7 +207,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text("Xác Nhận", style: TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold)),
+                  child: const Text("Xác Nhận", style: TextStyle(color: AppTheme.brandBlue, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -356,12 +356,12 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? (isDark ? Colors.white : const Color(0xFF090A0C))
+                            ? AppTheme.brandBlue
                             : cardBg,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
-                              ? (isDark ? Colors.white : const Color(0xFF090A0C))
+                              ? AppTheme.brandBlue
                               : cardBorder,
                         ),
                       ),
@@ -369,7 +369,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                         cat,
                         style: TextStyle(
                           color: isSelected
-                              ? (isDark ? Colors.black : Colors.white)
+                              ? Colors.white
                               : subTextCol,
                           fontSize: 11.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -505,18 +505,18 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       onTap: () => _handleConsult(product),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.transparent,
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: cardBorder),
+                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.chat_bubble_outline_rounded, size: 11, color: textCol),
-                            const SizedBox(width: 3),
-                            Text("Tư vấn", style: TextStyle(color: textCol, fontSize: 9.5, fontWeight: FontWeight.w600)),
+                            Icon(Icons.chat_bubble_outline_rounded, size: 11, color: Color(0xFFF59E0B)),
+                            SizedBox(width: 3),
+                            Text("Tư vấn", style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9.5, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
@@ -526,15 +526,15 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       onTap: () => _openProductDetail(product),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white : const Color(0xFF090A0C),
+                          color: AppTheme.brandBlue,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
+                        child: const Text(
                           "Chi Tiết",
                           style: TextStyle(
-                            color: isDark ? Colors.black : Colors.white,
+                            color: Colors.white,
                             fontSize: 9.5,
                             fontWeight: FontWeight.bold,
                           ),
@@ -661,17 +661,18 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
             const SizedBox(height: 24),
 
-            // Nút bấm Đặt Mua hoặc Tư Vấn CSKH Monochrome
+            // Nút bấm Đặt Mua hoặc Tư Vấn CSKH
             Row(
               children: [
                 Expanded(
                   flex: 3,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
-                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      backgroundColor: AppTheme.brandBlue,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
                     ),
                     icon: const Icon(Icons.shopping_bag_outlined),
                     label: const Text("Đặt Mua Ngay", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -686,8 +687,9 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                   flex: 3,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: textCol,
-                      side: BorderSide(color: cardBorder, width: 1.5),
+                      backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                      foregroundColor: const Color(0xFFF59E0B),
+                      side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),

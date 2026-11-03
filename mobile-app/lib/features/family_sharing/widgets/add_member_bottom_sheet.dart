@@ -406,8 +406,8 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
                 height: 46,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.cyanAccent,
-                    foregroundColor: Colors.black,
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: const Icon(Icons.check, size: 18),

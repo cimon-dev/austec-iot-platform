@@ -1448,56 +1448,60 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  // 1. Cửa cuốn 4 preview buttons: KHÓA, MỞ, DỪNG, ĐÓNG (Chuẩn 44px Row + Expanded chống rớt dòng)
+  // 1. Cửa cuốn 4 preview buttons: KHÓA (Đỏ), MỞ (Xanh lá), DỪNG (Vàng), ĐÓNG (Xanh lam)
   Widget _buildRollerDoorPreviewButtons(DeviceItem device) {
     final isChildLock = device.isChildLockActive;
 
     return Row(
       children: [
-        // 1. Khóa
+        // 1. Khóa an toàn trẻ em - MÀU ĐỎ
         Expanded(
           child: _buildIndustrialDoorButton(
             label: isChildLock ? "Đã khóa" : "Khóa",
             icon: isChildLock ? Icons.lock_rounded : Icons.lock_outline_rounded,
             isActive: isChildLock,
-            activeColor: const Color(0xFFF59E0B),
+            baseColor: const Color(0xFFEF4444),
+            activeColor: const Color(0xFFEF4444),
             onTap: () => _executePreviewAction(device, "TOGGLE_CHILD_LOCK"),
           ),
         ),
         const SizedBox(width: 6),
-        // 2. Mở cửa
+        // 2. Mở cửa - MÀU XANH LÁ
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
             child: _buildIndustrialDoorButton(
               label: "Mở cửa",
               icon: Icons.arrow_upward_rounded,
+              baseColor: const Color(0xFF10B981),
               isDisabled: isChildLock,
               onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "OPEN_DOOR"),
             ),
           ),
         ),
         const SizedBox(width: 6),
-        // 3. Dừng
+        // 3. Dừng - MÀU VÀNG
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
             child: _buildIndustrialDoorButton(
               label: "Dừng",
               icon: Icons.pause_rounded,
+              baseColor: const Color(0xFFF59E0B),
               isDisabled: isChildLock,
               onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "STOP_DOOR"),
             ),
           ),
         ),
         const SizedBox(width: 6),
-        // 4. Đóng cửa
+        // 4. Đóng cửa - MÀU XANH LAM
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
             child: _buildIndustrialDoorButton(
               label: "Đóng cửa",
               icon: Icons.arrow_downward_rounded,
+              baseColor: const Color(0xFF3B82F6),
               isDisabled: isChildLock,
               onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "CLOSE_DOOR"),
             ),
@@ -1514,17 +1518,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     bool isActive = false,
     bool isDisabled = false,
     Color? activeColor,
+    Color? baseColor,
   }) {
     final isDark = AppTheme.isDarkMode;
+    final primaryColor = isActive ? (activeColor ?? baseColor ?? AppTheme.brandBlue) : (baseColor ?? AppTheme.brandBlue);
     final borderColor = isActive
-        ? (activeColor ?? Colors.white)
-        : (isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1));
+        ? primaryColor
+        : primaryColor.withValues(alpha: isDark ? 0.45 : 0.35);
     final bgColor = isActive
-        ? (activeColor ?? Colors.white).withValues(alpha: 0.15)
-        : (isDark ? const Color(0xFF141417) : const Color(0xFFF8FAFC));
-    final textColor = isActive
-        ? (activeColor ?? Colors.white)
-        : (isDark ? Colors.white : const Color(0xFF0F172A));
+        ? primaryColor.withValues(alpha: 0.18)
+        : primaryColor.withValues(alpha: isDark ? 0.08 : 0.06);
 
     return InkWell(
       onTap: (_isProcessing || isDisabled) ? (isDisabled ? onTap : null) : onTap,
@@ -1540,7 +1543,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: textColor, size: 15),
+            Icon(icon, color: primaryColor, size: 15),
             const SizedBox(width: 4),
             Flexible(
               child: Text(
@@ -1548,9 +1551,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: textColor,
+                  color: primaryColor,
                   fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),

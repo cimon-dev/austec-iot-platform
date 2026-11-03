@@ -477,8 +477,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.cyanAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: AppTheme.brandBlue,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
@@ -1265,8 +1265,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.cyanAccent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _runProvisioningPipeline,

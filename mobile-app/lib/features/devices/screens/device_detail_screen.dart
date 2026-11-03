@@ -370,23 +370,26 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // Cụm 3 nút chính Mở - Dừng - Đóng Monochrome
+              // Cụm 3 nút chính Mở (Xanh lá) - Dừng (Vàng) - Đóng (Xanh lam)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildPrimaryActionButton(
                     label: "MỞ CỬA",
                     icon: Icons.arrow_upward_rounded,
+                    color: const Color(0xFF10B981),
                     onTap: () => _triggerAction("OPEN_DOOR"),
                   ),
                   _buildPrimaryActionButton(
                     label: "DỪNG LẠI",
                     icon: Icons.stop_rounded,
+                    color: const Color(0xFFF59E0B),
                     onTap: () => _triggerAction("STOP_DOOR"),
                   ),
                   _buildPrimaryActionButton(
                     label: "ĐÓNG CỬA",
                     icon: Icons.arrow_downward_rounded,
+                    color: const Color(0xFF3B82F6),
                     onTap: () => _triggerAction("CLOSE_DOOR"),
                   ),
                 ],
@@ -434,7 +437,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   ),
                   Switch(
                     value: _device.isChildLockActive,
-                    activeThumbColor: AppTheme.cyanAccent,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppTheme.crimsonDanger,
                     onChanged: (val) => _triggerAction("TOGGLE_CHILD_LOCK"),
                   ),
                 ],
@@ -824,6 +828,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     required String label,
     required IconData icon,
     required VoidCallback onTap,
+    Color color = AppTheme.brandBlue,
   }) {
     return GestureDetector(
       onTap: _isBusy ? null : onTap,
@@ -831,21 +836,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         width: 95,
         height: 75,
         decoration: BoxDecoration(
-          color: const Color(0xFF27272A),
+          color: color.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.cardBorder, width: 1.2),
+          border: Border.all(color: color.withValues(alpha: 0.45), width: 1.2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2)),
+            BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 26),
+            Icon(icon, color: color, size: 26),
             const SizedBox(height: 4),
             Text(
               label,
-              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+              style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ],
         ),

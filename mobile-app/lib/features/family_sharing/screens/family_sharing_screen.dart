@@ -234,7 +234,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         ),
         actions: [
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đã hiểu"),
           ),
@@ -301,7 +301,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.cyanAccent),
+            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.brandBlue),
             tooltip: "Mời thành viên mới",
             onPressed: _openAddMemberModal,
           ),

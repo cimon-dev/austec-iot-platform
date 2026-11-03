@@ -88,8 +88,8 @@ class _WifiPickerSheetState extends State<WifiPickerSheet> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.cyanAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: AppTheme.brandBlue,
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
@@ -239,8 +239,8 @@ class _WifiPickerSheetState extends State<WifiPickerSheet> {
                         const SizedBox(height: 16),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.cyanAccent,
-                            foregroundColor: Colors.black,
+                            backgroundColor: AppTheme.brandBlue,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: _showManualInputDialog,

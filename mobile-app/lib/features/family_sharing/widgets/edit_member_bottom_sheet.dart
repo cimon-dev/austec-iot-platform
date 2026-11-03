@@ -155,8 +155,8 @@ class _EditMemberBottomSheetState extends State<EditMemberBottomSheet> {
             height: 44,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.cyanAccent,
-                foregroundColor: Colors.black,
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: _save,
