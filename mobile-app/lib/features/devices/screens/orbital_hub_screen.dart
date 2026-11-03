@@ -48,6 +48,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   String _timeString = "";
   String _dateString = "";
 
+  // Trạng thái nút chat CSKH kéo thả & vuốt đóng
+  Offset? _chatButtonOffset;
+  bool _isDraggingChat = false;
+  bool _isChatButtonDismissed = false;
+
   StreamSubscription? _deviceUpdateSub;
 
   @override
@@ -149,8 +154,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("Tìm thấy ${found.length} thiết bị phù hợp với '$q'"),
-                    backgroundColor: isDark ? AppTheme.surfaceGlass : Colors.grey[800],
+                    backgroundColor: isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
                     behavior: SnackBarBehavior.floating,
+                    dismissDirection: DismissDirection.horizontal,
+                    duration: const Duration(milliseconds: 2500),
                   ),
                 );
               }
@@ -243,43 +250,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
+    final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: bgCol,
       body: Stack(
         children: [
-          // Nền Cyberpunk Ambient Glow nếu ở Dark Mode
-          if (isDark) ...[
-            Positioned(
-              top: -100,
-              left: -80,
-              child: Container(
-                width: 320,
-                height: 320,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [AppTheme.blueAccent.withValues(alpha: 0.16), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 80,
-              right: -100,
-              child: Container(
-                width: 340,
-                height: 340,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [AppTheme.cyanAccent.withValues(alpha: 0.12), Colors.transparent],
-                  ),
-                ),
-              ),
-            ),
-          ],
-
           SafeArea(
             child: Column(
               children: [
@@ -307,8 +283,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             ),
           ),
 
-          // NÚT CSKH CHAT NỔI (CHỈ HIỂN THỊ TẠI TRANG ĐIỀU KHIỂN)
-          if (_selectedBottomNavIndex == 0) _buildFloatingChatBubble(),
+          // NÚT CSKH CHAT NỔI KÉO THẢ & VÙNG VUỐT ĐÓNG (CHỈ HIỂN THỊ TẠI TRANG ĐIỀU KHIỂN)
+          if (_selectedBottomNavIndex == 0) ...[
+            _buildDismissZone(screenSize),
+            _buildFloatingChatBubble(screenSize, isDark),
+          ],
         ],
       ),
     );
@@ -851,38 +830,135 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     }
   }
 
-  // Floating Chat Bubble CSKH
-  Widget _buildFloatingChatBubble() {
+  // 1. Vùng nhả đáy màn hình để đóng nút chat CSKH (Swipe down to dismiss zone)
+  Widget _buildDismissZone(Size screenSize) {
+    if (!_isDraggingChat || _isChatButtonDismissed) return const SizedBox.shrink();
+
+    final currentOffset = _chatButtonOffset ?? Offset(screenSize.width - 68, screenSize.height - 180);
+    final isOver = currentOffset.dy > screenSize.height - 140;
+
     return Positioned(
-      right: 18,
-      bottom: 80,
-      child: InkWell(
-        onTap: () {
+      bottom: 24,
+      left: screenSize.width / 2 - 75,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 150,
+        height: 48,
+        decoration: BoxDecoration(
+          color: isOver ? const Color(0xFFDC2626).withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isOver ? Colors.white : Colors.white24,
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (isOver ? const Color(0xFFDC2626) : Colors.black).withValues(alpha: 0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.close_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 6),
+            Text(
+              "Thả để đóng",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 2. Nút Chat CSKH Nổi Kéo Thả Tự Do & Hút Mép Màn Hình
+  Widget _buildFloatingChatBubble(Size screenSize, bool isDark) {
+    if (_isChatButtonDismissed) return const SizedBox.shrink();
+
+    final defaultOffset = Offset(screenSize.width - 68, screenSize.height - 180);
+    final currentOffset = _chatButtonOffset ?? defaultOffset;
+    final isOverDismissZone = _isDraggingChat && (currentOffset.dy > screenSize.height - 140);
+
+    return Positioned(
+      left: currentOffset.dx,
+      top: currentOffset.dy,
+      child: GestureDetector(
+        onPanStart: (_) {
+          setState(() => _isDraggingChat = true);
+        },
+        onPanUpdate: (details) {
           setState(() {
-            _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat
+            final newX = currentOffset.dx + details.delta.dx;
+            final newY = currentOffset.dy + details.delta.dy;
+            _chatButtonOffset = Offset(
+              newX.clamp(12.0, screenSize.width - 64),
+              newY.clamp(60.0, screenSize.height - 80),
+            );
           });
         },
-        borderRadius: BorderRadius.circular(30),
-        child: Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            gradient: AppTheme.cyanGradient,
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.cyanAccent.withValues(alpha: 0.45),
-                blurRadius: 14,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
+        onPanEnd: (_) {
+          if (isOverDismissZone) {
+            setState(() {
+              _isChatButtonDismissed = true;
+              _isDraggingChat = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text("Đã ẩn nút CSKH. Bạn có thể mở lại tại tab Tin nhắn."),
+                behavior: SnackBarBehavior.floating,
+                dismissDirection: DismissDirection.horizontal,
+                duration: const Duration(milliseconds: 2500),
+                backgroundColor: isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
               ),
-            ],
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.chat_bubble_rounded,
-              color: Colors.white,
-              size: 26,
+            );
+          } else {
+            // Snap to nearest side edge (left or right)
+            final snapX = (currentOffset.dx + 26 < screenSize.width / 2) ? 16.0 : (screenSize.width - 68);
+            setState(() {
+              _chatButtonOffset = Offset(snapX, currentOffset.dy.clamp(80.0, screenSize.height - 170));
+              _isDraggingChat = false;
+            });
+          }
+        },
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat
+            });
+          },
+          borderRadius: BorderRadius.circular(26),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
+                width: 1.4,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                Icons.support_agent_rounded,
+                color: isDark ? Colors.white : const Color(0xFF0F172A),
+                size: 26,
+              ),
             ),
           ),
         ),
@@ -890,10 +966,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt)
+  // 3. Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt) - Chuẩn Monochrome Industrial
   Widget _buildBottomNavBar(bool isDark) {
-    final bg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
-    final border = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+    final bg = isDark ? const Color(0xFF141417) : Colors.white;
+    final border = isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -924,13 +1000,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
 
   Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
     final isSelected = _selectedBottomNavIndex == index;
-    final activeColor = AppTheme.cyanAccent;
-    final inactiveColor = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final activeTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final inactiveTextColor = isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
 
     return InkWell(
       onTap: () {
         setState(() {
           _selectedBottomNavIndex = index;
+          if (index == 2) {
+            _isChatButtonDismissed = false; // Phục hồi nút chat khi người dùng vào tab Chat
+          }
         });
       },
       borderRadius: BorderRadius.circular(12),
@@ -938,22 +1017,26 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? activeColor.withValues(alpha: 0.15) : Colors.transparent,
+          color: isSelected
+              ? (isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFF0F172A).withValues(alpha: 0.08))
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? activeColor.withValues(alpha: 0.4) : Colors.transparent,
+            color: isSelected
+                ? (isDark ? Colors.white30 : const Color(0xFF0F172A).withValues(alpha: 0.2))
+                : Colors.transparent,
             width: 1,
           ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? activeColor : inactiveColor, size: 20),
+            Icon(icon, color: isSelected ? activeTextColor : inactiveTextColor, size: 20),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? activeColor : inactiveColor,
+                color: isSelected ? activeTextColor : inactiveTextColor,
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
