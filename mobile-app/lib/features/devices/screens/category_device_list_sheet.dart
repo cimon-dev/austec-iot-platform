@@ -213,7 +213,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   setState(() {});
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(ok ? "Đã cập nhật tên thiết bị thành công lên CSDL!" : "Đã cập nhật tên thiết bị."),
+                      content: Text(ok ? "Đã cập nhật tên thiết bị thành công!" : "Đã cập nhật tên thiết bị."),
                       backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
                     ),
                   );
@@ -1418,60 +1418,115 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  // 1. Cửa cuốn 4 preview buttons: KHÓA, MỞ, DỪNG, ĐÓNG (như ảnh 02b1a042-72b5-4938-86b5-a7a5c803018a.jpg)
+  // 1. Cửa cuốn 4 preview buttons: KHÓA, MỞ, DỪNG, ĐÓNG (Chuẩn 44px Row + Expanded chống rớt dòng)
   Widget _buildRollerDoorPreviewButtons(DeviceItem device) {
     final isChildLock = device.isChildLockActive;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // 1. Khóa
-        _buildCompactActionButton(
-          label: AppTheme.t("lock"),
-          icon: isChildLock ? Icons.lock_rounded : Icons.lock_open_rounded,
-          color: isChildLock ? AppTheme.amberWarning : AppTheme.purpleAccent,
-          onTap: () => _executePreviewAction(device, "TOGGLE_CHILD_LOCK"),
-        ),
-        // 2. Mở (Bị mờ và không ấn được khi khóa an toàn)
-        Opacity(
-          opacity: isChildLock ? 0.35 : 1.0,
-          child: _buildCompactActionButton(
-            label: AppTheme.t("open"),
-            icon: Icons.arrow_upward_rounded,
-            color: AppTheme.cyanAccent,
-            isDisabled: isChildLock,
-            onTap: isChildLock
-                ? _showLockedNotice
-                : () => _executePreviewAction(device, "OPEN_DOOR"),
+        Expanded(
+          child: _buildIndustrialDoorButton(
+            label: isChildLock ? "Đã khóa" : "Khóa",
+            icon: isChildLock ? Icons.lock_rounded : Icons.lock_outline_rounded,
+            isActive: isChildLock,
+            activeColor: const Color(0xFFF59E0B),
+            onTap: () => _executePreviewAction(device, "TOGGLE_CHILD_LOCK"),
           ),
         ),
-        // 3. Dừng (Bị mờ và không ấn được khi khóa an toàn)
-        Opacity(
-          opacity: isChildLock ? 0.35 : 1.0,
-          child: _buildCompactActionButton(
-            label: AppTheme.t("stop"),
-            icon: Icons.stop_rounded,
-            color: AppTheme.amberWarning,
-            isDisabled: isChildLock,
-            onTap: isChildLock
-                ? _showLockedNotice
-                : () => _executePreviewAction(device, "STOP_DOOR"),
+        const SizedBox(width: 6),
+        // 2. Mở cửa
+        Expanded(
+          child: Opacity(
+            opacity: isChildLock ? 0.35 : 1.0,
+            child: _buildIndustrialDoorButton(
+              label: "Mở cửa",
+              icon: Icons.arrow_upward_rounded,
+              isDisabled: isChildLock,
+              onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "OPEN_DOOR"),
+            ),
           ),
         ),
-        // 4. Đóng (Bị mờ và không ấn được khi khóa an toàn)
-        Opacity(
-          opacity: isChildLock ? 0.35 : 1.0,
-          child: _buildCompactActionButton(
-            label: AppTheme.t("close"),
-            icon: Icons.arrow_downward_rounded,
-            color: Colors.blueGrey,
-            isDisabled: isChildLock,
-            onTap: isChildLock
-                ? _showLockedNotice
-                : () => _executePreviewAction(device, "CLOSE_DOOR"),
+        const SizedBox(width: 6),
+        // 3. Dừng
+        Expanded(
+          child: Opacity(
+            opacity: isChildLock ? 0.35 : 1.0,
+            child: _buildIndustrialDoorButton(
+              label: "Dừng",
+              icon: Icons.pause_rounded,
+              isDisabled: isChildLock,
+              onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "STOP_DOOR"),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        // 4. Đóng cửa
+        Expanded(
+          child: Opacity(
+            opacity: isChildLock ? 0.35 : 1.0,
+            child: _buildIndustrialDoorButton(
+              label: "Đóng cửa",
+              icon: Icons.arrow_downward_rounded,
+              isDisabled: isChildLock,
+              onTap: isChildLock ? _showLockedNotice : () => _executePreviewAction(device, "CLOSE_DOOR"),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildIndustrialDoorButton({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool isActive = false,
+    bool isDisabled = false,
+    Color? activeColor,
+  }) {
+    final isDark = AppTheme.isDarkMode;
+    final borderColor = isActive
+        ? (activeColor ?? Colors.white)
+        : (isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1));
+    final bgColor = isActive
+        ? (activeColor ?? Colors.white).withValues(alpha: 0.15)
+        : (isDark ? const Color(0xFF141417) : const Color(0xFFF8FAFC));
+    final textColor = isActive
+        ? (activeColor ?? Colors.white)
+        : (isDark ? Colors.white : const Color(0xFF0F172A));
+
+    return InkWell(
+      onTap: (_isProcessing || isDisabled) ? (isDisabled ? onTap : null) : onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1.1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: textColor, size: 15),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

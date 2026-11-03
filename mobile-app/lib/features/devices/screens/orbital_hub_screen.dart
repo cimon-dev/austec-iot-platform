@@ -339,8 +339,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
         // 2. NỘI DUNG TRANG ĐIỀU KHIỂN
         Column(
           children: [
-            // HERO BANNER TÍCH HỢP (assets/header.png): Hiển thị trực tiếp Lời chào, Vị trí/Nhiệt độ, Thời gian và Thanh công cụ
-            _buildControlHeroHeader(isDark),
+            // 1. PURE HERO BANNER: Ảnh ngôi nhà quảng bá độc lập, không bị chữ hay nút đè lên
+            _buildPureHeroBanner(isDark),
+
+            // 2. THẺ THÔNG TIN NGƯỜI DÙNG & CÔNG CỤ ĐỘC LẬP BÊN DƯỚI
+            _buildUserProfileAndControlCard(isDark),
 
             // KHÔNG GIAN BỐ CỤC CHÍNH (CỐ ĐỊNH NHÀ CỦA TÔI & CÁC DANH MỤC)
             Expanded(
@@ -352,262 +355,111 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // Hero Header trên ảnh header.png: Hiển thị Avatar, Lời chào, Thời gian, Nút công cụ trực tiếp trên ảnh
-  Widget _buildControlHeroHeader(bool isDark) {
+  // 1. Ảnh quảng bá độc lập (Pure Hero Banner) ở trên cùng: Hiển thị trọn vẹn, sắc nét, không bị chữ đè lên
+  Widget _buildPureHeroBanner(bool isDark) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      height: 125,
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1),
+          width: 1.0,
+        ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.cyanAccent.withValues(alpha: 0.2),
-            blurRadius: 14,
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+            blurRadius: 10,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(17),
-        child: Stack(
-          children: [
-            // 1. Ảnh nền ngôi nhà thông minh header.png
-            Positioned.fill(
-              child: Image.asset(
-                "assets/header.png",
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+        borderRadius: BorderRadius.circular(13),
+        child: Image.asset(
+          "assets/header.png",
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: isDark ? const Color(0xFF141417) : const Color(0xFFE2E8F0),
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-            // 2. Lớp phủ Gradient tối để tương phản chữ và icon
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.black.withValues(alpha: 0.42),
-                      Colors.black.withValues(alpha: 0.8),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              ),
-            ),
+  // 2. Thẻ thông tin người dùng & Công cụ (User Profile & Control Card) nằm riêng biệt bên dưới
+  Widget _buildUserProfileAndControlCard(bool isDark) {
+    final user = AuthService().currentUser;
+    final userName = user?.fullName ?? "Nguyễn Văn An";
+    final userProvince = user?.province ?? "Hà Nội";
+    final cardBorder = isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1);
+    final cardBg = isDark ? const Color(0xFF141417) : Colors.white;
+    final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-            // 3. Nội dung hiển thị trực tiếp trên hình ảnh
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cardBorder, width: 1.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Hàng 1: Avatar + Tên / Vị trí & Đồng hồ thời gian thực
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Avatar & Lời chào
+              Row(
                 children: [
-                  // Hàng 1: Avatar, Lời chào, Vị trí/Nhiệt độ & Đồng hồ thời gian thực
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Avatar & Lời chào
-                      Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: AppTheme.cyanGradient,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.cyanAccent.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                            child: const Icon(Icons.person, color: Colors.white, size: 22),
-                          ),
-                          const SizedBox(width: 10),
-                          Builder(
-                            builder: (context) {
-                              final user = AuthService().currentUser;
-                              final userName = user?.fullName ?? "Nguyễn Văn An";
-                              final userProvince = user?.province ?? "Hà Nội";
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "${AppTheme.t("welcome")}, $userName",
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.bold,
-                                      shadows: [
-                                        Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 12),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        "$userProvince • 30°C • Bình thường",
-                                        style: const TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 10.5,
-                                          shadows: [
-                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-
-                      // Đồng hồ thời gian thực
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.65),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              _timeString,
-                              style: const TextStyle(
-                                color: AppTheme.cyanAccent,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: "monospace",
-                              ),
-                            ),
-                            Text(
-                              _dateString,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 8.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
+                      border: Border.all(color: isDark ? Colors.white24 : Colors.black12, width: 1.0),
+                    ),
+                    child: Icon(Icons.person, color: textCol, size: 20),
                   ),
-
-                  const SizedBox(height: 8),
-                  Container(height: 1, color: Colors.white.withValues(alpha: 0.15)),
-                  const SizedBox(height: 6),
-
-                  // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nút Chuyển Đổi Dark / Light Mode
-                      InkWell(
-                        onTap: _toggleTheme,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded, size: 14, color: isDark ? AppTheme.cyanAccent : Colors.orange),
-                              const SizedBox(width: 4),
-                              Text(
-                                isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
-                                style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
+                      Text(
+                        "${AppTheme.t("welcome")}, $userName",
+                        style: TextStyle(
+                          color: textCol,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-
-                      // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
-                      InkWell(
-                        onTap: _toggleLanguage,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.5)),
-                          ),
-                          child: Row(
-                            children: [
-                              Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 12)),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppTheme.currentLang == "vi" ? "VI" : "EN",
-                                style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.search, size: 19, color: Colors.white),
-                            tooltip: AppTheme.t("search_device"),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                            onPressed: _openSearchDialog,
-                          ),
+                          Icon(Icons.location_on_outlined, color: subTextCol, size: 12),
                           const SizedBox(width: 2),
-                          IconButton(
-                            icon: const Icon(Icons.notifications_none_rounded, size: 19, color: AppTheme.cyanAccent),
-                            tooltip: AppTheme.t("notifications"),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
-                            onPressed: _openNotificationCenter,
-                          ),
-                          const SizedBox(width: 4),
-                          ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.cyanAccent,
-                              foregroundColor: Colors.black,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              minimumSize: const Size(0, 28),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          Text(
+                            "$userProvince • 30°C",
+                            style: TextStyle(
+                              color: subTextCol,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
                             ),
-                            icon: const Icon(Icons.add, size: 14),
-                            label: Text(
-                              AppTheme.t("add_device"),
-                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
-                            ),
-                            onPressed: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                              );
-                              await _gateway.fetchDevicesFromBackend();
-                              if (mounted) setState(() {});
-                            },
                           ),
                         ],
                       ),
@@ -615,9 +467,146 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
+
+              // Đồng hồ thời gian thực
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black.withValues(alpha: 0.5) : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: cardBorder),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _timeString,
+                      style: TextStyle(
+                        color: textCol,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: "monospace",
+                      ),
+                    ),
+                    Text(
+                      _dateString,
+                      style: TextStyle(
+                        color: subTextCol,
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+          Divider(color: cardBorder, height: 1),
+          const SizedBox(height: 8),
+
+          // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Nút Chuyển Đổi Dark / Light Mode
+              InkWell(
+                onTap: _toggleTheme,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        size: 13,
+                        color: isDark ? Colors.white : Colors.amber[800],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
+                        style: TextStyle(color: textCol, fontSize: 10.5, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
+              InkWell(
+                onTap: _toggleLanguage,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 11)),
+                      const SizedBox(width: 4),
+                      Text(
+                        AppTheme.currentLang == "vi" ? "VI" : "EN",
+                        style: TextStyle(color: textCol, fontSize: 10.5, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.search, size: 18, color: textCol),
+                    tooltip: AppTheme.t("search_device"),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: _openSearchDialog,
+                  ),
+                  const SizedBox(width: 2),
+                  IconButton(
+                    icon: Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
+                    tooltip: AppTheme.t("notifications"),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: _openNotificationCenter,
+                  ),
+                  const SizedBox(width: 4),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: const Size(0, 26),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.add, size: 13),
+                    label: Text(
+                      AppTheme.t("add_device"),
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                      );
+                      await _gateway.fetchDevicesFromBackend();
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
