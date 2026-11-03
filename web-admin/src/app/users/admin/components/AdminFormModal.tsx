@@ -180,7 +180,9 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-xs transition-all cursor-pointer"
+              className={`px-4 py-1.5 rounded-lg text-white font-semibold shadow-xs transition-all cursor-pointer ${
+                editingAdmin ? "bg-amber-600 hover:bg-amber-500" : "bg-blue-600 hover:bg-blue-500"
+              }`}
             >
               {editingAdmin ? "Lưu Thay Đổi" : "Tạo Cán Bộ"}
             </button>

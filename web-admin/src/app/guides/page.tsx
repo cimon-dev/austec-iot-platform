@@ -138,7 +138,7 @@ export default function InstallationGuidesPage() {
           <button
             type="button"
             onClick={handleOpenEdit}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer self-start md:self-auto shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-600 dark:text-amber-400 text-xs font-semibold rounded-lg border border-amber-200 dark:border-amber-800/80 transition-all cursor-pointer self-start md:self-auto shadow-xs"
           >
             <Edit3 className="w-3.5 h-3.5" />
             <span>Chỉnh sửa hướng dẫn</span>
@@ -445,7 +445,7 @@ export default function InstallationGuidesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-lg shadow-md shadow-emerald-500/20 cursor-pointer"
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   Lưu Thay Đổi
                 </button>

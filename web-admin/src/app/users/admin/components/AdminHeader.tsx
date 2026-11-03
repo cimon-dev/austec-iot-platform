@@ -21,7 +21,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({ canCreate, onOpenCreat
         <button
           type="button"
           onClick={onOpenCreate}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white dark:text-slate-900 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 shadow-xs transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-xs transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Thêm cán bộ mới</span>

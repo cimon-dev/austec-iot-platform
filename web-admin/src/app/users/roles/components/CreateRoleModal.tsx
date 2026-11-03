@@ -62,7 +62,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold shadow-xs transition-all cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-xs transition-all cursor-pointer"
             >
               Tạo Vai Trò
             </button>

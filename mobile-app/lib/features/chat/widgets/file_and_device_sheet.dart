@@ -164,11 +164,7 @@ class _FileAndDeviceSheetState extends State<FileAndDeviceSheet> {
                 ),
               ],
             ),
-            const Text(
-              "Gửi thông số thiết bị vào cuộc trò chuyện để kỹ thuật viên nắm rõ",
-              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Expanded(
               child: ListView.separated(
                 itemCount: _systemDevices.length,
@@ -355,7 +351,7 @@ class _FileAndDeviceSheetState extends State<FileAndDeviceSheet> {
                       children: [
                         Text("Tài liệu / Tệp tin", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                         SizedBox(height: 2),
-                        Text("Gửi file PDF, Word, Excel, ZIP từ điện thoại", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                        Text("PDF, Word, Excel, ZIP...", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                       ],
                     ),
                   ),
@@ -395,7 +391,7 @@ class _FileAndDeviceSheetState extends State<FileAndDeviceSheet> {
                       children: [
                         Text("Thông tin thiết bị tư vấn", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
                         SizedBox(height: 2),
-                        Text("Hỏi đáp thông số kỹ thuật thiết bị đang có hoặc cần lắp mới", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                        Text("Chia sẻ thông số kỹ thuật thiết bị", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                       ],
                     ),
                   ),

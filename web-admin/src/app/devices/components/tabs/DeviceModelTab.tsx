@@ -597,7 +597,7 @@ export function DeviceModelTab({
               setPropertySearchQuery("");
               setIsCreateOpen(true);
             }}
-            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Thêm mẫu mới</span>
@@ -760,7 +760,7 @@ export function DeviceModelTab({
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(m)}
-                          className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
                           title="Chỉnh sửa & Gán thuộc tính"
                         >
                           <Edit className="w-3 h-3" />
@@ -771,7 +771,7 @@ export function DeviceModelTab({
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(m)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1 rounded text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
                           title="Xóa khuôn mẫu"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -1077,7 +1077,7 @@ export function DeviceModelTab({
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Lưu khuôn mẫu & Thuộc tính</span>
@@ -1374,7 +1374,7 @@ export function DeviceModelTab({
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Cập nhật khuôn mẫu & Thuộc tính</span>

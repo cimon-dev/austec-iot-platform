@@ -185,7 +185,7 @@ export const StoreProductTable: React.FC<StoreProductTableProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenEditModal(prod)}
-                        className="p-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                        className="p-1 rounded text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/60 cursor-pointer transition-colors"
                         title="Chỉnh sửa sản phẩm"
                       >
                         <Edit className="w-3.5 h-3.5" />
@@ -193,7 +193,7 @@ export const StoreProductTable: React.FC<StoreProductTableProps> = ({
                       <button
                         type="button"
                         onClick={() => onDeleteProduct({ id: prod.id, name: prod.name })}
-                        className="p-1 rounded text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                        className="p-1 rounded text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer transition-colors"
                         title="Xóa sản phẩm"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

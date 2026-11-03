@@ -187,7 +187,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({
                             <button
                               type="button"
                               onClick={() => onEdit(admin)}
-                              className="p-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                              className="p-1 rounded text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/60 cursor-pointer transition-colors"
                               title="Sửa thông tin"
                             >
                               <Edit className="w-3.5 h-3.5" />
@@ -197,7 +197,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({
                             <button
                               type="button"
                               onClick={() => onDelete(admin)}
-                              className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                              className="p-1 rounded text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer transition-colors"
                               title="Xóa cán bộ"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

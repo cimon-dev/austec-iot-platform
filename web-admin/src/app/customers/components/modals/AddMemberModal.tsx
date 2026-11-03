@@ -207,7 +207,7 @@ export function AddMemberModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-semibold shadow-xs cursor-pointer"
+              className="px-4 py-1.5 rounded bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-xs cursor-pointer"
             >
               Cấp Quyền & Lưu
             </button>

@@ -187,7 +187,7 @@ export function EditCustomerModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-semibold shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? (
                   <>

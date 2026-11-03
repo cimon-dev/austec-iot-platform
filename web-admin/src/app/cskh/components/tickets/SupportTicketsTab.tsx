@@ -90,7 +90,7 @@ export const SupportTicketsTab: React.FC<SupportTicketsTabProps> = ({
           <button
             type="button"
             onClick={onOpenCreateModal}
-            className="px-2.5 py-1.5 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+            className="px-2.5 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Tạo Phiếu Mới</span>
@@ -203,8 +203,8 @@ export const SupportTicketsTab: React.FC<SupportTicketsTabProps> = ({
                           }}
                           className={`text-[11px] px-2 py-1 rounded-md border font-semibold cursor-pointer ${
                             isSelected
-                              ? "bg-cyan-600 text-white border-cyan-600"
-                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 border-slate-200 dark:border-slate-700"
+                              ? "bg-blue-600 text-white border-blue-600"
+                              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border-slate-200 dark:border-slate-700"
                           }`}
                         >
                           {isSelected ? "Đang xem" : "Xem phiếu ➔"}
@@ -306,7 +306,7 @@ export const SupportTicketsTab: React.FC<SupportTicketsTabProps> = ({
               />
               <button
                 type="submit"
-                className="w-full py-1.5 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer"
+                className="w-full py-1.5 px-3 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-xs cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Gửi Phản Hồi & Hoàn Tất Phiếu</span>

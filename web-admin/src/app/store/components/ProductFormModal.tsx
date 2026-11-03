@@ -233,7 +233,9 @@ export function ProductFormModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white font-semibold shadow-xs cursor-pointer"
+              className={`px-4 py-1.5 rounded text-white font-semibold shadow-xs cursor-pointer ${
+                modalMode === "CREATE" ? "bg-blue-600 hover:bg-blue-500" : "bg-amber-600 hover:bg-amber-500"
+              }`}
             >
               {modalMode === "CREATE" ? "Tạo Sản Phẩm" : "Lưu Thay Đổi"}
             </button>

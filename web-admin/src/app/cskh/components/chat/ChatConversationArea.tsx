@@ -154,7 +154,7 @@ export const ChatConversationArea: React.FC<ChatConversationAreaProps> = ({
         <button
           type="button"
           onClick={onSendReply}
-          className="px-3.5 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
+          className="px-3.5 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1 shadow-xs cursor-pointer"
         >
           <Send className="w-3.5 h-3.5" />
           <span>Gửi</span>

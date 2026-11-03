@@ -19,7 +19,7 @@ export const StoreHeader: React.FC<StoreHeaderProps> = ({ onOpenCreateModal }) =
       <button
         type="button"
         onClick={onOpenCreateModal}
-        className="px-3.5 py-1.5 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-semibold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+        className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
       >
         <Plus className="w-3.5 h-3.5" />
         <span>Thêm sản phẩm mới</span>

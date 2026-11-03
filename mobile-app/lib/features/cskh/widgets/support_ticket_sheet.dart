@@ -105,7 +105,7 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.assignment, color: AppTheme.cyanAccent, size: 20),
+                    Icon(Icons.assignment, color: AppTheme.brandBlue, size: 20),
                     SizedBox(width: 8),
                     Text(
                       "GỬI PHIẾU YÊU CẦU HỖ TRỢ",
@@ -119,15 +119,10 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            const Text(
-              "Nếu bạn không tiện chat trực tuyến, hãy gửi form yêu cầu này. Đội ngũ kỹ thuật CSKH sẽ xử lý và liên hệ lại cho bạn.",
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, height: 1.4),
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Dropdown: Loại yêu cầu (Combobox)
-            const Text("LOẠI YÊU CẦU HỖ TRỢ (COMBOBOX)", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+            // Dropdown: Loại yêu cầu
+            const Text("LOẠI YÊU CẦU HỖ TRỢ", style: TextStyle(color: AppTheme.brandBlue, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -154,7 +149,7 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
             const SizedBox(height: 14),
 
             // Textfield: Mô tả
-            const Text("MÔ TẢ CHI TIẾT SỰ CỐ / YÊU CẦU *", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+            const Text("MÔ TẢ CHI TIẾT SỰ CỐ / YÊU CẦU *", style: TextStyle(color: AppTheme.brandBlue, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             TextField(
               controller: _descController,
@@ -171,8 +166,8 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Kênh nhận phản hồi (Mặc định: Thông báo App PUSH)
-            const Text("KÊNH PHẢN HỒI MONG MUỐN (MẶC ĐỊNH: THÔNG BÁO APP)", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+            // Kênh nhận phản hồi
+            const Text("KÊNH PHẢN HỒI MONG MUỐN", style: TextStyle(color: AppTheme.brandBlue, fontSize: 10, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -191,13 +186,13 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
               height: 44,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.cyanAccent,
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _isSubmitting ? null : _submitRequest,
                 child: _isSubmitting
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text("GỬI PHIẾU HỖ TRỢ NGAY", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               ),
             ),
@@ -215,13 +210,13 @@ class _SupportTicketFormSheetState extends State<SupportTicketFormSheet> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.cyanAccent.withValues(alpha: 0.15) : AppTheme.surface,
+            color: isSelected ? AppTheme.brandBlue.withValues(alpha: 0.15) : AppTheme.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? AppTheme.cyanAccent : AppTheme.cardBorder),
+            border: Border.all(color: isSelected ? AppTheme.brandBlue : AppTheme.cardBorder),
           ),
           child: Column(
             children: [
-              Icon(icon, color: isSelected ? AppTheme.cyanAccent : AppTheme.textMuted, size: 16),
+              Icon(icon, color: isSelected ? AppTheme.brandBlue : AppTheme.textMuted, size: 16),
               const SizedBox(height: 4),
               Text(
                 title,

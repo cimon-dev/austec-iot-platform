@@ -112,7 +112,7 @@ export const RolePermissionsMatrix: React.FC<RolePermissionsMatrixProps> = ({
               type="button"
               onClick={onSaveRoles}
               disabled={isSaving}
-              className="flex items-center gap-1 px-3 py-1 rounded text-[11px] font-bold text-white dark:text-slate-900 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 shadow-xs cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-1 px-3 py-1 rounded text-[11px] font-bold text-white bg-amber-600 hover:bg-amber-500 shadow-xs cursor-pointer disabled:opacity-50"
             >
               <Save className="w-3 h-3" />
               <span>{isSaving ? "Đang lưu..." : "Lưu Thay Đổi"}</span>

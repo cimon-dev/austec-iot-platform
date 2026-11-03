@@ -68,7 +68,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
             <button
               type="button"
               onClick={onOpenCreate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-semibold shadow-xs cursor-pointer transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold shadow-xs cursor-pointer transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Thêm vai trò</span>
@@ -166,7 +166,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
                     <button
                       type="button"
                       onClick={(e) => handleStartEdit(role, e)}
-                      className="p-1 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer transition-colors"
+                      className="p-1 rounded text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 cursor-pointer transition-colors"
                       title="Đổi tên vai trò"
                     >
                       <Edit3 className="w-3.5 h-3.5" />

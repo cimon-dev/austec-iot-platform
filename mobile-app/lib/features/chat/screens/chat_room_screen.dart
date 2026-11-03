@@ -604,18 +604,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ),
           const SizedBox(width: 6),
 
-          // Nút Gửi Monochrome
+          // Nút Gửi Tin Nhắn (Brand Blue)
           InkWell(
             onTap: _handleSendMessage,
             borderRadius: BorderRadius.circular(20),
             child: Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white : const Color(0xFF090A0C),
+              decoration: const BoxDecoration(
+                color: AppTheme.brandBlue,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.send_rounded, color: isDark ? Colors.black : Colors.white, size: 18),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
             ),
           ),
         ],

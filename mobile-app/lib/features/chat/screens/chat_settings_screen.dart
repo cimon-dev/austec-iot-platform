@@ -309,8 +309,8 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
                             subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5)),
                             trailing: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.cyanAccent,
-                                foregroundColor: Colors.black,
+                                backgroundColor: AppTheme.brandBlue,
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               ),
                               onPressed: () async {
@@ -392,7 +392,7 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
             child: const Text("Hủy", style: TextStyle(color: Colors.white60)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text("Đồng ý", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -566,7 +566,7 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
         _buildActionItem(
           icon: _isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
           label: _isPinned ? "Đã ghim" : "Ghim chat",
-          color: _isPinned ? AppTheme.cyanAccent : null,
+          color: _isPinned ? AppTheme.brandBlue : null,
           onTap: () => setState(() => _isPinned = !_isPinned),
         ),
         if (_conversation.isGroup)
@@ -621,7 +621,7 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
         children: [
           // Mục Ảnh & Video
           ListTile(
-            leading: const Icon(Icons.image_outlined, color: AppTheme.cyanAccent, size: 22),
+            leading: const Icon(Icons.image_outlined, color: AppTheme.brandBlue, size: 22),
             title: const Text("Ảnh & Video đã gửi", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -771,11 +771,11 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.cyanAccent.withValues(alpha: 0.2),
+                                  color: AppTheme.brandBlue.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                                  border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.5)),
                                 ),
-                                child: const Text("Quản trị viên", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+                                child: const Text("Quản trị viên", style: TextStyle(color: AppTheme.brandBlue, fontSize: 9, fontWeight: FontWeight.bold)),
                               ),
                           ],
                         ),
@@ -806,7 +806,7 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
                           value: 'toggle_role',
                           child: Row(
                             children: [
-                              Icon(isAdmin ? Icons.remove_moderator_rounded : Icons.admin_panel_settings_rounded, color: AppTheme.cyanAccent, size: 18),
+                              Icon(isAdmin ? Icons.remove_moderator_rounded : Icons.admin_panel_settings_rounded, color: AppTheme.brandBlue, size: 18),
                               const SizedBox(width: 8),
                               Text(isAdmin ? "Hạ quyền thành viên" : "Bổ nhiệm Quản trị viên", style: const TextStyle(color: Colors.white, fontSize: 12)),
                             ],

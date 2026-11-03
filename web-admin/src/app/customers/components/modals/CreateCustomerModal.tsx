@@ -169,7 +169,7 @@ export function CreateCustomerModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
+              className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               {isSubmitting ? "Đang tạo..." : "Tạo Khách Hàng"}
             </button>

@@ -421,7 +421,7 @@ export function DeviceListTab({
           <button
             type="button"
             onClick={onOpenCreateModal}
-            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Thêm thiết bị mới</span>
@@ -759,7 +759,7 @@ export function DeviceListTab({
                                   e.stopPropagation();
                                   setEditingDevice(d);
                                 }}
-                                className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 cursor-pointer transition-colors"
+                                className="p-1 rounded-md bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 cursor-pointer transition-colors"
                                 title="Sửa thông tin thiết bị"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
@@ -1176,7 +1176,7 @@ export function DeviceListTab({
                   <button
                     type="button"
                     onClick={() => setEditingDevice(selectedDevice)}
-                    className="px-3 py-1.5 rounded bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                    className="px-3 py-1.5 rounded bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                     <span>Sửa Thông Tin</span>

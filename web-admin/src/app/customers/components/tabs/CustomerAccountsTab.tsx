@@ -170,7 +170,7 @@ export function CustomerAccountsTab({
             <button
               type="button"
               onClick={onOpenAddModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-xs transition-all cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>Thêm tài khoản mới</span>
@@ -286,7 +286,7 @@ export function CustomerAccountsTab({
                                 e.stopPropagation();
                                 onEditCustomer?.(cust);
                               }}
-                              className="p-1 rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer transition-colors"
+                              className="p-1 rounded-md bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/80 cursor-pointer transition-colors"
                               title="Chỉnh sửa thông tin khách hàng"
                             >
                               <Edit3 className="w-3.5 h-3.5" />

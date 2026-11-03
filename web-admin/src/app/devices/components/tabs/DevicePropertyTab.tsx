@@ -321,7 +321,7 @@ export function DevicePropertyTab({
           <button
             type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Thêm thuộc tính</span>
@@ -405,7 +405,7 @@ export function DevicePropertyTab({
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(p)}
-                          className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1 rounded text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors cursor-pointer"
                           title="Chỉnh sửa"
                         >
                           <Edit className="w-3.5 h-3.5" />
@@ -415,7 +415,7 @@ export function DevicePropertyTab({
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(p)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1 rounded text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors cursor-pointer"
                           title="Xóa thuộc tính"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -560,7 +560,7 @@ export function DevicePropertyTab({
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Lưu thuộc tính</span>
@@ -680,7 +680,7 @@ export function DevicePropertyTab({
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Cập nhật</span>

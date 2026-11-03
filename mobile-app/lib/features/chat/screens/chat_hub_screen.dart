@@ -166,8 +166,8 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                             subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: TextStyle(color: subTextCol, fontSize: 10.5)),
                             trailing: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
-                                foregroundColor: isDark ? Colors.black : Colors.white,
+                                backgroundColor: AppTheme.brandBlue,
+                                foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               ),
                               onPressed: () {
@@ -319,7 +319,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               trailing: IconButton(
                                 icon: Icon(
                                   isAdded ? Icons.check_circle : Icons.add_circle_outline,
-                                  color: textCol,
+                                  color: isAdded ? AppTheme.brandBlue : textCol,
                                   size: 20,
                                 ),
                                 onPressed: () {
@@ -348,8 +348,8 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
-                  foregroundColor: isDark ? Colors.black : Colors.white,
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
                   final title = titleCtrl.text.trim();
@@ -431,7 +431,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                 style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               Text(
-                                "Hỗ trợ kỹ thuật 1-1, chat người dùng & nhóm riêng",
+                                "Hỗ trợ kỹ thuật & nhóm trò chuyện",
                                 style: TextStyle(color: subTextCol, fontSize: 11),
                               ),
                             ],
@@ -449,7 +449,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1 (MONOCHROME)
+                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1
                       Row(
                         children: [
                           Expanded(
@@ -459,16 +459,15 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                 decoration: BoxDecoration(
-                                  color: cardBg,
+                                  color: AppTheme.brandBlue,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: cardBorder),
                                 ),
-                                child: Row(
+                                child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.person_add_rounded, color: textCol, size: 16),
-                                    const SizedBox(width: 6),
-                                    Text("Nhắn tin mới", style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Icon(Icons.person_add_rounded, color: Colors.white, size: 16),
+                                    SizedBox(width: 6),
+                                    Text("Nhắn tin mới", style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -482,16 +481,16 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                 decoration: BoxDecoration(
-                                  color: cardBg,
+                                  color: AppTheme.brandBlue.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: cardBorder),
+                                  border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.3)),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.group_add_rounded, color: textCol, size: 16),
+                                    const Icon(Icons.group_add_rounded, color: AppTheme.brandBlue, size: 16),
                                     const SizedBox(width: 6),
-                                    Text("Tạo nhóm mới", style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Text("Tạo nhóm mới", style: TextStyle(color: isDark ? const Color(0xFF60A5FA) : AppTheme.brandBlue, fontSize: 11.5, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -532,10 +531,10 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                             height: 44,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-                              border: Border.all(color: cardBorder),
+                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                             ),
-                            child: Icon(Icons.support_agent_rounded, color: textCol, size: 24),
+                            child: const Icon(Icons.support_agent_rounded, color: Color(0xFFF59E0B), size: 24),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -552,10 +551,11 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                       decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                                       ),
-                                      child: Text("24/7", style: TextStyle(color: textCol, fontSize: 8.5, fontWeight: FontWeight.bold)),
+                                      child: const Text("24/7", style: TextStyle(color: Color(0xFFF59E0B), fontSize: 8.5, fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),

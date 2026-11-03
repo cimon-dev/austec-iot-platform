@@ -334,7 +334,7 @@ export function CreateDeviceModal({
             <button
               type="submit"
               disabled={isSubmitting || isDuplicateHwId || !form.hardwareId.trim() || !form.customName.trim()}
-              className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
             >
               {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Lưu Vào CSDL</span>
