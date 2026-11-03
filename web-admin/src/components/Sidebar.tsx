@@ -60,7 +60,6 @@ function SidebarNavigation({
     { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/devices?tab=import" },
     { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/devices?tab=list" },
     { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/devices/firmware" },
-    { id: "pairing", label: language === "vi" ? "Lab ghép nối ESP32" : "Hardware Lab & Test", href: "/devices/pairing-lab" },
   ];
 
   const userSubmodules = [

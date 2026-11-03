@@ -288,15 +288,11 @@ export function DeviceImportTab({
   return (
     <div className="h-full overflow-y-auto pr-1 space-y-3">
       <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-2.5">
           <div>
-            <h2 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4 text-green-500" />
-              Nhập Kho Hàng Loạt Bằng Excel (100% CSDL PostgreSQL)
-            </h2>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
-              Tự động kiểm tra cú pháp, phát hiện trùng lặp Hardware ID trước khi lưu vào CSDL.
-            </p>
+            <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              Nhập kho Excel & Tem QR
+            </h1>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">

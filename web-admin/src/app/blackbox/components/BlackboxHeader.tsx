@@ -18,18 +18,10 @@ export const BlackboxHeader: React.FC<BlackboxHeaderProps> = ({
 }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
-      <div className="flex items-center gap-2.5">
-        <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
-          <ShieldAlert className="w-4 h-4" />
-        </div>
-        <div>
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <span>{language === "vi" ? "Hộp Đen Kiểm Toán Bất Biến (Blackbox)" : "Blackbox Audit"}</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 font-bold">
-              SHA-256
-            </span>
-          </h1>
-        </div>
+      <div>
+        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+          <span>{language === "vi" ? "Hộp đen kiểm toán" : "Blackbox Audit"}</span>
+        </h1>
       </div>
 
       <div className="flex items-center gap-2 w-full sm:w-auto">

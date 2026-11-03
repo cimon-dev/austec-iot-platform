@@ -350,6 +350,23 @@ export function DeviceListTab({
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2">
+      {/* Header */}
+      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
+        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Danh sách thiết bị
+        </h1>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={onOpenCreateModal}
+            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Thêm thiết bị mới</span>
+          </button>
+        )}
+      </div>
+
       {/* Filter Bar with Comboboxes */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2.5 p-2 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-200 dark:border-slate-800">
         <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">

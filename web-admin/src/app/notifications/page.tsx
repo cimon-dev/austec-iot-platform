@@ -250,21 +250,21 @@ export default function NotificationsManagementPage() {
 
 
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <Bell className="w-5 h-5 text-amber-500" />
-            <span>Trung Tâm Quản Lý Thông Báo (Push Hub)</span>
+          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Thông báo hệ thống
           </h1>
         </div>
 
         {canCreate("mod_noti") && (
           <button
+            type="button"
             onClick={() => setIsComposeOpen(true)}
-            className="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition-all cursor-pointer w-fit"
+            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-semibold px-3.5 py-1.5 rounded-lg shadow-xs transition-all cursor-pointer w-fit"
           >
             <Send className="w-3.5 h-3.5" />
-            <span>Soạn Thông Báo Mới</span>
+            <span>Soạn thông báo mới</span>
           </button>
         )}
       </div>

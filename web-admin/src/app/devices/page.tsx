@@ -2,14 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { 
-  Layers, 
-  Cpu, 
-  Sliders, 
-  Box, 
-  FileSpreadsheet, 
-  Radio 
-} from "lucide-react";
 import { toast } from "sonner";
 import { usePermissions } from "@/context/PermissionContext";
 import { AccessDenied } from "@/components/AccessDenied";
@@ -118,77 +110,6 @@ function DevicesManagementContent() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
-      {/* Modern Compact Sub-navigation Tab Header */}
-      <div className="shrink-0 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto p-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
-          <button
-            type="button"
-            onClick={() => switchTab("groups")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "groups" ? "bg-indigo-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Nhóm sản phẩm</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchTab("types")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "types" ? "bg-purple-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5" />
-            <span>Loại phần cứng</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchTab("properties")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "properties" ? "bg-emerald-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Từ điển thuộc tính</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchTab("models")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "models" ? "bg-amber-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Box className="w-3.5 h-3.5" />
-            <span>Mẫu thương phẩm</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchTab("import")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "import" ? "bg-green-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Nhập kho Excel</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => switchTab("list")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-all cursor-pointer ${
-              activeTab === "list" ? "bg-cyan-600 text-white shadow-xs font-semibold" : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <Radio className="w-3.5 h-3.5" />
-            <span>Danh sách thiết bị</span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Tab Render Area */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {activeTab === "groups" && (

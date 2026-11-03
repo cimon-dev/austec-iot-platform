@@ -210,38 +210,29 @@ export default function FirmwareOtaPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-0">
-      {/* 1. Header Page */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-cyan-500/10 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 dark:border-cyan-500/30 font-mono">
-              OTA CLOUD ENGINE
-            </span>
-            <span className="text-xs text-slate-500 dark:text-slate-400">ESP32-C3 Dual-Partition</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-1 flex items-center gap-2.5">
-            <UploadCloud className="w-7 h-7 text-cyan-500 dark:text-cyan-400" />
-            Quản Trị Firmware & Cập Nhật OTA Từ Xa
+          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Quản trị Firmware & Cập nhật OTA
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Quản lý mã nhị phân (.bin), điều phối chiến dịch nạp đồng bộ hàng loạt cho các thiết bị đã lắp đặt ngoài hiện trường
-          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
+            type="button"
             onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 transition-all cursor-pointer shadow-xs"
           >
-            <Plus className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
-            Tải Lên Bản .BIN Mới
+            <Plus className="w-3.5 h-3.5" />
+            <span>Tải lên bản .BIN</span>
           </button>
           <button
+            type="button"
             onClick={() => setShowDeployModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-md shadow-cyan-500/20 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer"
           >
-            <Play className="w-4 h-4" />
-            Nạp Đồng Bộ Hàng Loạt
+            <Play className="w-3.5 h-3.5" />
+            <span>Nạp đồng bộ</span>
           </button>
         </div>
       </div>

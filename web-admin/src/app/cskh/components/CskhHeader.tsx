@@ -19,41 +19,28 @@ export const CskhHeader: React.FC<CskhHeaderProps> = ({
   wsStatus,
 }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs shrink-0">
-      <div className="flex items-center gap-2.5">
-        <div className="p-1.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-          <Headphones className="w-5 h-5" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Trung Tâm Hỗ Trợ Khách Hàng & Kỹ Thuật IoT (CSKH)
-            </h1>
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
-              Live Gateway & Helpdesk
-            </span>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  wsStatus === "connected"
-                    ? "bg-emerald-500 animate-pulse"
-                    : wsStatus === "connecting"
-                    ? "bg-amber-500 animate-pulse"
-                    : "bg-rose-500"
-                }`}
-              />
-              <span className="text-slate-600 dark:text-slate-400 font-semibold">
-                {wsStatus === "connected"
-                  ? "Real-time Online"
-                  : wsStatus === "connecting"
-                  ? "Đang kết nối..."
-                  : "Mất kết nối WS"}
-              </span>
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Kênh tiếp nhận trực tuyến thời gian thực giữa kỹ thuật viên Austec và người dùng cuối trên ứng dụng Mobile
-          </p>
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+      <div className="flex items-center gap-3">
+        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Hỗ trợ khách hàng & Kỹ thuật
+        </h1>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              wsStatus === "connected"
+                ? "bg-emerald-500 animate-pulse"
+                : wsStatus === "connecting"
+                ? "bg-amber-500 animate-pulse"
+                : "bg-rose-500"
+            }`}
+          />
+          <span className="text-slate-600 dark:text-slate-400 font-semibold">
+            {wsStatus === "connected"
+              ? "Trực tuyến"
+              : wsStatus === "connecting"
+              ? "Đang kết nối..."
+              : "Mất kết nối"}
+          </span>
         </div>
       </div>
 

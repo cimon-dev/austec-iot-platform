@@ -495,12 +495,10 @@ export function DeviceModelTab({
   return (
     <div className="h-full flex flex-col min-h-0 space-y-3">
       {/* Action Header */}
-      <div className="flex justify-between items-center shrink-0">
-        <div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Khuôn mẫu thương phẩm (Model Assembly) & Bộ cấu hình thuộc tính phần cứng (Dynamic Schema)
-          </p>
-        </div>
+      <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
+        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Mẫu thương phẩm
+        </h1>
         {canCreate && (
           <button
             type="button"
@@ -510,7 +508,7 @@ export function DeviceModelTab({
               setPropertySearchQuery("");
               setIsCreateOpen(true);
             }}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
+            className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Thêm mẫu mới</span>

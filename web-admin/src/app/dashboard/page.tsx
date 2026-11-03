@@ -89,10 +89,10 @@ export default function DashboardPage() {
   return (
     <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-            {language === "vi" ? "Bảng Điều Khiển Giám Sát Thiết Bị Tập Trung" : "Real-Time Telemetry Dashboard"}
+            {language === "vi" ? "Bảng điều khiển giám sát" : "Real-Time Telemetry Dashboard"}
           </h1>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -104,15 +104,15 @@ export default function DashboardPage() {
           <button 
             type="button"
             onClick={handleRefresh}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xs cursor-pointer"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-cyan-500" : "text-slate-400"}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-slate-500" : "text-slate-400"}`} />
             <span>{isRefreshing ? (language === "vi" ? "Đang đồng bộ..." : "Syncing...") : (language === "vi" ? "Làm mới" : "Refresh")}</span>
           </button>
 
           <Link
             href="/devices?tab=import"
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-cyan-600 text-white hover:bg-slate-800 dark:hover:bg-cyan-500 transition-all shadow-sm"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-xs"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>{language === "vi" ? "Nhập kho Excel" : "Import Batch"}</span>

@@ -11,25 +11,17 @@ interface AdminHeaderProps {
 export const AdminHeader: React.FC<AdminHeaderProps> = ({ canCreate, onOpenCreate }) => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
-      <div className="flex items-center gap-2.5">
-        <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
-          <Users className="w-4 h-4" />
-        </div>
-        <div>
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight">
-            Quản Lý Cán Bộ Quản Trị
-          </h1>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            Danh sách nhân sự vận hành hệ thống IoT Austec Platform
-          </p>
-        </div>
+      <div>
+        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          Cán bộ quản trị
+        </h1>
       </div>
 
       {canCreate && (
         <button
           type="button"
           onClick={onOpenCreate}
-          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs transition-all cursor-pointer shrink-0"
+          className="flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white dark:text-slate-900 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 shadow-xs transition-all cursor-pointer shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Thêm cán bộ mới</span>
