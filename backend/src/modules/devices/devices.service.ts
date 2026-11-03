@@ -157,4 +157,34 @@ export class DevicesService {
   public async toggleBlockRfRemote(id: number) {
     return await this.repo.toggleBlockRfRemote(id);
   }
+
+  // Firmware & OTA
+  public async getFirmwareReleases(modelCode?: string) {
+    return await this.repo.getFirmwareReleases(modelCode);
+  }
+
+  public async createFirmwareRelease(raw: unknown) {
+    return await this.repo.createFirmwareRelease(raw);
+  }
+
+  public async deleteFirmwareRelease(id: number) {
+    return await this.repo.deleteFirmwareRelease(id);
+  }
+
+  public async getOtaCampaigns() {
+    return await this.repo.getOtaCampaigns();
+  }
+
+  public async getOtaCampaignDetails(campaignId: number) {
+    return await this.repo.getOtaCampaignDetails(campaignId);
+  }
+
+  public async createOtaCampaign(raw: unknown) {
+    return await this.repo.createOtaCampaign(raw);
+  }
+
+  public async retryOtaDeviceRecord(recordId: number) {
+    return await this.repo.retryOtaDeviceRecord(recordId);
+  }
 }
+

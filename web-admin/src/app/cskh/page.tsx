@@ -15,6 +15,7 @@ import {
   SupportTicketsTab,
 } from "./components";
 import { getWsChatUrl } from "@/context/apiConfig";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 
 function CSKHContent() {
   const { canView } = usePermissions();
@@ -43,6 +44,11 @@ function CSKHContent() {
   const [isRebooting, setIsRebooting] = useState(false);
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [selectedProductInfo, setSelectedProductInfo] = useState<any>(null);
+  const [zoomImage, setZoomImage] = useState<{ isOpen: boolean; url: string; title: string }>({
+    isOpen: false,
+    url: "",
+    title: "",
+  });
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -346,6 +352,7 @@ function CSKHContent() {
             replyText={replyText}
             onReplyTextChange={setReplyText}
             onSendReply={handleSendReply}
+            onImageClick={(url) => setZoomImage({ isOpen: true, url, title: "Ảnh hiện trường từ khách hàng" })}
           />
 
           <CustomerDevicePanel
@@ -380,6 +387,16 @@ function CSKHContent() {
           onAdminReplyInputChange={setAdminReplyInput}
           onSendAdminResponse={handleSendAdminResponse}
           onOpenCreateModal={() => toast.info("Phiếu yêu cầu mới được gửi trực tiếp từ ứng dụng Mobile của khách hàng.")}
+        />
+      )}
+
+      {zoomImage.isOpen && (
+        <ImageZoomModal
+          isOpen={zoomImage.isOpen}
+          imageUrl={zoomImage.url}
+          altText={zoomImage.title}
+          title={zoomImage.title}
+          onClose={() => setZoomImage({ isOpen: false, url: "", title: "" })}
         />
       )}
     </div>

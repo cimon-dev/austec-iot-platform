@@ -30,7 +30,7 @@ export const BlackboxHeader: React.FC<BlackboxHeaderProps> = ({
           onClick={onRefresh}
           disabled={isRefreshing}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-slate-800 transition-all shadow-xs cursor-pointer shrink-0"
-          title="Làm mới danh sách từ cơ sở dữ liệu PostgreSQL"
+          title="Làm mới danh sách nhật ký"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-cyan-500" : "text-slate-400"}`} />
           <span>{isRefreshing ? "Đang tải..." : "Làm mới"}</span>

@@ -43,55 +43,26 @@ function DevicesManagementContent() {
   const [models, setModels] = useState<any[]>([]);
   const [devices, setDevices] = useState<any[]>([]);
   const [isCreateDeviceOpen, setIsCreateDeviceOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load from PostgreSQL Backend APIs on mount
   const loadMasterData = async () => {
+    setIsLoading(true);
     const apiBase = getApiBaseUrl();
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
     const headers = { Authorization: `Bearer ${token}` };
 
-    // 1. Groups
     try {
-      const res = await fetch(`${apiBase}/api/admin/groups`, { headers });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.groups)) {
-        setGroups(data.groups);
-      }
+      await Promise.allSettled([
+        fetch(`${apiBase}/api/admin/groups`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.groups)) setGroups(d.groups); }),
+        fetch(`${apiBase}/api/admin/device-types`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.deviceTypes)) setDeviceTypes(d.deviceTypes); }),
+        fetch(`${apiBase}/api/admin/models`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.models)) setModels(d.models); }),
+        fetch(`${apiBase}/api/admin/devices`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.devices)) setDevices(d.devices); }),
+      ]);
     } catch (e) {
-      console.warn("Lỗi tải groups từ PostgreSQL:", e);
-    }
-
-    // 2. Device Types
-    try {
-      const res = await fetch(`${apiBase}/api/admin/device-types`, { headers });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.deviceTypes)) {
-        setDeviceTypes(data.deviceTypes);
-      }
-    } catch (e) {
-      console.warn("Lỗi tải device types từ PostgreSQL:", e);
-    }
-
-    // 3. Models
-    try {
-      const res = await fetch(`${apiBase}/api/admin/models`, { headers });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.models)) {
-        setModels(data.models);
-      }
-    } catch (e) {
-      console.warn("Lỗi tải models từ PostgreSQL:", e);
-    }
-
-    // 4. Devices (PostgreSQL)
-    try {
-      const res = await fetch(`${apiBase}/api/admin/devices`, { headers });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.devices)) {
-        setDevices(data.devices);
-      }
-    } catch (e) {
-      console.warn("Lỗi tải devices từ PostgreSQL:", e);
+      console.warn("Lỗi tải master data:", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -166,6 +137,7 @@ function DevicesManagementContent() {
             models={models}
             groups={groups}
             deviceTypes={deviceTypes}
+            isLoading={isLoading}
             onDeviceUpdated={(updated) => {
               setDevices(prev => prev.map(d => (d.hardwareId === updated.hardwareId || d.hwId === updated.hwId) ? { ...d, ...updated } : d));
               toast.success(`Đã cập nhật thiết bị ${updated.customName || updated.name} (${updated.hardwareId || updated.hwId}) thành công!`);

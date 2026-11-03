@@ -150,7 +150,7 @@ export function EditDeviceModal({
                 Chỉnh Sửa Thiết Bị ({hardwareId})
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Cập nhật thông số kỹ thuật và thông tin vào CSDL PostgreSQL
+                Cập nhật thông số kỹ thuật và thông tin thiết bị
               </p>
             </div>
           </div>

@@ -22,10 +22,16 @@ function StoreContent() {
   const { canView } = usePermissions();
 
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [selectedProduct, setSelectedProduct] = useState<ProductItem | null>(null);
+
+  // Multi-select & Bulk Delete
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -46,14 +52,21 @@ function StoreContent() {
     specsRows: [{ key: "Chất liệu", value: "Hợp kim nhôm" }, { key: "Bảo hành xuất xưởng", value: "24 tháng" }],
   });
 
-  // Hydrate products from Backend
-  useEffect(() => {
-    storeService.getProducts().then((data) => {
-      if (data && data.length > 0) {
-        setProducts(data);
-      }
-    });
+  const fetchProducts = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await storeService.getProducts();
+      setProducts(data || []);
+    } catch (e) {
+      console.error("Lỗi nạp sản phẩm:", e);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   // Filtered Products
   const filteredProducts = useMemo(() => {
@@ -71,6 +84,41 @@ function StoreContent() {
       return matchSearch && matchCategory && matchStatus;
     });
   }, [products, searchQuery, selectedCategory, selectedStatus]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === filteredProducts.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredProducts.map((p) => p.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    setIsBulkDeleting(true);
+    try {
+      for (const id of selectedIds) {
+        await storeService.deleteProduct(id);
+      }
+      setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
+      if (selectedProduct && selectedIds.includes(selectedProduct.id)) {
+        setSelectedProduct(null);
+      }
+      toast.success(`Đã xóa thành công ${selectedIds.length} sản phẩm!`);
+      setSelectedIds([]);
+      setShowBulkDeleteModal(false);
+    } catch (err: any) {
+      toast.error(`Lỗi xóa hàng loạt: ${err.message}`);
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
 
   // Open Create Modal
   const handleOpenCreateModal = () => {
@@ -182,7 +230,7 @@ function StoreContent() {
         } else {
           setProducts((prev) => [savedProduct, ...prev]);
         }
-        toast.success(`Đã thêm sản phẩm "${savedProduct.name}" vào CSDL PostgreSQL!`);
+        toast.success(`Đã thêm sản phẩm "${savedProduct.name}" thành công!`);
       } catch (err: any) {
         toast.error(`Lỗi khi tạo sản phẩm: ${err.message}`);
       }
@@ -193,7 +241,7 @@ function StoreContent() {
         if (selectedProduct?.id === savedProduct.id) {
           setSelectedProduct(savedProduct);
         }
-        toast.success(`Đã cập nhật thông tin sản phẩm "${savedProduct.name}" vào PostgreSQL!`);
+        toast.success(`Đã cập nhật thông tin sản phẩm "${savedProduct.name}" thành công!`);
       } catch (err: any) {
         toast.error(`Lỗi cập nhật sản phẩm: ${err.message}`);
       }
@@ -215,7 +263,7 @@ function StoreContent() {
       if (selectedProduct?.id === deleteTarget.id) {
         setSelectedProduct(null);
       }
-      toast.success(`Đã xóa sản phẩm "${deleteTarget.name}" khỏi CSDL PostgreSQL thành công!`);
+      toast.success(`Đã xóa sản phẩm "${deleteTarget.name}" thành công!`);
     } catch (e: any) {
       toast.error(`Lỗi khi xóa sản phẩm: ${e.message}`);
     } finally {
@@ -235,8 +283,6 @@ function StoreContent() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-65px)] overflow-hidden bg-slate-100 dark:bg-slate-950 p-2.5 space-y-2.5">
-
-
       {/* Top Header */}
       <StoreHeader onOpenCreateModal={handleOpenCreateModal} />
 
@@ -253,12 +299,38 @@ function StoreContent() {
             totalFiltered={filteredProducts.length}
           />
 
+          {selectedIds.length > 0 && (
+            <div className="flex items-center justify-between px-3 py-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium border-y border-slate-800 dark:border-slate-200 shrink-0">
+              <span>Đã chọn: <strong>{selectedIds.length}</strong> sản phẩm</span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="px-2.5 py-1 bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 rounded cursor-pointer transition-colors"
+                >
+                  Hủy chọn
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkDeleteModal(true)}
+                  className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-semibold cursor-pointer transition-colors"
+                >
+                  Xóa đã chọn ({selectedIds.length})
+                </button>
+              </div>
+            </div>
+          )}
+
           <StoreProductTable
             products={filteredProducts}
             selectedProduct={selectedProduct}
             onSelectProduct={setSelectedProduct}
             onOpenEditModal={handleOpenEditModal}
             onDeleteProduct={setDeleteTarget}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={handleSelectAll}
+            isLoading={isLoading}
           />
         </div>
 
@@ -288,10 +360,22 @@ function StoreContent() {
         title="Xóa Sản Phẩm Khỏi Gian Hàng"
         itemName={deleteTarget?.name}
         itemType="sản phẩm"
-        description="Thao tác này sẽ đồng bộ gỡ bỏ sản phẩm khỏi CSDL PostgreSQL và ứng dụng di động."
+        description="Thao tác này sẽ đồng bộ gỡ bỏ sản phẩm khỏi hệ thống và ứng dụng di động."
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      {/* Bulk Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showBulkDeleteModal}
+        title="Xóa Hàng Loạt Sản Phẩm"
+        itemName={`${selectedIds.length} sản phẩm đã chọn`}
+        itemType="danh sách sản phẩm"
+        description={`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn? Thao tác này không thể hoàn tác.`}
+        isDeleting={isBulkDeleting}
+        onConfirm={handleBulkDelete}
+        onClose={() => setShowBulkDeleteModal(false)}
       />
     </div>
   );

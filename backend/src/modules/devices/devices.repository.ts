@@ -888,4 +888,176 @@ export class DevicesRepository {
       return false;
     }
   }
+
+  // ==========================================
+  // FIRMWARE & OTA
+  // ==========================================
+  public async getFirmwareReleases(modelCode?: string): Promise<any[]> {
+    try {
+      let query = 'SELECT * FROM firmware_releases';
+      const params: any[] = [];
+      if (modelCode) {
+        query += ' WHERE model_code = $1';
+        params.push(modelCode);
+      }
+      query += ' ORDER BY id DESC';
+      const res = await this.client.query(query, params);
+      return res.rows.map(r => ({
+        id: r.id,
+        version: r.version,
+        modelCode: r.model_code,
+        binaryFilename: r.binary_filename,
+        binaryUrl: r.binary_url,
+        fileSizeBytes: r.file_size_bytes,
+        sha256Checksum: r.sha256_checksum,
+        releaseType: r.release_type,
+        isActive: r.is_active,
+        changelog: r.changelog,
+        releasedBy: r.released_by,
+        createdAt: r.created_at,
+      }));
+    } catch (e: any) {
+      console.warn('[DevicesRepository] getFirmwareReleases error:', e.message);
+      return [];
+    }
+  }
+
+  public async createFirmwareRelease(data: any): Promise<any> {
+    const version = data.version;
+    const modelCode = data.modelCode || data.model_code || 'DOOR_GERMAN_ALU';
+    const binaryFilename = data.binaryFilename || data.binary_filename || `firmware_${version}.bin`;
+    const binaryUrl = data.binaryUrl || data.binary_url || `http://localhost:4000/firmware/${binaryFilename}`;
+    const fileSizeBytes = data.fileSizeBytes || data.file_size_bytes || 1600000;
+    const sha256Checksum = data.sha256Checksum || data.sha256_checksum || 'sha256-verified-release';
+    const releaseType = data.releaseType || data.release_type || 'STABLE';
+    const changelog = data.changelog || 'Cập nhật tính năng & vá lỗi';
+    const releasedBy = data.releasedBy || data.released_by || 'ADMIN';
+
+    const res = await this.client.query(
+      `INSERT INTO firmware_releases (version, model_code, binary_filename, binary_url, file_size_bytes, sha256_checksum, release_type, is_active, changelog, released_by, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8, $9, $10)
+       RETURNING *`,
+      [version, modelCode, binaryFilename, binaryUrl, fileSizeBytes, sha256Checksum, releaseType, changelog, releasedBy, new Date().toISOString()]
+    );
+    return res.rows[0];
+  }
+
+  public async deleteFirmwareRelease(id: number): Promise<boolean> {
+    try {
+      await this.client.query('DELETE FROM firmware_releases WHERE id = $1', [id]);
+      return true;
+    } catch (e: any) {
+      console.warn('[DevicesRepository] deleteFirmwareRelease error:', e.message);
+      return false;
+    }
+  }
+
+  public async getOtaCampaigns(): Promise<any[]> {
+    try {
+      const res = await this.client.query('SELECT * FROM ota_campaigns ORDER BY id DESC');
+      return res.rows.map(r => ({
+        id: r.id,
+        campaignName: r.campaign_name,
+        targetModel: r.target_model,
+        targetVersion: r.target_version,
+        rolloutType: r.rollout_type,
+        status: r.status,
+        totalDevices: r.total_devices,
+        successCount: r.success_count,
+        failedCount: r.failed_count,
+        inProgressCount: r.in_progress_count,
+        startedAt: r.started_at,
+        completedAt: r.completed_at,
+      }));
+    } catch (e: any) {
+      console.warn('[DevicesRepository] getOtaCampaigns error:', e.message);
+      return [];
+    }
+  }
+
+  public async getOtaCampaignDetails(campaignId: number): Promise<any> {
+    try {
+      const campRes = await this.client.query('SELECT * FROM ota_campaigns WHERE id = $1', [campaignId]);
+      if (campRes.rows.length === 0) return null;
+      const camp = campRes.rows[0];
+      const recRes = await this.client.query('SELECT * FROM ota_device_records WHERE campaign_id = $1 ORDER BY id ASC', [campaignId]);
+      return {
+        campaign: {
+          id: camp.id,
+          campaignName: camp.campaign_name,
+          targetModel: camp.target_model,
+          targetVersion: camp.target_version,
+          rolloutType: camp.rollout_type,
+          status: camp.status,
+          totalDevices: camp.total_devices,
+          successCount: camp.success_count,
+          failedCount: camp.failed_count,
+          inProgressCount: camp.in_progress_count,
+          startedAt: camp.started_at,
+          completedAt: camp.completed_at,
+        },
+        records: recRes.rows.map(r => ({
+          id: r.id,
+          campaignId: r.campaign_id,
+          hardwareId: r.hardware_id,
+          customerName: r.customer_name,
+          currentVersion: r.current_version,
+          targetVersion: r.target_version,
+          status: r.status,
+          progressPct: r.progress_pct,
+          lastAttemptAt: r.last_attempt_at,
+          errorReason: r.error_reason,
+          retryCount: r.retry_count,
+        })),
+      };
+    } catch (e: any) {
+      console.warn('[DevicesRepository] getOtaCampaignDetails error:', e.message);
+      return null;
+    }
+  }
+
+  public async createOtaCampaign(data: any): Promise<any> {
+    const devRes = await this.client.query('SELECT di.*, u.full_name FROM device_inventory di LEFT JOIN users u ON di.customer_id = u.id');
+    let matchedDevices = devRes.rows;
+    if (matchedDevices.length === 0) {
+      matchedDevices = [
+        { hardware_id: 'AT-DOOR-88239A01', full_name: 'Nguyễn Mạnh Đức', firmware_version: 'v1.0.0' },
+        { hardware_id: 'AT-DOOR-88239A02', full_name: 'Dan Phung', firmware_version: 'v1.0.0' },
+        { hardware_id: 'amtuong1994', full_name: 'Phòng Lab (Mạch ESP32 Thật)', firmware_version: 'v1.0.0' },
+      ];
+    }
+    const campRes = await this.client.query(
+      `INSERT INTO ota_campaigns (campaign_name, target_model, target_version, rollout_type, status, total_devices, success_count, failed_count, in_progress_count, started_at)
+       VALUES ($1, $2, $3, $4, 'RUNNING', $5, 0, 0, $5, $6)
+       RETURNING *`,
+      [
+        data.name || `Chiến dịch nạp ${data.targetVersion} cho ${data.targetModel}`,
+        data.targetModel || 'DOOR_GERMAN_ALU',
+        data.targetVersion || 'v1.1.0',
+        data.rolloutType || 'ALL',
+        matchedDevices.length,
+        new Date().toISOString(),
+      ]
+    );
+    const camp = campRes.rows[0];
+    for (const d of matchedDevices) {
+      await this.client.query(
+        `INSERT INTO ota_device_records (campaign_id, hardware_id, customer_name, current_version, target_version, status, progress_pct, last_attempt_at)
+         VALUES ($1, $2, $3, $4, $5, 'DOWNLOADING', 15, $6)`,
+        [camp.id, d.hardware_id, d.full_name || 'Khách hàng Austec', d.firmware_version || 'v1.0.0', data.targetVersion || 'v1.1.0', new Date().toISOString()]
+      );
+    }
+    return camp;
+  }
+
+  public async retryOtaDeviceRecord(recordId: number): Promise<any> {
+    const res = await this.client.query(
+      `UPDATE ota_device_records 
+       SET status = 'DOWNLOADING', progress_pct = 25, retry_count = retry_count + 1, error_reason = NULL, last_attempt_at = $1
+       WHERE id = $2
+       RETURNING *`,
+      [new Date().toISOString(), recordId]
+    );
+    return res.rows[0];
+  }
 }

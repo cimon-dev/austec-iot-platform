@@ -130,10 +130,21 @@ export class UsersController {
       res.json({
         success: true,
         customer,
-        message: 'Cập nhật thông tin khách hàng thành công vào PostgreSQL!',
+        message: 'Cập nhật thông tin khách hàng thành công!',
       });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  @Delete('/admin/customers/:id', authenticate, requireRole(['ADMIN']))
+  @Delete('/customers/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteCustomer(req: Request, res: Response) {
+    try {
+      await this.service.deleteCustomer(String(req.params.id));
+      res.json({ success: true, message: 'Đã xóa tài khoản khách hàng thành công!' });
+    } catch (e: any) {
+      res.status(404).json({ success: false, error: e.message });
     }
   }
 

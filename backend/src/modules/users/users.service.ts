@@ -353,6 +353,17 @@ export class UsersService {
     return cust;
   }
 
+  public async deleteCustomer(id: string) {
+    let cust = this.repo.findById(id);
+    if (!cust) {
+      cust = (await this.repo.findByIdAsync(id)) || undefined;
+    }
+    if (!cust) {
+      throw new Error('Không tìm thấy khách hàng');
+    }
+    return await this.repo.remove(id);
+  }
+
   public async getRoles() {
     return this.repo.getRoles();
   }

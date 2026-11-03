@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { ImageUploader } from "@/components/ImageUploader";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 
 export interface DeviceGroupItem {
   id: number;
@@ -31,6 +32,56 @@ export function DeviceGroupTab({
 }: DeviceGroupTabProps) {
   const [groups, setGroups] = useState<DeviceGroupItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Multi-selection & Bulk Delete & Image Zoom
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
+  const [zoomImageAlt, setZoomImageAlt] = useState("");
+
+  const toggleSelectGroup = (id: number) => {
+    setSelectedGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllSelected = groups.length > 0 && groups.every(g => selectedGroupIds.has(g.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) setSelectedGroupIds(new Set());
+    else setSelectedGroupIds(new Set(groups.map(g => g.id)));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedGroupIds.size === 0) return;
+    setIsBulkDeleting(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const ids = Array.from(selectedGroupIds);
+    let deleted = 0;
+
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/admin/groups/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) deleted++;
+      } catch (e) {
+        console.warn("Lỗi xóa nhóm:", id, e);
+      }
+    }
+
+    setGroups(prev => prev.filter(g => !selectedGroupIds.has(g.id)));
+    setSelectedGroupIds(new Set());
+    setIsBulkDeleting(false);
+    setIsBulkDeleteModalOpen(false);
+    toast.success(`Đã xóa ${deleted} nhóm sản phẩm thành công!`);
+  };
 
   // Modal Create
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -204,9 +255,22 @@ export function DeviceGroupTab({
     <div className="h-full flex flex-col min-h-0 space-y-3">
       {/* Action Header */}
       <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
-        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Nhóm sản phẩm
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Nhóm sản phẩm
+          </h1>
+          {groups.length > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleSelectAll}
+                className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900 cursor-pointer"
+              />
+              <span>Chọn tất cả ({groups.length})</span>
+            </label>
+          )}
+        </div>
         {canCreate && (
           <button
             type="button"
@@ -219,73 +283,127 @@ export function DeviceGroupTab({
         )}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedGroupIds.size > 0 && (
+        <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900 text-white dark:bg-slate-800 rounded-lg text-xs animate-in fade-in duration-150 shrink-0 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Đã chọn {selectedGroupIds.size} nhóm sản phẩm</span>
+            <button
+              type="button"
+              onClick={() => setSelectedGroupIds(new Set())}
+              className="text-xs text-slate-400 hover:text-white underline cursor-pointer ml-1"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium cursor-pointer transition-colors shadow-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa đã chọn ({selectedGroupIds.size})</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid List */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-slate-900 dark:text-white" />
           </div>
         ) : groups.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-            <p className="text-xs text-slate-400">Chưa có nhóm sản phẩm nào trong CSDL.</p>
+            <p className="text-xs text-slate-400">Danh sách nhóm sản phẩm đang trống.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {groups.map((g) => (
-              <div
-                key={g.id}
-                className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex items-center gap-3.5 hover:border-indigo-500/50 transition-all group"
-              >
-                {/* Image */}
-                <div className="w-14 h-14 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
-                  {g.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={g.imageUrl} alt={g.groupName} className="w-full h-full object-cover" />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 text-slate-400" />
-                  )}
-                </div>
+            {groups.map((g) => {
+              const isSelected = selectedGroupIds.has(g.id);
+              return (
+                <div
+                  key={g.id}
+                  className={`p-3.5 rounded-lg border bg-white dark:bg-slate-900 shadow-xs flex items-center gap-3.5 transition-all group relative ${
+                    isSelected
+                      ? "border-slate-900 dark:border-white ring-1 ring-slate-900 dark:ring-white bg-slate-50/50 dark:bg-slate-800/40"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600"
+                  }`}
+                >
+                  {/* Select Checkbox */}
+                  <div className="shrink-0 flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelectGroup(g.id)}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                    />
+                  </div>
 
-                {/* Details */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {g.groupName}
-                    </span>
-                    <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded font-bold border border-indigo-200 dark:border-indigo-800 shrink-0">
-                      {g.code}
-                    </span>
+                  {/* Image with zoom */}
+                  <div
+                    onClick={() => {
+                      if (g.imageUrl) {
+                        setZoomImageSrc(g.imageUrl);
+                        setZoomImageAlt(g.groupName);
+                      }
+                    }}
+                    className={`w-14 h-14 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 ${
+                      g.imageUrl ? "cursor-zoom-in hover:opacity-90 transition-opacity" : ""
+                    }`}
+                    title={g.imageUrl ? "Bấm để phóng to ảnh" : undefined}
+                  >
+                    {g.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={g.imageUrl} alt={g.groupName} className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="w-6 h-6 text-slate-400" />
+                    )}
                   </div>
-                  {g.description && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                      {g.description}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-end gap-1.5 mt-2">
-                    {canUpdate && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenEdit(g)}
-                        className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                        title="Chỉnh sửa"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
+
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {g.groupName}
+                      </span>
+                      <span className="text-[10px] font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold border border-slate-200 dark:border-slate-700 shrink-0">
+                        {g.code}
+                      </span>
+                    </div>
+                    {g.description && (
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                        {g.description}
+                      </p>
                     )}
-                    {canDelete && (
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(g)}
-                        className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                        title="Xóa nhóm"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <div className="flex items-center justify-end gap-1.5 mt-2">
+                      {canUpdate && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(g)}
+                          className="p-1 rounded text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(g)}
+                          className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          title="Xóa nhóm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -368,7 +486,7 @@ export function DeviceGroupTab({
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Lưu nhóm</span>
@@ -454,7 +572,7 @@ export function DeviceGroupTab({
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Cập nhật</span>
@@ -465,7 +583,7 @@ export function DeviceGroupTab({
         </div>
       )}
 
-      {/* CONFIRM DELETE MODAL */}
+      {/* CONFIRM SINGLE DELETE MODAL */}
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         title="Xóa nhóm sản phẩm"
@@ -475,6 +593,26 @@ export function DeviceGroupTab({
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      {/* CONFIRM BULK DELETE MODAL */}
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        title="Xóa nhiều nhóm sản phẩm"
+        itemName={`${selectedGroupIds.size} nhóm sản phẩm đã chọn`}
+        itemType="nhóm sản phẩm"
+        description={`Bạn có chắc chắn muốn xóa ${selectedGroupIds.size} nhóm sản phẩm đã chọn? Hành động này không thể hoàn tác.`}
+        isDeleting={isBulkDeleting}
+        onConfirm={handleBulkDelete}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+      />
+
+      {/* IMAGE ZOOM MODAL */}
+      <ImageZoomModal
+        isOpen={!!zoomImageSrc}
+        imageUrl={zoomImageSrc || ""}
+        alt={zoomImageAlt}
+        onClose={() => setZoomImageSrc(null)}
       />
     </div>
   );

@@ -250,10 +250,10 @@ export function DeviceImportTab({
         const savedDevices = data.devices || nonDuplicateRows;
         onImportSuccess(savedDevices);
         setImportStatus("IMPORTED");
-        toast.success(`Đã lưu thành công ${savedDevices.length} thiết bị vào CSDL PostgreSQL!`);
+        toast.success(`Đã lưu thành công ${savedDevices.length} thiết bị!`);
       } else {
         setImportStatus("ERROR");
-        toast.error(data.error || "Lỗi lưu vào CSDL PostgreSQL");
+        toast.error(data.error || "Lỗi lưu dữ liệu");
       }
     } catch (err: any) {
       setImportStatus("ERROR");
@@ -389,9 +389,9 @@ export function DeviceImportTab({
         )}
 
         {importStatus === "SAVING" && (
-          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-cyan-500/40 text-cyan-600 dark:text-cyan-400 text-xs flex items-center gap-2.5">
-            <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
-            <span className="font-semibold">Đang ghi đồng bộ toàn bộ danh sách thiết bị vào PostgreSQL... Vui lòng đợi trong giây lát!</span>
+          <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs flex items-center gap-2.5">
+            <Loader2 className="w-4 h-4 animate-spin text-slate-600 dark:text-slate-300" />
+            <span className="font-semibold">Đang đồng bộ danh sách thiết bị vào hệ thống... Vui lòng đợi trong giây lát!</span>
           </div>
         )}
 
@@ -399,7 +399,7 @@ export function DeviceImportTab({
           <div className="p-3.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 space-y-2.5">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-bold">
               <AlertCircle className="w-4 h-4" />
-              <span>Phát hiện {importErrors.length} lỗi trong file Excel. Quá trình nhập kho bị dừng để bảo vệ CSDL!</span>
+              <span>Phát hiện {importErrors.length} lỗi trong file Excel. Quá trình nhập kho tạm dừng để bảo toàn dữ liệu!</span>
             </div>
             <div className="space-y-1 max-h-60 overflow-y-auto">
               {importErrors.map((err, idx) => (
@@ -423,10 +423,10 @@ export function DeviceImportTab({
                 <button
                   type="button"
                   onClick={handleConfirmImport}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5"
+                  className="bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 font-bold text-xs px-4 py-2 rounded-lg shadow-xs cursor-pointer flex items-center gap-1.5 transition-colors"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Xác Nhận Lưu Vào CSDL ({formatNum(importCount)} TB)</span>
+                  <span>Xác Nhận Lưu ({formatNum(importCount)} TB)</span>
                 </button>
               )}
             </div>
@@ -451,7 +451,7 @@ export function DeviceImportTab({
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
                     {importRows.slice(0, 5).map((r, i) => (
                       <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                        <td className="p-2 font-mono text-cyan-600 dark:text-cyan-400 font-bold">{r.hardwareId}</td>
+                        <td className="p-2 font-mono text-slate-900 dark:text-white font-bold">{r.hardwareId}</td>
                         <td className="p-2 font-medium text-slate-900 dark:text-white">{r.customName}</td>
                         <td className="p-2 font-mono text-slate-500">{r.modelName}</td>
                         <td className="p-2">{r.group}</td>
@@ -467,20 +467,20 @@ export function DeviceImportTab({
         )}
 
         {importStatus === "IMPORTED" && (
-          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-cyan-500/50 space-y-3">
+          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div>
-                <h3 className="text-xs font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Đã Nhập Kho Và Lưu Trữ Bền Vững Vào CSDL {formatNum(importCount)} Thiết Bị!
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  Đã Nhập Kho Thành Công {formatNum(importCount)} Thiết Bị!
                 </h3>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Dữ liệu đã được đồng bộ vào PostgreSQL. Khi reload trang dữ liệu vẫn còn nguyên vẹn.</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">Dữ liệu đã được lưu trữ bền vững vào hệ thống.</p>
               </div>
               <div className="flex items-center gap-2">
                 <button 
                   type="button"
                   onClick={() => switchTab("list")}
-                  className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-semibold cursor-pointer transition-colors"
                 >
                   Xem Danh Sách Thiết Bị →
                 </button>

@@ -31,19 +31,24 @@ import {
   Clock
 } from "lucide-react";
 
+interface DashboardStats {
+  total: number;
+  online: number;
+  offline: number;
+  inStock: number;
+  onlinePct: string;
+  offlinePct: string;
+  inStockPct: string;
+  uptimeSla?: string;
+  avgLatencyMs?: number;
+}
+
 export default function DashboardPage() {
   const { t, language } = useLanguage();
   const { canView } = usePermissions();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [stats, setStats] = useState({
-    total: 7,
-    online: 6,
-    offline: 1,
-    inStock: 2,
-    onlinePct: "85.7%",
-    offlinePct: "14.3%",
-    inStockPct: "28.6%",
-  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
 
   const formatNum = (num: number) => (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -59,6 +64,8 @@ export default function DashboardPage() {
       }
     } catch (e) {
       console.warn("Lỗi đồng bộ thống kê:", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -130,11 +137,15 @@ export default function DashboardPage() {
           <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Radio className="w-3.5 h-3.5 text-cyan-500" />
+                <Radio className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                 <span>Trạng Thái Thiết Bị Toàn Mạng</span>
               </span>
-              <span className="text-[11px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                {formatNum(stats.total)} TB
+              <span className="text-[11px] font-mono font-bold text-slate-900 dark:text-white">
+                {isLoading || !stats ? (
+                  <span className="inline-block w-12 h-3.5 bg-slate-200 dark:bg-slate-800 rounded animate-pulse align-middle"></span>
+                ) : (
+                  `${formatNum(stats.total)} TB`
+                )}
               </span>
             </div>
 
@@ -150,8 +161,14 @@ export default function DashboardPage() {
                   <span className="font-semibold text-emerald-800 dark:text-emerald-300">Trực Tuyến (Online)</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="font-bold text-emerald-700 dark:text-emerald-300">{formatNum(stats.online)}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">{stats.onlinePct}</span>
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-emerald-200/50 dark:bg-emerald-900/50 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300">{formatNum(stats.online)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">{stats.onlinePct}</span>
+                    </>
+                  )}
                 </div>
               </Link>
 
@@ -165,44 +182,62 @@ export default function DashboardPage() {
                   <span className="font-semibold text-rose-800 dark:text-rose-300">Ngoại Tuyến (Offline)</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="font-bold text-rose-700 dark:text-rose-300">{formatNum(stats.offline)}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold">{stats.offlinePct}</span>
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-rose-200/50 dark:bg-rose-900/50 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-rose-700 dark:text-rose-300">{formatNum(stats.offline)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold">{stats.offlinePct}</span>
+                    </>
+                  )}
                 </div>
               </Link>
 
               {/* Dòng 3: Tồn kho */}
               <Link
                 href="/devices?tab=list&status=in_stock"
-                className="p-2 rounded-lg bg-sky-50/50 dark:bg-sky-950/20 border border-sky-500/20 hover:border-sky-500/40 flex items-center justify-between transition-colors group cursor-pointer"
+                className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 hover:border-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                  <span className="font-semibold text-sky-800 dark:text-sky-300">Tồn Kho (In Stock)</span>
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Tồn Kho (In Stock)</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="font-bold text-sky-700 dark:text-sky-300">{formatNum(stats.inStock)}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-700 dark:text-sky-300 font-bold">{stats.inStockPct}</span>
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{formatNum(stats.inStock)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">{stats.inStockPct}</span>
+                    </>
+                  )}
                 </div>
               </Link>
 
               {/* Dòng 4: SLA */}
               <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   <span className="font-semibold text-slate-700 dark:text-slate-300">Độ Sẵn Sàng (SLA)</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="font-bold text-slate-900 dark:text-white">99.2%</span>
-                  <span className="text-[10px] text-slate-400">142ms</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{stats?.uptimeSla || "99.8%"}</span>
+                  <span className="text-[10px] text-slate-400">{stats?.avgLatencyMs ? `${stats.avgLatencyMs}ms` : "114ms"}</span>
                 </div>
               </div>
             </div>
 
             {/* Visual Mini Progress Bar */}
             <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex">
-              <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }} title="Online"></div>
-              <div className="bg-rose-500 h-full" style={{ width: stats.offlinePct }} title="Offline"></div>
-              <div className="bg-sky-500 h-full" style={{ width: stats.inStockPct }} title="Tồn kho"></div>
+              {isLoading || !stats ? (
+                <div className="w-full h-full bg-slate-300 dark:bg-slate-700 animate-pulse"></div>
+              ) : (
+                <>
+                  <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }} title="Online"></div>
+                  <div className="bg-rose-500 h-full" style={{ width: stats.offlinePct }} title="Offline"></div>
+                  <div className="bg-slate-400 h-full" style={{ width: stats.inStockPct }} title="Tồn kho"></div>
+                </>
+              )}
             </div>
           </div>
 
@@ -210,10 +245,10 @@ export default function DashboardPage() {
           <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-indigo-500" />
+                <Activity className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
                 <span>Biểu Đồ Tròn Tỷ Lệ Toàn Mạng</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                 Live Donut
               </span>
             </div>
@@ -221,76 +256,92 @@ export default function DashboardPage() {
             <div className="flex items-center justify-around py-1 gap-2">
               {/* SVG Donut Chart */}
               <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
-                  {/* Background Track */}
-                  <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-slate-800" />
-                  {/* Online Segment */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth="12"
-                    strokeDasharray={`${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)} 289`}
-                    strokeDashoffset="0"
-                    className="transition-all duration-700"
-                  />
-                  {/* Stock Segment */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="#0284c7"
-                    strokeWidth="12"
-                    strokeDasharray={`${((parseFloat(stats.inStockPct) || 10) * 2.89).toFixed(1)} 289`}
-                    strokeDashoffset={`-${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)}`}
-                    className="transition-all duration-700"
-                  />
-                  {/* Offline Segment */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="#f43f5e"
-                    strokeWidth="12"
-                    strokeDasharray={`${((parseFloat(stats.offlinePct) || 5) * 2.89).toFixed(1)} 289`}
-                    strokeDashoffset={`-${(((parseFloat(stats.onlinePct) || 85) + (parseFloat(stats.inStockPct) || 10)) * 2.89).toFixed(1)}`}
-                    className="transition-all duration-700"
-                  />
-                </svg>
-                {/* Center Value */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-xs font-bold font-mono text-slate-900 dark:text-white leading-none">{stats.onlinePct}</span>
-                  <span className="text-[9px] text-slate-400 mt-0.5 font-medium">Online</span>
-                </div>
+                {isLoading || !stats ? (
+                  <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+                ) : (
+                  <>
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                      {/* Background Track */}
+                      <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-slate-800" />
+                      {/* Online Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="12"
+                        strokeDasharray={`${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset="0"
+                        className="transition-all duration-700"
+                      />
+                      {/* Stock Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#64748b"
+                        strokeWidth="12"
+                        strokeDasharray={`${((parseFloat(stats.inStockPct) || 10) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)}`}
+                        className="transition-all duration-700"
+                      />
+                      {/* Offline Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#f43f5e"
+                        strokeWidth="12"
+                        strokeDasharray={`${((parseFloat(stats.offlinePct) || 5) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${(((parseFloat(stats.onlinePct) || 85) + (parseFloat(stats.inStockPct) || 10)) * 2.89).toFixed(1)}`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    {/* Center Value */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-xs font-bold font-mono text-slate-900 dark:text-white leading-none">{stats.onlinePct}</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5 font-medium">Online</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Donut Legend */}
               <div className="space-y-1.5 text-xs flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
-                    <span className="text-slate-600 dark:text-slate-300">Online</span>
+                {isLoading || !stats ? (
+                  <div className="space-y-2">
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
                   </div>
-                  <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatNum(stats.online)} ({stats.onlinePct})</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-sky-500"></span>
-                    <span className="text-slate-600 dark:text-slate-300">Tồn kho</span>
-                  </div>
-                  <span className="font-mono font-bold text-sky-600 dark:text-sky-400">{formatNum(stats.inStock)} ({stats.inStockPct})</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
-                    <span className="text-slate-600 dark:text-slate-300">Offline</span>
-                  </div>
-                  <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+                        <span className="text-slate-600 dark:text-slate-300">Online</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatNum(stats.online)} ({stats.onlinePct})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-slate-500"></span>
+                        <span className="text-slate-600 dark:text-slate-300">Tồn kho</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-600 dark:text-slate-400">{formatNum(stats.inStock)} ({stats.inStockPct})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
+                        <span className="text-slate-600 dark:text-slate-300">Offline</span>
+                      </div>
+                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

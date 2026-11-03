@@ -141,10 +141,10 @@ export function CreateDeviceModal({
             </div>
             <div>
               <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                Thêm Mới Thiết Bị Vào CSDL
+                Thêm Mới Thiết Bị
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Lưu trữ bền vững vào bảng thiết bị PostgreSQL
+                Khởi tạo thiết bị mới vào hệ thống
               </p>
             </div>
           </div>

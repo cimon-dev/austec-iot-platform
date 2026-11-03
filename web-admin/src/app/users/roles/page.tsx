@@ -98,7 +98,7 @@ export default function RolesManagementPage() {
       const res = await rolesService.updateRole(roleId, { name: newName });
       if (res.success) {
         setRoles((prev) => prev.map((r) => (r.id === roleId ? { ...r, name: newName } : r)));
-        toast.success(`Đã đổi tên vai trò thành "${newName}" và lưu vào PostgreSQL!`);
+        toast.success(`Đã đổi tên vai trò thành "${newName}" thành công!`);
       } else {
         toast.error(res.error || "Không thể cập nhật tên vai trò");
       }
@@ -111,9 +111,9 @@ export default function RolesManagementPage() {
     setIsSaving(true);
     try {
       await rolesService.saveRoles(roles);
-      toast.success("Đã lưu thiết lập ma trận phân quyền vào PostgreSQL thành công!");
+      toast.success("Đã lưu thiết lập ma trận phân quyền thành công!");
     } catch {
-      toast.error("Lỗi khi lưu thiết lập phân quyền vào PostgreSQL.");
+      toast.error("Lỗi khi lưu thiết lập phân quyền.");
     } finally {
       setIsSaving(false);
     }
@@ -142,7 +142,7 @@ export default function RolesManagementPage() {
     setSelectedRoleId(newRole.id);
     setNewRoleName("");
     setIsCreateModalOpen(false);
-    toast.success(`Đã thêm vai trò mới: "${newRole.name}" (Bấm lưu để ghi xuống CSDL)`);
+    toast.success(`Đã thêm vai trò mới: "${newRole.name}"`);
   };
 
   const handleConfirmDelete = async () => {
@@ -154,10 +154,10 @@ export default function RolesManagementPage() {
       if (selectedRoleId === deleteTarget.id) {
         setSelectedRoleId(1);
       }
-      toast.success(`Đã xóa vai trò "${deleteTarget.name}" thành công khỏi PostgreSQL!`);
+      toast.success(`Đã xóa vai trò "${deleteTarget.name}" thành công!`);
       setDeleteTarget(null);
     } catch {
-      toast.error("Lỗi khi xóa vai trò khỏi PostgreSQL.");
+      toast.error("Lỗi khi xóa vai trò.");
     } finally {
       setIsDeleting(false);
     }

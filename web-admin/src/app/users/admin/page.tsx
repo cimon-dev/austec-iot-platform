@@ -53,18 +53,39 @@ export default function AdminManagementPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchStaff = useCallback(() => {
-    adminService.getStaff().then((res) => {
-      if (res && Array.isArray(res)) {
-        setAdmins(res);
-      }
-    });
+    setIsLoading(true);
+    adminService
+      .getStaff()
+      .then((res) => {
+        if (res && Array.isArray(res)) {
+          setAdmins(res);
+        }
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
 
   useEffect(() => {
     fetchStaff();
   }, [fetchStaff]);
+
+  const handleBulkDelete = async (ids: (string | number)[]) => {
+    let deleted = 0;
+    for (const id of ids) {
+      try {
+        const res = await adminService.deleteStaff(id);
+        if (res.success) deleted++;
+      } catch (e) {
+        console.warn("Lỗi xóa cán bộ:", id, e);
+      }
+    }
+    fetchStaff();
+    toast.success(`Đã xóa ${deleted} cán bộ quản trị thành công!`);
+  };
 
   const filteredAdmins = useMemo(() => {
     return admins.filter((a) => {
@@ -201,10 +222,12 @@ export default function AdminManagementPage() {
 
       <AdminTable
         admins={paginatedAdmins}
+        isLoading={isLoading}
         canUpdate={canUpdate("mod_user")}
         canDelete={canDelete("mod_user")}
         onEdit={handleOpenEdit}
         onDelete={setDeleteTarget}
+        onBulkDelete={handleBulkDelete}
         currentPage={currentPage}
         pageSize={pageSize}
         totalItems={filteredAdmins.length}

@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { Pagination } from "@/components/Pagination";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 import { EditDeviceModal } from "../modals/EditDeviceModal";
 import { getApiBaseUrl } from "@/context/apiConfig";
 
@@ -47,6 +48,7 @@ interface DeviceListTabProps {
   models?: any[];
   groups?: any[];
   deviceTypes?: any[];
+  isLoading?: boolean;
   onDeviceUpdated?: (updated: any) => void;
   onDeviceDeleted?: (hardwareId: string) => void;
 }
@@ -61,6 +63,7 @@ export function DeviceListTab({
   models = [],
   groups = [],
   deviceTypes = [],
+  isLoading = false,
   onDeviceUpdated,
   onDeviceDeleted
 }: DeviceListTabProps) {
@@ -202,6 +205,65 @@ export function DeviceListTab({
     return filteredDevices.slice(start, start + devicePageSize);
   }, [filteredDevices, deviceCurrentPage, devicePageSize]);
 
+  // Multi-selection & Bulk Delete & Image Zoom
+  const [selectedHwIds, setSelectedHwIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState<boolean>(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState<boolean>(false);
+  const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
+  const [zoomImageAlt, setZoomImageAlt] = useState<string>("");
+
+  const toggleSelectRow = (hwId: string) => {
+    setSelectedHwIds(prev => {
+      const next = new Set(prev);
+      if (next.has(hwId)) next.delete(hwId);
+      else next.add(hwId);
+      return next;
+    });
+  };
+
+  const isAllSelected = paginatedDevices.length > 0 && paginatedDevices.every(d => selectedHwIds.has(getHwId(d)));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedHwIds(new Set());
+    } else {
+      setSelectedHwIds(new Set(paginatedDevices.map(d => getHwId(d))));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedHwIds.size === 0) return;
+    setIsBulkDeleting(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const idsToDelete = Array.from(selectedHwIds);
+    let deletedCount = 0;
+
+    for (const hwId of idsToDelete) {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hwId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          deletedCount++;
+          if (onDeviceDeleted) onDeviceDeleted(hwId);
+        }
+      } catch (e) {
+        console.warn("Lỗi xóa thiết bị:", hwId, e);
+      }
+    }
+
+    setDevices(prev => prev.filter(d => !selectedHwIds.has(getHwId(d))));
+    if (selectedDevice && selectedHwIds.has(getHwId(selectedDevice))) {
+      setSelectedDevice(null);
+    }
+    setSelectedHwIds(new Set());
+    setIsBulkDeleting(false);
+    setIsBulkDeleteModalOpen(false);
+    toast.success(`Đã xóa ${deletedCount} thiết bị thành công!`);
+  };
+
   // Copy helper
   const copyToClipboard = (text: string, label: string) => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -234,7 +296,7 @@ export function DeviceListTab({
       if (getHwId(selectedDevice) === hwId) {
         setSelectedDevice((prev: any) => ({ ...prev, openState: newState }));
       }
-      toast.success(`Lệnh ${newState} đã ghi Hộp đen & cập nhật PostgreSQL thành công!`);
+      toast.success(`Lệnh ${newState} đã ghi Hộp đen & cập nhật hệ thống thành công!`);
     } catch {
       setDevices((prev) =>
         prev.map((d) => (getHwId(d) === hwId ? { ...d, openState: newState } : d))
@@ -472,16 +534,28 @@ export function DeviceListTab({
           )}
         </div>
 
-        {/* Action Button: Thêm thiết bị mới */}
-        {canCreate && (
-          <button
-            type="button"
-            onClick={onOpenCreateModal}
-            className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold shadow-xs shrink-0"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm thiết bị mới</span>
-          </button>
+        {/* Bulk Action Bar when items selected */}
+        {selectedHwIds.size > 0 && (
+          <div className="flex items-center gap-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-1.5 rounded-lg text-xs shrink-0 shadow-xs">
+            <span className="font-semibold">Đã chọn {selectedHwIds.size}</span>
+            <button
+              type="button"
+              onClick={() => setSelectedHwIds(new Set())}
+              className="text-slate-400 dark:text-slate-500 hover:text-white dark:hover:text-black underline cursor-pointer text-[11px]"
+            >
+              Bỏ chọn
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => setIsBulkDeleteModalOpen(true)}
+                className="flex items-center gap-1 bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs font-semibold cursor-pointer ml-1 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Xóa ({selectedHwIds.size})</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -493,6 +567,15 @@ export function DeviceListTab({
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 text-[11px] uppercase text-slate-500 font-semibold">
                 <tr>
+                  <th className="p-2.5 w-10 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-0 cursor-pointer"
+                      title="Chọn tất cả"
+                    />
+                  </th>
                   <th className="p-2.5">Hardware ID & Loại</th>
                   <th className="p-2.5">Tên Thiết Bị & Model</th>
                   <th className="p-2.5">Nhóm Sản Phẩm</th>
@@ -504,10 +587,19 @@ export function DeviceListTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-sans">
-                {paginatedDevices.length === 0 ? (
+                {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-400">
-                      Chưa có thiết bị nào trong CSDL PostgreSQL. Bấm &quot;Thêm thiết bị mới&quot; hoặc &quot;Nhập kho Excel&quot; để nạp thiết bị.
+                    <td colSpan={9} className="p-12 text-center text-slate-400">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                        <span className="text-xs">Đang tải danh sách thiết bị...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedDevices.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="p-12 text-center text-slate-400 text-xs">
+                      Danh sách thiết bị đang trống
                     </td>
                   </tr>
                 ) : (
@@ -529,9 +621,19 @@ export function DeviceListTab({
                         key={hwId}
                         onClick={() => setSelectedDevice(d)}
                         className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors text-slate-700 dark:text-slate-300 ${
-                          isSelected ? "bg-cyan-50/70 dark:bg-cyan-950/40 border-l-2 border-cyan-500" : ""
+                          isSelected ? "bg-slate-100 dark:bg-slate-800/60 border-l-2 border-slate-900 dark:border-white" : ""
                         }`}
                       >
+                        {/* 0. Multi-select Checkbox */}
+                        <td className="p-2.5 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedHwIds.has(hwId)}
+                            onChange={() => toggleSelectRow(hwId)}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-0 cursor-pointer"
+                          />
+                        </td>
+
                         {/* 1. Hardware ID & Loại */}
                         <td className="p-2.5">
                           <div className="font-mono text-cyan-600 dark:text-cyan-400 font-bold flex items-center gap-1.5">
@@ -758,19 +860,25 @@ export function DeviceListTab({
               <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-2.5">
                 <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-slate-700/80">
                   <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
-                    <Cpu className="w-3.5 h-3.5 text-cyan-500" />
-                    <span>Thông Tin Phần Cứng & Model</span>
+                    <Cpu className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
+                    <span>Thông tin phần cứng & Model</span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-mono">CSDL PostgreSQL</span>
                 </div>
 
-                {/* Model Image Preview if available */}
+                {/* Model Image Preview with Zoom */}
                 {(selectedDevice.imageUrl || matchedModel?.imageUrl) && (
-                  <div className="w-full h-28 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 flex items-center justify-center relative">
+                  <div 
+                    onClick={() => {
+                      setZoomImageSrc(selectedDevice.imageUrl || matchedModel?.imageUrl);
+                      setZoomImageAlt(`Model: ${getModel(selectedDevice)}`);
+                    }}
+                    className="w-full h-28 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 flex items-center justify-center relative cursor-zoom-in group"
+                    title="Bấm để xem ảnh phóng to"
+                  >
                     <img
                       src={selectedDevice.imageUrl || matchedModel?.imageUrl}
                       alt={getModel(selectedDevice)}
-                      className="w-full h-full object-contain p-2"
+                      className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform"
                       onError={(e: any) => {
                         e.target.style.display = 'none';
                       }}
@@ -1120,6 +1228,24 @@ export function DeviceListTab({
           isDeleting={isDeleting}
         />
       )}
+
+      {/* Bulk Delete Confirm Modal */}
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+        onConfirm={handleBulkDelete}
+        itemName={`${selectedHwIds.size} thiết bị`}
+        itemType="thiết bị đã chọn"
+        description={`Bạn có chắc chắn muốn xóa vĩnh viễn ${selectedHwIds.size} thiết bị đã chọn khỏi hệ thống? Thao tác này không thể hoàn tác.`}
+        isDeleting={isBulkDeleting}
+      />
+
+      {/* Universal Image Zoom Modal */}
+      <ImageZoomModal
+        src={zoomImageSrc}
+        alt={zoomImageAlt}
+        onClose={() => setZoomImageSrc(null)}
+      />
     </div>
   );
 }

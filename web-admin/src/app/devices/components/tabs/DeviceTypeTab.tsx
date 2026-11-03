@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { ImageUploader } from "@/components/ImageUploader";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 
 export interface PropertyItem {
   id: number;
@@ -57,6 +58,56 @@ export function DeviceTypeTab({
   const [properties, setProperties] = useState<PropertyItem[]>(externalProperties || []);
   const [isLoading, setIsLoading] = useState(true);
   const [propertySearchQuery, setPropertySearchQuery] = useState("");
+
+  // Multi-selection & Bulk Delete & Image Zoom
+  const [selectedTypeIds, setSelectedTypeIds] = useState<Set<number>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [zoomImageSrc, setZoomImageSrc] = useState<string | null>(null);
+  const [zoomImageAlt, setZoomImageAlt] = useState("");
+
+  const toggleSelectType = (id: number) => {
+    setSelectedTypeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const isAllSelected = types.length > 0 && types.every(t => selectedTypeIds.has(t.id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) setSelectedTypeIds(new Set());
+    else setSelectedTypeIds(new Set(types.map(t => t.id)));
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTypeIds.size === 0) return;
+    setIsBulkDeleting(true);
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const ids = Array.from(selectedTypeIds);
+    let deleted = 0;
+
+    for (const id of ids) {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) deleted++;
+      } catch (e) {
+        console.warn("Lỗi xóa loại phần cứng:", id, e);
+      }
+    }
+
+    setTypes(prev => prev.filter(t => !selectedTypeIds.has(t.id)));
+    setSelectedTypeIds(new Set());
+    setIsBulkDeleting(false);
+    setIsBulkDeleteModalOpen(false);
+    toast.success(`Đã xóa ${deleted} loại phần cứng thành công!`);
+  };
 
   // Modal Create
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -344,9 +395,22 @@ export function DeviceTypeTab({
     <div className="h-full flex flex-col min-h-0 space-y-3">
       {/* Action Header */}
       <div className="flex justify-between items-center border-b border-slate-200 dark:border-slate-800 pb-2.5 shrink-0">
-        <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-          Loại phần cứng
-        </h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+            Loại phần cứng
+          </h1>
+          {types.length > 0 && (
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isAllSelected}
+                onChange={toggleSelectAll}
+                className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900 cursor-pointer"
+              />
+              <span>Chọn tất cả ({types.length})</span>
+            </label>
+          )}
+        </div>
         {canCreate && (
           <button
             type="button"
@@ -362,32 +426,84 @@ export function DeviceTypeTab({
         )}
       </div>
 
+      {/* Bulk Action Bar */}
+      {selectedTypeIds.size > 0 && (
+        <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900 text-white dark:bg-slate-800 rounded-lg text-xs animate-in fade-in duration-150 shrink-0 shadow-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Đã chọn {selectedTypeIds.size} loại phần cứng</span>
+            <button
+              type="button"
+              onClick={() => setSelectedTypeIds(new Set())}
+              className="text-xs text-slate-400 hover:text-white underline cursor-pointer ml-1"
+            >
+              Bỏ chọn
+            </button>
+          </div>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium cursor-pointer transition-colors shadow-xs"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Xóa đã chọn ({selectedTypeIds.size})</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid List */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-slate-900 dark:text-white" />
           </div>
         ) : types.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-            <p className="text-xs text-slate-400">Chưa có loại phần cứng nào trong CSDL.</p>
+            <p className="text-xs text-slate-400">Danh sách loại phần cứng đang trống.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {types.map((t) => {
+              const isSelected = selectedTypeIds.has(t.id);
               const propDetails = getTypePropertyDetails(t.assignedProperties);
               const propCount = Array.isArray(t.assignedProperties) ? t.assignedProperties.length : 0;
 
               return (
                 <div
                   key={t.id}
-                  className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col justify-between hover:border-purple-500/50 hover:shadow-md transition-all group"
+                  className={`p-3.5 rounded-xl border bg-white dark:bg-slate-900 shadow-xs flex flex-col justify-between transition-all group ${
+                    isSelected
+                      ? "border-slate-900 dark:border-white ring-1 ring-slate-900 dark:ring-white bg-slate-50/50 dark:bg-slate-800/40"
+                      : "border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600"
+                  }`}
                 >
                   <div>
                     {/* Top Row */}
                     <div className="flex items-start gap-3">
+                      {/* Checkbox */}
+                      <div className="pt-1 shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelectType(t.id)}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-900 cursor-pointer"
+                        />
+                      </div>
+
                       {/* Image / Thumbnail */}
-                      <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                      <div
+                        onClick={() => {
+                          if (t.imageUrl) {
+                            setZoomImageSrc(t.imageUrl);
+                            setZoomImageAlt(t.typeName);
+                          }
+                        }}
+                        className={`w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 ${
+                          t.imageUrl ? "cursor-zoom-in hover:opacity-90 transition-opacity" : ""
+                        }`}
+                        title={t.imageUrl ? "Bấm để phóng to ảnh" : undefined}
+                      >
                         {t.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={t.imageUrl} alt={t.typeName} className="w-full h-full object-cover" />
@@ -402,7 +518,7 @@ export function DeviceTypeTab({
                           <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {t.typeName}
                           </span>
-                          <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded font-bold border border-purple-200 dark:border-purple-800 shrink-0">
+                          <span className="text-[10px] font-mono text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-bold border border-slate-200 dark:border-slate-700 shrink-0">
                             {t.typeCode}
                           </span>
                         </div>
@@ -418,11 +534,11 @@ export function DeviceTypeTab({
                     <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-                          <Sliders className="w-3 h-3 text-purple-500" />
+                          <Sliders className="w-3 h-3 text-slate-500" />
                           <span>Thuộc tính mặc định:</span>
                         </span>
                         {propCount > 0 ? (
-                          <span className="text-[9px] font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+                          <span className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                             {propCount} thuộc tính
                           </span>
                         ) : (
@@ -441,7 +557,7 @@ export function DeviceTypeTab({
                             </span>
                           ))}
                           {propCount > 3 && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 font-semibold border border-purple-200 dark:border-purple-800">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold border border-slate-300 dark:border-slate-600">
                               +{propCount - 3}
                             </span>
                           )}
@@ -456,7 +572,7 @@ export function DeviceTypeTab({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(t)}
-                        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                        className="flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                         title="Chỉnh sửa & Gán thuộc tính"
                       >
                         <Edit className="w-3 h-3" />
@@ -677,7 +793,7 @@ export function DeviceTypeTab({
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isCreating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Lưu loại phần cứng</span>
@@ -881,7 +997,7 @@ export function DeviceTypeTab({
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
+                  className="flex items-center gap-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs px-4 py-1.5 rounded-lg transition-colors cursor-pointer font-semibold disabled:opacity-50"
                 >
                   {isUpdating && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>Cập nhật loại phần cứng</span>
@@ -892,7 +1008,7 @@ export function DeviceTypeTab({
         </div>
       )}
 
-      {/* CONFIRM DELETE MODAL */}
+      {/* CONFIRM SINGLE DELETE MODAL */}
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         title="Xóa loại phần cứng"
@@ -902,6 +1018,26 @@ export function DeviceTypeTab({
         isDeleting={isDeleting}
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}
+      />
+
+      {/* CONFIRM BULK DELETE MODAL */}
+      <ConfirmDeleteModal
+        isOpen={isBulkDeleteModalOpen}
+        title="Xóa nhiều loại phần cứng"
+        itemName={`${selectedTypeIds.size} loại phần cứng đã chọn`}
+        itemType="loại phần cứng"
+        description={`Bạn có chắc chắn muốn xóa ${selectedTypeIds.size} loại phần cứng đã chọn? Hành động này không thể hoàn tác.`}
+        isDeleting={isBulkDeleting}
+        onConfirm={handleBulkDelete}
+        onClose={() => setIsBulkDeleteModalOpen(false)}
+      />
+
+      {/* IMAGE ZOOM MODAL */}
+      <ImageZoomModal
+        isOpen={!!zoomImageSrc}
+        imageUrl={zoomImageSrc || ""}
+        alt={zoomImageAlt}
+        onClose={() => setZoomImageSrc(null)}
       />
     </div>
   );

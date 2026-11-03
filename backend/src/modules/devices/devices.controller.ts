@@ -190,7 +190,7 @@ export class DevicesController {
   public async createDevice(req: Request, res: Response) {
     try {
       const device = await this.service.createDevice(req.body);
-      res.json({ success: true, device, message: 'Khởi tạo thiết bị vào CSDL thành công!' });
+      res.json({ success: true, device, message: 'Khởi tạo thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
@@ -205,7 +205,7 @@ export class DevicesController {
         return;
       }
       const result = await this.service.createDevicesBatch(items);
-      res.json({ success: true, ...result, message: `Đã lưu thành công ${result.count} thiết bị vào CSDL!` });
+      res.json({ success: true, ...result, message: `Đã lưu thành công ${result.count} thiết bị!` });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
@@ -215,7 +215,7 @@ export class DevicesController {
   public async updateDevice(req: Request, res: Response) {
     try {
       const device = await this.service.updateDevice(String(req.params.hardwareId), req.body);
-      res.json({ success: true, device, message: 'Cập nhật thiết bị trong CSDL thành công!' });
+      res.json({ success: true, device, message: 'Cập nhật thiết bị thành công!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }
@@ -257,6 +257,82 @@ export class DevicesController {
     try {
       const isBlocked = await this.service.toggleBlockRfRemote(Number(req.params.id));
       res.json({ success: true, message: 'Cập nhật trạng thái khóa remote thành công!', isBlocked });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  // Firmware
+  @Get('/firmware', authenticate)
+  public async getFirmwareReleases(req: Request, res: Response) {
+    try {
+      const releases = await this.service.getFirmwareReleases(req.query.modelCode as string);
+      res.json({ success: true, releases });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  @Post('/firmware', authenticate, requireRole(['ADMIN']))
+  public async createFirmwareRelease(req: Request, res: Response) {
+    try {
+      const release = await this.service.createFirmwareRelease(req.body);
+      res.json({ success: true, release, message: 'Tạo bản phát hành firmware thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  @Delete('/firmware/:id', authenticate, requireRole(['ADMIN']))
+  public async deleteFirmwareRelease(req: Request, res: Response) {
+    try {
+      await this.service.deleteFirmwareRelease(Number(req.params.id));
+      res.json({ success: true, message: 'Xóa bản phát hành firmware thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  // OTA Campaigns
+  @Get('/ota/campaigns', authenticate)
+  public async getOtaCampaigns(_req: Request, res: Response) {
+    try {
+      const campaigns = await this.service.getOtaCampaigns();
+      res.json({ success: true, campaigns });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  @Get('/ota/campaigns/:id', authenticate)
+  public async getOtaCampaignDetails(req: Request, res: Response) {
+    try {
+      const details = await this.service.getOtaCampaignDetails(Number(req.params.id));
+      if (!details) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy chiến dịch OTA' });
+        return;
+      }
+      res.json({ success: true, ...details });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  @Post('/ota/deploy', authenticate, requireRole(['ADMIN']))
+  public async deployOtaCampaign(req: Request, res: Response) {
+    try {
+      const campaign = await this.service.createOtaCampaign(req.body);
+      res.json({ success: true, campaign, message: 'Khởi chạy chiến dịch nạp OTA thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  @Post('/ota/retry/:id', authenticate, requireRole(['ADMIN']))
+  public async retryOtaDeviceRecord(req: Request, res: Response) {
+    try {
+      const record = await this.service.retryOtaDeviceRecord(Number(req.params.id));
+      res.json({ success: true, record, message: 'Đã gửi lại yêu cầu cập nhật OTA!' });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
     }

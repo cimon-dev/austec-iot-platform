@@ -18,9 +18,12 @@ import {
   Copy, 
   WifiOff, 
   ArrowUpRight,
-  Server
+  Server,
+  Trash2
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
+import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { toast } from "sonner";
 
 interface FirmwareRelease {
   id: number;
@@ -89,6 +92,15 @@ export default function FirmwareOtaPage() {
   const [newChangelog, setNewChangelog] = useState<string>("");
   const [newType, setNewType] = useState<string>("STABLE");
 
+  // Multi-select & Bulk Delete
+  const [selectedFwIds, setSelectedFwIds] = useState<number[]>([]);
+  const [showDeleteFwModal, setShowDeleteFwModal] = useState<boolean>(false);
+  const [deletingFw, setDeletingFw] = useState<boolean>(false);
+  const [deleteSingleFwTarget, setDeleteSingleFwTarget] = useState<FirmwareRelease | null>(null);
+
+  const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
+  const [isRetryingSelected, setIsRetryingSelected] = useState<boolean>(false);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -138,6 +150,79 @@ export default function FirmwareOtaPage() {
       }
     } catch (e) {
       console.error("Lỗi khi retry:", e);
+    }
+  };
+
+  const handleToggleSelectFw = (id: number) => {
+    setSelectedFwIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAllFw = () => {
+    if (selectedFwIds.length === firmwares.length) {
+      setSelectedFwIds([]);
+    } else {
+      setSelectedFwIds(firmwares.map(f => f.id));
+    }
+  };
+
+  const handleBulkDeleteFw = async () => {
+    if (selectedFwIds.length === 0) return;
+    setDeletingFw(true);
+    try {
+      for (const id of selectedFwIds) {
+        await fetch(`${getApiBaseUrl()}/api/admin/firmware/${id}`, { method: 'DELETE' });
+      }
+      setFirmwares(prev => prev.filter(f => !selectedFwIds.includes(f.id)));
+      toast.success(`Đã xóa thành công ${selectedFwIds.length} bản phát hành firmware!`);
+      setSelectedFwIds([]);
+      setShowDeleteFwModal(false);
+    } catch (e: any) {
+      toast.error(`Lỗi khi xóa firmware: ${e.message}`);
+    } finally {
+      setDeletingFw(false);
+    }
+  };
+
+  const handleConfirmSingleDeleteFw = async () => {
+    if (!deleteSingleFwTarget) return;
+    setDeletingFw(true);
+    try {
+      await fetch(`${getApiBaseUrl()}/api/admin/firmware/${deleteSingleFwTarget.id}`, { method: 'DELETE' });
+      setFirmwares(prev => prev.filter(f => f.id !== deleteSingleFwTarget.id));
+      toast.success(`Đã xóa bản phát hành ${deleteSingleFwTarget.version}!`);
+      setDeleteSingleFwTarget(null);
+    } catch (e: any) {
+      toast.error(`Lỗi khi xóa firmware: ${e.message}`);
+    } finally {
+      setDeletingFw(false);
+    }
+  };
+
+  const handleToggleSelectRecord = (id: number) => {
+    setSelectedRecordIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const handleSelectAllRecords = (list: OtaDeviceRecord[]) => {
+    if (selectedRecordIds.length === list.length) {
+      setSelectedRecordIds([]);
+    } else {
+      setSelectedRecordIds(list.map(r => r.id));
+    }
+  };
+
+  const handleRetrySelected = async () => {
+    if (selectedRecordIds.length === 0) return;
+    setIsRetryingSelected(true);
+    try {
+      for (const id of selectedRecordIds) {
+        await handleRetryDevice(id);
+      }
+      toast.success(`Đã gửi lại lệnh cập nhật cho ${selectedRecordIds.length} thiết bị!`);
+      setSelectedRecordIds([]);
+    } catch (e: any) {
+      toast.error(`Lỗi thử lại nạp thiết bị: ${e.message}`);
+    } finally {
+      setIsRetryingSelected(false);
     }
   };
 
@@ -283,25 +368,25 @@ export default function FirmwareOtaPage() {
 
       {/* 3. Tiến trình chiến dịch đang chạy (Active Campaign Banner) */}
       {campaigns.length > 0 && (
-        <div className="p-5 rounded-xl bg-gradient-to-r from-cyan-50/70 via-white to-blue-50/60 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950 border border-cyan-200 dark:border-cyan-500/30 shadow-xs">
+        <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
-                <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                   Chiến dịch phát hành đang hoạt động
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-300 dark:border-slate-700">
                   ID: #{campaigns[0].id}
                 </span>
               </div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white mt-1">{campaigns[0].campaignName}</h2>
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
                 <span>Model: <b className="text-slate-800 dark:text-white">{campaigns[0].targetModel}</b></span>
-                <span>Phiên bản đích: <b className="text-cyan-600 dark:text-cyan-400 font-mono">{campaigns[0].targetVersion}</b></span>
+                <span>Phiên bản đích: <b className="text-slate-900 dark:text-white font-mono">{campaigns[0].targetVersion}</b></span>
                 <span>Bắt đầu lúc: <span className="font-mono text-slate-700 dark:text-slate-300">{campaigns[0].startedAt}</span></span>
               </div>
             </div>
@@ -309,11 +394,11 @@ export default function FirmwareOtaPage() {
             <div className="w-full md:w-72 bg-white dark:bg-slate-950/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
               <div className="flex justify-between text-xs mb-1.5">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">Tiến độ đợt nạp</span>
-                <span className="text-cyan-600 dark:text-cyan-400 font-bold font-mono">{successRate}% Hoàn thành</span>
+                <span className="text-slate-900 dark:text-white font-bold font-mono">{successRate}% Hoàn thành</span>
               </div>
               <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                 <div 
-                  className="bg-gradient-to-r from-cyan-500 to-emerald-500 h-2.5 rounded-full transition-all duration-500" 
+                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" 
                   style={{ width: `${successRate}%` }}
                 ></div>
               </div>
@@ -330,7 +415,7 @@ export default function FirmwareOtaPage() {
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileCode className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+            <FileCode className="w-4 h-4 text-slate-700 dark:text-slate-300" />
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">Kho Bản Phát Hành Firmware (.bin)</h2>
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
               {firmwares.length} bản
@@ -345,10 +430,42 @@ export default function FirmwareOtaPage() {
           </button>
         </div>
 
+        {/* Firmware Bulk Action Toolbar */}
+        {selectedFwIds.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium border-b border-slate-800 dark:border-slate-200">
+            <span>Đã chọn: <strong>{selectedFwIds.length}</strong> bản phát hành</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedFwIds([])}
+                className="px-2.5 py-1 bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 rounded cursor-pointer transition-colors"
+              >
+                Hủy chọn
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowDeleteFwModal(true)}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-semibold cursor-pointer transition-colors"
+              >
+                Xóa đã chọn ({selectedFwIds.length})
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 font-medium">
+                <th className="p-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={firmwares.length > 0 && selectedFwIds.length === firmwares.length}
+                    onChange={handleSelectAllFw}
+                    className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                    title="Chọn tất cả"
+                  />
+                </th>
                 <th className="p-3">Phiên bản</th>
                 <th className="p-3">Dòng Sản Phẩm</th>
                 <th className="p-3">Tệp Binary</th>
@@ -356,51 +473,95 @@ export default function FirmwareOtaPage() {
                 <th className="p-3">Mã Băm SHA-256</th>
                 <th className="p-3">Loại</th>
                 <th className="p-3">Nhật ký thay đổi (Changelog)</th>
+                <th className="p-3 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-              {firmwares.map((fw) => (
-                <tr key={fw.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="p-3 font-mono font-bold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
-                    {fw.version}
-                  </td>
-                  <td className="p-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                    {fw.modelCode}
-                  </td>
-                  <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                    {fw.binaryFilename}
-                  </td>
-                  <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                    {(fw.fileSizeBytes / 1024 / 1024).toFixed(2)} MB
-                  </td>
-                  <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                    <button 
-                      onClick={() => handleCopyHash(fw.sha256Checksum)}
-                      className="flex items-center gap-1.5 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors cursor-pointer group"
-                      title="Bấm để sao chép SHA-256"
-                    >
-                      <span>{fw.sha256Checksum.slice(0, 10)}...{fw.sha256Checksum.slice(-6)}</span>
-                      {copiedHash === fw.sha256Checksum ? (
-                        <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                      ) : (
-                        <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100" />
-                      )}
-                    </button>
-                  </td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      fw.releaseType === "STABLE" 
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" 
-                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                    }`}>
-                      {fw.releaseType}
-                    </span>
-                  </td>
-                  <td className="p-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={fw.changelog}>
-                    {fw.changelog}
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <RotateCw className="w-5 h-5 animate-spin text-slate-400" />
+                      <span>Đang nạp kho firmware...</span>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : firmwares.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                    Chưa có bản phát hành firmware nào.
+                  </td>
+                </tr>
+              ) : (
+                firmwares.map((fw) => {
+                  const isChecked = selectedFwIds.includes(fw.id);
+                  return (
+                    <tr
+                      key={fw.id}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
+                        isChecked ? "bg-slate-100 dark:bg-slate-800/80" : ""
+                      }`}
+                    >
+                      <td className="p-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSelectFw(fw.id)}
+                          className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </td>
+                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        {fw.version}
+                      </td>
+                      <td className="p-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
+                        {fw.modelCode}
+                      </td>
+                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
+                        {fw.binaryFilename}
+                      </td>
+                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
+                        {(fw.fileSizeBytes / 1024 / 1024).toFixed(2)} MB
+                      </td>
+                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
+                        <button 
+                          onClick={() => handleCopyHash(fw.sha256Checksum)}
+                          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
+                          title="Bấm để sao chép SHA-256"
+                        >
+                          <span>{fw.sha256Checksum.slice(0, 10)}...{fw.sha256Checksum.slice(-6)}</span>
+                          {copiedHash === fw.sha256Checksum ? (
+                            <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          fw.releaseType === "STABLE" 
+                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" 
+                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+                        }`}>
+                          {fw.releaseType}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={fw.changelog}>
+                        {fw.changelog}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteSingleFwTarget(fw)}
+                          className="p-1 rounded text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer transition-colors"
+                          title="Xóa bản phát hành"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -468,10 +629,44 @@ export default function FirmwareOtaPage() {
           </div>
         </div>
 
+        {/* Rollout Bulk Action Toolbar */}
+        {selectedRecordIds.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium border-b border-slate-800 dark:border-slate-200">
+            <span>Đã chọn: <strong>{selectedRecordIds.length}</strong> thiết bị</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedRecordIds([])}
+                className="px-2.5 py-1 bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 rounded cursor-pointer transition-colors"
+              >
+                Hủy chọn
+              </button>
+              <button
+                type="button"
+                onClick={handleRetrySelected}
+                disabled={isRetryingSelected}
+                className="px-2.5 py-1 bg-white text-slate-900 dark:bg-slate-900 dark:text-white rounded font-semibold cursor-pointer transition-colors flex items-center gap-1"
+              >
+                {isRetryingSelected && <RotateCw className="w-3 h-3 animate-spin" />}
+                <span>Thử lại nạp ({selectedRecordIds.length} TB)</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 font-medium">
+                <th className="p-3 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredRecords.length > 0 && selectedRecordIds.length === filteredRecords.length}
+                    onChange={() => handleSelectAllRecords(filteredRecords)}
+                    className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                    title="Chọn tất cả"
+                  />
+                </th>
                 <th className="p-3">Mã Thiết Bị (Hardware ID)</th>
                 <th className="p-3">Khách Hàng / Điểm Lắp</th>
                 <th className="p-3">Phiên Bản Hiện Tại</th>
@@ -483,9 +678,18 @@ export default function FirmwareOtaPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-              {filteredRecords.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <RotateCw className="w-5 h-5 animate-spin text-slate-400" />
+                      <span>Đang nạp danh sách thiết bị rollout...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredRecords.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="p-6 text-center text-slate-400 dark:text-slate-500">
                     Không tìm thấy thiết bị nào phù hợp với bộ lọc
                   </td>
                 </tr>
@@ -494,11 +698,25 @@ export default function FirmwareOtaPage() {
                   const isSuccess = rec.status === "SUCCESS";
                   const isFailed = rec.status === "FAILED_OFFLINE" || rec.status === "FAILED_CHECKSUM";
                   const isDownloading = rec.status === "DOWNLOADING";
+                  const isChecked = selectedRecordIds.includes(rec.id);
 
                   return (
-                    <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                    <tr
+                      key={rec.id}
+                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
+                        isChecked ? "bg-slate-100 dark:bg-slate-800/80" : ""
+                      }`}
+                    >
+                      <td className="p-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleToggleSelectRecord(rec.id)}
+                          className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
+                        />
+                      </td>
                       <td className="p-3 font-mono font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Cpu className={`w-3.5 h-3.5 ${rec.hardwareId === 'amtuong1994' ? 'text-amber-500 dark:text-amber-400' : 'text-cyan-500 dark:text-cyan-400'}`} />
+                        <Cpu className="w-3.5 h-3.5 text-slate-500" />
                         <span>{rec.hardwareId}</span>
                         {rec.hardwareId === 'amtuong1994' && (
                           <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-sans font-bold">
@@ -512,7 +730,7 @@ export default function FirmwareOtaPage() {
                       <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
                         {rec.currentVersion}
                       </td>
-                      <td className="p-3 font-mono font-bold text-cyan-600 dark:text-cyan-400">
+                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
                         {rec.targetVersion}
                       </td>
                       <td className="p-3 w-40">
@@ -523,7 +741,7 @@ export default function FirmwareOtaPage() {
                           <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                             <div 
                               className={`h-1.5 rounded-full transition-all duration-300 ${
-                                isSuccess ? "bg-emerald-500" : isFailed ? "bg-rose-500" : "bg-cyan-500"
+                                isSuccess ? "bg-emerald-500" : isFailed ? "bg-rose-500" : "bg-slate-900 dark:bg-white"
                               }`}
                               style={{ width: `${rec.progressPct}%` }}
                             ></div>
@@ -538,7 +756,7 @@ export default function FirmwareOtaPage() {
                           </span>
                         )}
                         {isDownloading && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
                             <RotateCw className="w-3 h-3 animate-spin" />
                             Đang tải {rec.progressPct}%
                           </span>
@@ -575,7 +793,7 @@ export default function FirmwareOtaPage() {
                         ) : isSuccess ? (
                           <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Rollback Sẵn Sàng</span>
                         ) : (
-                          <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-mono">Đang truyền...</span>
+                          <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">Đang truyền...</span>
                         )}
                       </td>
                     </tr>
@@ -683,7 +901,7 @@ export default function FirmwareOtaPage() {
                 type="button"
                 onClick={handleDeployCampaign}
                 disabled={deploying}
-                className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-md shadow-cyan-500/20 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
               >
                 {deploying ? "Đang phát lệnh qua MQTT..." : "Xác Nhận & Bắt Đầu Nạp"}
               </button>
@@ -697,7 +915,7 @@ export default function FirmwareOtaPage() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150">
             <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <UploadCloud className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+              <UploadCloud className="w-5 h-5 text-slate-700 dark:text-slate-300" />
               Tải Lên Bản Phát Hành Firmware (.bin)
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -716,7 +934,7 @@ export default function FirmwareOtaPage() {
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
                     placeholder="vd: v1.2.0"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-cyan-600 dark:text-cyan-400 font-mono font-bold focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-slate-500"
                   />
                 </div>
                 <div>
@@ -726,7 +944,7 @@ export default function FirmwareOtaPage() {
                   <select
                     value={newModel}
                     onChange={(e) => setNewModel(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
                   >
                     <option value="DOOR_GERMAN_ALU">Cửa cuốn Titadoor Đức</option>
                     <option value="DOOR_AU_STEEL">Cửa cuốn tấm liền Úc</option>
@@ -740,8 +958,8 @@ export default function FirmwareOtaPage() {
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Đính Kèm Tệp Binary (.bin)
                 </label>
-                <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-cyan-500/50 rounded-lg text-center cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950/50">
-                  <FileCode className="w-8 h-8 text-cyan-500 dark:text-cyan-400 mx-auto mb-1" />
+                <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-slate-500 rounded-lg text-center cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950/50">
+                  <FileCode className="w-8 h-8 text-slate-400 mx-auto mb-1" />
                   <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Kéo thả tệp .bin hoặc bấm chọn file</span>
                   <p className="text-[10px] text-slate-500 mt-0.5">Dung lượng tối đa 1.8MB cho phân vùng OTA ESP32</p>
                 </div>
@@ -757,7 +975,7 @@ export default function FirmwareOtaPage() {
                   value={newChangelog}
                   onChange={(e) => setNewChangelog(e.target.value)}
                   placeholder="Mô tả các lỗi đã fix hoặc tính năng mới bổ sung..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
                 ></textarea>
               </div>
 
@@ -771,7 +989,7 @@ export default function FirmwareOtaPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-md shadow-cyan-500/20 cursor-pointer"
+                  className="px-4 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
                 >
                   Lưu & Đưa Vào Kho Firmware
                 </button>
@@ -780,6 +998,30 @@ export default function FirmwareOtaPage() {
           </div>
         </div>
       )}
+
+      {/* Single Firmware Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteSingleFwTarget}
+        title="Xóa Bản Phát Hành Firmware"
+        itemName={deleteSingleFwTarget?.version}
+        itemType="bản phát hành"
+        description="Thao tác này sẽ gỡ bỏ bản phát hành firmware khỏi kho lưu trữ. Các thiết bị đang chạy phiên bản này sẽ không bị ảnh hưởng."
+        isDeleting={deletingFw}
+        onConfirm={handleConfirmSingleDeleteFw}
+        onClose={() => setDeleteSingleFwTarget(null)}
+      />
+
+      {/* Bulk Firmware Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        isOpen={showDeleteFwModal}
+        title="Xóa Hàng Loạt Bản Phát Hành Firmware"
+        itemName={`${selectedFwIds.length} bản phát hành đã chọn`}
+        itemType="danh sách firmware"
+        description={`Bạn có chắc chắn muốn xóa ${selectedFwIds.length} bản phát hành firmware đã chọn? Thao tác này không thể hoàn tác.`}
+        isDeleting={deletingFw}
+        onConfirm={handleBulkDeleteFw}
+        onClose={() => setShowDeleteFwModal(false)}
+      />
     </div>
   );
 }

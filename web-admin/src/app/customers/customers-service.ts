@@ -60,4 +60,12 @@ export const customersService = {
       error: res.error,
     };
   },
+
+  async deleteCustomer(id: string): Promise<{ success: boolean; error?: string }> {
+    const res = await apiClient.delete<{ message?: string }>(`/api/admin/customers/${id}`);
+    return {
+      success: !!res.success,
+      error: res.error,
+    };
+  },
 };

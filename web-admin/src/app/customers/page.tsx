@@ -67,7 +67,7 @@ function CustomersPageContent() {
         if (viewCustomer?.id === id) {
           setViewCustomer((prev) => (prev ? { ...prev, ...updatedData } : null));
         }
-        toast.success(`Đã cập nhật thông tin khách hàng (bao gồm email) vào PostgreSQL thành công!`);
+        toast.success(`Đã cập nhật thông tin khách hàng thành công!`);
         setEditingCustomer(null);
       } else {
         toast.error(res.error || "Không thể cập nhật thông tin khách hàng");
@@ -79,14 +79,42 @@ function CustomersPageContent() {
     }
   };
 
-  // Hydrate customers from backend
-  useEffect(() => {
-    customersService.getCustomers().then((data) => {
-      if (data && data.length > 0) {
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await customersService.getCustomers();
+      if (Array.isArray(data)) {
         setCustomers(data);
       }
-    });
+    } catch (err: any) {
+      console.warn("Lỗi nạp danh sách khách hàng:", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const handleDeleteCustomers = async (ids: string[]) => {
+    let deleted = 0;
+    for (const id of ids) {
+      try {
+        const res = await customersService.deleteCustomer(id);
+        if (res.success) deleted++;
+      } catch (e) {
+        console.warn("Lỗi xóa khách hàng:", id, e);
+      }
+    }
+    setCustomers((prev) => prev.filter((c) => !ids.includes(c.id)));
+    if (viewCustomer && ids.includes(viewCustomer.id)) {
+      setViewCustomer(null);
+    }
+    toast.success(`Đã xóa ${deleted} khách hàng thành công!`);
+  };
 
   // Family Matrix Tab State
   const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>(INITIAL_FAMILY_MATRIX);
@@ -173,7 +201,7 @@ function CustomersPageContent() {
 
       setCustomers((prev) => [res.customer || newCust, ...prev]);
       setIsAddCustomerModalOpen(false);
-      toast.success(`Đã tạo tài khoản khách hàng "${newCust.fullName}" lưu vào PostgreSQL thành công!`);
+      toast.success(`Đã tạo tài khoản khách hàng "${newCust.fullName}" thành công!`);
     } catch (e: any) {
       toast.error(`Lỗi tạo khách hàng: ${e.message}`);
     } finally {
@@ -271,12 +299,14 @@ function CustomersPageContent() {
       {activeTab === "accounts" ? (
         <CustomerAccountsTab
           customers={customers}
+          isLoading={isLoading}
           viewCustomer={viewCustomer}
           onSelectCustomer={setViewCustomer}
           canUpdate={canUpdate("mod_user")}
           onToggleStatus={handleToggleAccountStatus}
           onOpenAddModal={() => setIsAddCustomerModalOpen(true)}
           onEditCustomer={(cust) => setEditingCustomer(cust)}
+          onDeleteCustomers={handleDeleteCustomers}
           onViewMatrix={(ownerId) => {
             setSelectedOwnerId(ownerId);
             switchTab("matrix");

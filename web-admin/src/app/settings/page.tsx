@@ -82,7 +82,7 @@ export default function SystemSettingsPage() {
       });
 
       if (res.success) {
-        toast.success("Đã lưu các thiết lập cấu hình hệ thống vào PostgreSQL thành công!");
+        toast.success("Đã lưu các thiết lập cấu hình hệ thống thành công!");
       } else {
         toast.error(res.error || "Lỗi lưu cấu hình!");
       }
