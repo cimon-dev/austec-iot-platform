@@ -91,10 +91,11 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
       firstDate: DateTime(2025),
       lastDate: DateTime(2030),
       builder: (context, child) {
+        final isDark = AppTheme.isDarkMode;
         return Theme(
           data: ThemeData(
             colorScheme: ColorScheme.dark(
-              primary: AppTheme.cyanAccent,
+              primary: isDark ? Colors.white : Colors.black,
               surface: AppTheme.surface,
               onSurface: Colors.white,
             ),
@@ -148,7 +149,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
             ),
             Text(
               widget.device.name,
-              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.w500),
+              style: TextStyle(color: isDark ? Colors.white70 : AppTheme.lightTextSecondary, fontSize: 11, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -157,14 +158,14 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
           IconButton(
             icon: Icon(
               Icons.calendar_month_outlined,
-              color: _selectedDate == null ? textCol : AppTheme.cyanAccent,
+              color: _selectedDate == null ? textCol : (isDark ? Colors.white : Colors.black),
             ),
             tooltip: "Lọc theo ngày",
             onPressed: _openDatePicker,
           ),
           if (_selectedDate != null || _selectedFilterCode != 0)
             IconButton(
-              icon: const Icon(Icons.filter_alt_off_outlined, color: AppTheme.amberWarning),
+              icon: Icon(Icons.filter_alt_off_outlined, color: textCol),
               tooltip: "Xóa bộ lọc",
               onPressed: () {
                 setState(() {
@@ -174,13 +175,13 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
               },
             ),
           if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               child: Center(
                 child: SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: textCol),
                 ),
               ),
             )
@@ -195,7 +196,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
       ),
       body: Column(
         children: [
-          // 1. THANH TỔNG QUAN KPI THỐNG KÊ (Trực quan, dễ nắm bắt ngay)
+          // 1. THANH TỔNG QUAN KPI THỐNG KÊ
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -210,28 +211,28 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                 _buildKpiStat(
                   label: "Tổng thao tác",
                   value: widget.device.auditLogs.length.toString(),
-                  color: AppTheme.blueAccent,
+                  color: textCol,
                   icon: Icons.history_rounded,
                 ),
                 Container(width: 1, height: 28, color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
                 _buildKpiStat(
                   label: "Lượt Mở",
                   value: totalOpens.toString(),
-                  color: AppTheme.cyanAccent,
+                  color: textCol,
                   icon: Icons.arrow_upward_rounded,
                 ),
                 Container(width: 1, height: 28, color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
                 _buildKpiStat(
                   label: "Lượt Đóng",
                   value: totalCloses.toString(),
-                  color: Colors.orangeAccent,
+                  color: textCol,
                   icon: Icons.arrow_downward_rounded,
                 ),
                 Container(width: 1, height: 28, color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
                 _buildKpiStat(
                   label: "Dừng / Khóa",
                   value: totalStops.toString(),
-                  color: AppTheme.roseDanger,
+                  color: textCol,
                   icon: Icons.pause_circle_outline_rounded,
                 ),
               ],
@@ -254,13 +255,13 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                 if (_selectedDate != null) ...[
                   const SizedBox(width: 8),
                   Chip(
-                    backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                    backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                     label: Text(
                       "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
-                      style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     onDeleted: () => setState(() => _selectedDate = null),
-                    deleteIconColor: AppTheme.cyanAccent,
+                    deleteIconColor: textCol,
                   ),
                 ],
               ],
@@ -278,9 +279,9 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: AppTheme.surfaceGlass,
+                            color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
                             shape: BoxShape.circle,
-                            border: Border.all(color: AppTheme.cardBorder),
+                            border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
                           ),
                           child: const Icon(Icons.event_busy_rounded, color: AppTheme.textMuted, size: 40),
                         ),
@@ -297,8 +298,8 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                               _selectedFilterCode = 0;
                             });
                           },
-                          icon: const Icon(Icons.refresh, size: 16, color: AppTheme.cyanAccent),
-                          label: const Text("Đặt lại tất cả bộ lọc", style: TextStyle(color: AppTheme.cyanAccent)),
+                          icon: Icon(Icons.refresh, size: 16, color: textCol),
+                          label: Text("Đặt lại tất cả bộ lọc", style: TextStyle(color: textCol)),
                         ),
                       ],
                     ),
@@ -347,29 +348,31 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
   }
 
   Widget _buildFilterChip(String label, int code, IconData icon) {
+    final isDark = AppTheme.isDarkMode;
     final isSelected = _selectedFilterCode == code;
+
     return ChoiceChip(
       selected: isSelected,
       showCheckmark: false,
       avatar: Icon(
         icon,
         size: 14,
-        color: isSelected ? Colors.white : AppTheme.textMuted,
+        color: isSelected ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
       ),
       label: Text(
         label,
         style: TextStyle(
-          color: isSelected ? Colors.white : AppTheme.textMuted,
+          color: isSelected ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
           fontSize: 12,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
       ),
-      backgroundColor: AppTheme.surfaceGlass,
-      selectedColor: AppTheme.blueAccent,
+      backgroundColor: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
+      selectedColor: isDark ? Colors.white : Colors.black,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: isSelected ? AppTheme.blueAccent : AppTheme.cardBorder,
+          color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
         ),
       ),
       onSelected: (val) {
@@ -379,28 +382,20 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
   }
 
   Widget _buildTimelineItem(AuditLog log, {required bool isLast}) {
-    Color nodeColor;
-    Color nodeBg;
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+
     IconData nodeIcon;
     String actionLabel;
     String channelName = "App Mobile";
 
     if (log.actionCode == 1) {
-      // Mở cửa
-      nodeColor = AppTheme.cyanAccent;
-      nodeBg = AppTheme.cyanAccent.withValues(alpha: 0.18);
       nodeIcon = Icons.arrow_upward_rounded;
       actionLabel = "MỞ CỬA THÀNH CÔNG";
     } else if (log.actionCode == 2) {
-      // Đóng cửa
-      nodeColor = Colors.orangeAccent;
-      nodeBg = Colors.orangeAccent.withValues(alpha: 0.18);
       nodeIcon = Icons.arrow_downward_rounded;
       actionLabel = "ĐÓNG CỬA HOÀN TẤT";
     } else {
-      // Dừng cửa
-      nodeColor = AppTheme.roseDanger;
-      nodeBg = AppTheme.roseDanger.withValues(alpha: 0.18);
       nodeIcon = Icons.pause_rounded;
       actionLabel = "DỪNG CỬA TẠI VỊ TRÍ";
     }
@@ -409,8 +404,6 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
     final parts = log.time.split(" ");
     final dateStr = parts.isNotEmpty ? parts[0] : "";
     final timeStr = parts.length > 1 ? parts[1] : log.time;
-
-    final isDark = AppTheme.isDarkMode;
 
     return IntrinsicHeight(
       child: Row(
@@ -427,7 +420,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                   Text(
                     timeStr,
                     style: TextStyle(
-                      color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      color: textCol,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       fontFamily: "monospace",
@@ -454,40 +447,25 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: nodeBg,
+                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                   shape: BoxShape.circle,
-                  border: Border.all(color: nodeColor, width: 2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: nodeColor.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                    ),
-                  ],
+                  border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7), width: 1.5),
                 ),
-                child: Icon(nodeIcon, color: nodeColor, size: 16),
+                child: Icon(nodeIcon, color: textCol, size: 16),
               ),
               if (!isLast)
                 Expanded(
                   child: Container(
                     width: 2,
                     margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          nodeColor.withValues(alpha: 0.5),
-                          AppTheme.cardBorder,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                    ),
+                    color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder,
                   ),
                 ),
             ],
           ),
           const SizedBox(width: 12),
 
-          // 3. THẺ NỘI DUNG SỰ KIỆN TRỰC QUAN (Glassmorphic Event Card)
+          // 3. THẺ NỘI DUNG SỰ KIỆN TRỰC QUAN
           Expanded(
             child: Container(
               margin: const EdgeInsets.only(bottom: 14),
@@ -496,7 +474,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                 color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: nodeColor.withValues(alpha: 0.25),
+                  color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder,
                   width: 1,
                 ),
                 boxShadow: [
@@ -516,7 +494,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                       Text(
                         actionLabel,
                         style: TextStyle(
-                          color: nodeColor,
+                          color: textCol,
                           fontSize: 12.5,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.4,
@@ -529,9 +507,9 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.3)),
                         ),
-                        child: Row(
+                        child: const Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(Icons.check, size: 10, color: AppTheme.emeraldSuccess),
                             SizedBox(width: 2),
                             Text(
@@ -562,17 +540,17 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppTheme.surface.withValues(alpha: 0.5),
+                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.smartphone_rounded, size: 11, color: AppTheme.cyanAccent),
+                            Icon(Icons.smartphone_rounded, size: 11, color: textCol),
                             const SizedBox(width: 3),
                             Text(
                               channelName,
-                              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10, fontWeight: FontWeight.w500),
+                              style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),

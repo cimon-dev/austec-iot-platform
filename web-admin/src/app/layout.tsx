@@ -13,6 +13,11 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Austec IoT Platform - Modern Cloud Management",
   description: "Hệ thống Quản trị & Vận hành Thiết bị Thông minh Austec - Enterprise Grade IoT Platform",
+  icons: {
+    icon: "/logo-app.webp",
+    shortcut: "/logo-app.webp",
+    apple: "/logo-app.webp",
+  },
 };
 
 export default function RootLayout({

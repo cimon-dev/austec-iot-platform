@@ -617,15 +617,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   return Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Vòng ngoài lớn phát sáng
+                      // Vòng ngoài lớn (Subtle monochrome ring)
                       Container(
-                        width: 220 + pulseVal * 12,
-                        height: 220 + pulseVal * 12,
+                        width: 220 + pulseVal * 8,
+                        height: 220 + pulseVal * 8,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppTheme.cyanAccent.withValues(alpha: 0.2 + pulseVal * 0.2),
-                            width: 1.5,
+                            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08 + pulseVal * 0.05),
+                            width: 1.0,
                           ),
                         ),
                       ),
@@ -636,45 +636,57 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppTheme.blueAccent.withValues(alpha: 0.35),
-                            width: 1.2,
+                            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                            width: 1.0,
                           ),
                         ),
                       ),
-                      // Lõi trung tâm Nhà Của Tôi
+                      // Lõi trung tâm Nhà Của Tôi (Pure Monochrome Industrial)
                       Container(
                         width: 130,
                         height: 130,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const RadialGradient(
-                            colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+                          gradient: RadialGradient(
+                            colors: isDark
+                                ? const [Color(0xFF27272A), Color(0xFF141518)]
+                                : const [Color(0xFFFFFFFF), Color(0xFFE4E4E7)],
                           ),
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6), width: 1.5),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                            width: 1.5,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.3),
-                              blurRadius: 20,
-                              spreadRadius: 2,
+                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.home_work_rounded, color: Colors.white, size: 38),
+                            Icon(
+                              Icons.home_work_rounded,
+                              color: isDark ? Colors.white : Colors.black87,
+                              size: 38,
+                            ),
                             const SizedBox(height: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.75),
+                                color: isDark ? const Color(0xFF090A0C) : const Color(0xFFF4F4F5),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppTheme.cyanAccent, width: 1.2),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                                  width: 1.0,
+                                ),
                               ),
                               child: Text(
                                 AppTheme.t("my_home"),
-                                style: const TextStyle(
-                                  color: AppTheme.cyanAccent,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
                                   fontSize: 10.5,
                                   fontWeight: FontWeight.w900,
                                   letterSpacing: 1.2,
@@ -690,7 +702,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
               ),
             ),
 
-            // 2. Các Khối Danh Mục Xung Quanh CỐ ĐỊNH (Fixed Offsets, hoàn toàn KHÔNG di chuyển/xoay)
+            // 2. Các Khối Danh Mục Xung Quanh CỐ ĐỊNH (Monochrome B&W)
             ...categories.map((cat) {
               final catDevices = _gateway.getDevicesByCategory(cat.category);
               final posX = center.dx + cat.offsetX - 46;
@@ -708,9 +720,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // Khối danh mục hình vuông bo góc cố định
+  // Khối danh mục hình vuông bo góc cố định (Monochrome B&W)
   Widget _buildFixedCategorySphere(CategoryMeta cat, int deviceCount, bool isDark, Color textCol) {
-    final borderColor = cat.neonColor;
+    final borderColor = isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8);
 
     return InkWell(
       onTap: () => _openCategoryDevices(cat),
@@ -723,15 +735,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             height: 78,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
+              color: isDark ? const Color(0xFF141518) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor, width: 1.8),
+              border: Border.all(color: borderColor, width: 1.2),
               boxShadow: [
                 BoxShadow(
-                  color: borderColor.withValues(alpha: 0.35),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 3),
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -746,7 +757,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     cat.assetPath,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
-                      return Icon(_getCategoryFallbackIcon(cat.category), color: borderColor, size: 22);
+                      return Icon(_getCategoryFallbackIcon(cat.category), color: isDark ? Colors.white : Colors.black87, size: 22);
                     },
                   ),
                 ),
@@ -759,7 +770,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: textCol,
+                    color: isDark ? Colors.white : const Color(0xFF090A0C),
                     fontSize: 9.5,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.3,
@@ -771,18 +782,18 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           ),
           const SizedBox(height: 4),
 
-          // Huy hiệu số lượng thiết bị
+          // Huy hiệu số lượng thiết bị (Monochrome B&W)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(
-              color: borderColor.withValues(alpha: 0.15),
+              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1),
+              border: Border.all(color: borderColor, width: 1),
             ),
             child: Text(
               "$deviceCount ${AppTheme.t("devices")}",
               style: TextStyle(
-                color: borderColor,
+                color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B),
                 fontSize: 8.5,
                 fontWeight: FontWeight.bold,
               ),

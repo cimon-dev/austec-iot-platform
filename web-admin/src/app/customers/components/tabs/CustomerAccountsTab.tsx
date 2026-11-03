@@ -139,6 +139,31 @@ export function CustomerAccountsTab({
           </div>
 
           <div className="flex items-center gap-2.5">
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 text-xs mr-2">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">
+                  Đã chọn <strong>{selectedIds.size}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer text-xs"
+                >
+                  Bỏ chọn
+                </button>
+                {canUpdate && onDeleteCustomers && (
+                  <button
+                    type="button"
+                    onClick={() => setIsBulkDeleteModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer ml-1 text-xs"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa đã chọn ({selectedIds.size})</span>
+                  </button>
+                )}
+                <span className="text-slate-300 dark:text-slate-700 ml-1">|</span>
+              </div>
+            )}
             <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
               Tìm thấy <strong className="text-slate-900 dark:text-white font-semibold">{filteredCustomers.length}</strong> khách hàng
             </div>
@@ -152,32 +177,6 @@ export function CustomerAccountsTab({
             </button>
           </div>
         </div>
-
-        {/* Bulk Action Bar */}
-        {selectedIds.size > 0 && (
-          <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900 text-white dark:bg-slate-800 text-xs animate-in fade-in duration-150 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Đã chọn {selectedIds.size} khách hàng</span>
-              <button
-                type="button"
-                onClick={() => setSelectedIds(new Set())}
-                className="text-xs text-slate-400 hover:text-white underline cursor-pointer ml-1"
-              >
-                Bỏ chọn
-              </button>
-            </div>
-            {canUpdate && onDeleteCustomers && (
-              <button
-                type="button"
-                onClick={() => setIsBulkDeleteModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium cursor-pointer transition-colors shadow-xs"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Xóa đã chọn ({selectedIds.size})</span>
-              </button>
-            )}
-          </div>
-        )}
 
         {/* Table */}
         <div className="flex-1 overflow-auto">

@@ -79,11 +79,11 @@ function SidebarNavigation({
             onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group relative ${
               pathname === "/dashboard" 
-                ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs" 
+                ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
-            <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" ? "text-cyan-400" : "text-slate-500"}`} />
+            <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
             {!isCollapsed && <span className="truncate">{t("dashboard", "Dashboard Tổng quan")}</span>}
           </Link>
         </div>
@@ -100,7 +100,7 @@ function SidebarNavigation({
                 className="w-full flex items-center justify-between px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-2">
-                  <Radio className="w-3.5 h-3.5 text-cyan-500" />
+                  <Radio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   <span>{t("devices", "Quản lý thiết bị")}</span>
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${deviceMenuOpen ? "rotate-180" : ""}`} />
@@ -117,7 +117,7 @@ function SidebarNavigation({
                         onClick={onNavigate}
                         className={`flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
-                            ? "bg-indigo-600 text-white font-semibold shadow-xs"
+                            ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow-xs"
                             : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                         }`}
                       >
@@ -135,11 +135,11 @@ function SidebarNavigation({
               title="Quản lý thiết bị"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                 pathname.startsWith("/devices")
-                  ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white"
+                  ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
                   : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
-              <Radio className="w-4 h-4 text-cyan-400" />
+              <Radio className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </Link>
           )}
         </div>
@@ -156,7 +156,7 @@ function SidebarNavigation({
                 className="w-full flex items-center justify-between px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
               >
                 <span className="flex items-center gap-2">
-                  <Users className="w-3.5 h-3.5 text-purple-500" />
+                  <Users className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Người dùng & Quyền</span>
                 </span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`} />
@@ -175,7 +175,7 @@ function SidebarNavigation({
                         onClick={onNavigate}
                         className={`flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
                           isSubActive
-                            ? "bg-purple-600 text-white font-semibold shadow-xs"
+                            ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 font-semibold shadow-xs"
                             : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                         }`}
                       >
@@ -193,11 +193,11 @@ function SidebarNavigation({
               title="Quản lý người dùng"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
                 pathname.startsWith("/users") || pathname === "/customers"
-                  ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white"
+                  ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
                   : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
             >
-              <Users className="w-4 h-4 text-purple-400" />
+              <Users className="w-4 h-4 text-slate-500 dark:text-slate-400" />
             </Link>
           )}
         </div>
@@ -211,12 +211,12 @@ function SidebarNavigation({
             onClick={onNavigate}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
               pathname === "/notifications"
-                ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <Bell className={`w-4 h-4 shrink-0 ${pathname === "/notifications" ? "text-amber-400" : "text-slate-500"}`} />
+              <Bell className={`w-4 h-4 shrink-0 ${pathname === "/notifications" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
               {!isCollapsed && <span className="truncate">Thông Báo (Push Hub)</span>}
             </div>
           </Link>
@@ -239,12 +239,12 @@ function SidebarNavigation({
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/cskh")
-                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <Headphones className={`w-4 h-4 shrink-0 ${pathname.startsWith("/cskh") ? "text-rose-400" : "text-slate-500"}`} />
+                  <Headphones className={`w-4 h-4 shrink-0 ${pathname.startsWith("/cskh") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{t("cskhHub", "CSKH Hub & Live Chat")}</span>}
                 </div>
               </Link>
@@ -256,12 +256,12 @@ function SidebarNavigation({
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/blackbox")
-                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <ShieldAlert className={`w-4 h-4 shrink-0 ${pathname.startsWith("/blackbox") ? "text-amber-400" : "text-slate-500"}`} />
+                  <ShieldAlert className={`w-4 h-4 shrink-0 ${pathname.startsWith("/blackbox") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{t("blackbox", "Hộp đen Kiểm toán")}</span>}
                 </div>
               </Link>
@@ -273,12 +273,12 @@ function SidebarNavigation({
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/store")
-                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/store") ? "text-cyan-400" : "text-slate-500"}`} />
+                  <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/store") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Gian Hàng & Thương Phẩm" : "Store & Catalog"}</span>}
                 </div>
               </Link>
@@ -290,12 +290,12 @@ function SidebarNavigation({
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                   pathname.startsWith("/guides")
-                    ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                    ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/guides") ? "text-emerald-400" : "text-slate-500"}`} />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/guides") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Hướng Dẫn Lắp Đặt & Reset" : "Install & Reset Manuals"}</span>}
                 </div>
               </Link>
@@ -312,11 +312,11 @@ function SidebarNavigation({
             onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               pathname === "/settings"
-                ? "bg-slate-900 text-white dark:bg-slate-800 dark:text-white shadow-xs"
+                ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
-            <Settings className={`w-4 h-4 shrink-0 ${pathname === "/settings" ? "text-cyan-400" : "text-slate-500"}`} />
+            <Settings className={`w-4 h-4 shrink-0 ${pathname === "/settings" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
             {!isCollapsed && <span className="truncate">Cài Đặt Hệ Thống</span>}
           </Link>
         </div>
@@ -361,22 +361,24 @@ export function Sidebar() {
             <Link
               href="/"
               onClick={closeMobileSidebar}
-              className="flex items-center gap-2.5 overflow-hidden group"
+              className="flex items-center gap-2.5 overflow-hidden group py-1"
+              title="AUSTEC IoT Platform"
             >
-              <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-slate-800 text-white border border-slate-700/60 dark:border-slate-700/80 flex items-center justify-center font-bold text-sm shadow-sm group-hover:scale-105 transition-transform shrink-0">
-                <span className="bg-gradient-to-tr from-cyan-400 to-indigo-400 bg-clip-text text-transparent">A</span>
-              </div>
-              {(!isCollapsed || isMobileOpen) && (
-                <div className="animate-in fade-in duration-200">
-                  <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                    AUSTEC
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full font-mono font-medium bg-cyan-500/10 text-cyan-500 dark:text-cyan-400 border border-cyan-500/20">
-                      CLOUD
-                    </span>
-                  </span>
-                  <span className="text-[10px] block text-slate-500 dark:text-slate-400 font-mono tracking-wider">
-                    IOT ENTERPRISE
-                  </span>
+              {(!isCollapsed || isMobileOpen) ? (
+                <div className="flex items-center gap-2">
+                  <img
+                    src="/austec_logo_2026.svg"
+                    alt="AUSTEC"
+                    className="h-7 w-auto max-w-[170px] object-contain dark:brightness-110"
+                  />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-zinc-950 dark:bg-zinc-100 flex items-center justify-center p-1 shadow-xs">
+                  <img
+                    src="/logo-app.webp"
+                    alt="A"
+                    className="w-6 h-6 object-contain rounded"
+                  />
                 </div>
               )}
             </Link>
@@ -428,7 +430,7 @@ export function Sidebar() {
 
               <div className="flex items-center justify-between p-2 rounded-lg bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 shadow-xs">
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0">
+                  <div className="w-7 h-7 rounded-lg bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-bold flex items-center justify-center text-xs shrink-0">
                     {user?.fullName?.charAt(0) || "A"}
                   </div>
                   <div className="truncate">
@@ -454,7 +456,7 @@ export function Sidebar() {
             <div className="flex flex-col items-center gap-2">
               <div 
                 title={user?.fullName || "Admin"}
-                className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold flex items-center justify-center text-xs"
+                className="w-8 h-8 rounded-lg bg-zinc-950 dark:bg-zinc-100 text-white dark:text-zinc-950 font-bold flex items-center justify-center text-xs"
               >
                 {user?.fullName?.charAt(0) || "A"}
               </div>

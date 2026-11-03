@@ -236,7 +236,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.history_rounded, color: AppTheme.cyanAccent, size: 24),
+            icon: Icon(Icons.history_rounded, color: textCol, size: 24),
             tooltip: "Lịch sử điều khiển",
             onPressed: () {
               Navigator.of(context).push(
@@ -245,7 +245,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             },
           ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.cyanAccent, size: 24),
+            icon: Icon(Icons.settings_outlined, color: textCol, size: 24),
             tooltip: "Cài đặt thiết bị",
             onPressed: () {
               Navigator.of(context).push(
@@ -365,6 +365,8 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // Khung mô phỏng nan cửa cuốn di chuyển dần dần theo %
   Widget _buildRollerDoorGraphic(Color cardBg, Color cardBorder) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     // Tỷ lệ đóng kín: 0% mở = closedFrac 1.0 (phủ kín); 100% mở = closedFrac 0.0 (cuộn hết lên trên)
     final closedFrac = (1.0 - (_currentPercent / 100.0)).clamp(0.0, 1.0);
 
@@ -377,13 +379,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         border: Border.all(color: cardBorder, width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: _isOpening
-                ? AppTheme.cyanAccent.withValues(alpha: 0.18)
-                : _isClosing
-                    ? Colors.orangeAccent.withValues(alpha: 0.15)
-                    : Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 2,
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 16,
+            spreadRadius: 1,
           ),
         ],
       ),
@@ -396,7 +394,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             bottom: 16,
             width: 10,
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
           Positioned(
@@ -405,7 +406,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             bottom: 16,
             width: 10,
             child: Container(
-              decoration: BoxDecoration(color: Colors.grey[800], borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
 
@@ -417,23 +421,19 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             height: 38,
             child: Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF334155), Color(0xFF0F172A)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
+                color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6)),
+                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.bolt, color: AppTheme.cyanAccent, size: 14),
+                  Icon(Icons.bolt, color: isDark ? Colors.white70 : Colors.black87, size: 14),
                   const SizedBox(width: 6),
-                  const Text(
+                  Text(
                     "AUSTEC TURBO ROLLER SYSTEM",
                     style: TextStyle(
-                      color: AppTheme.cyanAccent,
+                      color: isDark ? Colors.white : Colors.black,
                       fontSize: 10,
                       letterSpacing: 1.5,
                       fontWeight: FontWeight.bold,
@@ -455,18 +455,18 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 // Không gian bên trong nhà (khi mở hé thấy không gian)
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.35),
+                    color: isDark ? Colors.black.withValues(alpha: 0.35) : const Color(0xFFFAFAFA),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.home_outlined, size: 54, color: Colors.white.withValues(alpha: 0.12)),
+                        Icon(Icons.home_outlined, size: 54, color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.1)),
                         const SizedBox(height: 4),
                         Text(
                           "KHÔNG GIAN TRONG NHÀ",
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.15), fontSize: 9, letterSpacing: 1),
+                          style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.25), fontSize: 9, letterSpacing: 1),
                         ),
                       ],
                     ),
@@ -479,23 +479,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   alignment: Alignment.topCenter,
                   child: Container(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.blueGrey[700]!,
-                          Colors.blueGrey[800]!,
-                          Colors.blueGrey[900]!,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
                       border: Border(
                         bottom: BorderSide(
-                          color: _isOpening
-                              ? AppTheme.cyanAccent
-                              : _isClosing
-                                  ? Colors.orangeAccent
-                                  : AppTheme.cardBorder,
+                          color: isDark ? Colors.white : Colors.black,
                           width: 3.5,
                         ),
                       ),
@@ -508,7 +496,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                           height: 3,
                           margin: const EdgeInsets.symmetric(horizontal: 8),
                           decoration: BoxDecoration(
-                            color: Colors.blueGrey[600],
+                            color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -527,27 +515,17 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.85),
+                color: isDark ? Colors.black.withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.95),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: _isOpening
-                      ? AppTheme.cyanAccent
-                      : _isClosing
-                          ? Colors.orangeAccent
-                          : AppTheme.cyanAccent.withValues(alpha: 0.6),
-                  width: 1.5,
+                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7),
+                  width: 1.2,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.cyanAccent.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ],
               ),
               child: Text(
                 "${_currentPercent.round()}%",
-                style: const TextStyle(
-                  color: AppTheme.cyanAccent,
+                style: TextStyle(
+                  color: textCol,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   fontFamily: "monospace",
@@ -562,67 +540,56 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // Huy hiệu trạng thái động
   Widget _buildDoorStatusBadge() {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     String text;
-    Color color;
     IconData icon;
 
     if (_device.isChildLockActive) {
       text = "CỬA ĐANG KHÓA AN TOÀN TRẺ EM";
-      color = AppTheme.amberWarning;
       icon = Icons.lock_rounded;
     } else if (_isOpening) {
       text = "CỬA ĐANG MỞ LÊN DẦN DẦN... (${_currentPercent.round()}%)";
-      color = AppTheme.cyanAccent;
       icon = Icons.arrow_upward_rounded;
     } else if (_isClosing) {
       text = "CỬA ĐANG HẠ XUỐNG DẦN DẦN... (${_currentPercent.round()}%)";
-      color = Colors.orangeAccent;
       icon = Icons.arrow_downward_rounded;
     } else if (_currentPercent >= 98) {
       text = "CỬA ĐANG MỞ HOÀN TOÀN (100%)";
-      color = AppTheme.emeraldSuccess;
       icon = Icons.check_circle_outline_rounded;
     } else if (_currentPercent <= 2) {
       text = "CỬA ĐÃ ĐÓNG KÍN AN TOÀN (0%)";
-      color = Colors.blueGrey;
       icon = Icons.door_front_door_outlined;
     } else {
       text = "CỬA ĐANG DỪNG Ở VỊ TRÍ ${_currentPercent.round()}%";
-      color = AppTheme.amberWarning;
       icon = Icons.pause_circle_outline_rounded;
     }
 
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final isMoving = _isOpening || _isClosing;
-        final borderAlpha = isMoving ? 0.4 + _pulseController.value * 0.4 : 0.4;
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withValues(alpha: borderAlpha), width: 1.2),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7), width: 1.2),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textCol, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            text,
+            style: TextStyle(color: textCol, fontSize: 12.5, fontWeight: FontWeight.bold),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                text,
-                style: TextStyle(color: color, fontSize: 12.5, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        );
-      },
+        ],
+      ),
     );
   }
 
   // Nút Khóa An Toàn Trẻ Em
   Widget _buildLockButton(Color cardBg, Color cardBorder) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     final isLocked = _device.isChildLockActive;
 
     return InkWell(
@@ -632,10 +599,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: isLocked ? AppTheme.amberWarning.withValues(alpha: 0.15) : cardBg,
+          color: isLocked ? (isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7)) : cardBg,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: isLocked ? AppTheme.amberWarning : cardBorder,
+            color: isLocked ? (isDark ? Colors.white : Colors.black) : cardBorder,
             width: 1.5,
           ),
         ),
@@ -644,14 +611,14 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           children: [
             Icon(
               isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
-              color: isLocked ? AppTheme.amberWarning : AppTheme.purpleAccent,
+              color: textCol,
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               isLocked ? "ĐANG KHÓA CỬA AN TOÀN (BẤM ĐỂ MỞ)" : "KHÓA AN TOÀN TRẺ EM",
               style: TextStyle(
-                color: isLocked ? AppTheme.amberWarning : textColBased(isLocked),
+                color: textCol,
                 fontSize: 12.5,
                 fontWeight: FontWeight.bold,
               ),
@@ -661,8 +628,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       ),
     );
   }
-
-  Color textColBased(bool locked) => AppTheme.cyanAccent;
 
   // 3 Nút Bấm Lớn Trực Quan: MỞ - DỪNG - ĐÓNG
   Widget _buildVisualControlButtons() {
@@ -680,8 +645,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               label: _isOpening ? "ĐANG MỞ..." : AppTheme.t("open"),
               icon: Icons.arrow_upward_rounded,
               isActive: _isOpening,
-              activeColor: AppTheme.cyanAccent,
-              gradient: AppTheme.cyanGradient,
               onTap: _startOpenDoor,
             ),
 
@@ -690,8 +653,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               label: AppTheme.t("stop"),
               icon: Icons.stop_rounded,
               isActive: _isStopped && !_isOpening && !_isClosing,
-              activeColor: AppTheme.amberWarning,
-              gradient: AppTheme.amberGradient,
               onTap: _stopDoor,
             ),
 
@@ -700,12 +661,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               label: _isClosing ? "ĐANG ĐÓNG..." : AppTheme.t("close"),
               icon: Icons.arrow_downward_rounded,
               isActive: _isClosing,
-              activeColor: Colors.orangeAccent,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF64748B), Color(0xFF334155)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
               onTap: _startCloseDoor,
             ),
           ],
@@ -718,17 +673,17 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     required String label,
     required IconData icon,
     required bool isActive,
-    required Color activeColor,
-    required Gradient gradient,
     required VoidCallback onTap,
   }) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+
     return Column(
       children: [
         AnimatedBuilder(
           animation: _pulseController,
           builder: (context, child) {
-            final pulseScale = isActive ? 1.0 + _pulseController.value * 0.05 : 1.0;
-            final glowAlpha = isActive ? 0.4 + _pulseController.value * 0.3 : 0.2;
+            final pulseScale = isActive ? 1.0 + _pulseController.value * 0.04 : 1.0;
 
             return Transform.scale(
               scale: pulseScale,
@@ -739,22 +694,31 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   width: 76,
                   height: 76,
                   decoration: BoxDecoration(
-                    gradient: gradient,
+                    color: isActive
+                        ? (isDark ? Colors.white : Colors.black)
+                        : (isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5)),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isActive ? Colors.white : Colors.transparent,
-                      width: isActive ? 2.5 : 0,
+                      color: isActive
+                          ? (isDark ? Colors.white : Colors.black)
+                          : (isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
+                      width: isActive ? 2.0 : 1.2,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: activeColor.withValues(alpha: glowAlpha),
-                        blurRadius: isActive ? 22 : 12,
-                        spreadRadius: isActive ? 3 : 1,
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
+                        blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 36),
+                  child: Icon(
+                    icon,
+                    color: isActive
+                        ? (isDark ? Colors.black : Colors.white)
+                        : textCol,
+                    size: 34,
+                  ),
                 ),
               ),
             );
@@ -764,9 +728,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         Text(
           label,
           style: TextStyle(
-            color: isActive ? activeColor : Colors.white,
+            color: textCol,
             fontSize: 12.5,
-            fontWeight: FontWeight.bold,
+            fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
             letterSpacing: 0.5,
           ),
         ),
@@ -794,7 +758,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               ),
               Text(
                 "IP: ${_device.deviceIp}",
-                style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontFamily: "monospace"),
+                style: TextStyle(color: textCol, fontSize: 11.5, fontFamily: "monospace"),
               ),
             ],
           ),
@@ -806,7 +770,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             children: [
               Text("Timeout mở: ${_device.openTimeoutSeconds}s", style: TextStyle(color: textCol, fontSize: 11.5)),
               Text("Timeout đóng: ${_device.closeTimeoutSeconds}s", style: TextStyle(color: textCol, fontSize: 11.5)),
-              Text("Remote RF: ${_device.rfRemoteCount} chiếc", style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 11.5)),
+              Text("Remote RF: ${_device.rfRemoteCount} chiếc", style: TextStyle(color: textCol, fontSize: 11.5)),
             ],
           ),
         ],
@@ -820,6 +784,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       return _buildAddCameraButton(cardBg, cardBorder);
     }
 
+    final isDark = AppTheme.isDarkMode;
     final linkedCam = _gateway.findByHardwareId(_linkedCameraHwId!);
     final camName = linkedCam?.name ?? "AI Camera ($_linkedCameraHwId)";
 
@@ -829,12 +794,12 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.5),
+        border: Border.all(color: cardBorder, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.cyanAccent.withValues(alpha: 0.12),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -851,11 +816,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                      border: Border.all(color: cardBorder),
                     ),
-                    child: const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 20),
+                    child: Icon(Icons.videocam_rounded, color: textCol, size: 20),
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -867,7 +832,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                       ),
                       const Text(
                         "Camera hướng góc cửa cuốn • Check khóa",
-                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5),
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
                       ),
                     ],
                   ),
@@ -906,7 +871,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.black,
-                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                  border: Border.all(color: cardBorder),
                 ),
                 child: Stack(
                   fit: StackFit.expand,
@@ -918,7 +883,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 40),
+                            Icon(Icons.videocam_rounded, color: textCol, size: 40),
                             const SizedBox(height: 6),
                             const Text(
                               "Đang kết nối luồng camera cửa cuốn...",
@@ -936,9 +901,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.65),
                           shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                          border: Border.all(color: Colors.white24),
                         ),
-                        child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 18),
+                        child: const Icon(Icons.fullscreen_rounded, color: Colors.white, size: 18),
                       ),
                     ),
                     Positioned(
@@ -957,7 +922,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                             ),
                             Text(
                               "Chạm để phóng to xem khóa",
-                              style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5),
+                              style: TextStyle(color: Colors.white70, fontSize: 9.5),
                             ),
                           ],
                         ),
@@ -995,6 +960,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // Nút Thêm Camera Giám Sát Cửa Cuốn
   Widget _buildAddCameraButton(Color cardBg, Color cardBorder) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+
     return InkWell(
       onTap: _showAddCameraBottomSheet,
       borderRadius: BorderRadius.circular(16),
@@ -1004,10 +972,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         decoration: BoxDecoration(
           color: cardBg,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.4),
+          border: Border.all(color: cardBorder, width: 1.2),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.cyanAccent.withValues(alpha: 0.08),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -1019,23 +987,23 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                border: Border.all(color: cardBorder),
               ),
-              child: const Icon(Icons.add_a_photo_outlined, color: AppTheme.cyanAccent, size: 24),
+              child: Icon(Icons.add_a_photo_outlined, color: textCol, size: 24),
             ),
             const SizedBox(width: 14),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     "Thêm camera giám sát",
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 3),
-                  Text(
+                  const SizedBox(height: 3),
+                  const Text(
                     "Chiếu vào cửa cuốn để check xem đã khóa & đóng kín chưa",
                     style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
                   ),
@@ -1045,17 +1013,17 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.cyanAccent,
+                color: isDark ? Colors.white : Colors.black,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.add, color: Colors.black, size: 16),
-                  SizedBox(width: 4),
+                  Icon(Icons.add, color: isDark ? Colors.black : Colors.white, size: 16),
+                  const SizedBox(width: 4),
                   Text(
                     "Thêm cam",
-                    style: TextStyle(color: Colors.black, fontSize: 11.5, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -1070,6 +1038,8 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   void _showAddCameraBottomSheet() {
     final cameras = _gateway.getDevicesByCategory(DeviceCategory.camera);
     final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
 
     showModalBottomSheet(
       context: context,
@@ -1079,7 +1049,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         decoration: BoxDecoration(
           color: isDark ? AppTheme.surfaceDark : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(top: BorderSide(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.5)),
+          border: Border(top: BorderSide(color: cardBorder, width: 1.5)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1093,13 +1063,13 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               ),
             ),
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
-                Icon(Icons.videocam_outlined, color: AppTheme.cyanAccent, size: 22),
-                SizedBox(width: 8),
+                Icon(Icons.videocam_outlined, color: textCol, size: 22),
+                const SizedBox(width: 8),
                 Text(
                   "Chọn Camera Giám Sát Cửa Cuốn",
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -1113,19 +1083,22 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceGlass,
+                  color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.cardBorder),
+                  border: Border.all(color: cardBorder),
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       "Bạn chưa có thiết bị camera nào trong tài khoản",
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 12),
                     ),
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDark ? Colors.white : Colors.black,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
+                      ),
                       icon: const Icon(Icons.add),
                       label: const Text("Ghép nối camera mới"),
                       onPressed: () async {
@@ -1151,25 +1124,25 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     return Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
-                        color: AppTheme.surfaceGlass,
+                        color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                        border: Border.all(color: cardBorder),
                       ),
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 20),
+                          child: Icon(Icons.videocam_rounded, color: textCol, size: 20),
                         ),
-                        title: Text(cam.name, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold)),
+                        title: Text(cam.name, style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold)),
                         subtitle: Text("${cam.hardwareId} • ${cam.roomName}", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                         trailing: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.cyanAccent,
-                            foregroundColor: Colors.black,
+                            backgroundColor: isDark ? Colors.white : Colors.black,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             minimumSize: const Size(0, 32),
                           ),
@@ -1279,6 +1252,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   // Phóng to camera giám sát cửa cuốn để soi chi tiết khóa
   void _showDoorCameraZoomDialog(String camName) {
     if (_linkedCameraHwId == null) return;
+    final isDark = AppTheme.isDarkMode;
+    final cardBorder = isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7);
+
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -1293,14 +1269,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.cyanAccent, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.cyanAccent.withValues(alpha: 0.35),
-                    blurRadius: 24,
-                    spreadRadius: 2,
-                  ),
-                ],
+                border: Border.all(color: cardBorder, width: 1.5),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
@@ -1331,7 +1300,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                      border: Border.all(color: Colors.white24),
                     ),
                     child: Text(
                       "$camName • Soi khóa cửa cuốn (1x - 6x)",

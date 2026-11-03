@@ -432,20 +432,20 @@ export default function FirmwareOtaPage() {
 
         {/* Firmware Bulk Action Toolbar */}
         {selectedFwIds.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium border-b border-slate-800 dark:border-slate-200">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border-b border-slate-200 dark:border-slate-800">
             <span>Đã chọn: <strong>{selectedFwIds.length}</strong> bản phát hành</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedFwIds([])}
-                className="px-2.5 py-1 bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 rounded cursor-pointer transition-colors"
+                className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer"
               >
-                Hủy chọn
+                Bỏ chọn
               </button>
               <button
                 type="button"
                 onClick={() => setShowDeleteFwModal(true)}
-                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-semibold cursor-pointer transition-colors"
+                className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer text-xs"
               >
                 Xóa đã chọn ({selectedFwIds.length})
               </button>
@@ -631,21 +631,21 @@ export default function FirmwareOtaPage() {
 
         {/* Rollout Bulk Action Toolbar */}
         {selectedRecordIds.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-xs font-medium border-b border-slate-800 dark:border-slate-200">
+          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border-b border-slate-200 dark:border-slate-800">
             <span>Đã chọn: <strong>{selectedRecordIds.length}</strong> thiết bị</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedRecordIds([])}
-                className="px-2.5 py-1 bg-white/10 dark:bg-slate-900/10 hover:bg-white/20 dark:hover:bg-slate-900/20 rounded cursor-pointer transition-colors"
+                className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer"
               >
-                Hủy chọn
+                Bỏ chọn
               </button>
               <button
                 type="button"
                 onClick={handleRetrySelected}
                 disabled={isRetryingSelected}
-                className="px-2.5 py-1 bg-white text-slate-900 dark:bg-slate-900 dark:text-white rounded font-semibold cursor-pointer transition-colors flex items-center gap-1"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 dark:text-white hover:underline cursor-pointer"
               >
                 {isRetryingSelected && <RotateCw className="w-3 h-3 animate-spin" />}
                 <span>Thử lại nạp ({selectedRecordIds.length} TB)</span>

@@ -181,7 +181,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget _buildWarrantyAndStatusCard() {
     return Container(
       padding: const EdgeInsets.all(18),
-      decoration: AppTheme.glassBox(glow: true),
+      decoration: AppTheme.glassBox(),
       child: Column(
         children: [
           Row(
@@ -190,25 +190,18 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               Row(
                 children: [
                   Container(
-                    width: 10,
-                    height: 10,
+                    width: 8,
+                    height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
-                      boxShadow: [
-                        BoxShadow(
-                          color: (_device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning).withValues(alpha: 0.6),
-                          blurRadius: 8,
-                          spreadRadius: 2,
-                        ),
-                      ],
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Text(
                     _device.isOnline ? "KẾT NỐI TRỰC TUYẾN" : "NGOẠI TUYẾN (BLE KHẢ DỤNG)",
                     style: TextStyle(
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A),
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.8,
@@ -219,13 +212,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                  color: const Color(0xFF27272A),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                  border: Border.all(color: AppTheme.cardBorder),
                 ),
                 child: Text(
                   _device.modelName,
-                  style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -237,24 +230,24 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                color: const Color(0xFF1E2024),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                border: Border.all(color: AppTheme.cardBorder),
               ),
               child: Column(
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 18),
+                      Icon(Icons.bluetooth_searching_rounded, color: Colors.white, size: 18),
                       SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           "Thiết bị đang Ngoại tuyến Wi-Fi. Bạn có thể đến gần (< 10-15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
                           style: TextStyle(
-                            color: AppTheme.amberWarning,
+                            color: Colors.white,
                             fontSize: 11,
                             height: 1.3,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
@@ -266,14 +259,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     height: 32,
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppTheme.amberWarning),
+                        side: const BorderSide(color: AppTheme.cardBorder),
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      icon: const Icon(Icons.wifi_password, size: 14, color: AppTheme.amberWarning),
+                      icon: const Icon(Icons.wifi_password, size: 14, color: Colors.white),
                       label: const Text(
                         "Cấu Hình Lại Mạng Wi-Fi (Nạp lại BLE)",
-                        style: TextStyle(fontSize: 11, color: AppTheme.amberWarning, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       onPressed: () {
                         Navigator.of(context).push(
@@ -309,7 +302,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   const Text("Thời Hạn Chính Hãng", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
                   Text(
                     _device.warrantyUntil,
-                    style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -341,7 +334,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 children: [
                   Text(
                     "Trạng thái: ${_device.stateSummary}",
-                    style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 14, fontWeight: FontWeight.bold),
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   Text(
                     "${_device.positionPercent}%",
@@ -351,14 +344,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Thanh Slider trực quan
+              // Thanh Slider trực quan Monochrome
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: AppTheme.cyanAccent,
+                  activeTrackColor: Colors.white,
                   inactiveTrackColor: AppTheme.cardBorder,
                   thumbColor: Colors.white,
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-                  overlayColor: AppTheme.cyanAccent.withValues(alpha: 0.2),
+                  overlayColor: Colors.white.withValues(alpha: 0.1),
                 ),
                 child: Slider(
                   value: _device.positionPercent.toDouble(),
@@ -377,26 +370,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // Cụm 3 nút chính Mở - Dừng - Đóng
+              // Cụm 3 nút chính Mở - Dừng - Đóng Monochrome
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   _buildPrimaryActionButton(
                     label: "MỞ CỬA",
                     icon: Icons.arrow_upward_rounded,
-                    gradient: AppTheme.cyanGradient,
                     onTap: () => _triggerAction("OPEN_DOOR"),
                   ),
                   _buildPrimaryActionButton(
                     label: "DỪNG LẠI",
                     icon: Icons.stop_rounded,
-                    gradient: AppTheme.amberGradient,
                     onTap: () => _triggerAction("STOP_DOOR"),
                   ),
                   _buildPrimaryActionButton(
                     label: "ĐÓNG CỬA",
                     icon: Icons.arrow_downward_rounded,
-                    gradient: const LinearGradient(colors: [Color(0xFF64748B), Color(0xFF334155)]),
                     onTap: () => _triggerAction("CLOSE_DOOR"),
                   ),
                 ],
@@ -729,20 +719,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           GestureDetector(
             onTap: () => _triggerAction("TOGGLE_LOCK"),
             child: Container(
-              width: 100,
-              height: 100,
+              width: 90,
+              height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: _device.isLocked ? AppTheme.amberGradient : AppTheme.emeraldGradient,
+                color: const Color(0xFF27272A),
+                border: Border.all(color: AppTheme.cardBorder, width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: (_device.isLocked ? AppTheme.amberWarning : AppTheme.emeraldSuccess).withValues(alpha: 0.4),
-                    blurRadius: 20,
-                    spreadRadius: 4,
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 8,
                   ),
                 ],
               ),
-              child: Icon(_device.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded, color: Colors.white, size: 44),
+              child: Icon(_device.isLocked ? Icons.lock_rounded : Icons.lock_open_rounded, color: Colors.white, size: 40),
             ),
           ),
           const SizedBox(height: 16),
@@ -764,7 +754,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       children: [
         const Row(
           children: [
-            Icon(Icons.history_edu_rounded, color: AppTheme.cyanAccent, size: 20),
+            Icon(Icons.history_edu_rounded, color: Colors.white, size: 20),
             SizedBox(width: 8),
             Text(
               "HỘP ĐEN KIỂM TOÁN & LỊCH SỬ HOẠT ĐỘNG",
@@ -785,17 +775,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               return ListTile(
                 dense: true,
                 leading: CircleAvatar(
-                  backgroundColor: log.isAlert ? AppTheme.roseDanger.withValues(alpha: 0.2) : AppTheme.blueAccent.withValues(alpha: 0.2),
+                  backgroundColor: const Color(0xFF27272A),
                   radius: 16,
                   child: Icon(
                     log.isAlert ? Icons.warning_rounded : Icons.check_circle_outline,
-                    color: log.isAlert ? AppTheme.roseDanger : AppTheme.cyanAccent,
+                    color: Colors.white,
                     size: 18,
                   ),
                 ),
                 title: Text(
                   log.action,
-                  style: TextStyle(color: log.isAlert ? AppTheme.roseDanger : Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text("Kích hoạt bởi: ${log.triggeredBy}", style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
                 trailing: Text(log.time, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontFamily: "monospace")),
@@ -814,14 +804,14 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: isCurrent ? AppTheme.cyanAccent.withValues(alpha: 0.18) : AppTheme.surface,
+          color: isCurrent ? Colors.white : const Color(0xFF1E2024),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: isCurrent ? AppTheme.cyanAccent : AppTheme.cardBorder),
+          border: Border.all(color: isCurrent ? Colors.white : AppTheme.cardBorder),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isCurrent ? AppTheme.cyanAccent : AppTheme.textSecondary,
+            color: isCurrent ? Colors.black : AppTheme.textSecondary,
             fontSize: 11,
             fontWeight: FontWeight.bold,
           ),
@@ -833,7 +823,6 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget _buildPrimaryActionButton({
     required String label,
     required IconData icon,
-    required LinearGradient gradient,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -842,10 +831,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         width: 95,
         height: 75,
         decoration: BoxDecoration(
-          gradient: gradient,
+          color: const Color(0xFF27272A),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.cardBorder, width: 1.2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -871,7 +861,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, color: AppTheme.cyanAccent, size: 16),
+              Icon(icon, color: Colors.white70, size: 16),
               const SizedBox(width: 8),
               Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
             ],

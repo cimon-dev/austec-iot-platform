@@ -82,13 +82,13 @@ export const AdminTable: React.FC<AdminTableProps> = ({
     <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
       {/* Bulk Action Toolbar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900 text-white dark:bg-slate-800 text-xs animate-in fade-in duration-150 shrink-0">
+        <div className="flex items-center justify-between px-3.5 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-xs shrink-0">
           <div className="flex items-center gap-2">
-            <span className="font-medium">Đã chọn {selectedIds.size} cán bộ</span>
+            <span className="text-slate-600 dark:text-slate-300 font-medium">Đã chọn <strong>{selectedIds.size}</strong> cán bộ</span>
             <button
               type="button"
               onClick={() => setSelectedIds(new Set())}
-              className="text-xs text-slate-400 hover:text-white underline cursor-pointer ml-1"
+              className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer ml-1"
             >
               Bỏ chọn
             </button>
@@ -97,7 +97,7 @@ export const AdminTable: React.FC<AdminTableProps> = ({
             <button
               type="button"
               onClick={() => setIsBulkDeleteModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium cursor-pointer transition-colors shadow-xs"
+              className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer text-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Xóa đã chọn ({selectedIds.size})</span>

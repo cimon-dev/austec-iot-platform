@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/device_model.dart';
-import '../constants/app_theme.dart';
 import '../constants/api_config.dart';
 import 'auth_service.dart';
 import 'ble_device_control_service.dart';
@@ -28,7 +27,7 @@ class IoTGatewayClient {
   factory IoTGatewayClient() => _instance;
   IoTGatewayClient._internal();
 
-  // 7 Danh mục khối cố định quanh tâm (Fixed layout matching giaodienmoi.jpg + Camera)
+  // 7 Danh mục khối cố định quanh tâm (Monochrome B&W Industrial Layout)
   final List<CategoryMeta> categories = const [
     // 1. DOORS (Top-Left)
     CategoryMeta(
@@ -36,7 +35,7 @@ class IoTGatewayClient {
       title: "DOORS",
       subtitle: "CỬA CUỐN AUSTEC",
       assetPath: "assets/doors.png",
-      neonColor: AppTheme.roseDanger,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: -105.0,
       offsetY: -95.0,
     ),
@@ -46,7 +45,7 @@ class IoTGatewayClient {
       title: "ENERGY MANAGE",
       subtitle: "QUẢN LÝ NĂNG LƯỢNG",
       assetPath: "assets/energy.png",
-      neonColor: AppTheme.amberWarning,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: 105.0,
       offsetY: -95.0,
     ),
@@ -56,7 +55,7 @@ class IoTGatewayClient {
       title: "ENVIRONMENT",
       subtitle: "CẢM BIẾN MÔI TRƯỜNG",
       assetPath: "assets/sensor.png",
-      neonColor: AppTheme.cyanAccent,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: 130.0,
       offsetY: 20.0,
     ),
@@ -66,7 +65,7 @@ class IoTGatewayClient {
       title: "OTHERS CONTROL",
       subtitle: "THIẾT BỊ KHÁC",
       assetPath: "assets/others.png",
-      neonColor: AppTheme.blueAccent,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: 105.0,
       offsetY: 135.0,
     ),
@@ -76,7 +75,7 @@ class IoTGatewayClient {
       title: "DATA ANALYTICS",
       subtitle: "PHÂN TÍCH DỮ LIỆU",
       assetPath: "assets/data.png",
-      neonColor: AppTheme.purpleAccent,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: -105.0,
       offsetY: 135.0,
     ),
@@ -86,17 +85,17 @@ class IoTGatewayClient {
       title: "LIGHT & SWITCH",
       subtitle: "CHIẾU SÁNG & ĐÓNG CẮT",
       assetPath: "assets/light.png",
-      neonColor: AppTheme.amberWarning,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: -130.0,
       offsetY: 20.0,
     ),
-    // 7. CAMERA (Top Center - user requested "thêm camera")
+    // 7. CAMERA (Top Center)
     CategoryMeta(
       category: DeviceCategory.camera,
       title: "AI CAMERA",
       subtitle: "CAMERA AN NINH AI",
       assetPath: "assets/data.png",
-      neonColor: Colors.tealAccent,
+      neonColor: Color(0xFFE4E4E7),
       offsetX: 0.0,
       offsetY: -150.0,
     ),

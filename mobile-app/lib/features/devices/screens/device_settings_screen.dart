@@ -184,10 +184,11 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       context: context,
       initialTime: initialTime,
       builder: (context, child) {
+        final isDark = AppTheme.isDarkMode;
         return Theme(
           data: ThemeData(
             colorScheme: ColorScheme.dark(
-              primary: AppTheme.cyanAccent,
+              primary: isDark ? Colors.white : Colors.black,
               surface: AppTheme.surface,
               onSurface: Colors.white,
             ),
@@ -211,9 +212,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   }
 
   void _openRfRemoteSheet() {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -227,12 +231,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "Quản Lý Tay Cầm RF",
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppTheme.textMuted),
+                    icon: Icon(Icons.close, color: textCol),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -257,10 +261,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.add, color: AppTheme.cyanAccent),
-                  label: const Text("Học lệnh Remote mới", style: TextStyle(color: AppTheme.cyanAccent)),
+                  icon: Icon(Icons.add, color: textCol),
+                  label: Text("Học lệnh Remote mới", style: TextStyle(color: textCol)),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.cyanAccent),
+                    side: BorderSide(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -274,21 +278,24 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   }
 
   Widget _buildRemoteItem(String name, String code, bool isActive) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceGlass,
+        color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.cardBorder),
+        border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
       ),
       child: Row(
         children: [
-          Icon(Icons.radio_button_checked, color: isActive ? AppTheme.cyanAccent : AppTheme.textMuted, size: 20),
+          Icon(Icons.radio_button_checked, color: isActive ? (isDark ? Colors.white : Colors.black) : AppTheme.textMuted, size: 20),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
               Text(code, style: TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: "monospace")),
             ],
           ),
@@ -296,7 +303,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: isActive ? AppTheme.emeraldSuccess.withValues(alpha: 0.15) : AppTheme.cardBorder,
+              color: isActive ? AppTheme.emeraldSuccess.withValues(alpha: 0.15) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -336,21 +343,21 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
         centerTitle: true,
         actions: [
           _isSaving
-              ? const Center(
+              ? Center(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: textCol),
                     ),
                   ),
                 )
               : TextButton(
                   onPressed: _saveSettings,
-                  child: const Text(
+                  child: Text(
                     "Lưu",
-                    style: TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
           const SizedBox(width: 8),
@@ -387,9 +394,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppTheme.cyanAccent),
+                        borderSide: BorderSide(color: isDark ? Colors.white : Colors.black),
                       ),
-                      prefixIcon: const Icon(Icons.door_sliding_outlined, color: AppTheme.cyanAccent, size: 20),
+                      prefixIcon: Icon(Icons.door_sliding_outlined, color: textCol, size: 20),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -424,7 +431,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     title: "Thời gian MỞ CỬA (Giây)",
                     value: _openTimeout,
                     quickOptions: [15, 20, 23, 30],
-                    color: AppTheme.cyanAccent,
+                    color: isDark ? Colors.white : Colors.black,
                     onChanged: (val) => setState(() => _openTimeout = val),
                   ),
                   const SizedBox(height: 16),
@@ -436,7 +443,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     title: "Thời gian ĐÓNG CỬA (Giây)",
                     value: _closeTimeout,
                     quickOptions: [15, 20, 25, 30],
-                    color: Colors.orangeAccent,
+                    color: isDark ? Colors.white : Colors.black,
                     onChanged: (val) => setState(() => _closeTimeout = val),
                   ),
                 ],
@@ -471,7 +478,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       Switch(
                         value: _isAutoSchedule,
-                        activeThumbColor: AppTheme.cyanAccent,
+                        activeThumbColor: isDark ? Colors.white : Colors.black,
                         onChanged: (val) => setState(() => _isAutoSchedule = val),
                       ),
                     ],
@@ -491,10 +498,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(Icons.alarm, color: AppTheme.cyanAccent, size: 16),
+                                child: Icon(Icons.alarm, color: textCol, size: 16),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -509,7 +516,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               ),
                               Switch(
                                 value: s["enabled"] as bool,
-                                activeThumbColor: AppTheme.cyanAccent,
+                                activeThumbColor: isDark ? Colors.white : Colors.black,
                                 onChanged: (val) => setState(() => s["enabled"] = val),
                               ),
                             ],
@@ -524,10 +531,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                             const SnackBar(content: Text("Chức năng thêm lịch tùy biến")),
                           );
                         },
-                        icon: const Icon(Icons.add, size: 16, color: AppTheme.cyanAccent),
-                        label: const Text("Thêm mốc lịch trình mới", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12)),
+                        icon: Icon(Icons.add, size: 16, color: textCol),
+                        label: Text("Thêm mốc lịch trình mới", style: TextStyle(color: textCol, fontSize: 12)),
                         style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppTheme.cyanAccent, style: BorderStyle.solid),
+                          side: BorderSide(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
@@ -561,7 +568,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       Switch(
                         value: _isAccessLimit,
-                        activeThumbColor: AppTheme.blueAccent,
+                        activeThumbColor: isDark ? Colors.white : Colors.black,
                         onChanged: (val) => setState(() => _isAccessLimit = val),
                       ),
                     ],
@@ -578,7 +585,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: isDark ? AppTheme.surface : Colors.white,
-                                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
@@ -588,7 +595,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                                   Text(_accessStartTime,
                                       style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: "monospace")),
                                   const SizedBox(height: 2),
-                                  const Text("Chạm để đổi", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5)),
+                                  Text("Chạm để đổi", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 9.5)),
                                 ],
                               ),
                             ),
@@ -606,7 +613,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               decoration: BoxDecoration(
                                 color: isDark ? AppTheme.surface : Colors.white,
-                                border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.5)),
+                                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Column(
@@ -616,7 +623,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                                   Text(_accessEndTime,
                                       style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: "monospace")),
                                   const SizedBox(height: 2),
-                                  const Text("Chạm để đổi", style: TextStyle(color: AppTheme.roseDanger, fontSize: 9.5)),
+                                  Text("Chạm để đổi", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 9.5)),
                                 ],
                               ),
                             ),
@@ -639,15 +646,15 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                             width: 44,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.blueAccent.withValues(alpha: 0.25) : (isDark ? AppTheme.surface : Colors.grey[200]),
+                              color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.surface : Colors.grey[200]),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: isSelected ? AppTheme.blueAccent : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
+                              border: Border.all(color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
                             ),
                             child: Center(
                               child: Text(
                                 daysOfWeek[idx],
                                 style: TextStyle(
-                                  color: isSelected ? AppTheme.cyanAccent : AppTheme.textMuted,
+                                  color: isSelected ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -671,23 +678,23 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 children: [
                   ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                      child: const Icon(Icons.radio_button_checked, color: AppTheme.cyanAccent),
+                      backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                      child: Icon(Icons.radio_button_checked, color: textCol),
                     ),
                     title: Text("Tay cầm điều khiển RF", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
                     subtitle: Text("${widget.device.rfRemoteCount} remote đang hoạt động", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.cyanAccent),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: textCol),
                     onTap: _openRfRemoteSheet,
                   ),
                   Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
                   ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: AppTheme.blueAccent.withValues(alpha: 0.15),
-                      child: const Icon(Icons.group_outlined, color: AppTheme.blueAccent),
+                      backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                      child: Icon(Icons.group_outlined, color: textCol),
                     ),
                     title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
                     subtitle: Text("Quản lý tài khoản được phép điều khiển", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: AppTheme.blueAccent),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: textCol),
                     onTap: () {
                       Navigator.of(context).push(MaterialPageRoute(
                         builder: (context) => FamilySharingScreen(
@@ -713,20 +720,20 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isSaving ? null : _saveSettings,
                 icon: _isSaving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: isDark ? Colors.black : Colors.white),
                       )
-                    : const Icon(Icons.save_outlined, color: Colors.white, size: 20),
+                    : Icon(Icons.save_outlined, color: isDark ? Colors.black : Colors.white, size: 20),
                 label: Text(
                   _isSaving ? "ĐANG LƯU CẤU HÌNH..." : "LƯU TẤT CẢ CẤU HÌNH",
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.blueAccent,
+                  backgroundColor: isDark ? Colors.white : Colors.black,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  elevation: 4,
+                  elevation: 2,
                 ),
               ),
             ),
@@ -807,9 +814,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                             ],
                           ),
                         ),
-                        Switch(
+                         Switch(
                           value: active,
-                          activeThumbColor: AppTheme.cyanAccent,
+                          activeThumbColor: isDark ? Colors.white : Colors.black,
                           onChanged: isCtrl
                               ? (newVal) {
                                   setState(() => _dynamicPropValues[key] = newVal);
@@ -840,7 +847,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
-                            Text("${current.toInt()} $unit", style: const TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontFamily: "monospace")),
+                            Text("${current.toInt()} $unit", style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontFamily: "monospace")),
                           ],
                         ),
                         Slider(
@@ -848,7 +855,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                           min: min,
                           max: max,
                           divisions: (max - min).toInt() > 0 ? (max - min).toInt() : 10,
-                          activeColor: AppTheme.cyanAccent,
+                          activeColor: isDark ? Colors.white : Colors.black,
                           onChanged: isCtrl
                               ? (newVal) {
                                   setState(() => _dynamicPropValues[key] = newVal.toInt());
@@ -883,12 +890,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                         ),
                         child: Text(
                           "${val ?? '--'} $unit".trim(),
-                          style: const TextStyle(color: AppTheme.cyanAccent, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: "monospace"),
+                          style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: "monospace"),
                         ),
                       ),
                     ],
@@ -922,13 +930,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: color.withValues(alpha: 0.4)),
+                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
               ),
               child: Text(
                 "$value giây",
-                style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
               ),
             ),
           ],
@@ -949,14 +957,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 min: 5.0,
                 max: 60.0,
                 divisions: 55,
-                activeColor: color,
+                activeColor: isDark ? Colors.white : Colors.black,
                 inactiveColor: isDark ? AppTheme.cardBorder : Colors.grey[300],
                 onChanged: (val) => onChanged(val.round()),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
-              color: color,
+              color: textCol,
               onPressed: () {
                 if (value < 60) onChanged(value + 1);
               },
@@ -976,14 +984,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isChosen ? color.withValues(alpha: 0.2) : (isDark ? AppTheme.surface : Colors.grey[200]),
+                      color: isChosen ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.surface : Colors.grey[200]),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: isChosen ? color : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
+                      border: Border.all(color: isChosen ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
                     ),
                     child: Text(
                       "${opt}s",
                       style: TextStyle(
-                        color: isChosen ? color : AppTheme.textMuted,
+                        color: isChosen ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
                         fontSize: 10.5,
                         fontWeight: isChosen ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -1014,12 +1022,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   }
 
   Widget _buildSectionHeader(String title) {
+    final isDark = AppTheme.isDarkMode;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Row(
         children: [
-          Container(width: 3.5, height: 14, color: AppTheme.cyanAccent, margin: const EdgeInsets.only(right: 8)),
-          Text(title, style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6)),
+          Container(width: 3.5, height: 14, color: isDark ? Colors.white : Colors.black, margin: const EdgeInsets.only(right: 8)),
+          Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6)),
         ],
       ),
     );
@@ -1038,9 +1047,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           style: TextStyle(
             color: isStatus
                 ? AppTheme.emeraldSuccess
-                : isCode
-                    ? AppTheme.cyanAccent
-                    : textCol,
+                : textCol,
             fontSize: 12.5,
             fontWeight: isStatus ? FontWeight.bold : FontWeight.w600,
             fontFamily: isCode ? "monospace" : null,

@@ -176,7 +176,7 @@ export function FamilyMatrixTab({
         <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 space-y-2">
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center text-[10px] font-bold">
+              <span className="w-5 h-5 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-[10px] font-bold">
                 1
               </span>
               <span>Chủ Sở Hữu (Chủ Nhà)</span>
@@ -192,7 +192,7 @@ export function FamilyMatrixTab({
               placeholder="Tìm theo tên, SĐT..."
               value={ownerSearchQuery}
               onChange={(e) => setOwnerSearchQuery(e.target.value)}
-              className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+              className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-100"
             />
           </div>
         </div>
@@ -207,7 +207,7 @@ export function FamilyMatrixTab({
                 onClick={() => onSelectOwner(owner.ownerId)}
                 className={`p-2.5 cursor-pointer transition-colors ${
                   isSelected
-                    ? "bg-purple-50 dark:bg-purple-950/40 border-l-4 border-purple-600"
+                    ? "bg-slate-100 dark:bg-slate-800/80 border-l-4 border-slate-900 dark:border-white"
                     : "hover:bg-slate-50 dark:hover:bg-slate-800/30 text-slate-700 dark:text-slate-300"
                 }`}
               >
@@ -215,18 +215,18 @@ export function FamilyMatrixTab({
                   <div className="font-semibold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                     <Users
                       className={`w-3.5 h-3.5 ${
-                        isSelected ? "text-purple-600 dark:text-purple-400" : "text-slate-400"
+                        isSelected ? "text-slate-900 dark:text-white" : "text-slate-400"
                       }`}
                     />
                     <span>{owner.ownerName}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 font-bold bg-purple-500/10 px-1.5 py-0.2 rounded border border-purple-500/20">
+                  <span className="text-[10px] font-mono text-slate-700 dark:text-slate-300 font-bold bg-slate-200/60 dark:bg-slate-800 px-1.5 py-0.2 rounded border border-slate-300 dark:border-slate-700">
                     {owner.devices.length} TB
                   </span>
                 </div>
                 <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
                   <span>{owner.phoneNumber}</span>
-                  <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-sans font-medium">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-sans font-medium">
                     {totalMembers} thành viên phụ
                   </span>
                 </div>
@@ -242,12 +242,12 @@ export function FamilyMatrixTab({
         <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0">
           <div className="flex items-center justify-between">
             <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-cyan-600 text-white flex items-center justify-center text-[10px] font-bold">
+              <span className="w-5 h-5 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-[10px] font-bold">
                 2
               </span>
               <span>Thiết Bị Của Chủ Nhà</span>
             </div>
-            <span className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-bold">
+            <span className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold">
               {currentSelectedOwner ? currentSelectedOwner.devices.length : 0} thiết bị
             </span>
           </div>
@@ -268,25 +268,25 @@ export function FamilyMatrixTab({
                 onClick={() => onSelectHardware(device.hardwareId)}
                 className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
                   isSelected
-                    ? "bg-cyan-50/60 dark:bg-cyan-950/40 border-cyan-500 shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 hover:border-cyan-300 dark:hover:border-slate-700"
+                    ? "bg-slate-100 dark:bg-slate-800/80 border-slate-900 dark:border-white shadow-xs"
+                    : "border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 hover:border-slate-400 dark:hover:border-slate-700"
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     {device.deviceType === "Cửa cuốn" && (
-                      <DoorClosed className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+                      <DoorClosed className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                     )}
                     {device.deviceType === "Khóa thông minh" && (
-                      <Lock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      <Lock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                     )}
                     {device.deviceType === "Camera AI" && (
-                      <Video className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                      <Video className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                     )}
                     {device.deviceType !== "Cửa cuốn" &&
                       device.deviceType !== "Khóa thông minh" &&
                       device.deviceType !== "Camera AI" && (
-                        <Radio className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <Radio className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                       )}
                     <span className="font-semibold text-slate-900 dark:text-white text-xs">
                       {device.deviceName}
@@ -305,14 +305,14 @@ export function FamilyMatrixTab({
 
                 <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-1">
                   <span>{device.hardwareId}</span>
-                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                  <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300">
                     {device.subscriptionType === "PERPETUAL" ? "Vô thời hạn" : "Có thời hạn"}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 mt-1 border-t border-slate-200/60 dark:border-slate-700/60">
                   <span>Model: {device.modelName}</span>
-                  <span className="font-semibold text-cyan-600 dark:text-cyan-400">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">
                     {device.members.length} người được chia sẻ ➔
                   </span>
                 </div>
@@ -327,14 +327,14 @@ export function FamilyMatrixTab({
         <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 flex items-center justify-between">
           <div>
             <div className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+              <span className="w-5 h-5 rounded-full bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 flex items-center justify-center text-[10px] font-bold">
                 3
               </span>
               <span>Thành Viên Phụ & Ma Trận Phân Quyền</span>
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Thiết bị:{" "}
-              <strong className="text-cyan-600 dark:text-cyan-400 font-mono">
+              <strong className="text-slate-900 dark:text-white font-mono">
                 {currentSelectedDevice?.hardwareId || "Chưa chọn"}
               </strong>
             </div>
@@ -344,7 +344,7 @@ export function FamilyMatrixTab({
             type="button"
             onClick={() => setIsAddMemberModalOpen(true)}
             disabled={!currentSelectedDevice}
-            className="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+            className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-[11px] font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Thêm thành viên</span>
@@ -373,15 +373,7 @@ export function FamilyMatrixTab({
                   <div>
                     <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                       <span>{member.memberName}</span>
-                      <span
-                        className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                          member.role === "MEMBER"
-                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                            : member.role === "GUEST"
-                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                            : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
-                        }`}
-                      >
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600">
                         {member.role === "MEMBER"
                           ? "GIA ĐÌNH"
                           : member.role === "GUEST"
@@ -389,7 +381,7 @@ export function FamilyMatrixTab({
                           : "KỸ THUẬT"}
                       </span>
                     </div>
-                    <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 mt-0.5">
+                    <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
                       {member.phoneNumber}
                     </div>
                   </div>
@@ -412,7 +404,7 @@ export function FamilyMatrixTab({
                       type="checkbox"
                       checked={member.canControl}
                       onChange={() => onTogglePermission(member.id, "canControl")}
-                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
                     />
                   </label>
 
@@ -422,7 +414,7 @@ export function FamilyMatrixTab({
                       type="checkbox"
                       checked={member.canViewHistory}
                       onChange={() => onTogglePermission(member.id, "canViewHistory")}
-                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
                     />
                   </label>
 
@@ -432,7 +424,7 @@ export function FamilyMatrixTab({
                       type="checkbox"
                       checked={member.canChildLock}
                       onChange={() => onTogglePermission(member.id, "canChildLock")}
-                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
                     />
                   </label>
 
@@ -442,7 +434,7 @@ export function FamilyMatrixTab({
                       type="checkbox"
                       checked={member.canConfig}
                       onChange={() => onTogglePermission(member.id, "canConfig")}
-                      className="w-4 h-4 text-purple-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
                     />
                   </label>
                 </div>
@@ -453,7 +445,7 @@ export function FamilyMatrixTab({
                     <span
                       className={`text-[10px] font-mono ${
                         member.scheduleLimitActive
-                          ? "text-amber-600 dark:text-amber-400 font-bold"
+                          ? "text-slate-900 dark:text-white font-bold"
                           : "text-slate-400"
                       }`}
                     >
@@ -465,7 +457,7 @@ export function FamilyMatrixTab({
                       type="checkbox"
                       checked={member.scheduleLimitActive}
                       onChange={() => onTogglePermission(member.id, "scheduleLimitActive")}
-                      className="w-4 h-4 text-amber-600 rounded cursor-pointer"
+                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
                     />
                   </div>
                 </div>

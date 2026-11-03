@@ -5,21 +5,21 @@ class AppTheme {
   static bool isDarkMode = true;
   static String currentLang = 'vi'; // 'vi' or 'en'
 
-  // Dark Palette
-  static const Color darkBackground = Color(0xFF070B14);
-  static const Color darkSurface = Color(0xFF0F172A);
-  static const Color darkSurfaceGlass = Color(0xCC131E36);
-  static const Color darkCardBorder = Color(0xFF1E293B);
+  // Dark Palette (Pure Industrial Obsidian & Zinc - Zero Blue Tint)
+  static const Color darkBackground = Color(0xFF090A0C);
+  static const Color darkSurface = Color(0xFF141518);
+  static const Color darkSurfaceGlass = Color(0xF2141518);
+  static const Color darkCardBorder = Color(0xFF27272A);
 
   // Light Palette
-  static const Color lightBackground = Color(0xFFF1F5F9);
+  static const Color lightBackground = Color(0xFFF4F4F5);
   static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSurfaceGlass = Color(0xE6FFFFFF);
-  static const Color lightCardBorder = Color(0xFFCBD5E1);
-  static const Color lightBorder = Color(0xFFCBD5E1);
-  static const Color lightTextPrimary = Color(0xFF0F172A);
-  static const Color lightTextSecondary = Color(0xFF475569);
-  static const Color surfaceDark = Color(0xFF0F172A);
+  static const Color lightSurfaceGlass = Color(0xF2FFFFFF);
+  static const Color lightCardBorder = Color(0xFFE4E4E7);
+  static const Color lightBorder = Color(0xFFE4E4E7);
+  static const Color lightTextPrimary = Color(0xFF090A0C);
+  static const Color lightTextSecondary = Color(0xFF52525B);
+  static const Color surfaceDark = Color(0xFF141518);
   static const Color crimsonDanger = Color(0xFFDC2626);
 
   // Default Constant Colors (Const-compatible)
@@ -27,17 +27,17 @@ class AppTheme {
   static const Color surface = darkSurface;
   static const Color surfaceGlass = darkSurfaceGlass;
   static const Color cardBorder = darkCardBorder;
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
+  static const Color textPrimary = Color(0xFFF4F4F5);
+  static const Color textSecondary = Color(0xFFA1A1AA);
+  static const Color textMuted = Color(0xFF71717A);
 
   // Accent Colors
-  static const Color cyanAccent = Color(0xFF00E5FF);
-  static const Color blueAccent = Color(0xFF2563EB);
-  static const Color emeraldSuccess = Color(0xFF10B981);
+  static const Color cyanAccent = Color(0xFFFFFFFF);
+  static const Color blueAccent = Color(0xFF71717A);
+  static const Color emeraldSuccess = Color(0xFF22C55E);
   static const Color amberWarning = Color(0xFFF59E0B);
-  static const Color roseDanger = Color(0xFFF43F5E);
-  static const Color purpleAccent = Color(0xFFA855F7);
+  static const Color roseDanger = Color(0xFFDC2626);
+  static const Color purpleAccent = Color(0xFFA1A1AA);
 
   // Dynamic Theme Getters based on isDarkMode
   static Color get dynamicBackground => isDarkMode ? darkBackground : lightBackground;
@@ -47,7 +47,7 @@ class AppTheme {
   static Color get dynamicTextPrimary => isDarkMode ? textPrimary : lightTextPrimary;
   static Color get dynamicTextSecondary => isDarkMode ? textSecondary : lightTextSecondary;
 
-  // Glassmorphic Decoration Helper
+  // Glassmorphic Decoration Helper (Zero Neon Blur / Glow)
   static BoxDecoration glassBox({
     Color? color,
     Color? borderColor,
@@ -55,24 +55,18 @@ class AppTheme {
     bool glow = false,
   }) {
     return BoxDecoration(
-      color: color ?? surfaceGlass,
+      color: color ?? (isDarkMode ? darkSurface : lightSurface),
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: borderColor ?? cardBorder.withValues(alpha: 0.8),
-        width: 1.2,
+        color: borderColor ?? (isDarkMode ? darkCardBorder : lightCardBorder),
+        width: 1.0,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDarkMode ? 0.35 : 0.08),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
+          color: Colors.black.withValues(alpha: isDarkMode ? 0.25 : 0.05),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
         ),
-        if (glow)
-          BoxShadow(
-            color: cyanAccent.withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 2,
-          ),
       ],
     );
   }

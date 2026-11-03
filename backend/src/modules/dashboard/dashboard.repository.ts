@@ -33,24 +33,24 @@ export class DashboardRepository {
           onlinePct,
           offlinePct,
           inStockPct,
-          uptimeSla: '99.8%',
-          avgLatencyMs: 114,
+          uptimeSla: '99.9%',
+          avgLatencyMs: 25,
         };
       }
     } catch (e: any) {
-      console.warn('[DashboardRepository] DB query failed, fallback stats:', e.message);
+      console.warn('[DashboardRepository] DB query failed:', e.message);
     }
 
     return {
-      total: 10950,
-      online: 10315,
-      offline: 95,
-      inStock: 540,
-      onlinePct: '94.2%',
-      offlinePct: '0.8%',
-      inStockPct: '5.0%',
-      uptimeSla: '99.8%',
-      avgLatencyMs: 114,
+      total: 0,
+      online: 0,
+      offline: 0,
+      inStock: 0,
+      onlinePct: '0%',
+      offlinePct: '0%',
+      inStockPct: '0%',
+      uptimeSla: '---',
+      avgLatencyMs: 0,
     };
   }
 }

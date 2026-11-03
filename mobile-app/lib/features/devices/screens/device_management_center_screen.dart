@@ -37,7 +37,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
           children: [
             Text(
               "Mã phần cứng: ${device.hardwareId}",
-              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontFamily: "monospace"),
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 11, fontFamily: "monospace"),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -46,9 +46,9 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
               style: TextStyle(color: isDark ? Colors.white : Colors.black),
               decoration: InputDecoration(
                 labelText: "Tên hiển thị mới",
-                labelStyle: const TextStyle(color: AppTheme.cyanAccent),
+                labelStyle: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
                 enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[300]!)),
-                focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cyanAccent)),
+                focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? Colors.white : Colors.black)),
               ),
             ),
           ],
@@ -59,7 +59,10 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
             child: const Text("Hủy"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+            ),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 final newName = controller.text.trim();
@@ -85,20 +88,21 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
 
   void _showAssignRoomDialog(DeviceItem device) {
     final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : Colors.black;
     final rooms = ["Mặt tiền nhà phố", "Gara tầng 1", "Phòng khách", "Sân thượng", "Kho hàng"];
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
-        title: Text("Gán Khu Vực / Vị Trí", style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16)),
+        title: Text("Gán Khu Vực / Vị Trí", style: TextStyle(color: textCol, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: rooms.map((room) {
             final isCurrent = device.roomName == room;
             return ListTile(
-              title: Text(room, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 13)),
-              trailing: isCurrent ? const Icon(Icons.check, color: AppTheme.cyanAccent) : null,
+              title: Text(room, style: TextStyle(color: textCol, fontSize: 13)),
+              trailing: isCurrent ? Icon(Icons.check, color: textCol) : null,
               onTap: () async {
                 setState(() {
                   device.roomName = room;
@@ -119,17 +123,20 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
   }
 
   void _checkFirmwareOta(DeviceItem device) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : Colors.black;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
+        backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
         title: Row(
           children: [
-            const Icon(Icons.system_update_alt_rounded, color: AppTheme.cyanAccent),
+            Icon(Icons.system_update_alt_rounded, color: textCol),
             const SizedBox(width: 8),
             Text(
               "Kiểm Tra Firmware OTA",
-              style: TextStyle(color: AppTheme.isDarkMode ? Colors.white : Colors.black, fontSize: 15),
+              style: TextStyle(color: textCol, fontSize: 15),
             ),
           ],
         ),
@@ -155,7 +162,10 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
         ),
         actions: [
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đóng"),
           ),
@@ -165,15 +175,17 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
   }
 
   void _triggerEmergencyLockdown() {
+    final isDark = AppTheme.isDarkMode;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
+        backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppTheme.amberWarning),
+            Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
             SizedBox(width: 8),
-            Text("KHÓA KHẨN CẤP TOÀN BỘ CỬA", style: TextStyle(color: AppTheme.amberWarning, fontSize: 14)),
+            Text("KHÓA KHẨN CẤP TOÀN BỘ CỬA", style: TextStyle(color: AppTheme.crimsonDanger, fontSize: 14)),
           ],
         ),
         content: const Text(
@@ -183,7 +195,10 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Hủy")),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.amberWarning, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+            ),
             onPressed: () {
               for (final dev in _gateway.devices) {
                 if (dev.category == DeviceCategory.rollerDoor) {
@@ -195,7 +210,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text("Đã kích hoạt Khóa Khẩn Cấp toàn bộ cửa cuốn thành công!"),
-                  backgroundColor: AppTheme.amberWarning,
+                  backgroundColor: AppTheme.blueAccent,
                 ),
               );
             },
@@ -208,11 +223,14 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
 
   void _generateTransferOwnershipOtp() {
     setState(() => _transferOtp = "889241");
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : Colors.black;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
-        title: const Text("Chuyển Giao Quyền Sở Hữu", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
+        title: Text("Chuyển Giao Quyền Sở Hữu", style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 15)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -224,14 +242,14 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
-                color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.cyanAccent),
+                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
               ),
               child: Text(
                 _transferOtp!,
-                style: const TextStyle(
-                  color: AppTheme.cyanAccent,
+                style: TextStyle(
+                  color: textCol,
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 8,
@@ -243,7 +261,10 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
         ),
         actions: [
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDark ? Colors.white : Colors.black,
+              foregroundColor: isDark ? Colors.black : Colors.white,
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đã hiểu"),
           ),
@@ -272,11 +293,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                    : [Colors.white, const Color(0xFFF1F5F9)],
-              ),
+              color: isDark ? const Color(0xFF18181B) : Colors.white,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: cardBorder),
             ),
@@ -287,10 +304,11 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   height: 46,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: AppTheme.cyanGradient,
+                    color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                    border: Border.all(color: cardBorder),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.shield_rounded, color: Colors.white, size: 26),
+                  child: Center(
+                    child: Icon(Icons.shield_rounded, color: textCol, size: 24),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -317,12 +335,17 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                                   borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: cardBorder),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   "CHỦ SỞ HỮU",
-                                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white70 : AppTheme.lightTextSecondary,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -350,7 +373,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   value: "${_gateway.devices.length}",
                   sub: "7 Trực tuyến",
                   icon: Icons.devices_rounded,
-                  color: AppTheme.cyanAccent,
+                  color: textCol,
                   isDark: isDark,
                 ),
               ),
@@ -361,7 +384,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   value: "3.46 kW",
                   sub: "Ổn định 220V",
                   icon: Icons.bolt_rounded,
-                  color: AppTheme.amberWarning,
+                  color: textCol,
                   isDark: isDark,
                 ),
               ),
@@ -372,7 +395,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   value: "7/7 Máy",
                   sub: "24 Tháng",
                   icon: Icons.verified_user_rounded,
-                  color: AppTheme.emeraldSuccess,
+                  color: textCol,
                   isDark: isDark,
                 ),
               ),
@@ -390,18 +413,18 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                      color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.4)),
+                      border: Border.all(color: cardBorder),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_person_rounded, color: AppTheme.amberWarning, size: 16),
-                        SizedBox(width: 6),
+                        Icon(Icons.lock_person_rounded, color: textCol, size: 16),
+                        const SizedBox(width: 6),
                         Text(
                           "Khóa Khẩn Cấp Toàn Bộ Cửa",
-                          style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -415,17 +438,17 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.purpleAccent.withValues(alpha: 0.12),
+                    color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.4)),
+                    border: Border.all(color: cardBorder),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.qr_code_2_rounded, color: AppTheme.purpleAccent, size: 16),
-                      SizedBox(width: 4),
+                      Icon(Icons.qr_code_2_rounded, color: textCol, size: 16),
+                      const SizedBox(width: 4),
                       Text(
                         "Chuyển nhượng",
-                        style: TextStyle(color: AppTheme.purpleAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -475,12 +498,13 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
     required Color color,
     required bool isDark,
   }) {
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
+        color: isDark ? const Color(0xFF18181B) : AppTheme.lightSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+        border: Border.all(color: isDark ? const Color(0xFF27272A) : AppTheme.lightBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -492,13 +516,13 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 title,
                 style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 10),
               ),
-              Icon(icon, color: color, size: 14),
+              Icon(icon, color: textCol, size: 14),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(color: color, fontSize: 14, fontWeight: FontWeight.bold),
+            style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
           ),
           Text(
             sub,
@@ -511,22 +535,27 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
 
   Widget _buildFilterChip(String label, String value, bool isDark) {
     final isSelected = _selectedCategoryFilter == value;
+    final cardBorder = isDark ? const Color(0xFF27272A) : AppTheme.lightBorder;
     return GestureDetector(
       onTap: () => setState(() => _selectedCategoryFilter = value),
       child: Container(
         margin: const EdgeInsets.only(right: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.cyanAccent.withValues(alpha: 0.15) : (isDark ? AppTheme.surface : AppTheme.lightSurface),
+          color: isSelected 
+              ? (isDark ? Colors.white : Colors.black) 
+              : (isDark ? const Color(0xFF18181B) : AppTheme.lightSurface),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? AppTheme.cyanAccent : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+            color: isSelected ? (isDark ? Colors.white : Colors.black) : cardBorder,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? AppTheme.cyanAccent : (isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+            color: isSelected 
+                ? (isDark ? Colors.black : Colors.white) 
+                : (isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
             fontSize: 11,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
@@ -553,8 +582,9 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                   borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: cardBorder),
                 ),
                 child: Icon(
                   dev.category == DeviceCategory.rollerDoor
@@ -562,7 +592,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                       : dev.category == DeviceCategory.camera
                           ? Icons.videocam_rounded
                           : Icons.device_hub_rounded,
-                  color: AppTheme.cyanAccent,
+                  color: textCol,
                   size: 20,
                 ),
               ),
@@ -581,13 +611,20 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                         Container(
                           width: 6,
                           height: 6,
-                          decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.emeraldSuccess),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: dev.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
+                          ),
                         ),
                       ],
                     ),
                     Text(
                       "${dev.roomName} • ID: ${dev.hardwareId}",
-                      style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontFamily: "monospace"),
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                        fontSize: 10.5,
+                        fontFamily: "monospace",
+                      ),
                     ),
                   ],
                 ),
@@ -649,7 +686,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 ),
                 Row(
                   children: [
-                    const Icon(Icons.person_outline_rounded, size: 12, color: AppTheme.cyanAccent),
+                    Icon(Icons.person_outline_rounded, size: 12, color: textCol),
                     const SizedBox(width: 3),
                     Text(
                       dev.ownerName,
@@ -663,7 +700,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 ),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_month_rounded, size: 11, color: AppTheme.amberWarning),
+                    Icon(Icons.calendar_month_rounded, size: 11, color: textCol),
                     const SizedBox(width: 3),
                     Text(
                       "Hạn: ${dev.warrantyUntil.length >= 10 ? dev.warrantyUntil.substring(0, 10) : dev.warrantyUntil}",
@@ -693,13 +730,13 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 children: [
                   OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                      side: BorderSide(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       minimumSize: const Size(0, 28),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    icon: const Icon(Icons.tune_rounded, size: 13, color: AppTheme.cyanAccent),
-                    label: const Text("Cài Đặt", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5)),
+                    icon: Icon(Icons.tune_rounded, size: 13, color: textCol),
+                    label: Text("Cài Đặt", style: TextStyle(color: textCol, fontSize: 10.5)),
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: dev)),
@@ -709,11 +746,12 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   const SizedBox(width: 6),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.cyanAccent,
-                      foregroundColor: Colors.black,
+                      backgroundColor: isDark ? Colors.white : Colors.black,
+                      foregroundColor: isDark ? Colors.black : Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       minimumSize: const Size(0, 28),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 0,
                     ),
                     icon: const Icon(Icons.settings_remote_rounded, size: 13),
                     label: const Text("Điều Khiển", style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
@@ -738,3 +776,4 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
     );
   }
 }
+

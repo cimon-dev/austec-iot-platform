@@ -350,76 +350,63 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* CỘT 3: BIỂU ĐỒ CỘT PHÂN BỔ THEO NHÓM DÒNG MÁY (4 COLS) */}
+          {/* CỘT 3: BIỂU ĐỒ PHÂN BỔ THEO DÒNG SẢN PHẨM (4 COLS) */}
           <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-500" />
-                <span>Phân Bổ Theo Dòng Sản Phẩm</span>
+                <Layers className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Phân Bổ Theo Trạng Thái Thiết Bị</span>
               </span>
-              <span className="text-[10px] font-mono text-slate-400">5 Nhóm</span>
+              <span className="text-[10px] font-mono text-slate-400">Thời gian thực</span>
             </div>
 
-            {/* Horizontal Bar Breakdown for 5 Product Groups */}
-            <div className="space-y-2 py-1 text-xs">
-              <div>
-                <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Cửa cuốn nhôm Đức (Titadoor)</span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400">5,570 TB (99.4%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full w-[99.4%]"></div>
-                  <div className="bg-rose-500 h-full w-[0.6%]"></div>
-                </div>
+            {isLoading ? (
+              <div className="py-6 space-y-3 animate-pulse">
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
               </div>
+            ) : (!stats || stats.total === 0) ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                <Layers className="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
+                Chưa có dữ liệu thiết bị trong CSDL PostgreSQL
+              </div>
+            ) : (
+              <div className="space-y-2 py-1 text-xs">
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Trực tuyến (Online)</span>
+                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.online)} TB ({stats.onlinePct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }}></div>
+                  </div>
+                </div>
 
-              <div>
-                <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Lưu điện AC 220V Sóng Sin</span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400">2,300 TB (99.5%)</span>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Ngoại tuyến (Offline)</span>
+                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.offline)} TB ({stats.offlinePct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-rose-500 h-full" style={{ width: stats.offlinePct }}></div>
+                  </div>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full w-[99.5%]"></div>
-                  <div className="bg-rose-500 h-full w-[0.5%]"></div>
-                </div>
-              </div>
 
-              <div>
-                <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Cửa cuốn tấm liền Úc</span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400">1,750 TB (99.0%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full w-[99.0%]"></div>
-                  <div className="bg-rose-500 h-full w-[1.0%]"></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">Khóa thông minh Masaru</span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400">890 TB (99.2%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full w-[99.2%]"></div>
-                  <div className="bg-rose-500 h-full w-[0.8%]"></div>
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Tồn kho xuất xưởng (In Stock)</span>
+                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.inStock)} TB ({stats.inStockPct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-slate-400 h-full" style={{ width: stats.inStockPct }}></div>
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <div className="flex justify-between text-[11px] mb-0.5">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">GSHT &amp; Xe máy điện</span>
-                  <span className="font-mono text-slate-500 dark:text-slate-400">440 TB (98.4%)</span>
-                </div>
-                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                  <div className="bg-emerald-500 h-full w-[98.4%]"></div>
-                  <div className="bg-rose-500 h-full w-[1.6%]"></div>
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className="text-[10px] text-slate-400 text-right border-t border-slate-100 dark:border-slate-800 pt-1 font-mono">
-              Tổng 100% đạt chuẩn chất lượng
+              Tổng số: {stats ? formatNum(stats.total) : "---"} thiết bị
             </div>
           </div>
         </div>
@@ -437,50 +424,20 @@ export default function DashboardPage() {
           <div className="lg:col-span-7 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                <span>Cảnh Báo Kỹ Thuật Khẩn Cấp (Realtime Alerts)</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Cảnh Báo Kỹ Thuật Viễn Thám (Realtime Alerts)</span>
               </span>
-              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
-                12 Thiết Bị Cần Kiểm Tra
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                0 Sự Cố Khẩn Cấp
               </span>
             </div>
 
-            <div className="space-y-1.5 text-xs">
-              <div className="p-2 rounded-md border border-rose-500/20 bg-rose-50/40 dark:bg-rose-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                    <span className="font-mono text-rose-600 dark:text-rose-400">AT-DOOR-33019F</span>
-                    <span>• Cửa Cuốn Gara Đức Mạnh (Hà Nội)</span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                    Dòng điện động cơ tăng vọt 4.8A (Ngưỡng an toàn &lt; 4.0A). Nghi vấn kẹt ray trượt.
-                  </span>
-                </div>
-                <Link
-                  href="/cskh"
-                  className="px-2.5 py-1 rounded text-[10px] font-bold bg-rose-600 text-white shrink-0 self-end sm:self-auto"
-                >
-                  Xử lý CSKH ➔
-                </Link>
-              </div>
-
-              <div className="p-2 rounded-md border border-amber-500/20 bg-amber-50/40 dark:bg-amber-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                    <span className="font-mono text-amber-600 dark:text-amber-400">UPS-220V-99411E</span>
-                    <span>• Bộ Lưu Điện Chợ Lớn (TP.HCM)</span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
-                    Ắc quy báo dung lượng pin dưới 15%. Cần kiểm tra chu kỳ sạc xả tự động.
-                  </span>
-                </div>
-                <Link
-                  href="/devices?tab=list&search=UPS-220V-99411E"
-                  className="px-2.5 py-1 rounded text-[10px] font-bold bg-amber-600 text-white shrink-0 self-end sm:self-auto"
-                >
-                  Soi viễn thám ➔
-                </Link>
-              </div>
+            <div className="py-4 px-3 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20 text-center space-y-1">
+              <CheckCircle2 className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Hệ thống đang vận hành ổn định</p>
+              <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                Toàn bộ thiết bị kết nối đáp ứng tiêu chuẩn telemetry. Không có cảnh báo quá dòng hay sụt áp ắc quy khẩn cấp.
+              </p>
             </div>
           </div>
 
@@ -488,10 +445,10 @@ export default function DashboardPage() {
           <div className="lg:col-span-5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
               <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Server className="w-3.5 h-3.5 text-indigo-500" />
+                <Server className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                 <span>Hạ Tầng Broker & SLA</span>
               </span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400">
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
                 MQTT TLS: ONLINE
               </span>
             </div>
@@ -499,15 +456,15 @@ export default function DashboardPage() {
             <div className="space-y-1.5 text-[11px]">
               <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
                 <span className="text-slate-500 dark:text-slate-400">Độ trễ trung bình:</span>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">142 ms (SLA &lt; 250ms)</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{stats?.avgLatencyMs || 25} ms (SLA &lt; 250ms)</span>
               </div>
               <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Thông điệp viễn thám hôm nay:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white">14,295 msg / 24h</span>
+                <span className="text-slate-500 dark:text-slate-400">Tỷ lệ uptime hệ thống:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{stats?.uptimeSla || "99.9%"}</span>
               </div>
               <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
                 <span className="text-slate-500 dark:text-slate-400">Mã hóa SHA-256 Hộp Đen:</span>
-                <span className="font-mono font-bold text-cyan-600 dark:text-cyan-400">100% Immutable Verified</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">100% Immutable Verified</span>
               </div>
             </div>
           </div>

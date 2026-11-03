@@ -16,6 +16,13 @@ class ChatBubble extends StatelessWidget {
 
     final isMe = message.isMe;
 
+    final isDark = AppTheme.isDarkMode;
+    final bubbleColor = isMe
+        ? (isDark ? const Color(0xFF27272A) : const Color(0xFF18181B))
+        : (isDark ? const Color(0xFF141518) : const Color(0xFFE4E4E7));
+    final bubbleTextCol = isMe ? Colors.white : (isDark ? Colors.white : Colors.black87);
+    final bubbleBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
       child: Row(
@@ -23,7 +30,7 @@ class ChatBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
-            _buildAvatar(),
+            _buildAvatar(isDark, bubbleBorder),
             const SizedBox(width: 8),
           ],
           Flexible(
@@ -35,8 +42,8 @@ class ChatBubble extends StatelessWidget {
                     padding: const EdgeInsets.only(left: 4, bottom: 2),
                     child: Text(
                       message.senderName,
-                      style: const TextStyle(
-                        color: AppTheme.textMuted,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -46,21 +53,7 @@ class ChatBubble extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    gradient: isMe
-                        ? AppTheme.cyanGradient
-                        : (message.senderRole == 'CSKH'
-                            ? LinearGradient(
-                                colors: [
-                                  AppTheme.purpleAccent.withValues(alpha: 0.25),
-                                  const Color(0xFF1E1B4B),
-                                ],
-                              )
-                            : LinearGradient(
-                                colors: [
-                                  AppTheme.surfaceGlass,
-                                  const Color(0xFF1E293B),
-                                ],
-                              )),
+                    color: bubbleColor,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -68,16 +61,12 @@ class ChatBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMe ? 4 : 16),
                     ),
                     border: Border.all(
-                      color: isMe
-                          ? AppTheme.cyanAccent.withValues(alpha: 0.5)
-                          : (message.senderRole == 'CSKH'
-                              ? AppTheme.purpleAccent.withValues(alpha: 0.5)
-                              : AppTheme.cardBorder),
+                      color: bubbleBorder,
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
+                        color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                         blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
@@ -91,7 +80,7 @@ class ChatBubble extends StatelessWidget {
                         Text(
                           message.content,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: bubbleTextCol,
                             fontSize: 13.5,
                             fontWeight: isMe ? FontWeight.w500 : FontWeight.normal,
                             height: 1.35,
@@ -239,28 +228,29 @@ class ChatBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar() {
+  Widget _buildAvatar(bool isDark, Color bubbleBorder) {
     final isCSKH = message.senderRole == 'CSKH';
     final initial = message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : 'A';
+    final textCol = isDark ? Colors.white : Colors.black87;
 
     return Container(
       width: 32,
       height: 32,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: isCSKH ? AppTheme.purpleGradient : AppTheme.cyanGradient,
+        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
         border: Border.all(
-          color: isCSKH ? AppTheme.purpleAccent : AppTheme.cyanAccent,
-          width: 1.2,
+          color: bubbleBorder,
+          width: 1.0,
         ),
       ),
       child: Center(
         child: isCSKH
-            ? const Icon(Icons.support_agent_rounded, color: Colors.white, size: 18)
+            ? Icon(Icons.support_agent_rounded, color: textCol, size: 18)
             : Text(
                 initial,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textCol,
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
                 ),
@@ -407,29 +397,31 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildTelemetrySnapshot() {
+    final isDark = AppTheme.isDarkMode;
     final meta = message.metadata;
     final hwId = meta['hardwareId'] ?? 'AT-DOOR-88239A01';
     final model = meta['model'] ?? 'Cửa cuốn Austec Titadoor';
     final status = meta['isOnline'] == true || meta['status'] == 'ONLINE' ? 'Trực tuyến' : 'Ngoại tuyến';
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
 
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
+        color: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+        border: Border.all(color: cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.sensors_rounded, color: AppTheme.cyanAccent, size: 14),
-              SizedBox(width: 4),
+              Icon(Icons.sensors_rounded, color: isDark ? Colors.white : Colors.black87, size: 14),
+              const SizedBox(width: 4),
               Text(
                 "THÔNG SỐ VIỄN THÁM THIẾT BỊ (SNAPSHOT)",
                 style: TextStyle(
-                  color: AppTheme.cyanAccent,
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: 9.5,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
@@ -440,11 +432,11 @@ class ChatBubble extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             "$model ($hwId)",
-            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 11, fontWeight: FontWeight.bold),
           ),
           Text(
             "Trạng thái: $status • Tín hiệu sóng: -65 dBm",
-            style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 10),
           ),
         ],
       ),

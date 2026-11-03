@@ -27,10 +27,10 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
         <button
           type="button"
           onClick={() => onTabChange("accounts")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "accounts"
-              ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -39,10 +39,10 @@ export const CustomerHeader: React.FC<CustomerHeaderProps> = ({
         <button
           type="button"
           onClick={() => onTabChange("matrix")}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
             activeTab === "matrix"
-              ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-xs"
-              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
           <ShieldCheck className="w-3.5 h-3.5" />

@@ -338,21 +338,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
+    final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceDark : Colors.white;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0B132B),
+      backgroundColor: bgCol,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0F172A),
+        backgroundColor: cardBg,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new, color: textCol, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: InkWell(
           onTap: _openChatSettings,
           child: Row(
             children: [
-              _buildAppBarAvatar(),
+              _buildAppBarAvatar(isDark, cardBorder, textCol),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -362,7 +369,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       _conversation.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                     ),
                     Row(
                       children: [
@@ -371,14 +378,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                           height: 6,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _isWsConnected ? AppTheme.cyanAccent : Colors.orange,
+                            color: _isWsConnected ? AppTheme.emeraldSuccess : Colors.orange,
                           ),
                         ),
                         const SizedBox(width: 4),
                         Text(
                           _isWsConnected ? (_conversation.isGroup ? "${_conversation.memberCount} thành viên" : "Trực tuyến 24/7") : "Đang kết nối...",
                           style: TextStyle(
-                            color: _isWsConnected ? AppTheme.cyanAccent : Colors.orange,
+                            color: _isWsConnected ? AppTheme.emeraldSuccess : Colors.orange,
                             fontSize: 10,
                           ),
                         ),
@@ -392,7 +399,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, color: Colors.white70, size: 22),
+            icon: Icon(Icons.settings_outlined, color: textCol, size: 22),
             tooltip: "Cài đặt cuộc trò chuyện",
             onPressed: _openChatSettings,
           ),
@@ -404,11 +411,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             // Message List
             Expanded(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                  ? Center(
+                      child: CircularProgressIndicator(strokeWidth: 2, color: textCol),
                     )
                   : _messages.isEmpty
-                      ? _buildEmptyState()
+                      ? _buildEmptyState(subTextCol)
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -420,27 +427,27 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             ),
 
             // Pending Attachments Preview
-            if (_pendingAttachments.isNotEmpty) _buildPendingAttachmentsBar(),
+            if (_pendingAttachments.isNotEmpty) _buildPendingAttachmentsBar(isDark, cardBg, cardBorder, textCol),
 
             // Chat Input Bar
-            _buildInputBar(),
+            _buildInputBar(isDark, cardBg, cardBorder, textCol, subTextCol),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppBarAvatar() {
+  Widget _buildAppBarAvatar(bool isDark, Color cardBorder, Color textCol) {
     if (_conversation.isCskh) {
       return Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: AppTheme.purpleGradient,
-          border: Border.all(color: AppTheme.purpleAccent, width: 1.5),
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+          border: Border.all(color: cardBorder, width: 1.2),
         ),
-        child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 20),
+        child: Icon(Icons.support_agent_rounded, color: textCol, size: 20),
       );
     }
 
@@ -450,10 +457,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: AppTheme.cyanGradient,
-          border: Border.all(color: AppTheme.cyanAccent, width: 1.5),
+          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+          border: Border.all(color: cardBorder, width: 1.2),
         ),
-        child: const Icon(Icons.group_rounded, color: Colors.white, size: 20),
+        child: Icon(Icons.group_rounded, color: textCol, size: 20),
       );
     }
 
@@ -462,26 +469,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       height: 36,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: AppTheme.cyanGradient,
-        border: Border.all(color: AppTheme.cyanAccent, width: 1.5),
+        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+        border: Border.all(color: cardBorder, width: 1.2),
       ),
       child: Center(
         child: Text(
           _conversation.title.isNotEmpty ? _conversation.title[0].toUpperCase() : 'U',
-          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
         ),
       ),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(Color subTextCol) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             _conversation.isCskh ? Icons.support_agent_rounded : Icons.forum_outlined,
-            color: Colors.white24,
+            color: subTextCol.withValues(alpha: 0.3),
             size: 54,
           ),
           const SizedBox(height: 12),
@@ -489,17 +496,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             _conversation.isCskh
                 ? "Kết nối trực tiếp Kỹ thuật viên & CSKH Austec"
                 : "Bắt đầu cuộc trò chuyện ngay bây giờ",
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: subTextCol, fontSize: 12),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPendingAttachmentsBar() {
+  Widget _buildPendingAttachmentsBar(bool isDark, Color cardBg, Color cardBorder, Color textCol) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      color: Colors.black45,
+      color: cardBg,
       child: Row(
         children: [
           Expanded(
@@ -511,9 +518,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceGlass,
+                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                      border: Border.all(color: cardBorder),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -524,18 +531,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                               : att.mediaType == 'video'
                                   ? Icons.videocam
                                   : Icons.insert_drive_file,
-                          color: AppTheme.cyanAccent,
+                          color: textCol,
                           size: 14,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           att.name,
-                          style: const TextStyle(color: Colors.white, fontSize: 10),
+                          style: TextStyle(color: textCol, fontSize: 10),
                         ),
                         const SizedBox(width: 4),
                         InkWell(
                           onTap: () => setState(() => _pendingAttachments.remove(att)),
-                          child: const Icon(Icons.close, color: Colors.white60, size: 14),
+                          child: Icon(Icons.close, color: textCol, size: 14),
                         ),
                       ],
                     ),
@@ -549,24 +556,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  Widget _buildInputBar() {
+  Widget _buildInputBar(bool isDark, Color cardBg, Color cardBorder, Color textCol, Color subTextCol) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F172A),
-        border: Border(top: BorderSide(color: AppTheme.cardBorder)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        border: Border(top: BorderSide(color: cardBorder)),
       ),
       child: Row(
         children: [
           // Nút 1: Mở trực tiếp kho ảnh người dùng (giống Messenger, Zalo)
           IconButton(
-            icon: const Icon(Icons.image_rounded, color: AppTheme.cyanAccent, size: 24),
+            icon: Icon(Icons.image_rounded, color: textCol, size: 24),
             tooltip: "Kho ảnh thiết bị",
             onPressed: _pickFromPhotoGallery,
           ),
           // Nút 2: Tệp tin & Hỏi tư vấn thiết bị hệ thống
           IconButton(
-            icon: const Icon(Icons.attach_file_rounded, color: Colors.white70, size: 23),
+            icon: Icon(Icons.attach_file_rounded, color: textCol, size: 23),
             tooltip: "Gửi tệp / Hỏi tư vấn thiết bị",
             onPressed: _openFileAndDeviceSheet,
           ),
@@ -576,20 +583,20 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                border: Border.all(color: cardBorder),
               ),
               child: TextField(
                 controller: _textController,
                 maxLines: null,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                decoration: const InputDecoration(
+                style: TextStyle(color: textCol, fontSize: 13),
+                decoration: InputDecoration(
                   hintText: "Nhập tin nhắn...",
-                  hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 12.5),
+                  hintStyle: TextStyle(color: subTextCol, fontSize: 12.5),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
                 ),
                 onSubmitted: (_) => _handleSendMessage(),
               ),
@@ -597,18 +604,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           ),
           const SizedBox(width: 6),
 
-          // Nút Gửi
+          // Nút Gửi Monochrome
           InkWell(
             onTap: _handleSendMessage,
             borderRadius: BorderRadius.circular(20),
             child: Container(
               width: 38,
               height: 38,
-              decoration: const BoxDecoration(
-                gradient: AppTheme.cyanGradient,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white : const Color(0xFF090A0C),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              child: Icon(Icons.send_rounded, color: isDark ? Colors.black : Colors.white, size: 18),
             ),
           ),
         ],

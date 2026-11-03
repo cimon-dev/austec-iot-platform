@@ -449,7 +449,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
           ),
           const SizedBox(height: 14),
 
-          // Header danh mục
+          // Header danh mục (Monochrome B&W)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -462,9 +462,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                       height: 42,
                       padding: const EdgeInsets.all(7),
                       decoration: BoxDecoration(
-                        color: widget.categoryMeta.neonColor.withValues(alpha: 0.15),
+                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: widget.categoryMeta.neonColor.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                          width: 1.2,
+                        ),
                       ),
                       child: Image.asset(widget.categoryMeta.assetPath, fit: BoxFit.contain),
                     ),
@@ -475,7 +478,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                         Text(
                           widget.categoryMeta.title,
                           style: TextStyle(
-                            color: widget.categoryMeta.neonColor,
+                            color: isDark ? Colors.white : const Color(0xFF090A0C),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.8,
@@ -494,9 +497,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                   ],
                 ),
-                // Nút Thêm thiết bị vào danh mục
+                // Nút Thêm thiết bị vào danh mục (Monochrome B&W)
                 IconButton(
-                  icon: const Icon(Icons.add_circle_outline, color: AppTheme.cyanAccent),
+                  icon: Icon(
+                    Icons.add_circle_outline,
+                    color: isDark ? Colors.white : const Color(0xFF090A0C),
+                  ),
                   tooltip: AppTheme.t("add_device"),
                   onPressed: () async {
                     await Navigator.of(context).push(
@@ -1113,72 +1119,68 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Tiêu đề thiết bị & 3-dots popup menu
+          // Hàng 1 & 2: Icon đại diện + Tên thiết bị (Full Width, maxLines: 2) + Tag Âm tường + ID + Trạng thái tóm tắt
           Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon đại diện
+              // Icon đại diện (Monochrome B&W)
               Container(
-                width: 44,
-                height: 44,
+                width: 42,
+                height: 42,
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                    width: 1.0,
+                  ),
                 ),
                 child: Icon(
                   device.category == DeviceCategory.rollerDoor
                       ? Icons.roller_shades_closed_outlined
                       : Icons.device_hub_rounded,
-                  color: AppTheme.cyanAccent,
+                  color: isDark ? Colors.white : const Color(0xFF090A0C),
                   size: 24,
                 ),
               ),
               const SizedBox(width: 12),
 
-              // Tên & Nhãn ÂM TƯỜNG + Hardware ID
+              // Tên thiết bị chiếm toàn bộ không gian, cho phép 2 dòng nếu tên dài
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.emeraldSuccess,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            device.name,
-                            style: TextStyle(
-                              color: textCol,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      device.name,
+                      style: TextStyle(
+                        color: textCol,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                        height: 1.25,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 5),
+
+                    // Hàng tag Âm tường + Mã phần cứng + Trạng thái tóm tắt
                     Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppTheme.purpleAccent.withValues(alpha: 0.15),
+                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                             borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                              width: 1.0,
+                            ),
                           ),
-                          child: const Text(
+                          child: Text(
                             "ÂM TƯỜNG",
                             style: TextStyle(
-                              color: AppTheme.purpleAccent,
+                              color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B),
                               fontSize: 9.5,
                               fontWeight: FontWeight.bold,
                               letterSpacing: 0.5,
@@ -1188,34 +1190,37 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                         const SizedBox(width: 6),
                         Text(
                           device.hardwareId.replaceAll('amtuong', ''),
-                          style: const TextStyle(
-                            color: AppTheme.cyanAccent,
+                          style: TextStyle(
+                            color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
                             fontSize: 11,
                             fontFamily: "monospace",
                             fontWeight: FontWeight.w600,
                           ),
                         ),
+                        const Spacer(),
+                        // Trạng thái tóm tắt (Monochrome B&W)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Text(
+                            device.stateSummary,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : const Color(0xFF090A0C),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ],
-                ),
-              ),
-
-              // Trạng thái tóm tắt
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.emeraldSuccess.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.3)),
-                ),
-                child: Text(
-                  device.stateSummary,
-                  style: const TextStyle(
-                    color: AppTheme.emeraldSuccess,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
               ),
 
@@ -1240,7 +1245,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     value: 'rename',
                     child: Row(
                       children: [
-                        const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
+                        Icon(Icons.edit_outlined, size: 18, color: isDark ? Colors.white : Colors.black87),
                         const SizedBox(width: 8),
                         Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
                       ],
@@ -1261,7 +1266,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             ],
           ),
 
-          // DẢI THÔNG TIN QUẢN TRỊ: TRẠNG THÁI ON/OFF, AI SỞ HỮU, NGÀY GIA HẠN/BẢO HÀNH
+          // DẢI THÔNG TIN QUẢN TRỊ: TRẠNG THÁI ON/OFF (CÓ MÀU DUY NHẤT), AI SỞ HỮU, HẠN BẢO HÀNH
           Container(
             margin: const EdgeInsets.only(top: 10, bottom: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -1273,7 +1278,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 1. Trạng thái ON / OFF & BLE
+                // 1. Trạng thái ON / OFF (DUY NHẤT CÓ MÀU THEO YÊU CẦU CỦA USER)
                 Row(
                   children: [
                     Container(
@@ -1281,24 +1286,28 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                       height: 7,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                        color: device.isOnline ? const Color(0xFF22C55E) : const Color(0xFF71717A),
                       ),
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      device.isOnline ? "ON" : "OFF (BLE)",
+                      device.isOnline ? "ON" : "OFF",
                       style: TextStyle(
-                        color: device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
+                        color: device.isOnline ? const Color(0xFF22C55E) : const Color(0xFF71717A),
                         fontSize: 10.5,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                // 2. Ai sở hữu
+                // 2. Ai sở hữu (Monochrome B&W)
                 Row(
                   children: [
-                    const Icon(Icons.person_outline_rounded, size: 13, color: AppTheme.cyanAccent),
+                    Icon(
+                      Icons.person_outline_rounded,
+                      size: 13,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       device.ownerName,
@@ -1310,10 +1319,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                   ],
                 ),
-                // 3. Ngày gia hạn / bảo hành
+                // 3. Ngày gia hạn / bảo hành (Monochrome B&W)
                 Row(
                   children: [
-                    const Icon(Icons.calendar_month_rounded, size: 12, color: AppTheme.amberWarning),
+                    Icon(
+                      Icons.calendar_month_rounded,
+                      size: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       "Hạn: ${device.warrantyUntil.length >= 10 ? device.warrantyUntil.substring(0, 10) : device.warrantyUntil}",
@@ -1334,22 +1347,26 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
               margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
-                color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 16),
+                  Icon(
+                    Icons.bluetooth_searching_rounded,
+                    color: isDark ? Colors.white70 : Colors.black87,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       "Thiết bị đang Ngoại tuyến Wi-Fi. Hãy đến gần (< 15m) và bật Bluetooth để điều khiển trực tiếp qua BLE.",
                       style: TextStyle(
-                        color: isDark ? AppTheme.amberWarning : Colors.orange[900],
+                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
                         fontSize: 10.5,
                         height: 1.3,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1377,12 +1394,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
 
           const SizedBox(height: 12),
 
-          // Nút Chuyển Vào Màn Hình Chi Tiết
+          // Nút Chuyển Vào Màn Hình Chi Tiết (Monochrome B&W)
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                side: BorderSide(
+                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -1390,14 +1409,26 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.tune_rounded, color: AppTheme.cyanAccent, size: 16),
+                  Icon(
+                    Icons.tune_rounded,
+                    color: isDark ? Colors.white : const Color(0xFF090A0C),
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     AppTheme.t("details"),
-                    style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF090A0C),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.cyanAccent, size: 12),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    size: 12,
+                  ),
                 ],
               ),
             ),

@@ -18,7 +18,8 @@ import {
   Navigation,
   Maximize2,
   Minimize2,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
 
@@ -43,257 +44,16 @@ export interface DeviceGeoLocation {
   signalDbm: number;
 }
 
-export const SAMPLE_GEO_DEVICES: DeviceGeoLocation[] = [
-  // Hà Nội
-  {
-    hardwareId: "AT-DOOR-88239A",
-    serialNumber: "SN-2026-DOOR-88239",
-    deviceName: "Cửa Cuốn Austec Titadoor Super",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A900 Super",
-    status: "ONLINE",
-    ownerName: "Nguyễn Văn Nam",
-    phoneNumber: "0912 345 678",
-    lat: 21.0285,
-    lng: 105.8542,
-    streetAddress: "Số 45, Đường Lê Duẩn",
-    ward: "Phường Bến Nghé",
-    district: "Quận Hoàn Kiếm",
-    province: "Hà Nội",
-    formattedAddress: "Số 45, Lê Duẩn, Hoàn Kiếm, Hà Nội",
-    lastTelemetryAt: "3 giây trước",
-    batteryLevel: 98,
-    signalDbm: -62
-  },
-  {
-    hardwareId: "UPS-220V-77192C",
-    serialNumber: "SN-2026-UPS-77192",
-    deviceName: "Bộ Lưu Điện Sin Chuẩn Pro",
-    deviceType: "Bộ lưu điện",
-    modelName: "Austec Sin Chuẩn Pro 220V",
-    status: "ONLINE",
-    ownerName: "Nguyễn Văn Nam",
-    phoneNumber: "0912 345 678",
-    lat: 20.9950,
-    lng: 105.8600,
-    streetAddress: "Tòa Park 3, Vinhomes Times City",
-    ward: "Phường Mai Động",
-    district: "Quận Hoàng Mai",
-    province: "Hà Nội",
-    formattedAddress: "Park 3 Vinhomes Times City, Hoàng Mai, Hà Nội",
-    lastTelemetryAt: "10 giây trước",
-    batteryLevel: 94,
-    signalDbm: -58
-  },
-  {
-    hardwareId: "AT-DOOR-33019F",
-    serialNumber: "SN-2026-DOOR-33019",
-    deviceName: "Cửa Cuốn Gara Đức Mạnh",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A900 Super",
-    status: "OFFLINE",
-    ownerName: "Phạm Đức Mạnh",
-    phoneNumber: "0944 102 588",
-    lat: 21.0125,
-    lng: 105.8480,
-    streetAddress: "Số 88, Phố Huế",
-    ward: "Phường Ngô Thì Nhậm",
-    district: "Quận Hai Bà Trưng",
-    province: "Hà Nội",
-    formattedAddress: "Số 88, Phố Huế, Hai Bà Trưng, Hà Nội",
-    lastTelemetryAt: "45 phút trước (Mất nguồn)",
-    batteryLevel: 12,
-    signalDbm: -89
-  },
-  {
-    hardwareId: "AT-DOOR-STOCK-01",
-    serialNumber: "SN-2026-DOOR-99101",
-    deviceName: "Cửa Cuốn Titadoor Xuất Kho",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A500 Eco",
-    status: "IN_STOCK",
-    ownerName: "Tổng Kho Austec Bắc Ninh",
-    phoneNumber: "1900 6868",
-    lat: 21.0500,
-    lng: 105.7800,
-    streetAddress: "Lô C2, KCN Quế Võ",
-    ward: "Xã Phương Liễu",
-    district: "Thị xã Quế Võ",
-    province: "Hà Nội",
-    formattedAddress: "Kho Tổng Phía Bắc - KCN Quế Võ",
-    lastTelemetryAt: "Chờ kích hoạt QR Code",
-    batteryLevel: 100,
-    signalDbm: 0
-  },
+export const SAMPLE_GEO_DEVICES: DeviceGeoLocation[] = [];
 
-  // TP. Hồ Chí Minh
-  {
-    hardwareId: "MS-LOCK-99120B",
-    serialNumber: "SN-2026-LOCK-99120",
-    deviceName: "Khóa Thông Minh Masaru X1",
-    deviceType: "Khóa thông minh",
-    modelName: "Masaru Titan X1",
-    status: "ONLINE",
-    ownerName: "Lê Văn Thành",
-    phoneNumber: "0987 654 321",
-    lat: 10.7769,
-    lng: 106.7009,
-    streetAddress: "Số 120, Đường Nguyễn Thị Minh Khai",
-    ward: "Phường Bến Thành",
-    district: "Quận 1",
-    province: "TP. Hồ Chí Minh",
-    formattedAddress: "Số 120, Nguyễn Thị Minh Khai, Quận 1, TP.HCM",
-    lastTelemetryAt: "5 giây trước",
-    batteryLevel: 92,
-    signalDbm: -55
-  },
-  {
-    hardwareId: "AT-DOOR-44120D",
-    serialNumber: "SN-2026-DOOR-44120",
-    deviceName: "Cửa Cuốn Biệt Thự An Phú",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A900 Super",
-    status: "ONLINE",
-    ownerName: "Trần Anh Dũng",
-    phoneNumber: "0903 889 911",
-    lat: 10.8231,
-    lng: 106.6297,
-    streetAddress: "Số 18, Đường số 7, KDC An Phú An Khánh",
-    ward: "Phường An Phú",
-    district: "TP. Thủ Đức",
-    province: "TP. Hồ Chí Minh",
-    formattedAddress: "KDC An Phú An Khánh, TP. Thủ Đức, TP.HCM",
-    lastTelemetryAt: "1 giây trước",
-    batteryLevel: 96,
-    signalDbm: -60
-  },
-  {
-    hardwareId: "UPS-220V-99411E",
-    serialNumber: "SN-2026-UPS-99411",
-    deviceName: "Bộ Lưu Điện Chợ Lớn",
-    deviceType: "Bộ lưu điện",
-    modelName: "Austec Sin Chuẩn Pro 220V",
-    status: "OFFLINE",
-    ownerName: "Hoàng Minh Trí",
-    phoneNumber: "0938 112 233",
-    lat: 10.7550,
-    lng: 106.6600,
-    streetAddress: "Số 234, Đường Trần Hưng Đạo",
-    ward: "Phường 11",
-    district: "Quận 5",
-    province: "TP. Hồ Chí Minh",
-    formattedAddress: "Số 234, Trần Hưng Đạo, Quận 5, TP.HCM",
-    lastTelemetryAt: "2 giờ trước (Mất Wi-Fi)",
-    batteryLevel: 45,
-    signalDbm: -92
-  },
-  {
-    hardwareId: "AT-LOCK-STOCK-02",
-    serialNumber: "SN-2026-LOCK-55201",
-    deviceName: "Khóa Masaru Titan X1 Kho",
-    deviceType: "Khóa thông minh",
-    modelName: "Masaru Titan X1",
-    status: "IN_STOCK",
-    ownerName: "Kho Tổng Austec Miền Nam",
-    phoneNumber: "1900 6868",
-    lat: 10.8500,
-    lng: 106.7700,
-    streetAddress: "KCN Sóng Thần 1, Dĩ An",
-    ward: "Phường An Bình",
-    district: "Thành phố Dĩ An",
-    province: "Bình Dương",
-    formattedAddress: "Kho Tổng Miền Nam - KCN Sóng Thần",
-    lastTelemetryAt: "Chờ xuất kho & kích hoạt",
-    batteryLevel: 100,
-    signalDbm: 0
-  },
-
-  // Đà Nẵng
-  {
-    hardwareId: "MS-LOCK-33219E",
-    serialNumber: "SN-2026-LOCK-33219",
-    deviceName: "Khóa Masaru Hải Châu",
-    deviceType: "Khóa thông minh",
-    modelName: "Masaru Titan X1",
-    status: "ONLINE",
-    ownerName: "Trần Thị Bích Ngọc",
-    phoneNumber: "0933 556 677",
-    lat: 16.0544,
-    lng: 108.2022,
-    streetAddress: "Số 56, Đường Nguyễn Văn Linh",
-    ward: "Phường Nam Dương",
-    district: "Quận Hải Châu",
-    province: "Đà Nẵng",
-    formattedAddress: "Số 56, Nguyễn Văn Linh, Hải Châu, Đà Nẵng",
-    lastTelemetryAt: "8 giây trước",
-    batteryLevel: 88,
-    signalDbm: -64
-  },
-  {
-    hardwareId: "AT-DOOR-55190B",
-    serialNumber: "SN-2026-DOOR-55190",
-    deviceName: "Cửa Cuốn Cẩm Lệ",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A500 Eco",
-    status: "ONLINE",
-    ownerName: "Võ Văn Hùng",
-    phoneNumber: "0905 443 322",
-    lat: 16.0200,
-    lng: 108.2100,
-    streetAddress: "Đường Nguyễn Hữu Thọ",
-    ward: "Phường Khuê Trung",
-    district: "Quận Cẩm Lệ",
-    province: "Đà Nẵng",
-    formattedAddress: "Đường Nguyễn Hữu Thọ, Cẩm Lệ, Đà Nẵng",
-    lastTelemetryAt: "12 giây trước",
-    batteryLevel: 95,
-    signalDbm: -68
-  },
-
-  // Hải Phòng
-  {
-    hardwareId: "AT-DOOR-66120H",
-    serialNumber: "SN-2026-DOOR-66120",
-    deviceName: "Cửa Cuốn Lạch Tray",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A900 Super",
-    status: "ONLINE",
-    ownerName: "Bùi Quang Huy",
-    phoneNumber: "0913 221 100",
-    lat: 20.8449,
-    lng: 106.6881,
-    streetAddress: "Số 92, Đường Lạch Tray",
-    ward: "Phường Lạch Tray",
-    district: "Quận Ngô Quyền",
-    province: "Hải Phòng",
-    formattedAddress: "Số 92, Lạch Tray, Ngô Quyền, Hải Phòng",
-    lastTelemetryAt: "4 giây trước",
-    batteryLevel: 97,
-    signalDbm: -59
-  },
-
-  // Cần Thơ
-  {
-    hardwareId: "AT-DOOR-77130K",
-    serialNumber: "SN-2026-DOOR-77130",
-    deviceName: "Cửa Cuốn Ninh Kiều",
-    deviceType: "Cửa cuốn",
-    modelName: "Titadoor A500 Eco",
-    status: "ONLINE",
-    ownerName: "Đặng Thị Mai",
-    phoneNumber: "0949 778 899",
-    lat: 10.0452,
-    lng: 105.7469,
-    streetAddress: "Số 42, Đại lộ Hòa Bình",
-    ward: "Phường Tân An",
-    district: "Quận Ninh Kiều",
-    province: "Cần Thơ",
-    formattedAddress: "Số 42, Đại lộ Hòa Bình, Ninh Kiều, Cần Thơ",
-    lastTelemetryAt: "7 giây trước",
-    batteryLevel: 91,
-    signalDbm: -66
-  }
-];
+// Approximate center coordinates for standard provinces
+const PROVINCE_COORDS: Record<string, { lat: number; lng: number }> = {
+  "Hà Nội": { lat: 21.0285, lng: 105.8542 },
+  "TP. Hồ Chí Minh": { lat: 10.8231, lng: 106.6297 },
+  "Đà Nẵng": { lat: 16.0544, lng: 108.2022 },
+  "Hải Phòng": { lat: 20.8449, lng: 106.6881 },
+  "Cần Thơ": { lat: 10.0452, lng: 105.7469 },
+};
 
 export function DeviceGeoMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -303,58 +63,76 @@ export function DeviceGeoMap() {
   const leafletLibRef = useRef<any>(null);
 
   const [mapStyle, setMapStyle] = useState<"google" | "satellite" | "osm">("google");
-  const [deviceList, setDeviceList] = useState<DeviceGeoLocation[]>(SAMPLE_GEO_DEVICES);
+  const [deviceList, setDeviceList] = useState<DeviceGeoLocation[]>([]);
+  const [isLoadingDevices, setIsLoadingDevices] = useState(true);
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [searchFilter, setSearchFilter] = useState<string>("");
-  const [selectedDevice, setSelectedDevice] = useState<DeviceGeoLocation | null>(SAMPLE_GEO_DEVICES[0]);
+  const [selectedDevice, setSelectedDevice] = useState<DeviceGeoLocation | null>(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mobileMapTab, setMobileMapTab] = useState<"map" | "inspector">("map");
 
-  // Fetch live PostgreSQL devices
+  // Fetch live PostgreSQL devices - 100% BE data
   useEffect(() => {
+    let isMounted = true;
     const fetchLiveDevices = async () => {
+      setIsLoadingDevices(true);
       try {
         const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
         const res = await fetch(`${getApiBaseUrl()}/api/admin/devices`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await res.json();
-        if (data.success && Array.isArray(data.devices) && data.devices.length > 0) {
-          const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any, idx: number) => {
-            const fallback = SAMPLE_GEO_DEVICES[idx % SAMPLE_GEO_DEVICES.length];
+        if (data.success && Array.isArray(data.devices)) {
+          const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any) => {
+            const provinceName = d.province || "Hà Nội";
+            const defCoords = PROVINCE_COORDS[provinceName] || { lat: 21.0285, lng: 105.8542 };
             return {
-              hardwareId: d.hardwareId || d.hwId,
-              serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId}`,
+              hardwareId: d.hardwareId || d.hwId || '',
+              serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId || ''}`,
               deviceName: d.name || d.customName || 'Thiết bị Austec',
               deviceType: (d.typeName?.includes('Khóa') ? 'Khóa thông minh' : d.typeName?.includes('Lưu điện') ? 'Bộ lưu điện' : 'Cửa cuốn') as any,
               modelName: d.modelName || 'Austec Smart Series',
               status: d.status || (d.isOnline ? 'ONLINE' : 'OFFLINE'),
-              ownerName: d.ownerName || 'Nguyễn Mạnh Đức',
-              phoneNumber: d.ownerPhone || '0912 345 678',
-              lat: d.lat || fallback.lat,
-              lng: d.lng || fallback.lng,
-              streetAddress: d.address || fallback.streetAddress,
-              ward: fallback.ward,
-              district: fallback.district,
-              province: d.province || fallback.province,
-              formattedAddress: d.address || fallback.formattedAddress,
-              lastTelemetryAt: d.lastHeartbeat ? new Date(d.lastHeartbeat).toLocaleTimeString() : fallback.lastTelemetryAt,
-              batteryLevel: d.batteryLevel || fallback.batteryLevel,
-              signalDbm: d.rssiSignal || fallback.signalDbm,
+              ownerName: d.ownerName || 'Chưa gán',
+              phoneNumber: d.ownerPhone || '---',
+              lat: typeof d.lat === 'number' ? d.lat : defCoords.lat,
+              lng: typeof d.lng === 'number' ? d.lng : defCoords.lng,
+              streetAddress: d.address || '',
+              ward: d.ward || '',
+              district: d.district || '',
+              province: provinceName,
+              formattedAddress: d.address || [d.district, d.province].filter(Boolean).join(', ') || 'Chưa cập nhật địa chỉ',
+              lastTelemetryAt: d.lastHeartbeat ? new Date(d.lastHeartbeat).toLocaleTimeString() : 'Chưa có viễn thám',
+              batteryLevel: typeof d.batteryLevel === 'number' ? d.batteryLevel : 100,
+              signalDbm: typeof d.rssiSignal === 'number' ? d.rssiSignal : -70,
             };
           });
-          setDeviceList(geoMapped);
-          if (geoMapped.length > 0) {
-            setSelectedDevice(geoMapped[0]);
+          if (isMounted) {
+            setDeviceList(geoMapped);
+            setSelectedDevice(geoMapped.length > 0 ? geoMapped[0] : null);
+          }
+        } else {
+          if (isMounted) {
+            setDeviceList([]);
+            setSelectedDevice(null);
           }
         }
       } catch (e) {
         console.warn("Lỗi tải danh sách thiết bị trên bản đồ:", e);
+        if (isMounted) {
+          setDeviceList([]);
+          setSelectedDevice(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingDevices(false);
+        }
       }
     };
     fetchLiveDevices();
+    return () => { isMounted = false; };
   }, []);
 
   // Re-fit Leaflet map bounds when toggling fullscreen dialog mode
@@ -564,7 +342,7 @@ export function DeviceGeoMap() {
     if (prov === "ALL") {
       mapInstanceRef.current.flyTo([16.0544, 107.5], 6);
     } else {
-      const match = SAMPLE_GEO_DEVICES.find(d => d.province === prov);
+      const match = deviceList.find(d => d.province === prov);
       if (match) {
         mapInstanceRef.current.flyTo([match.lat, match.lng], 12);
         setSelectedDevice(match);
@@ -596,14 +374,14 @@ export function DeviceGeoMap() {
         {/* Top Map Header & Filter Controls */}
         <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 flex flex-col md:flex-row md:items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
+            <div className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
               <MapPin className="w-4 h-4" />
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                 Bản Đồ Phân Bố Cụm Thiết Bị Toàn Quốc
               </h2>
-              <span className="text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              <span className="text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                 Leaflet Engine
               </span>
             </div>
@@ -619,7 +397,7 @@ export function DeviceGeoMap() {
                 placeholder="Tìm theo Serial, chủ sở hữu, địa chỉ..."
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="text-[11px] pl-6 pr-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white w-56 md:w-64 focus:outline-none focus:border-cyan-500"
+                className="text-[11px] pl-6 pr-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white w-56 md:w-64 focus:outline-none focus:border-slate-400"
               />
             </div>
 
@@ -627,9 +405,9 @@ export function DeviceGeoMap() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-[11px] px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 cursor-pointer"
+              className="text-[11px] px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 cursor-pointer"
             >
-              <option value="ALL">Mọi trạng thái ({SAMPLE_GEO_DEVICES.length})</option>
+              <option value="ALL">Mọi trạng thái ({deviceList.length})</option>
               <option value="ONLINE">● Trực tuyến</option>
               <option value="OFFLINE">● Ngoại tuyến</option>
               <option value="IN_STOCK">● Tồn kho</option>
@@ -801,7 +579,18 @@ export function DeviceGeoMap() {
 
           {/* Scrollable details */}
           <div className="flex-1 min-h-0 p-2.5 overflow-y-auto space-y-2 text-xs">
-            {selectedDevice ? (
+            {isLoadingDevices ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin text-slate-900 dark:text-white mb-2" />
+                <span className="text-xs text-slate-600 dark:text-slate-400">Đang đồng bộ thiết bị thực tế...</span>
+              </div>
+            ) : filteredDevices.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-400">
+                <Radio className="w-7 h-7 text-slate-300 dark:text-slate-700 mb-2" />
+                <div className="font-semibold text-xs text-slate-700 dark:text-slate-300">Chưa có thiết bị nào</div>
+                <p className="text-[11px] text-slate-400 mt-0.5">Không tìm thấy thiết bị nào khớp bộ lọc.</p>
+              </div>
+            ) : selectedDevice ? (
               <>
                 <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
                   <div className="flex items-start justify-between gap-1">
@@ -809,7 +598,7 @@ export function DeviceGeoMap() {
                       <div className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
                         {selectedDevice.deviceName}
                       </div>
-                      <div className="text-[10px] font-mono text-cyan-600 dark:text-cyan-400 font-semibold mt-0.5">
+                      <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
                         {selectedDevice.hardwareId} • {selectedDevice.modelName}
                       </div>
                     </div>
@@ -818,7 +607,7 @@ export function DeviceGeoMap() {
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                         : selectedDevice.status === "OFFLINE"
                         ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                        : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600"
                     }`}>
                       {selectedDevice.status === "ONLINE" ? "Online" : selectedDevice.status === "OFFLINE" ? "Offline" : "Tồn Kho"}
                     </span>
@@ -830,13 +619,13 @@ export function DeviceGeoMap() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Nhấp để mở vị trí chính xác trên Google Maps"
-                    className="group/addr text-[11px] text-slate-700 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-start justify-between gap-1 transition-colors cursor-pointer"
+                    className="group/addr text-[11px] text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 flex items-start justify-between gap-1 transition-colors cursor-pointer"
                   >
                     <div className="flex items-start gap-1.5 min-w-0">
-                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5 group-hover/addr:scale-125 transition-transform" />
+                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5 group-hover/addr:scale-125 transition-transform" />
                       <span className="group-hover/addr:underline underline-offset-2 leading-relaxed">{selectedDevice.formattedAddress}</span>
                     </div>
-                    <ExternalLink className="w-3 h-3 text-slate-400 group-hover/addr:text-emerald-600 dark:group-hover/addr:text-emerald-400 shrink-0 mt-0.5" />
+                    <ExternalLink className="w-3 h-3 text-slate-400 group-hover/addr:text-slate-900 dark:group-hover/addr:text-white shrink-0 mt-0.5" />
                   </a>
                 </div>
 
@@ -847,13 +636,13 @@ export function DeviceGeoMap() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Xem tọa độ trên Google Maps"
-                    className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors group/coord cursor-pointer block"
+                    className="p-1.5 rounded-md bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-colors group/coord cursor-pointer block"
                   >
                     <div className="text-slate-400 text-[9px] flex items-center justify-between">
                       <span>Tọa độ Vĩ/Kinh:</span>
-                      <ExternalLink className="w-2.5 h-2.5 text-slate-400 group-hover/coord:text-emerald-500" />
+                      <ExternalLink className="w-2.5 h-2.5 text-slate-400 group-hover/coord:text-slate-900 dark:group-hover/coord:text-white" />
                     </div>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-bold group-hover/coord:underline">
+                    <span className="text-slate-800 dark:text-slate-200 font-bold group-hover/coord:underline">
                       {selectedDevice.lat.toFixed(4)}, {selectedDevice.lng.toFixed(4)}
                     </span>
                   </a>
@@ -869,7 +658,7 @@ export function DeviceGeoMap() {
                   href={`https://www.google.com/maps/search/?api=1&query=${selectedDevice.lat},${selectedDevice.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-2 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs hover:shadow-emerald-500/20 transition-all cursor-pointer group"
+                  className="w-full py-2 px-2.5 rounded-lg bg-zinc-950 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-white text-white dark:text-zinc-950 font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer group"
                 >
                   <Navigation className="w-3.5 h-3.5 group-hover:rotate-45 transition-transform" />
                   <span>Chuyển Hướng Google Maps (Dẫn Đường) ↗</span>
@@ -893,7 +682,7 @@ export function DeviceGeoMap() {
                         onClick={() => handleSelectDevice(d)}
                         className={`w-full text-left p-1 rounded flex items-center justify-between text-[10px] transition-colors cursor-pointer ${
                           selectedDevice.hardwareId === d.hardwareId
-                            ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 font-bold"
+                            ? "bg-zinc-200 dark:bg-zinc-800 text-slate-900 dark:text-white font-bold"
                             : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                         }`}
                       >

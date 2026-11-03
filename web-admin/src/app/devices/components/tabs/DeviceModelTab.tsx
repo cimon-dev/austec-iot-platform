@@ -562,6 +562,31 @@ export function DeviceModelTab({
               <span>Chọn tất cả ({models.length})</span>
             </label>
           )}
+          {selectedModelIds.size > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">
+                Đã chọn <strong>{selectedModelIds.size}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedModelIds(new Set())}
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer text-xs"
+              >
+                Bỏ chọn
+              </button>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setIsBulkDeleteModalOpen(true)}
+                  className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer ml-1 text-xs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa đã chọn ({selectedModelIds.size})</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
         {canCreate && (
           <button
@@ -579,32 +604,6 @@ export function DeviceModelTab({
           </button>
         )}
       </div>
-
-      {/* Bulk Action Bar */}
-      {selectedModelIds.size > 0 && (
-        <div className="flex items-center justify-between px-3.5 py-2 bg-slate-900 text-white dark:bg-slate-800 rounded-lg text-xs animate-in fade-in duration-150 shrink-0 shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Đã chọn {selectedModelIds.size} mẫu thương phẩm</span>
-            <button
-              type="button"
-              onClick={() => setSelectedModelIds(new Set())}
-              className="text-xs text-slate-400 hover:text-white underline cursor-pointer ml-1"
-            >
-              Bỏ chọn
-            </button>
-          </div>
-          {canDelete && (
-            <button
-              type="button"
-              onClick={() => setIsBulkDeleteModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium cursor-pointer transition-colors shadow-xs"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Xóa đã chọn ({selectedModelIds.size})</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Grid List */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">

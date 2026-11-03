@@ -228,13 +228,20 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
+    final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     final allProducts = _backendProducts ?? _gateway.storeProducts;
     final filteredProducts = _selectedCategory == "Tất cả"
         ? allProducts
         : allProducts.where((p) => p.categoryTag == _selectedCategory).toList();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: bgCol,
       body: SafeArea(
         child: Column(
           children: [
@@ -244,13 +251,13 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "GIAN HÀNG AUSTEC OFFICIAL",
                         style: TextStyle(
-                          color: Colors.white,
+                          color: textCol,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 0.8,
@@ -258,33 +265,37 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       ),
                       Text(
                         "Sản phẩm chính hãng • Kích hoạt bảo hành điện tử 24 tháng",
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                        style: TextStyle(color: subTextCol, fontSize: 11),
                       ),
                     ],
                   ),
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: AppTheme.glassBox(radius: 12),
-                    child: const Icon(Icons.verified, color: AppTheme.cyanAccent, size: 20),
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cardBorder),
+                    ),
+                    child: Icon(Icons.verified_outlined, color: textCol, size: 20),
                   ),
                 ],
               ),
             ),
 
-            // Banner Khuyến Mãi & Giới Thiệu
+            // Banner Giới Thiệu Tối Giản Trắng Đen
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF0F172A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppTheme.blueAccent.withValues(alpha: 0.5)),
+                color: cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: cardBorder),
                 boxShadow: [
-                  BoxShadow(color: AppTheme.blueAccent.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Row(
@@ -295,31 +306,42 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: AppTheme.amberWarning, borderRadius: BorderRadius.circular(6)),
-                          child: const Text("ƯU ĐÃI CHÍNH HÃNG", style: TextStyle(color: Colors.black, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "CHÍNH HÃNG AUSTEC",
+                            style: TextStyle(
+                              color: textCol,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           "Hệ Sinh Thái Cửa Thông Minh & Khóa Masaru Titan",
-                          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
+                        Text(
                           "Miễn phí khảo sát & lắp đặt nội thành • Bảo hành 24 tháng",
-                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
+                          style: TextStyle(color: subTextCol, fontSize: 10.5),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Image.asset('assets/doors.png', width: 60, height: 60, fit: BoxFit.contain),
+                  Image.asset('assets/doors.png', width: 56, height: 56, fit: BoxFit.contain),
                 ],
               ),
             ),
 
-            // Bộ lọc Danh mục Chips
+            // Bộ lọc Danh mục Chips Monochrome
             SizedBox(
-              height: 42,
+              height: 40,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -333,14 +355,22 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.cyanAccent : AppTheme.surfaceGlass,
+                        color: isSelected
+                            ? (isDark ? Colors.white : const Color(0xFF090A0C))
+                            : cardBg,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? AppTheme.cyanAccent : AppTheme.cardBorder),
+                        border: Border.all(
+                          color: isSelected
+                              ? (isDark ? Colors.white : const Color(0xFF090A0C))
+                              : cardBorder,
+                        ),
                       ),
                       child: Text(
                         cat,
                         style: TextStyle(
-                          color: isSelected ? Colors.black : Colors.white,
+                          color: isSelected
+                              ? (isDark ? Colors.black : Colors.white)
+                              : subTextCol,
                           fontSize: 11.5,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
@@ -351,17 +381,17 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             // Lưới sản phẩm Grid View 2 cột
             Expanded(
               child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
-                  childAspectRatio: 0.68,
+                  childAspectRatio: 0.70,
                 ),
                 itemCount: filteredProducts.length,
                 itemBuilder: (context, index) {
@@ -377,13 +407,26 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
   }
 
   Widget _buildProductCard(ProductItem product) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     return GestureDetector(
       onTap: () => _openProductDetail(product),
       child: Container(
-        decoration: AppTheme.glassBox(
-          color: AppTheme.surfaceGlass,
-          borderColor: AppTheme.cardBorder,
-          radius: 16,
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         padding: const EdgeInsets.all(12),
         child: Column(
@@ -406,16 +449,16 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
             ),
             const SizedBox(height: 8),
 
-            // Tag danh mục
+            // Tag danh mục tối giản
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 product.categoryTag,
-                style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 9, fontWeight: FontWeight.bold),
+                style: TextStyle(color: textCol, fontSize: 9, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 4),
@@ -423,7 +466,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
             // Tên sản phẩm
             Text(
               product.name,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, height: 1.2),
+              style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold, height: 1.2),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -432,27 +475,27 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
             // Giá bán
             Text(
               product.formattedPrice,
-              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
             ),
             if (product.originalPrice != null)
               Text(
                 "${product.originalPrice} đ",
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 10, decoration: TextDecoration.lineThrough),
+                style: TextStyle(color: subTextCol, fontSize: 10, decoration: TextDecoration.lineThrough),
               ),
 
             const SizedBox(height: 8),
 
-            // Đánh giá & Nút đặt
+            // Đánh giá & Nút đặt Monochrome
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.star, color: AppTheme.amberWarning, size: 12),
+                    Icon(Icons.star_rounded, color: subTextCol, size: 14),
                     const SizedBox(width: 2),
                     Text(
                       "${product.rating}",
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
@@ -464,16 +507,16 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                          color: Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
+                          border: Border.all(color: cardBorder),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.headset_mic_outlined, size: 11, color: AppTheme.cyanAccent),
-                            SizedBox(width: 3),
-                            Text("Tư vấn", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                            Icon(Icons.chat_bubble_outline_rounded, size: 11, color: textCol),
+                            const SizedBox(width: 3),
+                            Text("Tư vấn", style: TextStyle(color: textCol, fontSize: 9.5, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -485,10 +528,17 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppTheme.blueAccent,
+                          color: isDark ? Colors.white : const Color(0xFF090A0C),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text("Chi Tiết", style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          "Chi Tiết",
+                          style: TextStyle(
+                            color: isDark ? Colors.black : Colors.white,
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -502,13 +552,19 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
   }
 
   Widget _buildProductDetailSheet(ProductItem product) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceDark : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     return Container(
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.88),
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        border: Border(top: BorderSide(color: AppTheme.cardBorder, width: 1.5)),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: cardBorder, width: 1.5)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -518,7 +574,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               child: Container(
                 width: 44,
                 height: 4,
-                decoration: BoxDecoration(color: AppTheme.textMuted, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: subTextCol.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
@@ -540,9 +596,9 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
             Text(
               product.name,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text(product.subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Text(product.subtitle, style: TextStyle(color: subTextCol, fontSize: 12)),
             const SizedBox(height: 10),
 
             Row(
@@ -550,28 +606,28 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               children: [
                 Text(
                   product.formattedPrice,
-                  style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: textCol, fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppTheme.emeraldSuccess.withValues(alpha: 0.15),
+                    color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.4)),
+                    border: Border.all(color: cardBorder),
                   ),
                   child: Text(
                     product.warrantyText,
-                    style: const TextStyle(color: AppTheme.emeraldSuccess, fontSize: 11, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 18),
-            const Divider(color: AppTheme.cardBorder),
+            Divider(color: cardBorder),
             const SizedBox(height: 12),
 
-            const Text("Đặc điểm nổi bật:", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            Text("Đặc điểm nổi bật:", style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...product.highlights.map(
               (h) => Padding(
@@ -579,16 +635,16 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.check_circle_outline, color: AppTheme.cyanAccent, size: 16),
+                    Icon(Icons.check_circle_outline, color: textCol, size: 16),
                     const SizedBox(width: 8),
-                    Expanded(child: Text(h, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12))),
+                    Expanded(child: Text(h, style: TextStyle(color: subTextCol, fontSize: 12))),
                   ],
                 ),
               ),
             ),
 
             const SizedBox(height: 16),
-            const Text("Thông số kỹ thuật xuất xưởng:", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            Text("Thông số kỹ thuật xuất xưởng:", style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...product.specs.entries.map(
               (entry) => Padding(
@@ -596,8 +652,8 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(entry.key, style: const TextStyle(color: AppTheme.textMuted, fontSize: 11.5)),
-                    Text(entry.value, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                    Text(entry.key, style: TextStyle(color: subTextCol, fontSize: 11.5)),
+                    Text(entry.value, style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -605,15 +661,15 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
 
             const SizedBox(height: 24),
 
-            // Nút bấm Đặt Mua hoặc Tư Vấn CSKH
+            // Nút bấm Đặt Mua hoặc Tư Vấn CSKH Monochrome
             Row(
               children: [
                 Expanded(
                   flex: 3,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.cyanAccent,
-                      foregroundColor: Colors.black,
+                      backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                      foregroundColor: isDark ? Colors.black : Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -630,8 +686,8 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                   flex: 3,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: AppTheme.cardBorder, width: 1.5),
+                      foregroundColor: textCol,
+                      side: BorderSide(color: cardBorder, width: 1.5),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -646,11 +702,11 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                 const SizedBox(width: 8),
                 IconButton(
                   style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.surfaceGlass,
+                    backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                     padding: const EdgeInsets.all(12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
+                  icon: Icon(Icons.share_outlined, color: textCol, size: 20),
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Đã sao chép liên kết sản phẩm!")));
                   },

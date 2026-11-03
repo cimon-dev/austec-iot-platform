@@ -53,7 +53,7 @@ export function AddMemberModal({
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-150">
         <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
           <div className="flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            <UserPlus className="w-4 h-4 text-slate-900 dark:text-white" />
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
               Ủy Quyền Thành Viên Thứ Cấp
             </h3>
@@ -70,16 +70,16 @@ export function AddMemberModal({
         <form onSubmit={onSubmit} className="p-3.5 space-y-3 text-xs">
           <div className="text-[11px] text-slate-500 dark:text-slate-400">
             Thiết bị nhận phân quyền:{" "}
-            <strong className="text-cyan-600 dark:text-cyan-400 font-mono">
+            <strong className="text-slate-900 dark:text-white font-mono">
               {currentSelectedDevice?.hardwareId}
             </strong>{" "}
             ({currentSelectedDevice?.deviceName})
           </div>
 
           {suggestedMembers.length > 0 && (
-            <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30">
-              <div className="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1.5 mb-1.5">
-                <Sparkles className="w-3.5 h-3.5" />
+            <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-300 dark:border-slate-700">
+              <div className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 mb-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-slate-500" />
                 <span>Gợi ý từ các thiết bị khác của chủ nhà ({suggestedMembers.length}):</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
@@ -101,7 +101,7 @@ export function AddMemberModal({
                         accessEndTime: "18:00",
                       });
                     }}
-                    className="px-2 py-1 rounded bg-white dark:bg-slate-900 border border-cyan-500/40 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500 hover:text-white text-[10.5px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
+                    className="px-2 py-1 rounded bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-slate-900 text-[10.5px] font-medium flex items-center gap-1 transition-colors cursor-pointer"
                   >
                     <span>+ {sug.memberName}</span>
                     <span className="text-[9px] opacity-75">({sug.sourceDeviceName})</span>
@@ -121,7 +121,7 @@ export function AddMemberModal({
               placeholder="Ví dụ: Trần Thu Hà (Vợ), Nguyễn Văn An..."
               value={form.memberName}
               onChange={(e) => setForm({ ...form, memberName: e.target.value })}
-              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
             />
           </div>
 
@@ -135,7 +135,7 @@ export function AddMemberModal({
               placeholder="Ví dụ: 0988 123 456..."
               value={form.phoneNumber}
               onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 font-mono"
+              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white font-mono"
             />
           </div>
 
@@ -146,7 +146,7 @@ export function AddMemberModal({
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as any })}
-              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+              className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white cursor-pointer"
             >
               <option value="MEMBER">Thành viên gia đình (Family Member)</option>
               <option value="GUEST">Khách tạm thời / Người giúp việc (Guest)</option>
@@ -164,7 +164,7 @@ export function AddMemberModal({
                 type="checkbox"
                 checked={form.canControl}
                 onChange={(e) => setForm({ ...form, canControl: e.target.checked })}
-                className="w-3.5 h-3.5 text-purple-600 rounded"
+                className="w-3.5 h-3.5 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded"
               />
               <span>Được phép điều khiển (Đóng / Mở / Khóa)</span>
             </label>
@@ -173,7 +173,7 @@ export function AddMemberModal({
                 type="checkbox"
                 checked={form.canViewHistory}
                 onChange={(e) => setForm({ ...form, canViewHistory: e.target.checked })}
-                className="w-3.5 h-3.5 text-purple-600 rounded"
+                className="w-3.5 h-3.5 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded"
               />
               <span>Xem lịch sử đóng mở và cảnh báo an ninh</span>
             </label>
@@ -182,7 +182,7 @@ export function AddMemberModal({
                 type="checkbox"
                 checked={form.canChildLock}
                 onChange={(e) => setForm({ ...form, canChildLock: e.target.checked })}
-                className="w-3.5 h-3.5 text-purple-600 rounded"
+                className="w-3.5 h-3.5 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded"
               />
               <span>Kích hoạt Khóa Trẻ Em / Khóa Cứng</span>
             </label>
@@ -191,7 +191,7 @@ export function AddMemberModal({
                 type="checkbox"
                 checked={form.scheduleLimitActive}
                 onChange={(e) => setForm({ ...form, scheduleLimitActive: e.target.checked })}
-                className="w-3.5 h-3.5 text-amber-600 rounded"
+                className="w-3.5 h-3.5 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded"
               />
               <span>Giới hạn khung giờ truy cập (08:00 - 18:00)</span>
             </label>
@@ -207,7 +207,7 @@ export function AddMemberModal({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-xs cursor-pointer"
+              className="px-4 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-semibold shadow-xs cursor-pointer"
             >
               Cấp Quyền & Lưu
             </button>

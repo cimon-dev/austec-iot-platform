@@ -61,7 +61,7 @@ export function EditCustomerModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white">
               <Edit3 className="w-5 h-5" />
             </div>
             <div>
@@ -69,7 +69,7 @@ export function EditCustomerModal({
                 Chỉnh Sửa Thông Tin Khách Hàng
               </h3>
               <p className="text-[11px] text-slate-500">
-                Mã khách hàng: <strong className="font-mono text-purple-600 dark:text-purple-400">{customer.id}</strong>
+                Mã khách hàng: <strong className="font-mono text-slate-900 dark:text-white">{customer.id}</strong>
               </p>
             </div>
           </div>
@@ -95,7 +95,7 @@ export function EditCustomerModal({
                 placeholder="Ví dụ: Nguyễn Văn A"
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
               />
             </div>
             <div>
@@ -108,7 +108,7 @@ export function EditCustomerModal({
                 placeholder="0912345678"
                 value={form.phoneNumber}
                 onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-purple-500"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-slate-900 dark:focus:border-white"
               />
             </div>
           </div>
@@ -134,7 +134,7 @@ export function EditCustomerModal({
               <select
                 value={form.province}
                 onChange={(e) => setForm({ ...form, province: e.target.value })}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+                className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white cursor-pointer"
               >
                 <option value="Hà Nội">Hà Nội</option>
                 <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
@@ -158,7 +158,7 @@ export function EditCustomerModal({
               placeholder="Số nhà, đường phố, phường/xã..."
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
+              className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
             />
           </div>
 
@@ -168,7 +168,7 @@ export function EditCustomerModal({
                 type="checkbox"
                 checked={form.isActive}
                 onChange={(e) => setForm({ ...form, isActive: e.target.checked })}
-                className="rounded border-slate-300 text-purple-600 focus:ring-purple-500 w-4 h-4"
+                className="rounded border-slate-300 text-slate-900 dark:text-white accent-slate-900 dark:accent-white w-4 h-4"
               />
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Tài khoản đang hoạt động (Active)
@@ -187,7 +187,7 @@ export function EditCustomerModal({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 font-semibold shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? (
                   <>

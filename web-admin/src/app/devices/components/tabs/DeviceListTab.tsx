@@ -536,12 +536,14 @@ export function DeviceListTab({
 
         {/* Bulk Action Bar when items selected */}
         {selectedHwIds.size > 0 && (
-          <div className="flex items-center gap-2 bg-slate-900 text-white dark:bg-white dark:text-slate-900 px-3 py-1.5 rounded-lg text-xs shrink-0 shadow-xs">
-            <span className="font-semibold">Đã chọn {selectedHwIds.size}</span>
+          <div className="flex items-center gap-2 text-xs shrink-0">
+            <span className="text-slate-600 dark:text-slate-300 font-medium">
+              Đã chọn <strong>{selectedHwIds.size}</strong>
+            </span>
             <button
               type="button"
               onClick={() => setSelectedHwIds(new Set())}
-              className="text-slate-400 dark:text-slate-500 hover:text-white dark:hover:text-black underline cursor-pointer text-[11px]"
+              className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer text-xs"
             >
               Bỏ chọn
             </button>
@@ -549,10 +551,10 @@ export function DeviceListTab({
               <button
                 type="button"
                 onClick={() => setIsBulkDeleteModalOpen(true)}
-                className="flex items-center gap-1 bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-xs font-semibold cursor-pointer ml-1 transition-colors"
+                className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer ml-1 text-xs"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Xóa ({selectedHwIds.size})</span>
+                <span>Xóa đã chọn ({selectedHwIds.size})</span>
               </button>
             )}
           </div>

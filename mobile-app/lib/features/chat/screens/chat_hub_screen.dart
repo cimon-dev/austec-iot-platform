@@ -91,6 +91,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     List<Map<String, dynamic>> searchResults = [];
     bool searching = false;
 
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceDark : Colors.white;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     showDialog(
       context: context,
       builder: (dlgCtx) => StatefulBuilder(
@@ -106,16 +112,16 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
           }
 
           return AlertDialog(
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: cardBg,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppTheme.cardBorder),
+              side: BorderSide(color: cardBorder),
             ),
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.person_search_rounded, color: AppTheme.cyanAccent, size: 20),
-                SizedBox(width: 8),
-                Text("Tìm người dùng để nhắn tin", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                Icon(Icons.person_search_rounded, color: textCol, size: 20),
+                const SizedBox(width: 8),
+                Text("Tìm người dùng để nhắn tin", style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
             content: SizedBox(
@@ -125,25 +131,25 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                 children: [
                   TextField(
                     controller: searchCtrl,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                    style: TextStyle(color: textCol, fontSize: 12),
                     decoration: InputDecoration(
                       hintText: "Nhập Số điện thoại hoặc Email...",
-                      hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11.5),
+                      hintStyle: TextStyle(color: subTextCol, fontSize: 11.5),
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.search, color: AppTheme.cyanAccent),
+                        icon: Icon(Icons.search, color: textCol),
                         onPressed: () => doSearch(searchCtrl.text),
                       ),
                       filled: true,
-                      fillColor: Colors.black38,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      fillColor: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: cardBorder)),
                     ),
                     onSubmitted: doSearch,
                   ),
                   const SizedBox(height: 10),
                   if (searching)
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: textCol),
                     )
                   else ...[
                     ConstrainedBox(
@@ -156,12 +162,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                           return ListTile(
                             dense: true,
                             contentPadding: EdgeInsets.zero,
-                            title: Text(u['fullName'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                            subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10.5)),
+                            title: Text(u['fullName'] ?? '', style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold)),
+                            subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: TextStyle(color: subTextCol, fontSize: 10.5)),
                             trailing: ElevatedButton(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.cyanAccent,
-                                foregroundColor: Colors.black,
+                                backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                                foregroundColor: isDark ? Colors.black : Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               ),
                               onPressed: () {
@@ -199,6 +205,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     final List<Map<String, dynamic>> selectedMembers = [];
     bool searching = false;
 
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceDark : Colors.white;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     showDialog(
       context: context,
       builder: (dlgCtx) => StatefulBuilder(
@@ -214,16 +226,16 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
           }
 
           return AlertDialog(
-            backgroundColor: const Color(0xFF0F172A),
+            backgroundColor: cardBg,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppTheme.cardBorder),
+              side: BorderSide(color: cardBorder),
             ),
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.group_add_rounded, color: AppTheme.purpleAccent, size: 20),
-                SizedBox(width: 8),
-                Text("Tạo nhóm trò chuyện mới", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                Icon(Icons.group_add_rounded, color: textCol, size: 20),
+                const SizedBox(width: 8),
+                Text("Tạo nhóm trò chuyện mới", style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
               ],
             ),
             content: SizedBox(
@@ -235,31 +247,31 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                   children: [
                     TextField(
                       controller: titleCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(color: textCol, fontSize: 12),
                       decoration: InputDecoration(
                         hintText: "Đặt tên nhóm (VD: Gia đình, Kỹ thuật công trình...)",
-                        hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                        hintStyle: TextStyle(color: subTextCol, fontSize: 11),
                         filled: true,
-                        fillColor: Colors.black38,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        fillColor: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: cardBorder)),
                       ),
                     ),
                     const SizedBox(height: 10),
 
                     // Thành viên đã chọn
                     if (selectedMembers.isNotEmpty) ...[
-                      const Text("Đã chọn:", style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                      Text("Đã chọn:", style: TextStyle(color: subTextCol, fontSize: 10.5, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
                         children: selectedMembers.map((m) {
                           return Chip(
-                            backgroundColor: AppTheme.purpleAccent.withValues(alpha: 0.2),
-                            side: const BorderSide(color: AppTheme.purpleAccent),
+                            backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                            side: BorderSide(color: cardBorder),
                             padding: EdgeInsets.zero,
-                            label: Text(m['fullName'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 10)),
-                            deleteIcon: const Icon(Icons.close, size: 12, color: Colors.white70),
+                            label: Text(m['fullName'] ?? '', style: TextStyle(color: textCol, fontSize: 10)),
+                            deleteIcon: Icon(Icons.close, size: 12, color: subTextCol),
                             onDeleted: () {
                               setDlgState(() => selectedMembers.remove(m));
                             },
@@ -272,24 +284,24 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                     // Tìm kiếm để thêm thành viên
                     TextField(
                       controller: searchCtrl,
-                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                      style: TextStyle(color: textCol, fontSize: 12),
                       decoration: InputDecoration(
                         hintText: "Tìm thành viên theo SĐT hoặc Email...",
-                        hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                        hintStyle: TextStyle(color: subTextCol, fontSize: 11),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.search, color: AppTheme.purpleAccent),
+                          icon: Icon(Icons.search, color: textCol),
                           onPressed: () => doSearch(searchCtrl.text),
                         ),
                         filled: true,
-                        fillColor: Colors.black38,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        fillColor: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: cardBorder)),
                       ),
                       onSubmitted: doSearch,
                     ),
                     const SizedBox(height: 8),
 
                     if (searching)
-                      const Center(child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.purpleAccent)))
+                      Center(child: Padding(padding: const EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 2, color: textCol)))
                     else ...[
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 140),
@@ -302,12 +314,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                             return ListTile(
                               dense: true,
                               contentPadding: EdgeInsets.zero,
-                              title: Text(u['fullName'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
-                              subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+                              title: Text(u['fullName'] ?? '', style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              subtitle: Text(u['phoneNumber'] ?? u['email'] ?? '', style: TextStyle(color: subTextCol, fontSize: 10)),
                               trailing: IconButton(
                                 icon: Icon(
                                   isAdded ? Icons.check_circle : Icons.add_circle_outline,
-                                  color: isAdded ? AppTheme.cyanAccent : AppTheme.purpleAccent,
+                                  color: textCol,
                                   size: 20,
                                 ),
                                 onPressed: () {
@@ -332,12 +344,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dlgCtx).pop(),
-                child: const Text("Hủy", style: TextStyle(color: Colors.white60)),
+                child: Text("Hủy", style: TextStyle(color: subTextCol)),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.purpleAccent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                  foregroundColor: isDark ? Colors.black : Colors.white,
                 ),
                 onPressed: () async {
                   final title = titleCtrl.text.trim();
@@ -371,6 +383,13 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
+    final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     // Tách riêng CSKH conversation và danh sách các cuộc trò chuyện khác
     final cskhConv = _conversations.firstWhere(
       (c) => c.isCskh,
@@ -386,12 +405,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     final otherConversations = _conversations.where((c) => !c.isCskh).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B132B),
+      backgroundColor: bgCol,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadConversations,
-          color: AppTheme.cyanAccent,
-          backgroundColor: const Color(0xFF0F172A),
+          color: textCol,
+          backgroundColor: cardBg,
           child: CustomScrollView(
             slivers: [
               // 1. TOP HEADER & CÔNG CỤ TÌM KIẾM
@@ -404,32 +423,33 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Column(
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 "Tin Nhắn & Liên Lạc",
-                                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 "Hỗ trợ kỹ thuật 1-1, chat người dùng & nhóm riêng",
-                                style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                                style: TextStyle(color: subTextCol, fontSize: 11),
                               ),
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: AppTheme.cyanGradient,
+                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                              border: Border.all(color: cardBorder),
                             ),
-                            child: const Icon(Icons.forum_rounded, color: Colors.white, size: 20),
+                            child: Icon(Icons.forum_rounded, color: textCol, size: 18),
                           ),
                         ],
                       ),
                       const SizedBox(height: 12),
 
-                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1
+                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1 (MONOCHROME)
                       Row(
                         children: [
                           Expanded(
@@ -439,16 +459,16 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.surfaceGlass,
+                                  color: cardBg,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6)),
+                                  border: Border.all(color: cardBorder),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.person_add_rounded, color: AppTheme.cyanAccent, size: 16),
-                                    SizedBox(width: 6),
-                                    Text("Nhắn tin mới", style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Icon(Icons.person_add_rounded, color: textCol, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text("Nhắn tin mới", style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -462,16 +482,16 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.surfaceGlass,
+                                  color: cardBg,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.6)),
+                                  border: Border.all(color: cardBorder),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.group_add_rounded, color: AppTheme.purpleAccent, size: 16),
-                                    SizedBox(width: 6),
-                                    Text("Tạo nhóm mới", style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Icon(Icons.group_add_rounded, color: textCol, size: 16),
+                                    const SizedBox(width: 6),
+                                    Text("Tạo nhóm mới", style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
                               ),
@@ -484,7 +504,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                 ),
               ),
 
-              // 2. KHỐI CSKH GHIM ĐẦU (PINNED CONVERSATION)
+              // 2. KHỐI CSKH GHIM ĐẦU (PINNED CONVERSATION MONOCHROME)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -494,33 +514,28 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFF1E1B4B).withValues(alpha: 0.8),
-                            const Color(0xFF0F172A),
-                          ],
-                        ),
+                        color: cardBg,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.7), width: 1.5),
+                        border: Border.all(color: cardBorder, width: 1.2),
                         boxShadow: [
                           BoxShadow(
-                            color: AppTheme.purpleAccent.withValues(alpha: 0.25),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         children: [
                           Container(
-                            width: 48,
-                            height: 48,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: AppTheme.purpleGradient,
-                              border: Border.all(color: Colors.white, width: 1.5),
+                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                              border: Border.all(color: cardBorder),
                             ),
-                            child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 28),
+                            child: Icon(Icons.support_agent_rounded, color: textCol, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -529,18 +544,18 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Text(
+                                    Text(
                                       "Hỗ trợ Kỹ thuật & CSKH Austec",
-                                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                       decoration: BoxDecoration(
-                                        color: AppTheme.cyanAccent.withValues(alpha: 0.2),
+                                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text("24/7", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 8.5, fontWeight: FontWeight.bold)),
+                                      child: Text("24/7", style: TextStyle(color: textCol, fontSize: 8.5, fontWeight: FontWeight.bold)),
                                     ),
                                   ],
                                 ),
@@ -549,12 +564,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                   cskhConv.lastMessage ?? "Kỹ thuật viên Austec sẵn sàng hỗ trợ trực tuyến",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                                  style: TextStyle(color: subTextCol, fontSize: 11),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios_rounded, color: AppTheme.purpleAccent, size: 16),
+                          Icon(Icons.arrow_forward_ios_rounded, color: subTextCol, size: 14),
                         ],
                       ),
                     ),
@@ -563,13 +578,13 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
               ),
 
               // 3. TIÊU ĐỀ DANH SÁCH CUỘC HỘI THOẠI
-              const SliverToBoxAdapter(
+              SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(16, 18, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
                   child: Text(
                     "CUỘC TRÒ CHUYỆN GẦN ĐÂY",
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
+                      color: subTextCol,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.8,
@@ -580,8 +595,8 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
 
               // 4. DANH SÁCH CÁC CUỘC TRÒ CHUYỆN
               if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent)),
+                SliverFillRemaining(
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: textCol)),
                 )
               else if (otherConversations.isEmpty)
                 SliverToBoxAdapter(
@@ -590,23 +605,23 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                     padding: const EdgeInsets.all(20),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AppTheme.surfaceGlass,
+                      color: cardBg,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.cardBorder),
+                      border: Border.all(color: cardBorder),
                     ),
-                    child: const Column(
+                    child: Column(
                       children: [
-                        Icon(Icons.chat_bubble_outline_rounded, color: Colors.white24, size: 40),
-                        SizedBox(height: 10),
+                        Icon(Icons.chat_bubble_outline_rounded, color: subTextCol, size: 40),
+                        const SizedBox(height: 10),
                         Text(
                           "Chưa có cuộc trò chuyện riêng nào",
-                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           "Nhấn 'Nhắn tin mới' hoặc 'Tạo nhóm mới' ở trên để kết nối bạn bè & đồng nghiệp!",
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                          style: TextStyle(color: subTextCol, fontSize: 11),
                         ),
                       ],
                     ),
@@ -632,6 +647,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
   }
 
   Widget _buildConversationTile(ConversationItem item) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
     final isGroup = item.isGroup;
     final title = item.title;
     final initial = title.isNotEmpty ? title[0].toUpperCase() : 'U';
@@ -639,30 +660,27 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceGlass,
+        color: cardBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.cardBorder),
+        border: Border.all(color: cardBorder),
       ),
       child: ListTile(
         onTap: () => _openChatRoom(item),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         leading: Container(
-          width: 44,
-          height: 44,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: isGroup ? AppTheme.purpleGradient : AppTheme.cyanGradient,
-            border: Border.all(
-              color: isGroup ? AppTheme.purpleAccent : AppTheme.cyanAccent,
-              width: 1.2,
-            ),
+            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+            border: Border.all(color: cardBorder),
           ),
           child: Center(
             child: isGroup
-                ? const Icon(Icons.group_rounded, color: Colors.white, size: 22)
+                ? Icon(Icons.group_rounded, color: textCol, size: 20)
                 : Text(
                     initial,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
                   ),
           ),
         ),
@@ -673,7 +691,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
             if (isGroup) ...[
@@ -681,13 +699,12 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.purpleAccent.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.purpleAccent.withValues(alpha: 0.4)),
+                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   "${item.memberCount} TV",
-                  style: const TextStyle(color: AppTheme.purpleAccent, fontSize: 9, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: subTextCol, fontSize: 9, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -697,11 +714,11 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
           item.lastMessage ?? "Bắt đầu cuộc trò chuyện...",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
+          style: TextStyle(color: subTextCol, fontSize: 11),
         ),
         trailing: Text(
           item.timeFormatted,
-          style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+          style: TextStyle(color: subTextCol, fontSize: 10),
         ),
       ),
     );
