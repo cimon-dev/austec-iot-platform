@@ -326,6 +326,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final iconCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
     return Scaffold(
       backgroundColor: bgCol,
@@ -396,7 +397,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(color: AppTheme.brandBlue, width: 1.5),
                       ),
-                      prefixIcon: const Icon(Icons.door_sliding_outlined, color: AppTheme.brandBlue, size: 20),
+                      prefixIcon: Icon(Icons.door_sliding_outlined, color: iconCol, size: 20),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -480,14 +481,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                           ),
                           child: Row(
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.alarm, color: AppTheme.brandBlue, size: 16),
-                              ),
+                              Icon(Icons.alarm, color: iconCol, size: 20),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -650,14 +644,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.radio_button_checked, color: AppTheme.brandBlue, size: 20),
-                    ),
+                    leading: Icon(Icons.radio_button_checked, color: iconCol, size: 22),
                     title: Text("Tay cầm điều khiển RF", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -681,14 +668,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   ),
                   Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
                   ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.group_outlined, color: Color(0xFF6366F1), size: 20),
-                    ),
+                    leading: Icon(Icons.group_outlined, color: iconCol, size: 22),
                     title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
                     trailing: Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
                     onTap: () {
@@ -1001,22 +981,16 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   Widget _buildSectionHeader(String title) {
     final isDark = AppTheme.isDarkMode;
-    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 3.5,
-            height: 14,
-            decoration: BoxDecoration(
-              color: AppTheme.brandBlue,
-              borderRadius: BorderRadius.circular(2),
-            ),
-            margin: const EdgeInsets.only(right: 8),
-          ),
-          Text(title, style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.6)),
-        ],
+      child: Text(
+        title,
+        style: TextStyle(
+          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+          fontSize: 11.5,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }

@@ -497,11 +497,11 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                   ],
                 ),
-                // Nút Thêm thiết bị vào danh mục (Monochrome B&W)
+                // Nút Thêm thiết bị vào danh mục
                 IconButton(
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.add_circle_outline,
-                    color: isDark ? Colors.white : const Color(0xFF090A0C),
+                    color: AppTheme.brandBlue,
                   ),
                   tooltip: AppTheme.t("add_device"),
                   onPressed: () async {
@@ -542,7 +542,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                             ),
                             const SizedBox(height: 12),
                             ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
                               icon: const Icon(Icons.add),
                               label: Text(AppTheme.t("add_device")),
                               onPressed: () async {
@@ -714,7 +714,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                 value: 'details',
                 child: Row(
                   children: [
-                    const Icon(Icons.tune_rounded, size: 18, color: AppTheme.cyanAccent),
+                    const Icon(Icons.tune_rounded, size: 18, color: AppTheme.brandBlue),
                     const SizedBox(width: 8),
                     Text("Xem chi tiết", style: TextStyle(color: textCol)),
                   ],
@@ -1063,9 +1063,8 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.purpleAccent.withValues(alpha: 0.15),
-                    foregroundColor: AppTheme.purpleAccent,
-                    side: const BorderSide(color: AppTheme.purpleAccent),
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
@@ -1394,39 +1393,39 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
 
           const SizedBox(height: 12),
 
-          // Nút Chuyển Vào Màn Hình Chi Tiết (Monochrome B&W)
+          // Nút Chuyển Vào Màn Hình Chi Tiết (Primary Blue)
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(
-                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 11),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 0,
               ),
               onPressed: () => _navigateToDetail(device),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.tune_rounded,
-                    color: isDark ? Colors.white : const Color(0xFF090A0C),
+                    color: Colors.white,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     AppTheme.t("details"),
-                    style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF090A0C),
-                      fontSize: 12,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  Icon(
+                  const SizedBox(width: 6),
+                  const Icon(
                     Icons.arrow_forward_ios_rounded,
-                    color: isDark ? Colors.white70 : Colors.black54,
+                    color: Colors.white70,
                     size: 12,
                   ),
                 ],

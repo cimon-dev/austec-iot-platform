@@ -105,6 +105,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
     final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
 
+    final iconCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -117,15 +119,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                    border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.25)),
+                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.person, color: AppTheme.brandBlue, size: 26),
+                  child: Center(
+                    child: Icon(Icons.person_outline_rounded, color: iconCol, size: 24),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -150,12 +151,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
+                                child: Text(
                                   "CHỦ NHÀ",
-                                  style: TextStyle(color: AppTheme.brandBlue, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                  style: TextStyle(
+                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -183,8 +188,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 _buildSettingsTile(
                   icon: Icons.devices_rounded,
-                  iconColor: AppTheme.brandBlue,
-                  iconBgColor: AppTheme.brandBlue.withValues(alpha: 0.12),
                   title: "Quản lý thiết bị",
                   onTap: () {
                     Navigator.of(context).push(
@@ -211,12 +214,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   },
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.group_outlined,
-                  iconColor: const Color(0xFF6366F1),
-                  iconBgColor: const Color(0xFF6366F1).withValues(alpha: 0.12),
                   title: "Quản lý phân quyền thành viên",
                   onTap: () {
                     Navigator.of(context).push(
@@ -225,16 +227,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   },
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.lock_person_rounded,
-                  iconColor: AppTheme.amberWarning,
-                  iconBgColor: AppTheme.amberWarning.withValues(alpha: 0.15),
                   title: "Khóa khẩn cấp toàn bộ cửa",
                   onTap: _triggerEmergencyLockdown,
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
               ],
             ),
@@ -249,26 +251,19 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 // Chế độ Dark / Light
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                          color: AppTheme.brandBlue,
-                          size: 20,
-                        ),
+                      Icon(
+                        isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                        color: iconCol,
+                        size: 22,
                       ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           "Giao diện tối (Dark Mode)",
-                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),
                         ),
                       ),
                       Switch(
@@ -287,22 +282,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
                 // Ngôn ngữ
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.language_rounded, color: Color(0xFF10B981), size: 20),
-                      ),
+                      Icon(Icons.language_rounded, color: iconCol, size: 22),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           "Ngôn ngữ hệ thống",
-                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),
                         ),
                       ),
                       InkWell(
@@ -310,18 +298,18 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                           widget.onLanguageChanged();
                           setState(() {});
                         },
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(10),
+                            color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: cardBorder),
                           ),
                           child: Row(
                             children: [
                               Text(AppTheme.currentLang == 'vi' ? "🇻🇳 Tiếng Việt" : "🇬🇧 English",
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: textCol)),
+                                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5, color: textCol)),
                               const SizedBox(width: 4),
                               Icon(Icons.swap_horiz, size: 14, color: textCol),
                             ],
@@ -335,22 +323,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
                 // Thông báo đẩy
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.notifications_active_outlined, color: Color(0xFF0EA5E9), size: 20),
-                      ),
+                      Icon(Icons.notifications_none_rounded, color: iconCol, size: 22),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           "Thông báo cảnh báo tức thì",
-                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),
                         ),
                       ),
                       Switch(
@@ -366,22 +347,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
                 // Sinh trắc học & Mã PIN
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF8B5CF6), size: 20),
-                      ),
+                      Icon(Icons.fingerprint_rounded, color: iconCol, size: 22),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Text(
                           "Khóa sinh trắc học & FaceID",
-                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),
                         ),
                       ),
                       Switch(
@@ -406,8 +380,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 _buildSettingsTile(
                   icon: Icons.assignment_outlined,
-                  iconColor: const Color(0xFF0284C7),
-                  iconBgColor: const Color(0xFF0284C7).withValues(alpha: 0.12),
                   title: "Danh sách phiếu yêu cầu hỗ trợ",
                   onTap: () {
                     Navigator.of(context).push(
@@ -418,12 +390,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   },
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.menu_book_outlined,
-                  iconColor: const Color(0xFFF59E0B),
-                  iconBgColor: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                   title: "Hướng dẫn sử dụng & Ghép nối",
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -432,23 +403,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   },
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.headset_mic_outlined,
-                  iconColor: const Color(0xFF10B981),
-                  iconBgColor: const Color(0xFF10B981).withValues(alpha: 0.12),
                   title: "Tổng đài hỗ trợ kỹ thuật",
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      "1900.8899",
-                      style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
+                  trailing: Text(
+                    "1900.8899",
+                    style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold),
                   ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -457,26 +420,19 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   },
                   isDark: isDark,
                   textCol: textCol,
+                  iconCol: iconCol,
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.info_outline_rounded,
-                  iconColor: AppTheme.brandBlue,
-                  iconBgColor: AppTheme.brandBlue.withValues(alpha: 0.12),
                   title: "Phiên bản ứng dụng",
                   onTap: () {},
                   isDark: isDark,
                   textCol: textCol,
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      "v2.4.1",
-                      style: TextStyle(color: AppTheme.brandBlue, fontSize: 10.5, fontWeight: FontWeight.bold),
-                    ),
+                  iconCol: iconCol,
+                  trailing: Text(
+                    "v2.4.1",
+                    style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -526,22 +482,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   Widget _buildGroupHeader(String title, Color textCol) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 3.5,
-            height: 14,
-            decoration: BoxDecoration(
-              color: AppTheme.brandBlue,
-              borderRadius: BorderRadius.circular(2),
-            ),
-            margin: const EdgeInsets.only(right: 8),
-          ),
-          Text(
-            title,
-            style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.6),
-          ),
-        ],
+      child: Text(
+        title,
+        style: TextStyle(
+          color: textCol,
+          fontSize: 11.5,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.6,
+        ),
       ),
     );
   }
@@ -552,25 +500,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
   Widget _buildSettingsTile({
     required IconData icon,
-    required Color iconColor,
-    Color? iconBgColor,
     required String title,
     String? subtitle,
     required VoidCallback onTap,
     required bool isDark,
     required Color textCol,
+    required Color iconCol,
     Widget? trailing,
   }) {
     return ListTile(
       onTap: onTap,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconBgColor ?? (isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9)),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: iconColor, size: 20),
-      ),
+      leading: Icon(icon, color: iconCol, size: 22),
       title: Text(
         title,
         style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),

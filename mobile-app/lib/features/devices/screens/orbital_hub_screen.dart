@@ -561,17 +561,17 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   const SizedBox(width: 4),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
-                      foregroundColor: isDark ? Colors.black : Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: const Size(0, 26),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      backgroundColor: AppTheme.brandBlue,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: const Size(0, 28),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    icon: const Icon(Icons.add, size: 13),
+                    icon: const Icon(Icons.add, size: 14),
                     label: Text(
                       AppTheme.t("add_device"),
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                     onPressed: () async {
                       await Navigator.of(context).push(
@@ -782,18 +782,35 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           ),
           const SizedBox(height: 4),
 
-          // Huy hiệu số lượng thiết bị (Monochrome B&W)
+          // Huy hiệu số lượng thiết bị
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+              color: deviceCount > 0
+                  ? (isDark
+                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                      : const Color(0xFFEFF6FF))
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFF1F5F9)),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: borderColor, width: 1),
+              border: Border.all(
+                color: deviceCount > 0
+                    ? (isDark
+                        ? AppTheme.brandBlue.withValues(alpha: 0.35)
+                        : const Color(0xFFBFDBFE))
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : const Color(0xFFE2E8F0)),
+                width: 1,
+              ),
             ),
             child: Text(
               "$deviceCount ${AppTheme.t("devices")}",
               style: TextStyle(
-                color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B),
+                color: deviceCount > 0
+                    ? (isDark ? const Color(0xFF93C5FD) : AppTheme.brandBlue)
+                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
                 fontSize: 8.5,
                 fontWeight: FontWeight.bold,
               ),
