@@ -337,4 +337,25 @@ export class DevicesController {
       res.status(400).json({ success: false, error: e.message });
     }
   }
+
+  // Installation & Reset Guides
+  @Get('/guides')
+  public async getInstallationGuides(_req: Request, res: Response) {
+    try {
+      const guides = await this.service.getInstallationGuides();
+      res.json({ success: true, guides });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  @Post('/guides')
+  public async upsertInstallationGuide(req: Request, res: Response) {
+    try {
+      const guide = await this.service.upsertInstallationGuide(req.body);
+      res.json({ success: true, guide, message: 'Cập nhật hướng dẫn lắp đặt & reset thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
 }

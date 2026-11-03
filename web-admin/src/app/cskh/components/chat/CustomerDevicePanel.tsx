@@ -23,7 +23,7 @@ export const CustomerDevicePanel: React.FC<CustomerDevicePanelProps> = ({
     <div className="w-full md:w-80 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
       <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 shrink-0 flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
-          <Box className="w-3.5 h-3.5 text-cyan-500" />
+          <Box className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" />
           <span>Thông Tin Sản Phẩm & Thiết Bị</span>
         </span>
         {selectedProductInfo && (

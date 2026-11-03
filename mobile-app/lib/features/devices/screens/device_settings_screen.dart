@@ -355,9 +355,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 )
               : TextButton(
                   onPressed: _saveSettings,
-                  child: Text(
+                  child: const Text(
                     "Lưu",
-                    style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: AppTheme.brandBlue, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
           const SizedBox(width: 8),
@@ -394,9 +394,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: isDark ? Colors.white : Colors.black),
+                        borderSide: const BorderSide(color: AppTheme.brandBlue, width: 1.5),
                       ),
-                      prefixIcon: Icon(Icons.door_sliding_outlined, color: textCol, size: 20),
+                      prefixIcon: const Icon(Icons.door_sliding_outlined, color: AppTheme.brandBlue, size: 20),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -413,25 +413,19 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             const SizedBox(height: 20),
 
             // CARD 2: CÀI ĐẶT THỜI GIAN TIMEOUT (CALIBRATION)
-            _buildSectionHeader("HIỆU CHUẨN THỜI GIAN HÀNH TRÌNH (TIMEOUT)"),
+            _buildSectionHeader("HIỆU CHUẨN THỜI GIAN HÀNH TRÌNH"),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: _cardBox(isDark),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Thời gian motor hoạt động hết 1 hành trình để tính toán % vị trí cửa chính xác:",
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 16),
-
                   // Timeout Mở
                   _buildTimeoutStepper(
                     title: "Thời gian MỞ CỬA (Giây)",
                     value: _openTimeout,
                     quickOptions: [15, 20, 23, 30],
-                    color: isDark ? Colors.white : Colors.black,
+                    color: AppTheme.brandBlue,
                     onChanged: (val) => setState(() => _openTimeout = val),
                   ),
                   const SizedBox(height: 16),
@@ -443,7 +437,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     title: "Thời gian ĐÓNG CỬA (Giây)",
                     value: _closeTimeout,
                     quickOptions: [15, 20, 25, 30],
-                    color: isDark ? Colors.white : Colors.black,
+                    color: AppTheme.brandBlue,
                     onChanged: (val) => setState(() => _closeTimeout = val),
                   ),
                 ],
@@ -452,7 +446,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             const SizedBox(height: 20),
 
             // CARD 3: LỊCH TRÌNH TỰ ĐỘNG
-            _buildSectionHeader("LỊCH TRÌNH TỰ ĐỘNG THEO GIỜ"),
+            _buildSectionHeader("LỊCH TRÌNH TỰ ĐỘNG"),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: _cardBox(isDark),
@@ -462,23 +456,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Kích hoạt lịch trình tự động",
-                            style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Cửa tự đóng/mở theo các khung giờ cài đặt",
-                            style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                          ),
-                        ],
+                      Text(
+                        "Kích hoạt lịch trình tự động",
+                        style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                       Switch(
                         value: _isAutoSchedule,
-                        activeThumbColor: isDark ? Colors.white : Colors.black,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.brandBlue,
                         onChanged: (val) => setState(() => _isAutoSchedule = val),
                       ),
                     ],
@@ -498,10 +483,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(Icons.alarm, color: textCol, size: 16),
+                                child: const Icon(Icons.alarm, color: AppTheme.brandBlue, size: 16),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
@@ -516,7 +501,8 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                               ),
                               Switch(
                                 value: s["enabled"] as bool,
-                                activeThumbColor: isDark ? Colors.white : Colors.black,
+                                activeThumbColor: Colors.white,
+                                activeTrackColor: AppTheme.brandBlue,
                                 onChanged: (val) => setState(() => s["enabled"] = val),
                               ),
                             ],
@@ -531,10 +517,10 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                             const SnackBar(content: Text("Chức năng thêm lịch tùy biến")),
                           );
                         },
-                        icon: Icon(Icons.add, size: 16, color: textCol),
-                        label: Text("Thêm mốc lịch trình mới", style: TextStyle(color: textCol, fontSize: 12)),
+                        icon: const Icon(Icons.add, size: 16, color: AppTheme.brandBlue),
+                        label: const Text("Thêm mốc lịch trình mới", style: TextStyle(color: AppTheme.brandBlue, fontSize: 12, fontWeight: FontWeight.w600)),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
+                          side: BorderSide(color: AppTheme.brandBlue.withValues(alpha: 0.4)),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
@@ -546,7 +532,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             const SizedBox(height: 20),
 
             // CARD 4: GIỚI HẠN THỜI GIAN SỬ DỤNG (ACCESS CONTROL)
-            _buildSectionHeader("KIỂM SOÁT THỜI GIAN TRUY CẬP (ACCESS LIMIT)"),
+            _buildSectionHeader("KIỂM SOÁT THỜI GIAN TRUY CẬP"),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: _cardBox(isDark),
@@ -556,19 +542,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Giới hạn quyền người dùng phụ",
-                              style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 2),
-                          Text("Chỉ cho phép mở cửa trong khung giờ cho phép",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                        ],
-                      ),
+                      Text("Giới hạn quyền người dùng phụ",
+                          style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold)),
                       Switch(
                         value: _isAccessLimit,
-                        activeThumbColor: isDark ? Colors.white : Colors.black,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.brandBlue,
                         onChanged: (val) => setState(() => _isAccessLimit = val),
                       ),
                     ],
@@ -594,8 +573,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                                   const SizedBox(height: 3),
                                   Text(_accessStartTime,
                                       style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: "monospace")),
-                                  const SizedBox(height: 2),
-                                  Text("Chạm để đổi", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 9.5)),
                                 ],
                               ),
                             ),
@@ -622,8 +599,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                                   const SizedBox(height: 3),
                                   Text(_accessEndTime,
                                       style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: "monospace")),
-                                  const SizedBox(height: 2),
-                                  Text("Chạm để đổi", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 9.5)),
                                 ],
                               ),
                             ),
@@ -632,8 +607,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text("Ngày trong tuần được phép:", style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
@@ -646,15 +619,15 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                             width: 44,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.surface : Colors.grey[200]),
+                              color: isSelected ? AppTheme.brandBlue : (isDark ? AppTheme.surface : const Color(0xFFF1F5F9)),
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: isSelected ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
+                              border: Border.all(color: isSelected ? AppTheme.brandBlue : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
                             ),
                             child: Center(
                               child: Text(
                                 daysOfWeek[idx],
                                 style: TextStyle(
-                                  color: isSelected ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
+                                  color: isSelected ? Colors.white : AppTheme.textMuted,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -677,24 +650,47 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                      child: Icon(Icons.radio_button_checked, color: textCol),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.radio_button_checked, color: AppTheme.brandBlue, size: 20),
                     ),
                     title: Text("Tay cầm điều khiển RF", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text("${widget.device.rfRemoteCount} remote đang hoạt động", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: textCol),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "${widget.device.rfRemoteCount} remote",
+                            style: const TextStyle(color: AppTheme.brandBlue, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+                      ],
+                    ),
                     onTap: _openRfRemoteSheet,
                   ),
                   Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
                   ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                      child: Icon(Icons.group_outlined, color: textCol),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.group_outlined, color: Color(0xFF6366F1), size: 20),
                     ),
                     title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
-                    subtitle: Text("Quản lý tài khoản được phép điều khiển", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: textCol),
+                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
                     onTap: () {
                       Navigator.of(context).push(MaterialPageRoute(
                         builder: (context) => FamilySharingScreen(
@@ -720,18 +716,19 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               child: ElevatedButton.icon(
                 onPressed: _isSaving ? null : _saveSettings,
                 icon: _isSaving
-                    ? SizedBox(
+                    ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: isDark ? Colors.black : Colors.white),
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : Icon(Icons.save_outlined, color: isDark ? Colors.black : Colors.white, size: 20),
+                    : const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
                 label: Text(
                   _isSaving ? "ĐANG LƯU CẤU HÌNH..." : "LƯU TẤT CẢ CẤU HÌNH",
-                  style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isDark ? Colors.white : Colors.black,
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   elevation: 2,
                 ),
@@ -777,18 +774,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Các thông số thuộc tính phần cứng được đồng bộ từ Khuôn Mẫu Thương Phẩm Cloud:",
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-              ),
-              const SizedBox(height: 14),
               ...assigned.map((p) {
                 final key = (p['propertyKey'] ?? '').toString();
                 final name = (p['displayName'] ?? key).toString();
                 final unit = (p['unit'] ?? '').toString();
                 final widgetType = (p['uiWidgetType'] ?? '').toString().toLowerCase();
                 final isCtrl = p['isControllable'] == true;
-                final desc = (p['description'] ?? '').toString();
                 final val = _dynamicPropValues[key] ?? widget.device.currentProperties[key];
 
                 if (widgetType == 'toggle') {
@@ -805,18 +796,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
-                              if (desc.isNotEmpty)
-                                Text(desc, style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                            ],
-                          ),
+                          child: Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
                         ),
-                         Switch(
+                        Switch(
                           value: active,
-                          activeThumbColor: isDark ? Colors.white : Colors.black,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: AppTheme.brandBlue,
                           onChanged: isCtrl
                               ? (newVal) {
                                   setState(() => _dynamicPropValues[key] = newVal);
@@ -847,7 +832,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(name, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
-                            Text("${current.toInt()} $unit", style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontFamily: "monospace")),
+                            Text("${current.toInt()} $unit", style: const TextStyle(color: AppTheme.brandBlue, fontWeight: FontWeight.bold, fontFamily: "monospace")),
                           ],
                         ),
                         Slider(
@@ -855,7 +840,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                           min: min,
                           max: max,
                           divisions: (max - min).toInt() > 0 ? (max - min).toInt() : 10,
-                          activeColor: isDark ? Colors.white : Colors.black,
+                          activeColor: AppTheme.brandBlue,
                           onChanged: isCtrl
                               ? (newVal) {
                                   setState(() => _dynamicPropValues[key] = newVal.toInt());
@@ -879,24 +864,17 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(name, style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
-                          if (desc.isNotEmpty)
-                            Text(desc, style: TextStyle(color: AppTheme.textMuted.withValues(alpha: 0.7), fontSize: 10)),
-                        ],
-                      ),
+                      Text(name, style: TextStyle(color: textCol, fontSize: 12.5, fontWeight: FontWeight.w500)),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                          color: AppTheme.brandBlue.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
+                          border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.2)),
                         ),
                         child: Text(
                           "${val ?? '--'} $unit".trim(),
-                          style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: "monospace"),
+                          style: const TextStyle(color: AppTheme.brandBlue, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: "monospace"),
                         ),
                       ),
                     ],
@@ -930,13 +908,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                color: AppTheme.brandBlue.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
+                border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.25)),
               ),
               child: Text(
                 "$value giây",
-                style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                style: const TextStyle(color: AppTheme.brandBlue, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
               ),
             ),
           ],
@@ -957,14 +935,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 min: 5.0,
                 max: 60.0,
                 divisions: 55,
-                activeColor: isDark ? Colors.white : Colors.black,
+                activeColor: AppTheme.brandBlue,
                 inactiveColor: isDark ? AppTheme.cardBorder : Colors.grey[300],
                 onChanged: (val) => onChanged(val.round()),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline),
-              color: textCol,
+              color: AppTheme.brandBlue,
               onPressed: () {
                 if (value < 60) onChanged(value + 1);
               },
@@ -984,14 +962,14 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isChosen ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.surface : Colors.grey[200]),
+                      color: isChosen ? AppTheme.brandBlue : (isDark ? AppTheme.surface : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: isChosen ? (isDark ? Colors.white : Colors.black) : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
+                      border: Border.all(color: isChosen ? AppTheme.brandBlue : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)),
                     ),
                     child: Text(
                       "${opt}s",
                       style: TextStyle(
-                        color: isChosen ? (isDark ? Colors.black : Colors.white) : AppTheme.textMuted,
+                        color: isChosen ? Colors.white : AppTheme.textMuted,
                         fontSize: 10.5,
                         fontWeight: isChosen ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -1023,12 +1001,21 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   Widget _buildSectionHeader(String title) {
     final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Row(
         children: [
-          Container(width: 3.5, height: 14, color: isDark ? Colors.white : Colors.black, margin: const EdgeInsets.only(right: 8)),
-          Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6)),
+          Container(
+            width: 3.5,
+            height: 14,
+            decoration: BoxDecoration(
+              color: AppTheme.brandBlue,
+              borderRadius: BorderRadius.circular(2),
+            ),
+            margin: const EdgeInsets.only(right: 8),
+          ),
+          Text(title, style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.6)),
         ],
       ),
     );

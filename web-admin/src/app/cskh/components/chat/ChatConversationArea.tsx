@@ -32,7 +32,7 @@ export const ChatConversationArea: React.FC<ChatConversationAreaProps> = ({
   if (!currentTicket) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800">
-        <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center mb-3 border border-cyan-500/20 shadow-inner">
+        <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center mb-3 border border-slate-200 dark:border-slate-700 shadow-inner">
           <Headphones className="w-7 h-7" />
         </div>
         <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">

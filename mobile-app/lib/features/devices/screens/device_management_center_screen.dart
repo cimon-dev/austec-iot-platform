@@ -60,8 +60,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.white : Colors.black,
-              foregroundColor: isDark ? Colors.black : Colors.white,
+              backgroundColor: AppTheme.brandBlue,
+              foregroundColor: Colors.white,
             ),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
@@ -73,7 +73,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(ok ? "Đã lưu tên thiết bị lên CSDL thành công!" : "Đã cập nhật tên thiết bị."),
-                      backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
+                      backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.brandBlue,
                     ),
                   );
                 }
@@ -163,8 +163,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.white : Colors.black,
-              foregroundColor: isDark ? Colors.black : Colors.white,
+              backgroundColor: AppTheme.brandBlue,
+              foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đóng"),
@@ -196,8 +196,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Hủy")),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.white : Colors.black,
-              foregroundColor: isDark ? Colors.black : Colors.white,
+              backgroundColor: AppTheme.crimsonDanger,
+              foregroundColor: Colors.white,
             ),
             onPressed: () {
               for (final dev in _gateway.devices) {
@@ -262,8 +262,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDark ? Colors.white : Colors.black,
-              foregroundColor: isDark ? Colors.black : Colors.white,
+              backgroundColor: AppTheme.brandBlue,
+              foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đã hiểu"),
@@ -746,8 +746,8 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   const SizedBox(width: 6),
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? Colors.white : Colors.black,
-                      foregroundColor: isDark ? Colors.black : Colors.white,
+                      backgroundColor: AppTheme.brandBlue,
+                      foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       minimumSize: const Size(0, 28),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

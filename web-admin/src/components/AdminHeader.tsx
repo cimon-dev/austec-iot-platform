@@ -39,29 +39,7 @@ export function AdminHeader() {
   const userRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
 
-  const [alerts, setAlerts] = useState([
-    {
-      id: "alt-01",
-      title: language === "vi" ? "Cửa cuốn Gara Đức Mạnh: Dòng điện 4.8A" : "Garage Door: Motor current spike 4.8A",
-      time: "2 phút trước",
-      type: "warning",
-      read: false,
-    },
-    {
-      id: "alt-02",
-      title: language === "vi" ? "Khóa Titan X1: Kích hoạt OTP thành công" : "Smart Lock X1: Virtual OTP activated",
-      time: "15 phút trước",
-      type: "info",
-      read: false,
-    },
-    {
-      id: "alt-03",
-      title: language === "vi" ? "Bản tin Blackbox: Đã băm khối SHA-256 #8824" : "Blackbox Audit: SHA-256 Block #8824 hashed",
-      time: "1 giờ trước",
-      type: "success",
-      read: true,
-    },
-  ]);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const unreadCount = alerts.filter(a => !a.read).length;
 
@@ -124,7 +102,7 @@ export function AdminHeader() {
             onClick={() => setShowLangMenu(!showLangMenu)}
             className="flex items-center gap-1 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors shadow-sm cursor-pointer"
           >
-            <Languages className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+            <Languages className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
             <span className="uppercase text-[11px]">{language}</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
@@ -136,14 +114,14 @@ export function AdminHeader() {
                 className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <span>🇻🇳 Tiếng Việt</span>
-                {language === "vi" && <Check className="w-3.5 h-3.5 text-cyan-500" />}
+                {language === "vi" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
               </button>
               <button
                 onClick={() => { setLanguage("en"); setShowLangMenu(false); }}
                 className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <span>🇬🇧 English</span>
-                {language === "en" && <Check className="w-3.5 h-3.5 text-cyan-500" />}
+                {language === "en" && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />}
               </button>
             </div>
           )}
@@ -156,9 +134,9 @@ export function AdminHeader() {
           className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all shadow-sm group cursor-pointer"
         >
           {theme === "dark" ? (
-            <Sun className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+            <Sun className="w-3.5 h-3.5 text-slate-200 group-hover:rotate-45 transition-transform duration-300" />
           ) : (
-            <Moon className="w-3.5 h-3.5 text-indigo-500 group-hover:-rotate-12 transition-transform duration-300" />
+            <Moon className="w-3.5 h-3.5 text-slate-700 group-hover:-rotate-12 transition-transform duration-300" />
           )}
         </button>
 
@@ -170,7 +148,7 @@ export function AdminHeader() {
           >
             <Bell className="w-3.5 h-3.5" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white rounded-full text-[8px] font-bold flex items-center justify-center animate-pulse">
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-full text-[8px] font-bold flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
@@ -180,35 +158,41 @@ export function AdminHeader() {
             <div className="absolute right-0 mt-1.5 w-80 max-w-[calc(100vw-24px)] rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-150">
               <div className="flex items-center justify-between px-3 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <span className="font-bold text-slate-900 dark:text-white">
-                  {t("notifications", "Thông báo thời gian thực")}
+                  {t("notifications", "Thông báo hệ thống")}
                 </span>
                 <button
                   onClick={() => setAlerts(prev => prev.map(a => ({ ...a, read: true })))}
-                  className="text-[10px] text-cyan-600 dark:text-cyan-400 hover:underline cursor-pointer"
+                  className="text-[10px] text-slate-500 hover:underline cursor-pointer"
                 >
                   {t("allCaughtUp", "Đã đọc tất cả")}
                 </button>
               </div>
 
               <div className="divide-y divide-slate-100 dark:divide-slate-800/80 max-h-72 overflow-y-auto">
-                {alerts.map((alt) => (
-                  <div
-                    key={alt.id}
-                    className={`p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
-                      !alt.read ? "bg-cyan-50/50 dark:bg-cyan-950/20" : ""
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <p className="font-medium text-slate-900 dark:text-slate-200 leading-snug text-[11px]">
-                        {alt.title}
-                      </p>
-                      {!alt.read && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0 mt-1"></span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-slate-400 mt-1 block font-mono">{alt.time}</span>
+                {alerts.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400">
+                    Không có thông báo mới
                   </div>
-                ))}
+                ) : (
+                  alerts.map((alt) => (
+                    <div
+                      key={alt.id}
+                      className={`p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors ${
+                        !alt.read ? "bg-slate-50 dark:bg-slate-800/50" : ""
+                      }`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="font-medium text-slate-900 dark:text-slate-200 leading-snug text-[11px]">
+                          {alt.title}
+                        </p>
+                        {!alt.read && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-900 dark:bg-white shrink-0 mt-1"></span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 mt-1 block font-mono">{alt.time}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
@@ -227,7 +211,7 @@ export function AdminHeader() {
               <div className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight">
                 {user?.fullName?.split(" ").slice(-2).join(" ") || "Admin"}
               </div>
-              <div className="text-[9px] font-mono text-cyan-600 dark:text-cyan-400 leading-tight">
+              <div className="text-[9px] font-mono text-slate-500 dark:text-slate-400 leading-tight">
                 {user?.role || "MASTER ADMIN"}
               </div>
             </div>
@@ -239,7 +223,7 @@ export function AdminHeader() {
               <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-lg mb-2">
                 <div className="font-bold text-slate-900 dark:text-white">{user?.fullName}</div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{user?.email}</div>
-                <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   <ShieldCheck className="w-3 h-3" />
                   <span>ROLE: {user?.role}</span>
                 </div>

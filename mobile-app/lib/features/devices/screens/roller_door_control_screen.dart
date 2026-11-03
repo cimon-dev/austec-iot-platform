@@ -1096,8 +1096,8 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     const SizedBox(height: 10),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isDark ? Colors.white : Colors.black,
-                        foregroundColor: isDark ? Colors.black : Colors.white,
+                        backgroundColor: AppTheme.brandBlue,
+                        foregroundColor: Colors.white,
                       ),
                       icon: const Icon(Icons.add),
                       label: const Text("Ghép nối camera mới"),
@@ -1132,17 +1132,17 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                         leading: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                            color: AppTheme.brandBlue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.videocam_rounded, color: textCol, size: 20),
+                          child: const Icon(Icons.videocam_rounded, color: AppTheme.brandBlue, size: 20),
                         ),
                         title: Text(cam.name, style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold)),
                         subtitle: Text("${cam.hardwareId} • ${cam.roomName}", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                         trailing: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isDark ? Colors.white : Colors.black,
-                            foregroundColor: isDark ? Colors.black : Colors.white,
+                            backgroundColor: AppTheme.brandBlue,
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             minimumSize: const Size(0, 32),
                           ),

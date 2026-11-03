@@ -203,7 +203,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             child: Text(AppTheme.t("cancel")),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
             onPressed: () async {
               if (controller.text.trim().isNotEmpty) {
                 final newName = controller.text.trim();

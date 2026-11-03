@@ -121,11 +121,11 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                   height: 50,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-                    border: Border.all(color: cardBorder),
+                    color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                    border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.25)),
                   ),
-                  child: Center(
-                    child: Icon(Icons.person, color: textCol, size: 26),
+                  child: const Center(
+                    child: Icon(Icons.person, color: AppTheme.brandBlue, size: 26),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -135,7 +135,6 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       final user = AuthService().currentUser;
                       final userName = user?.fullName ?? "Nguyễn Văn An";
                       final userPhone = user?.phoneNumber ?? "0912 345 678";
-                      final userEmail = user?.email ?? "nguyenvana@gmail.com";
                       final userLocation = user?.province ?? "Hà Nội";
 
                       return Column(
@@ -151,25 +150,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                                  color: AppTheme.brandBlue.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(
+                                child: const Text(
                                   "CHỦ NHÀ",
-                                  style: TextStyle(color: textCol, fontSize: 9.5, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: AppTheme.brandBlue, fontSize: 9.5, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            "SĐT: $userPhone • $userEmail",
-                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "$userLocation • Hệ sinh thái Austec IoT sẵn sàng",
-                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 11, fontWeight: FontWeight.w500),
+                            "$userPhone • $userLocation",
+                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 12),
                           ),
                         ],
                       );
@@ -189,9 +183,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 _buildSettingsTile(
                   icon: Icons.devices_rounded,
-                  iconColor: textCol,
+                  iconColor: AppTheme.brandBlue,
+                  iconBgColor: AppTheme.brandBlue.withValues(alpha: 0.12),
                   title: "Quản lý thiết bị",
-                  subtitle: "Xem danh sách thiết bị, đổi tên, gán phòng, OTA",
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -221,9 +215,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.group_outlined,
-                  iconColor: textCol,
+                  iconColor: const Color(0xFF6366F1),
+                  iconBgColor: const Color(0xFF6366F1).withValues(alpha: 0.12),
                   title: "Quản lý phân quyền thành viên",
-                  subtitle: "Mời người dùng, tìm kiếm theo danh bạ, cấp quyền",
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const FamilySharingScreen()),
@@ -235,9 +229,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.lock_person_rounded,
-                  iconColor: textCol,
+                  iconColor: AppTheme.amberWarning,
+                  iconBgColor: AppTheme.amberWarning.withValues(alpha: 0.15),
                   title: "Khóa khẩn cấp toàn bộ cửa",
-                  subtitle: "Vô hiệu hóa remote RF và khóa tất cả cửa cuốn",
                   onTap: _triggerEmergencyLockdown,
                   isDark: isDark,
                   textCol: textCol,
@@ -248,7 +242,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           const SizedBox(height: 18),
 
           // 3. NHÓM 2: GIAO DIỆN & TÙY CHỌN HỆ THỐNG
-          _buildGroupHeader("GIAO DIỆN & TÙY CHỌN HỆ THỐNG", textCol),
+          _buildGroupHeader("GIAO DIỆN & TÙY CHỌN", textCol),
           Container(
             decoration: _cardBox(isDark, cardBg, cardBorder),
             child: Column(
@@ -261,34 +255,26 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          shape: BoxShape.circle,
+                          color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                          color: textCol,
+                          color: AppTheme.brandBlue,
                           size: 20,
                         ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Chế độ hiển thị (Dark / Light)",
-                              style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              isDark ? "Đang dùng Giao diện Tối (Dark)" : "Đang dùng Giao diện Sáng (Light)",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            ),
-                          ],
+                        child: Text(
+                          "Giao diện tối (Dark Mode)",
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Switch(
                         value: isDark,
-                        activeThumbColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.brandBlue,
                         onChanged: (_) {
                           widget.onThemeChanged();
                           setState(() {});
@@ -307,25 +293,16 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          shape: BoxShape.circle,
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.language_rounded, color: textCol, size: 20),
+                        child: const Icon(Icons.language_rounded, color: Color(0xFF10B981), size: 20),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Ngôn ngữ hệ thống",
-                              style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              AppTheme.currentLang == 'vi' ? "Tiếng Việt (Mặc định)" : "English",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            ),
-                          ],
+                        child: Text(
+                          "Ngôn ngữ hệ thống",
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),
                       InkWell(
@@ -337,13 +314,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                            color: isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(10),
                             border: Border.all(color: cardBorder),
                           ),
                           child: Row(
                             children: [
-                              Text(AppTheme.currentLang == 'vi' ? "🇻🇳 VI" : "🇬🇧 EN",
+                              Text(AppTheme.currentLang == 'vi' ? "🇻🇳 Tiếng Việt" : "🇬🇧 English",
                                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5, color: textCol)),
                               const SizedBox(width: 4),
                               Icon(Icons.swap_horiz, size: 14, color: textCol),
@@ -364,30 +341,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          shape: BoxShape.circle,
+                          color: const Color(0xFF0EA5E9).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.notifications_active_outlined, color: textCol, size: 20),
+                        child: const Icon(Icons.notifications_active_outlined, color: Color(0xFF0EA5E9), size: 20),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Thông báo cảnh báo tức thì",
-                              style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              "Cảnh báo khi cửa đóng/mở hoặc motor quá dòng",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            ),
-                          ],
+                        child: Text(
+                          "Thông báo cảnh báo tức thì",
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Switch(
                         value: _pushNotifications,
-                        activeThumbColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.brandBlue,
                         onChanged: (val) => setState(() => _pushNotifications = val),
                       ),
                     ],
@@ -403,30 +372,22 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                          shape: BoxShape.circle,
+                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.fingerprint_rounded, color: textCol, size: 20),
+                        child: const Icon(Icons.fingerprint_rounded, color: Color(0xFF8B5CF6), size: 20),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Khóa sinh trắc học & FaceID",
-                              style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              "Yêu cầu xác thực khi mở cửa cuốn quan trọng",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            ),
-                          ],
+                        child: Text(
+                          "Khóa sinh trắc học & FaceID",
+                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Switch(
                         value: _biometricLock,
-                        activeThumbColor: isDark ? Colors.white : const Color(0xFF090A0C),
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.brandBlue,
                         onChanged: (val) => setState(() => _biometricLock = val),
                       ),
                     ],
@@ -445,9 +406,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               children: [
                 _buildSettingsTile(
                   icon: Icons.assignment_outlined,
-                  iconColor: textCol,
+                  iconColor: const Color(0xFF0284C7),
+                  iconBgColor: const Color(0xFF0284C7).withValues(alpha: 0.12),
                   title: "Danh sách phiếu yêu cầu hỗ trợ",
-                  subtitle: "Theo dõi tiến độ và phản hồi từ kỹ thuật viên",
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -461,9 +422,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.menu_book_outlined,
-                  iconColor: textCol,
+                  iconColor: const Color(0xFFF59E0B),
+                  iconBgColor: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                   title: "Hướng dẫn sử dụng & Ghép nối",
-                  subtitle: "Tài liệu kỹ thuật và sơ đồ đấu nối bo mạch Austec",
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Mở tài liệu hướng dẫn kỹ thuật Austec Smart Home")),
@@ -475,9 +436,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.headset_mic_outlined,
-                  iconColor: textCol,
-                  title: "Tổng đài hỗ trợ kỹ thuật Austec",
-                  subtitle: "Hotline 1900.8899 • Hỗ trợ kỹ thuật 24/7",
+                  iconColor: const Color(0xFF10B981),
+                  iconBgColor: const Color(0xFF10B981).withValues(alpha: 0.12),
+                  title: "Tổng đài hỗ trợ kỹ thuật",
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      "1900.8899",
+                      style: TextStyle(color: Color(0xFF10B981), fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text("Gọi hotline hỗ trợ Austec: 1900.8899")),
@@ -489,28 +461,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.info_outline_rounded,
-                  iconColor: textCol,
+                  iconColor: AppTheme.brandBlue,
+                  iconBgColor: AppTheme.brandBlue.withValues(alpha: 0.12),
                   title: "Phiên bản ứng dụng",
-                  subtitle: "Austec Smart Home v2.4.1 (ESP32-S3 IoT Core)",
                   onTap: () {},
                   isDark: isDark,
                   textCol: textCol,
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+                      color: AppTheme.brandBlue.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text(
-                      "MỚI NHẤT",
-                      style: TextStyle(color: textCol, fontSize: 9.5, fontWeight: FontWeight.bold),
+                    child: const Text(
+                      "v2.4.1",
+                      style: TextStyle(color: AppTheme.brandBlue, fontSize: 10.5, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           // 5. NÚT ĐĂNG XUẤT
           SizedBox(
@@ -556,10 +528,18 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Row(
         children: [
-          Container(width: 3.5, height: 14, color: textCol, margin: const EdgeInsets.only(right: 8)),
+          Container(
+            width: 3.5,
+            height: 14,
+            decoration: BoxDecoration(
+              color: AppTheme.brandBlue,
+              borderRadius: BorderRadius.circular(2),
+            ),
+            margin: const EdgeInsets.only(right: 8),
+          ),
           Text(
             title,
-            style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.6),
+            style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold, letterSpacing: 0.6),
           ),
         ],
       ),
@@ -573,8 +553,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   Widget _buildSettingsTile({
     required IconData icon,
     required Color iconColor,
+    Color? iconBgColor,
     required String title,
-    required String subtitle,
+    String? subtitle,
     required VoidCallback onTap,
     required bool isDark,
     required Color textCol,
@@ -585,19 +566,21 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-          shape: BoxShape.circle,
+          color: iconBgColor ?? (isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9)),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: iconColor, size: 20),
       ),
       title: Text(
         title,
-        style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+        style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.w600),
       ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+            )
+          : null,
       trailing: trailing ?? Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
     );
   }

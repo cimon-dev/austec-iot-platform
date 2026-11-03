@@ -5,39 +5,40 @@ class AppTheme {
   static bool isDarkMode = true;
   static String currentLang = 'vi'; // 'vi' or 'en'
 
-  // Dark Palette (Pure Industrial Obsidian & Zinc - Zero Blue Tint)
-  static const Color darkBackground = Color(0xFF090A0C);
-  static const Color darkSurface = Color(0xFF141518);
-  static const Color darkSurfaceGlass = Color(0xF2141518);
-  static const Color darkCardBorder = Color(0xFF27272A);
+  // Dark Palette (Clean, modern deep slate - crisp, not muddy gray)
+  static const Color darkBackground = Color(0xFF0B0E14);
+  static const Color darkSurface = Color(0xFF161B22);
+  static const Color darkSurfaceGlass = Color(0xF2161B22);
+  static const Color darkCardBorder = Color(0xFF283141);
 
-  // Light Palette
-  static const Color lightBackground = Color(0xFFF4F4F5);
+  // Light Palette (Bright, clean, fresh white like Zalo / iOS)
+  static const Color lightBackground = Color(0xFFF8FAFC);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceGlass = Color(0xF2FFFFFF);
-  static const Color lightCardBorder = Color(0xFFE4E4E7);
-  static const Color lightBorder = Color(0xFFE4E4E7);
-  static const Color lightTextPrimary = Color(0xFF090A0C);
-  static const Color lightTextSecondary = Color(0xFF52525B);
-  static const Color surfaceDark = Color(0xFF141518);
-  static const Color crimsonDanger = Color(0xFFDC2626);
+  static const Color lightCardBorder = Color(0xFFE2E8F0);
+  static const Color lightBorder = Color(0xFFE2E8F0);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
+  static const Color lightTextSecondary = Color(0xFF64748B);
+  static const Color surfaceDark = Color(0xFF161B22);
+  static const Color crimsonDanger = Color(0xFFEF4444);
 
   // Default Constant Colors (Const-compatible)
   static const Color background = darkBackground;
   static const Color surface = darkSurface;
   static const Color surfaceGlass = darkSurfaceGlass;
   static const Color cardBorder = darkCardBorder;
-  static const Color textPrimary = Color(0xFFF4F4F5);
-  static const Color textSecondary = Color(0xFFA1A1AA);
-  static const Color textMuted = Color(0xFF71717A);
+  static const Color textPrimary = Color(0xFFF8FAFC);
+  static const Color textSecondary = Color(0xFF94A3B8);
+  static const Color textMuted = Color(0xFF64748B);
 
-  // Accent Colors
-  static const Color cyanAccent = Color(0xFFFFFFFF);
-  static const Color blueAccent = Color(0xFF71717A);
+  // Brand Accent Colors (Zalo / Modern iOS style - bright & clean)
+  static const Color brandBlue = Color(0xFF007AFF);
+  static const Color cyanAccent = Color(0xFF007AFF);
+  static const Color blueAccent = Color(0xFF0068FF);
   static const Color emeraldSuccess = Color(0xFF22C55E);
   static const Color amberWarning = Color(0xFFF59E0B);
-  static const Color roseDanger = Color(0xFFDC2626);
-  static const Color purpleAccent = Color(0xFFA1A1AA);
+  static const Color roseDanger = Color(0xFFEF4444);
+  static const Color purpleAccent = Color(0xFF8B5CF6);
 
   // Dynamic Theme Getters based on isDarkMode
   static Color get dynamicBackground => isDarkMode ? darkBackground : lightBackground;

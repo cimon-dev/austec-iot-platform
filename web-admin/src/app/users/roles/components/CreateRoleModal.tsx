@@ -25,7 +25,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-sm w-full p-4 shadow-2xl space-y-3 animate-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
           <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-            <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <Plus className="w-4 h-4 text-slate-900 dark:text-white" />
             <span>Thêm Vai Trò Quản Trị Mới</span>
           </div>
           <button
@@ -48,7 +48,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
               placeholder="Ví dụ: Kỹ thuật viên bảo hành, Giám sát kho..."
               value={newRoleName}
               onChange={(e) => onRoleNameChange(e.target.value)}
-              className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+              className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
             />
           </div>
 
@@ -62,7 +62,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-xs transition-all cursor-pointer"
+              className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-semibold shadow-xs transition-all cursor-pointer"
             >
               Tạo Vai Trò
             </button>

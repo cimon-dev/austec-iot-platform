@@ -39,7 +39,7 @@ export function SettingsHeader({
             type="button"
             disabled={isSaving}
             onClick={onSave}
-            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold text-white dark:text-slate-900 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
           >
             {isSaving ? (
               <>

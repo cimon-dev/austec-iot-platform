@@ -186,5 +186,14 @@ export class DevicesService {
   public async retryOtaDeviceRecord(recordId: number) {
     return await this.repo.retryOtaDeviceRecord(recordId);
   }
+
+  // Installation & Reset Guides
+  public async getInstallationGuides() {
+    return await this.repo.getInstallationGuides();
+  }
+
+  public async upsertInstallationGuide(raw: unknown) {
+    return await this.repo.upsertInstallationGuide(raw);
+  }
 }
 

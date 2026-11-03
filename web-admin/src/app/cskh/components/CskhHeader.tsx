@@ -51,7 +51,7 @@ export const CskhHeader: React.FC<CskhHeaderProps> = ({
           onClick={() => onTabChange("chat")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
             activeTab === "chat"
-              ? "bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-xs"
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >
@@ -63,7 +63,7 @@ export const CskhHeader: React.FC<CskhHeaderProps> = ({
           onClick={() => onTabChange("tickets")}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
             activeTab === "tickets"
-              ? "bg-white dark:bg-slate-900 text-cyan-600 dark:text-cyan-400 shadow-xs"
+              ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
           }`}
         >

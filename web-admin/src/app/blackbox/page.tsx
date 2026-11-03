@@ -121,7 +121,7 @@ export default function BlackboxPage() {
       />
 
       {/* KPI Cards */}
-      <BlackboxKpiCards language={language} />
+      <BlackboxKpiCards language={language} logs={logs} />
 
       {/* Search & Filter Bar */}
       <BlackboxFilterBar

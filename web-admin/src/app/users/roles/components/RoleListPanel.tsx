@@ -68,7 +68,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
             <button
               type="button"
               onClick={onOpenCreate}
-              className="flex items-center gap-1 px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-xs cursor-pointer transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-[11px] font-semibold shadow-xs cursor-pointer transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Thêm vai trò</span>
@@ -83,7 +83,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
             placeholder="Tìm vai trò..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+            className="w-full text-xs pl-7 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
           />
         </div>
       </div>
@@ -99,7 +99,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
               onClick={() => onSelectRole(role.id)}
               className={`p-2.5 cursor-pointer transition-colors flex items-center justify-between gap-2 ${
                 isSelected
-                  ? "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-indigo-600"
+                  ? "bg-slate-100 dark:bg-slate-800/80 border-l-4 border-slate-900 dark:border-white"
                   : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
               }`}
             >
@@ -118,12 +118,12 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
                         if (e.key === "Enter") handleSaveEdit(role.id);
                         if (e.key === "Escape") setEditingRoleId(null);
                       }}
-                      className="w-full text-xs px-2 py-1 rounded border border-indigo-500 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none"
+                      className="w-full text-xs px-2 py-1 rounded border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={(e) => handleSaveEdit(role.id, e)}
-                      className="p-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer shrink-0"
+                      className="p-1 rounded bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 cursor-pointer shrink-0"
                       title="Lưu tên vai trò"
                     >
                       <Check className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ export const RoleListPanel: React.FC<RoleListPanelProps> = ({
                     <div className="font-semibold text-slate-900 dark:text-white text-xs flex items-center gap-1.5">
                       <Shield
                         className={`w-3.5 h-3.5 shrink-0 ${
-                          isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"
+                          isSelected ? "text-slate-900 dark:text-white" : "text-slate-400"
                         }`}
                       />
                       <span className="truncate">{role.name}</span>
