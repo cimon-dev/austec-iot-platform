@@ -10,6 +10,8 @@ interface CustomerDevicePanelProps {
   onSoftReboot: () => void;
   isRebooting: boolean;
   onSendQuickCatalog: () => void;
+  storeProducts?: any[];
+  onSelectStoreProduct?: (product: any) => void;
 }
 
 export const CustomerDevicePanel: React.FC<CustomerDevicePanelProps> = ({
@@ -18,6 +20,8 @@ export const CustomerDevicePanel: React.FC<CustomerDevicePanelProps> = ({
   onSoftReboot,
   isRebooting,
   onSendQuickCatalog,
+  storeProducts = [],
+  onSelectStoreProduct,
 }) => {
   return (
     <div className="w-full md:w-80 shrink-0 flex flex-col h-full bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
@@ -38,6 +42,30 @@ export const CustomerDevicePanel: React.FC<CustomerDevicePanelProps> = ({
           </span>
         )}
       </div>
+
+      {/* Store Product Quick Selector from /store */}
+      {storeProducts.length > 0 && (
+        <div className="p-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 shrink-0">
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+            Gợi ý từ Gian hàng (/store):
+          </label>
+          <select
+            value={selectedProductInfo?.id || ""}
+            onChange={(e) => {
+              const p = storeProducts.find((item) => item.id === e.target.value);
+              if (p && onSelectStoreProduct) onSelectStoreProduct(p);
+            }}
+            className="w-full text-xs py-1.5 px-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+          >
+            <option value="">-- Chọn sản phẩm tư vấn --</option>
+            {storeProducts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} ({Number(p.price || 0).toLocaleString("vi-VN")} đ)
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {!selectedProductInfo ? (
         <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center flex-1">

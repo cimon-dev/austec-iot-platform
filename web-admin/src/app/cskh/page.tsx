@@ -7,6 +7,7 @@ import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { Ticket, SupportRequestTicket } from "./types";
 import { cskhService } from "./cskh-service";
+import { storeService } from "../store/store-service";
 import {
   CskhHeader,
   TicketListPanel,
@@ -44,6 +45,7 @@ function CSKHContent() {
   const [isRebooting, setIsRebooting] = useState(false);
   const [wsStatus, setWsStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [selectedProductInfo, setSelectedProductInfo] = useState<any>(null);
+  const [storeProducts, setStoreProducts] = useState<any[]>([]);
   const [zoomImage, setZoomImage] = useState<{ isOpen: boolean; url: string; title: string }>({
     isOpen: false,
     url: "",
@@ -274,6 +276,9 @@ function CSKHContent() {
     cskhService.getSupportRequests().then((res) => {
       if (res && res.length > 0) setSupportRequests(res);
     });
+    storeService.getProducts().then((prods) => {
+      if (prods && prods.length > 0) setStoreProducts(prods);
+    }).catch(() => {});
   }, []);
 
   const filteredSupportRequests = useMemo(() => {
@@ -360,13 +365,61 @@ function CSKHContent() {
             currentTicket={currentTicket}
             onSoftReboot={handleSoftReboot}
             isRebooting={isRebooting}
+            storeProducts={storeProducts}
+            onSelectStoreProduct={(prod) => {
+              setSelectedProductInfo({
+                id: prod.id,
+                isOwned: false,
+                deviceName: prod.name,
+                modelName: prod.name,
+                categoryTag: prod.categoryTag || prod.category,
+                price: prod.price,
+                imageUrl: prod.imageUrl,
+                specs: prod.specs,
+              });
+            }}
             onSendQuickCatalog={() => {
-              if (selectedProductInfo) {
-                setReplyText(
-                  `Dạ chào Quý khách! CSKH Austec xin gửi catalog sản phẩm ${
-                    selectedProductInfo.deviceName || selectedProductInfo.modelName
-                  }: https://austec.vn/products`
+              if (selectedProductInfo && currentTicket) {
+                const now = new Date();
+                const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+                const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+                const msgText = `Dạ chào Quý khách! CSKH Austec xin gửi tư vấn thông tin sản phẩm: ${
+                  selectedProductInfo.deviceName || selectedProductInfo.modelName
+                }`;
+
+                const newMsg = {
+                  id: tempId,
+                  clientTempId: tempId,
+                  sender: "CSKH" as const,
+                  senderRole: "CSKH",
+                  text: msgText,
+                  message: msgText,
+                  time: timeStr,
+                  createdAt: now.toISOString(),
+                  selectedDevice: selectedProductInfo,
+                };
+
+                if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(
+                    JSON.stringify({
+                      type: "SEND_MESSAGE",
+                      ticketId: currentTicket.id,
+                      sender: "CSKH",
+                      text: msgText,
+                      selectedDevice: selectedProductInfo,
+                      clientTempId: tempId,
+                    })
+                  );
+                }
+
+                setTickets((prev) =>
+                  prev.map((t) =>
+                    t.id === currentTicket.id
+                      ? { ...t, messages: deduplicateTicketMessages([...t.messages, newMsg]) }
+                      : t
+                  )
                 );
+                toast.success(`Đã gửi thẻ thông tin sản phẩm "${selectedProductInfo.deviceName || selectedProductInfo.modelName}" vào chat!`);
               }
             }}
           />

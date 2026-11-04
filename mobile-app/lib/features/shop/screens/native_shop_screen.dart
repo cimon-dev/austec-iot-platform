@@ -53,12 +53,21 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
           final List list = data['products'];
           final List<ProductItem> parsed = [];
           for (var p in list) {
+            final rawCat = (p['categoryTag'] ?? p['category'] ?? '').toString();
             String catTag = "Cửa Cuốn";
-            final c = p['category'] ?? '';
-            if (c == 'LOCK') catTag = "Khóa Thông Minh";
-            else if (c == 'UPS') catTag = "Lưu Điện UPS";
-            else if (c == 'SENSOR') catTag = "Cảm Biến";
-            else if (c == 'CAMERA') catTag = "Cảm Biến";
+            if (rawCat.contains('Khóa') || rawCat == 'LOCK') {
+              catTag = "Khóa Thông Minh";
+            } else if (rawCat.contains('UPS') || rawCat.contains('Lưu Điện')) {
+              catTag = "Lưu Điện UPS";
+            } else if (rawCat.contains('Cảm Biến') || rawCat == 'SENSOR' || rawCat.contains('Camera') || rawCat == 'CAMERA' || rawCat.contains('AI Camera')) {
+              catTag = "Cảm Biến";
+            } else if (rawCat.contains('Động Cơ') || rawCat.contains('Bo Mạch') || rawCat == 'MOTOR') {
+              catTag = "Động Cơ & Bo Mạch";
+            } else if (rawCat.contains('Cửa') || rawCat == 'DOOR') {
+              catTag = "Cửa Cuốn";
+            } else if (rawCat.isNotEmpty) {
+              catTag = rawCat;
+            }
 
             final Map<String, String> specsMap = {};
             if (p['specs'] is Map) {
@@ -74,16 +83,18 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               }
             }
 
+            final subtitle = (p['subtitle'] ?? p['description'] ?? '').toString();
+
             parsed.add(ProductItem(
-              id: p['id'] ?? '',
-              name: p['name'] ?? '',
+              id: p['id']?.toString() ?? '',
+              name: p['name']?.toString() ?? '',
               categoryTag: catTag,
-              subtitle: p['description'] ?? '',
+              subtitle: subtitle.isNotEmpty ? subtitle : "Sản phẩm chính hãng Austec Smart IoT",
               price: (p['price'] as num?)?.toInt() ?? 0,
               originalPrice: (p['originalPrice'] as num?)?.toInt(),
-              rating: 4.9,
-              reviewsCount: 128,
-              imagePath: p['imageUrl'] ?? 'assets/doors.png',
+              rating: (p['rating'] as num?)?.toDouble() ?? 4.9,
+              reviewsCount: (p['reviewsCount'] as num?)?.toInt() ?? 128,
+              imagePath: p['imageUrl']?.toString() ?? 'assets/doors.png',
               highlights: hl.isNotEmpty ? hl : ["Bảo hành chính hãng 24 tháng", "Austec Smart IoT"],
               specs: specsMap.isNotEmpty ? specsMap : {"Bảo hành": "24 tháng chính hãng"},
             ));
