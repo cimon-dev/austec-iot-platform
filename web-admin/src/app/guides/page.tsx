@@ -411,6 +411,7 @@ export default function InstallationGuidesPage() {
                 <input
                   type="text"
                   required
+                  placeholder="Nhập tiêu đề hướng dẫn lắp đặt..."
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
@@ -424,6 +425,7 @@ export default function InstallationGuidesPage() {
                 <input
                   type="url"
                   required
+                  placeholder="https://www.youtube.com/embed/..."
                   value={editVideoUrl}
                   onChange={(e) => setEditVideoUrl(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-cyan-600 dark:text-cyan-400 font-mono focus:outline-none focus:border-emerald-500"
@@ -438,6 +440,7 @@ export default function InstallationGuidesPage() {
                   <input
                     type="text"
                     required
+                    placeholder="Nhập vị trí và hướng dẫn thao tác nút reset..."
                     value={editResetDesc}
                     onChange={(e) => setEditResetDesc(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"

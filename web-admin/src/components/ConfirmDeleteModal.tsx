@@ -10,6 +10,10 @@ interface ConfirmDeleteModalProps {
   itemType?: string;
   description?: string;
   isDeleting?: boolean;
+  confirmText?: string;
+  cancelText?: string;
+  confirmVariant?: "danger" | "warning" | "primary";
+  icon?: React.ReactNode;
   onConfirm: () => void | Promise<void>;
   onClose: () => void;
 }
@@ -21,6 +25,10 @@ export function ConfirmDeleteModal({
   itemType = "mục này",
   description,
   isDeleting = false,
+  confirmText = "Xác nhận xóa",
+  cancelText = "Hủy",
+  confirmVariant = "danger",
+  icon,
   onConfirm,
   onClose,
 }: ConfirmDeleteModalProps) {
@@ -37,6 +45,29 @@ export function ConfirmDeleteModal({
 
   if (!isOpen) return null;
 
+  const getVariantStyles = () => {
+    switch (confirmVariant) {
+      case "warning":
+        return {
+          iconBox: "bg-amber-500/10 border-amber-500/20 text-amber-500",
+          button: "bg-amber-600 hover:bg-amber-500 text-white",
+        };
+      case "primary":
+        return {
+          iconBox: "bg-blue-500/10 border-blue-500/20 text-blue-500",
+          button: "bg-blue-600 hover:bg-blue-500 text-white",
+        };
+      case "danger":
+      default:
+        return {
+          iconBox: "bg-rose-500/10 border-rose-500/20 text-rose-500",
+          button: "bg-rose-600 hover:bg-rose-500 text-white",
+        };
+    }
+  };
+
+  const variantStyles = getVariantStyles();
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div 
@@ -44,10 +75,10 @@ export function ConfirmDeleteModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-5 space-y-4">
-          {/* Header with Danger Accent */}
+          {/* Header */}
           <div className="flex items-start gap-3.5">
-            <div className="p-2.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 shrink-0">
-              <AlertTriangle className="w-5 h-5" />
+            <div className={`p-2.5 rounded-full border shrink-0 ${variantStyles.iconBox}`}>
+              {icon || <AlertTriangle className="w-5 h-5" />}
             </div>
             <div className="flex-1 min-w-0 pt-0.5">
               <h3 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
@@ -79,21 +110,21 @@ export function ConfirmDeleteModal({
               onClick={onClose}
               className="px-4 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Hủy
+              {cancelText}
             </button>
             <button
               type="button"
               disabled={isDeleting}
               onClick={onConfirm}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg text-white bg-rose-600 hover:bg-rose-500 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+              className={`flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg shadow-xs transition-all disabled:opacity-50 cursor-pointer ${variantStyles.button}`}
             >
               {isDeleting ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang xóa...</span>
+                  <span>Đang xử lý...</span>
                 </>
               ) : (
-                <span>Xác nhận xóa</span>
+                <span>{confirmText}</span>
               )}
             </button>
           </div>
@@ -102,3 +133,6 @@ export function ConfirmDeleteModal({
     </div>
   );
 }
+
+// Export alias for general confirmation dialog usage
+export const ConfirmModal = ConfirmDeleteModal;

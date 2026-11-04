@@ -334,7 +334,7 @@ export default function LoginPage() {
                       type={authMethod === "email" ? "email" : "tel"}
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
-                      placeholder={authMethod === "email" ? "admin@austec.vn" : "09xxxxxxxx"}
+                      placeholder={authMethod === "email" ? "Nhập địa chỉ email của bạn..." : "Nhập số điện thoại đăng ký..."}
                       required
                       className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 transition-all shadow-sm"
                     />
@@ -413,7 +413,7 @@ export default function LoginPage() {
                     autoFocus
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                    placeholder="123456"
+                    placeholder="Nhập mã OTP 6 số..."
                     className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl py-3 text-center text-xl font-mono tracking-[0.5em] text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500 transition-all shadow-sm"
                   />
                 </div>

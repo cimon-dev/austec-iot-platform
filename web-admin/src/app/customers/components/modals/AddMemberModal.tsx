@@ -118,7 +118,7 @@ export function AddMemberModal({
             <input
               type="text"
               required
-              placeholder="Ví dụ: Trần Thu Hà (Vợ), Nguyễn Văn An..."
+              placeholder="Nhập họ và tên thành viên..."
               value={form.memberName}
               onChange={(e) => setForm({ ...form, memberName: e.target.value })}
               className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -132,7 +132,7 @@ export function AddMemberModal({
             <input
               type="text"
               required
-              placeholder="Ví dụ: 0988 123 456..."
+              placeholder="Nhập số điện thoại đăng nhập App..."
               value={form.phoneNumber}
               onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
               className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white font-mono"

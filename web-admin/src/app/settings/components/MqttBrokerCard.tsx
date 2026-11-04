@@ -41,7 +41,7 @@ export function MqttBrokerCard({
               type="text"
               value={mqttBrokerUrl}
               onChange={(e) => onChangeUrl(e.target.value)}
-              placeholder="mqtt://broker.austec.vn"
+              placeholder="Nhập địa chỉ máy chủ MQTT (VD: mqtt://...)..."
               className="w-full text-xs px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
             />
           </div>

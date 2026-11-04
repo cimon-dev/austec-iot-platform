@@ -432,7 +432,7 @@ export function DeviceGroupTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Cửa cuốn nhôm Đức Titadoor"
+                  placeholder="Nhập tên nhóm sản phẩm..."
                   value={createForm.groupName}
                   onChange={(e) => setCreateForm({ ...createForm, groupName: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -446,7 +446,7 @@ export function DeviceGroupTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: GRP_DOOR, GRP_LOCK"
+                  placeholder="Nhập mã nhóm (VD: GRP_DOOR)..."
                   value={createForm.code}
                   onChange={(e) => setCreateForm({ ...createForm, code: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-indigo-500"
@@ -467,7 +467,7 @@ export function DeviceGroupTab({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Mô tả nhóm sản phẩm..."
+                  placeholder="Nhập mô tả chi tiết nhóm sản phẩm..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"

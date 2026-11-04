@@ -165,7 +165,7 @@ export function CreateDeviceModal({
             <input
               type="text"
               required
-              placeholder="vd: esp32_door_01 hoặc AT-DOOR-88239A99"
+              placeholder="Nhập mã định danh phần cứng (Hardware ID)..."
               value={form.hardwareId}
               onChange={(e) => setForm({ ...form, hardwareId: e.target.value })}
               className={`w-full bg-slate-50 dark:bg-slate-800 border rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white font-mono focus:outline-none ${
@@ -195,7 +195,7 @@ export function CreateDeviceModal({
             <input
               type="text"
               required
-              placeholder="vd: Cửa cuốn Showroom Austec 02"
+              placeholder="Nhập tên hiển thị của thiết bị..."
               value={form.customName}
               onChange={(e) => setForm({ ...form, customName: e.target.value })}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -274,7 +274,7 @@ export function CreateDeviceModal({
               </label>
               <input
                 type="text"
-                placeholder="vd: 12/2028 hoặc 2028-12-31"
+                placeholder="Nhập thời hạn bảo hành (VD: 2028-12-31)..."
                 value={form.warrantyEndAt}
                 onChange={(e) => setForm({ ...form, warrantyEndAt: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -289,7 +289,7 @@ export function CreateDeviceModal({
               </label>
               <input
                 type="text"
-                placeholder="vd: Nguyễn Văn A (để trống nếu là kho)"
+                placeholder="Nhập tên chủ sở hữu (để trống nếu lưu kho)..."
                 value={form.owner}
                 onChange={(e) => setForm({ ...form, owner: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -302,7 +302,7 @@ export function CreateDeviceModal({
               </label>
               <input
                 type="text"
-                placeholder="vd: 0988 123 456"
+                placeholder="Nhập số điện thoại chủ sở hữu..."
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -316,7 +316,7 @@ export function CreateDeviceModal({
             </label>
             <input
               type="text"
-              placeholder="vd: Biệt thự BT4, KĐT Ecopark, Hưng Yên"
+              placeholder="Nhập địa chỉ lắp đặt thiết bị..."
               value={form.addressDisplay}
               onChange={(e) => setForm({ ...form, addressDisplay: e.target.value })}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"

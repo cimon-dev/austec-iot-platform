@@ -62,6 +62,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               <input
                 type="text"
                 required
+                placeholder="Nhập mã nhân viên..."
                 value={form.empID}
                 onChange={(e) => setForm({ ...form, empID: e.target.value })}
                 className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -92,6 +93,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
             <input
               type="text"
               required
+              placeholder="Nhập họ và tên cán bộ..."
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -108,6 +110,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
                 required
                 disabled={!!editingAdmin}
                 readOnly={!!editingAdmin}
+                placeholder="Nhập địa chỉ email..."
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className={`w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-none ${
@@ -123,6 +126,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               </label>
               <input
                 type="text"
+                placeholder="Nhập số điện thoại..."
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -137,6 +141,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               </label>
               <input
                 type="text"
+                placeholder="Nhập tên công ty / đơn vị..."
                 value={form.company}
                 onChange={(e) => setForm({ ...form, company: e.target.value })}
                 className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -148,6 +153,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               </label>
               <input
                 type="text"
+                placeholder="Nhập tên phòng ban..."
                 value={form.department}
                 onChange={(e) => setForm({ ...form, department: e.target.value })}
                 className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -162,7 +168,7 @@ export const AdminFormModal: React.FC<AdminFormModalProps> = ({
               </label>
               <input
                 type="password"
-                placeholder="Mặc định: Austec@2026"
+                placeholder="Nhập mật khẩu ban đầu (mặc định: Austec@2026)..."
                 value={form.password || ""}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 font-mono"

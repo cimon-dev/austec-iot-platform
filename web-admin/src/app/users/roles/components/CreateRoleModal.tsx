@@ -45,7 +45,7 @@ export const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
             <input
               type="text"
               required
-              placeholder="Ví dụ: Kỹ thuật viên bảo hành, Giám sát kho..."
+              placeholder="Nhập tên vai trò quản trị mới..."
               value={newRoleName}
               onChange={(e) => onRoleNameChange(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"

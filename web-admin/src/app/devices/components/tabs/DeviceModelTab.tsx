@@ -819,7 +819,7 @@ export function DeviceModelTab({
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: Austec Titadoor A900 Super"
+                    placeholder="Nhập tên mẫu thương phẩm..."
                     value={createForm.modelName}
                     onChange={(e) => setCreateForm({ ...createForm, modelName: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -833,7 +833,7 @@ export function DeviceModelTab({
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: AUSTEC-A900"
+                    placeholder="Nhập mã model (VD: AUSTEC-A900)..."
                     value={createForm.modelCode}
                     onChange={(e) => setCreateForm({ ...createForm, modelCode: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-indigo-500"
@@ -918,7 +918,7 @@ export function DeviceModelTab({
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Austec Smart Factory"
+                  placeholder="Nhập tên đơn vị sản xuất / nhà máy..."
                   value={createForm.supplier}
                   onChange={(e) => setCreateForm({ ...createForm, supplier: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"

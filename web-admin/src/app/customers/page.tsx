@@ -45,7 +45,7 @@ function CustomersPageContent() {
     fullName: "",
     phoneNumber: "",
     email: "",
-    password: "Austec123!@#",
+    password: "",
     province: "Hà Nội",
     address: "",
     isActive: true,

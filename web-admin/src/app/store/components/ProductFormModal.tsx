@@ -72,7 +72,7 @@ export function ProductFormModal({
               <input
                 type="text"
                 required
-                placeholder="Ví dụ: Cửa cuốn Austec Titadoor A900 Super..."
+                placeholder="Nhập tên sản phẩm thương phẩm..."
                 value={productForm.name}
                 onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -86,7 +86,7 @@ export function ProductFormModal({
                 type="text"
                 required
                 disabled={modalMode === "EDIT"}
-                placeholder="PROD-..."
+                placeholder="Nhập mã sản phẩm (SKU)..."
                 value={productForm.id}
                 onChange={(e) => setProductForm({ ...productForm, id: e.target.value })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-mono disabled:opacity-60"
@@ -156,7 +156,7 @@ export function ProductFormModal({
             </label>
             <textarea
               rows={2}
-              placeholder="Giới thiệu tính năng, ứng dụng công nghệ..."
+              placeholder="Nhập mô tả giới thiệu tính năng sản phẩm..."
               value={productForm.description}
               onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
               className="w-full text-xs p-2 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -169,7 +169,7 @@ export function ProductFormModal({
             </label>
             <input
               type="text"
-              placeholder="Hợp kim nhôm 6063-T5, Tự dừng vật cản, Động cơ Inverter..."
+              placeholder="Nhập các đặc điểm nổi bật..."
               value={productForm.highlightsText}
               onChange={(e) => setProductForm({ ...productForm, highlightsText: e.target.value })}
               className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
@@ -197,14 +197,14 @@ export function ProductFormModal({
                 <div key={idx} className="flex items-center gap-2">
                   <input
                     type="text"
-                    placeholder="Tên thông số (Vd: Chất liệu, Điện áp)"
+                    placeholder="Tên thông số (VD: Điện áp)..."
                     value={row.key}
                     onChange={(e) => handleUpdateSpecRow(idx, "key", e.target.value)}
                     className="w-1/3 text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   />
                   <input
                     type="text"
-                    placeholder="Giá trị (Vd: Nhôm định hình 6063-T5, 220V/50Hz)"
+                    placeholder="Giá trị thông số..."
                     value={row.value}
                     onChange={(e) => handleUpdateSpecRow(idx, "value", e.target.value)}
                     className="flex-1 text-xs px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"

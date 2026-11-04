@@ -627,7 +627,7 @@ export function DeviceTypeTab({
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: Cửa cuốn tự động, Khóa thông minh"
+                    placeholder="Nhập tên loại phần cứng..."
                     value={createForm.typeName}
                     onChange={(e) => setCreateForm({ ...createForm, typeName: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500"
@@ -641,7 +641,7 @@ export function DeviceTypeTab({
                   <input
                     type="text"
                     required
-                    placeholder="Ví dụ: DOOR, SMART_LOCK, UPS"
+                    placeholder="Nhập mã loại phần cứng (VD: DOOR)..."
                     value={createForm.typeCode}
                     onChange={(e) => setCreateForm({ ...createForm, typeCode: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-purple-500"
@@ -663,7 +663,7 @@ export function DeviceTypeTab({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Mô tả công năng của dòng phần cứng này..."
+                  placeholder="Nhập mô tả chức năng của dòng phần cứng này..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-purple-500 resize-none"

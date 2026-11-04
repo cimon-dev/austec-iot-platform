@@ -37,7 +37,7 @@ export const AdminFilterBar: React.FC<AdminFilterBarProps> = ({
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         <input
           type="text"
-          placeholder="Mã NV..."
+          placeholder="Lọc mã nhân viên..."
           value={searchEmpId}
           onChange={(e) => onSearchEmpIdChange(e.target.value)}
           className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -45,7 +45,7 @@ export const AdminFilterBar: React.FC<AdminFilterBarProps> = ({
 
         <input
           type="text"
-          placeholder="Email..."
+          placeholder="Lọc theo email..."
           value={searchEmail}
           onChange={(e) => onSearchEmailChange(e.target.value)}
           className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -53,7 +53,7 @@ export const AdminFilterBar: React.FC<AdminFilterBarProps> = ({
 
         <input
           type="text"
-          placeholder="Số điện thoại..."
+          placeholder="Lọc theo SĐT..."
           value={searchPhone}
           onChange={(e) => onSearchPhoneChange(e.target.value)}
           className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -74,7 +74,7 @@ export const AdminFilterBar: React.FC<AdminFilterBarProps> = ({
 
         <input
           type="text"
-          placeholder="Công ty / Đơn vị..."
+          placeholder="Lọc công ty / đơn vị..."
           value={searchCompany}
           onChange={(e) => onSearchCompanyChange(e.target.value)}
           className="text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"

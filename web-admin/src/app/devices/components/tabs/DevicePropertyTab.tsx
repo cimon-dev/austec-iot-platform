@@ -455,7 +455,7 @@ export function DevicePropertyTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: Trạng thái cửa, Nhiệt độ môi trường"
+                  placeholder="Nhập tên hiển thị thuộc tính..."
                   value={createForm.displayName}
                   onChange={(e) => setCreateForm({ ...createForm, displayName: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -469,7 +469,7 @@ export function DevicePropertyTab({
                 <input
                   type="text"
                   required
-                  placeholder="Ví dụ: door_state, temp_val"
+                  placeholder="Nhập khóa định danh thuộc tính (VD: door_state)..."
                   value={createForm.propertyKey}
                   onChange={(e) => setCreateForm({ ...createForm, propertyKey: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
@@ -499,7 +499,7 @@ export function DevicePropertyTab({
                   </label>
                   <input
                     type="text"
-                    placeholder="°C, %, V, A..."
+                    placeholder="Nhập đơn vị đo (nếu có)..."
                     value={createForm.unit}
                     onChange={(e) => setCreateForm({ ...createForm, unit: e.target.value })}
                     className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
@@ -542,7 +542,7 @@ export function DevicePropertyTab({
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Ghi chú thêm về thông số này..."
+                  placeholder="Nhập ghi chú thêm về thông số này..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   className="w-full text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 resize-none"

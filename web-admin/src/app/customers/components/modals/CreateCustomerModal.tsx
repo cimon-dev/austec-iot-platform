@@ -66,7 +66,7 @@ export function CreateCustomerModal({
               <input
                 type="text"
                 required
-                placeholder="Ví dụ: Nguyễn Văn A"
+                placeholder="Nhập họ và tên khách hàng..."
                 value={form.fullName}
                 onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -79,7 +79,7 @@ export function CreateCustomerModal({
               <input
                 type="text"
                 required
-                placeholder="0912345678"
+                placeholder="Nhập số điện thoại..."
                 value={form.phoneNumber}
                 onChange={(e) => setForm({ ...form, phoneNumber: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -94,7 +94,7 @@ export function CreateCustomerModal({
               </label>
               <input
                 type="email"
-                placeholder="khachhang@gmail.com"
+                placeholder="Nhập địa chỉ email..."
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -107,6 +107,7 @@ export function CreateCustomerModal({
               <input
                 type="text"
                 required
+                placeholder="Nhập mật khẩu ban đầu..."
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -137,7 +138,7 @@ export function CreateCustomerModal({
               </label>
               <input
                 type="text"
-                placeholder="AT-DOOR-..."
+                placeholder="Nhập mã phần cứng (VD: AT-DOOR-01)..."
                 value={form.initialHardwareId}
                 onChange={(e) => setForm({ ...form, initialHardwareId: e.target.value })}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-slate-900 dark:focus:border-white"
@@ -151,7 +152,7 @@ export function CreateCustomerModal({
             </label>
             <input
               type="text"
-              placeholder="Số nhà, tên đường, phường/xã..."
+              placeholder="Nhập địa chỉ chi tiết (số nhà, tên đường)..."
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 dark:focus:border-white"

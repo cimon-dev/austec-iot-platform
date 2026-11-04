@@ -1422,7 +1422,7 @@ export default function FirmwareOtaPage() {
                 <input
                   type="text"
                   maxLength={6}
-                  placeholder="Nhập mã OTP 6 số (VD: 882391)"
+                  placeholder="Nhập mã xác thực OTP 6 số..."
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
                   className="w-full text-center tracking-widest text-base font-mono font-bold py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
@@ -1553,10 +1553,11 @@ export default function FirmwareOtaPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-500 block mb-0.5">Phiên bản (VD: v1.2.0):</label>
+                  <label className="text-slate-500 block mb-0.5">Phiên bản:</label>
                   <input
                     type="text"
                     required
+                    placeholder="Nhập phiên bản (VD: v1.2.0)..."
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
                     className="w-full py-1.5 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
@@ -1581,7 +1582,7 @@ export default function FirmwareOtaPage() {
                 <textarea
                   rows={2}
                   required
-                  placeholder="Ghi ngắn gọn cải tiến..."
+                  placeholder="Nhập nội dung nâng cấp / cải tiến phiên bản..."
                   value={newChangelog}
                   onChange={(e) => setNewChangelog(e.target.value)}
                   className="w-full py-1 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs"
