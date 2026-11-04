@@ -47,25 +47,24 @@ export class BlackboxRepository {
     try {
       await this.ensureTable();
       const query = `
-        INSERT INTO blackbox_audit_logs (
-          hardware_id, model_name, action_type, payload,
-          actor_id, actor_email, actor_role, client_ip,
-          latency_ms, ack_status, crypto_signature, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+        INSERT INTO blackbox_logs (
+          hardware_id, actor_id, actor_role, actor_name, actor_ip,
+          action_type, payload_sent, ack_status, latency_ms,
+          crypto_signature, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()::text)
         RETURNING *;
       `;
 
       const res = await this.client.query(query, [
         data.hardwareId,
-        data.modelName || 'Austec Titadoor A900 Super',
+        data.actorId || 'system',
+        data.actorRole || 'CUSTOMER',
+        data.actorEmail || 'austec.admin@gmail.com',
+        data.clientIp || '127.0.0.1',
         data.actionType,
         JSON.stringify(data.payload || {}),
-        data.actorId || 'system',
-        data.actorEmail || 'system@austec.vn',
-        data.actorRole || 'CUSTOMER',
-        data.clientIp || '127.0.0.1',
+        data.ackStatus || 'ACK_OK',
         data.latencyMs || 50,
-        data.ackStatus || 'ACKNOWLEDGED',
         signature,
       ]);
 
@@ -105,43 +104,56 @@ export class BlackboxRepository {
   public async getLogs(query: QueryBlackboxLogsDto): Promise<BlackboxLogEntity[]> {
     try {
       await this.ensureTable();
-      let sql = 'SELECT * FROM blackbox_audit_logs WHERE 1=1';
+      let sql = `
+        SELECT 
+          b.id,
+          b.hardware_id,
+          COALESCE(di.custom_name, di.model_name, 'Austec Smart Gateway') as model_name,
+          b.action_type,
+          COALESCE(b.payload_sent, '{}'::jsonb) as payload,
+          b.actor_id,
+          COALESCE(b.actor_name, b.actor_id, 'Chủ nhà') as actor_email,
+          COALESCE(b.actor_role, 'CUSTOMER') as actor_role,
+          COALESCE(b.actor_ip, '127.0.0.1') as client_ip,
+          COALESCE(b.latency_ms, 35)::int as latency_ms,
+          CASE 
+            WHEN b.ack_status = 'ACK_OK' OR b.ack_status = 'SUCCESS' THEN 'ACKNOWLEDGED'
+            ELSE COALESCE(b.ack_status, 'ACKNOWLEDGED')
+          END as ack_status,
+          b.crypto_signature,
+          b.created_at
+        FROM blackbox_logs b
+        LEFT JOIN device_instances di ON di.hardware_id = b.hardware_id
+        WHERE 1=1
+      `;
       const params: any[] = [];
       let idx = 1;
 
       if (query.hardwareId) {
-        sql += ` AND hardware_id = $${idx++}`;
-        params.push(query.hardwareId);
+        sql += ` AND b.hardware_id ILIKE $${idx++}`;
+        params.push(`%${query.hardwareId}%`);
       }
       if (query.actionType) {
-        sql += ` AND action_type = $${idx++}`;
+        sql += ` AND b.action_type = $${idx++}`;
         params.push(query.actionType);
       }
       if (query.ackStatus) {
-        sql += ` AND ack_status = $${idx++}`;
+        sql += ` AND b.ack_status = $${idx++}`;
         params.push(query.ackStatus);
       }
 
-      sql += ` ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx++}`;
+      sql += ` ORDER BY b.id DESC LIMIT $${idx++} OFFSET $${idx++}`;
       params.push(query.limit || 100, query.offset || 0);
 
       const res = await this.client.query(sql, params);
-      if (res.rows.length > 0) {
+      if (res.rows && res.rows.length > 0) {
         return res.rows.map(r => this.mapRowToEntity(r));
       }
+      return [];
     } catch (err: any) {
-      console.warn('[BlackboxRepository] DB query failed, falling back to memory:', err.message);
+      console.error('[BlackboxRepository] DB query failed, error:', err.message);
+      throw err;
     }
-
-    // Fallback in-memory
-    let logs = [...this.inMemLogs];
-    if (query.hardwareId) {
-      logs = logs.filter(l => l.hardwareId === query.hardwareId);
-    }
-    if (query.actionType) {
-      logs = logs.filter(l => l.actionType === query.actionType);
-    }
-    return logs.slice(0, query.limit || 100);
   }
 
   private mapRowToEntity(r: any): BlackboxLogEntity {
