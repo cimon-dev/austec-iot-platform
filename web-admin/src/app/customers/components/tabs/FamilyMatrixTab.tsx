@@ -33,6 +33,7 @@ interface FamilyMatrixTabProps {
   isRevoking: boolean;
   onConfirmRevoke: () => void;
   onCancelRevoke: () => void;
+  canUpdate?: boolean;
 }
 
 export function FamilyMatrixTab({
@@ -48,6 +49,7 @@ export function FamilyMatrixTab({
   isRevoking,
   onConfirmRevoke,
   onCancelRevoke,
+  canUpdate = true,
 }: FamilyMatrixTabProps) {
   const [ownerSearchQuery, setOwnerSearchQuery] = useState("");
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
@@ -340,15 +342,17 @@ export function FamilyMatrixTab({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsAddMemberModalOpen(true)}
-            disabled={!currentSelectedDevice}
-            className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Thêm thành viên</span>
-          </button>
+          {canUpdate && (
+            <button
+              type="button"
+              onClick={() => setIsAddMemberModalOpen(true)}
+              disabled={!currentSelectedDevice}
+              className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Thêm thành viên</span>
+            </button>
+          )}
         </div>
 
         {/* List of Shared Members with Granular Switches */}
@@ -386,55 +390,61 @@ export function FamilyMatrixTab({
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onRevokeMember(member.id, member.memberName)}
-                    className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                    title="Thu hồi quyền thành viên"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {canUpdate && (
+                    <button
+                      type="button"
+                      onClick={() => onRevokeMember(member.id, member.memberName)}
+                      className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      title="Thu hồi quyền thành viên"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Permissions Matrix Switches */}
                 <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-200 dark:border-slate-700/60">
-                  <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                  <label className={`flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 ${canUpdate ? "cursor-pointer" : "cursor-default opacity-80"}`}>
                     <span className="text-slate-700 dark:text-slate-300 font-medium">Quyền Điều Khiển:</span>
                     <input
                       type="checkbox"
+                      disabled={!canUpdate}
                       checked={member.canControl}
                       onChange={() => onTogglePermission(member.id, "canControl")}
-                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
+                      className={`w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded ${canUpdate ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                  <label className={`flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 ${canUpdate ? "cursor-pointer" : "cursor-default opacity-80"}`}>
                     <span className="text-slate-700 dark:text-slate-300 font-medium">Xem Lịch Sử:</span>
                     <input
                       type="checkbox"
+                      disabled={!canUpdate}
                       checked={member.canViewHistory}
                       onChange={() => onTogglePermission(member.id, "canViewHistory")}
-                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
+                      className={`w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded ${canUpdate ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                  <label className={`flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 ${canUpdate ? "cursor-pointer" : "cursor-default opacity-80"}`}>
                     <span className="text-slate-700 dark:text-slate-300 font-medium">Khóa Trẻ Em:</span>
                     <input
                       type="checkbox"
+                      disabled={!canUpdate}
                       checked={member.canChildLock}
                       onChange={() => onTogglePermission(member.id, "canChildLock")}
-                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
+                      className={`w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded ${canUpdate ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 cursor-pointer">
+                  <label className={`flex items-center justify-between p-1.5 rounded bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 ${canUpdate ? "cursor-pointer" : "cursor-default opacity-80"}`}>
                     <span className="text-slate-700 dark:text-slate-300 font-medium">Cấu Hình TB:</span>
                     <input
                       type="checkbox"
+                      disabled={!canUpdate}
                       checked={member.canConfig}
                       onChange={() => onTogglePermission(member.id, "canConfig")}
-                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
+                      className={`w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded ${canUpdate ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                     />
                   </label>
                 </div>
@@ -455,9 +465,10 @@ export function FamilyMatrixTab({
                     </span>
                     <input
                       type="checkbox"
+                      disabled={!canUpdate}
                       checked={member.scheduleLimitActive}
                       onChange={() => onTogglePermission(member.id, "scheduleLimitActive")}
-                      className="w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded cursor-pointer"
+                      className={`w-4 h-4 text-slate-900 dark:text-white accent-slate-900 dark:accent-white rounded ${canUpdate ? "cursor-pointer" : "cursor-not-allowed opacity-60"}`}
                     />
                   </div>
                 </div>

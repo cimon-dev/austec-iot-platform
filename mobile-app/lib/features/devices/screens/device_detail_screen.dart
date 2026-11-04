@@ -153,26 +153,90 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             _buildWarrantyAndStatusCard(),
             const SizedBox(height: 20),
 
-            // Bảng Điều Khiển Chuyên Sâu Tùy Theo Danh Mục
-            if (_device.category == DeviceCategory.rollerDoor)
-              _buildRollerDoorDetailedControls()
-            else if (_device.category == DeviceCategory.lightSwitch)
-              _buildLightSwitchDetailedControls()
-            else if (_device.category == DeviceCategory.camera)
-              _buildCameraDetailedControls()
-            else if (_device.category == DeviceCategory.environment)
-              _buildSensorDetailedControls()
-            else if (_device.category == DeviceCategory.energyManage)
-              _buildUpsDetailedControls()
-            else
-              _buildLockDetailedControls(),
+            // Bảng Điều Khiển Chuyên Sâu Tùy Theo Danh Mục (ẨN KHI KHÔNG CÓ QUYỀN ĐIỀU KHIỂN)
+            if (_device.canPerformControl) ...[
+              if (_device.category == DeviceCategory.rollerDoor)
+                _buildRollerDoorDetailedControls()
+              else if (_device.category == DeviceCategory.lightSwitch)
+                _buildLightSwitchDetailedControls()
+              else if (_device.category == DeviceCategory.camera)
+                _buildCameraDetailedControls()
+              else if (_device.category == DeviceCategory.environment)
+                _buildSensorDetailedControls()
+              else if (_device.category == DeviceCategory.energyManage)
+                _buildUpsDetailedControls()
+              else
+                _buildLockDetailedControls(),
+            ] else ...[
+              _buildRestrictedPermissionBanner(),
+            ],
 
             const SizedBox(height: 24),
 
-            // Hộp Đen Kiểm Toán & Nhật Ký Hoạt Động
-            _buildAuditLogsSection(),
+            // Hộp Đen Kiểm Toán & Nhật Ký Hoạt Động (ẨN KHI KHÔNG CÓ QUYỀN canViewHistory)
+            if (_device.canViewHistory)
+              _buildAuditLogsSection(),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildRestrictedPermissionBanner() {
+    final isScheduleLimit = !_device.isWithinAllowedSchedule;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isScheduleLimit ? Icons.schedule_rounded : Icons.lock_outline_rounded,
+              color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isScheduleLimit ? "Ngoài khung giờ được phép điều khiển" : "Quyền điều khiển đã bị tạm khóa",
+                  style: TextStyle(
+                    color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isScheduleLimit
+                      ? "Chủ nhà chỉ cho phép điều khiển trong khung giờ ${_device.accessStartTime} - ${_device.accessEndTime}."
+                      : "Tài khoản của bạn là thành viên phụ và chưa được chủ nhà cấp quyền điều khiển thiết bị này.",
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

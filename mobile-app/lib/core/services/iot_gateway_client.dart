@@ -615,11 +615,13 @@ class IoTGatewayClient {
 
     final device = findByHardwareId(hardwareId);
     if (device != null) {
-      if (!device.canControl) {
+      if (!device.canPerformControl) {
         return CommandResult(
           success: false,
           latencyMs: 15,
-          message: "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển",
+          message: !device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${device.accessStartTime} - ${device.accessEndTime})",
           cryptoSignature: cryptoSig,
         );
       }

@@ -8,8 +8,8 @@ class MemberPermissionCard extends StatelessWidget {
   final Color textCol;
   final Color cardBg;
   final Color cardBorder;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const MemberPermissionCard({
     super.key,
@@ -18,8 +18,8 @@ class MemberPermissionCard extends StatelessWidget {
     required this.textCol,
     required this.cardBg,
     required this.cardBorder,
-    required this.onEdit,
-    required this.onDelete,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -116,18 +116,20 @@ class MemberPermissionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!isOwner) ...[
-                IconButton(
-                  icon: const Icon(Icons.tune_rounded, size: 18, color: AppTheme.cyanAccent),
-                  tooltip: "Chỉnh sửa quyền",
-                  onPressed: onEdit,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.roseDanger),
-                  tooltip: "Thu hồi quyền",
-                  onPressed: onDelete,
-                ),
-              ] else
+              if (!isOwner && (onEdit != null || onDelete != null)) ...[
+                if (onEdit != null)
+                  IconButton(
+                    icon: const Icon(Icons.tune_rounded, size: 18, color: AppTheme.cyanAccent),
+                    tooltip: "Chỉnh sửa quyền",
+                    onPressed: onEdit,
+                  ),
+                if (onDelete != null)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.roseDanger),
+                    tooltip: "Thu hồi quyền",
+                    onPressed: onDelete,
+                  ),
+              ] else if (isOwner)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

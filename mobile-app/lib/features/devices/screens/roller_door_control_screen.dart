@@ -235,24 +235,26 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: Icon(Icons.history_rounded, color: textCol, size: 24),
-            tooltip: "Lịch sử điều khiển",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: textCol, size: 24),
-            tooltip: "Cài đặt thiết bị",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: _device)),
-              );
-            },
-          ),
+          if (_device.canViewHistory)
+            IconButton(
+              icon: Icon(Icons.history_rounded, color: textCol, size: 24),
+              tooltip: "Lịch sử điều khiển",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
+                );
+              },
+            ),
+          if (_device.canConfig)
+            IconButton(
+              icon: Icon(Icons.settings_outlined, color: textCol, size: 24),
+              tooltip: "Cài đặt thiết bị",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: _device)),
+                );
+              },
+            ),
           const SizedBox(width: 6),
         ],
       ),
@@ -342,8 +344,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               const SizedBox(height: 18),
 
               // 3. NÚT KHÓA AN TOÀN TRẺ EM
-              _buildLockButton(cardBg, cardBorder),
-              const SizedBox(height: 22),
+              if (_device.canChildLock) ...[
+                _buildLockButton(cardBg, cardBorder),
+                const SizedBox(height: 22),
+              ],
 
               // 4. 3 NÚT BẤM LỚN TRỰC QUAN TRẠNG THÁI: MỞ - DỪNG - ĐÓNG
               _buildVisualControlButtons(),
@@ -639,6 +643,66 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // 3 Nút Bấm Lớn Trực Quan: MỞ (Xanh lá) - DỪNG (Vàng) - ĐÓNG (Xanh lam)
   Widget _buildVisualControlButtons() {
+    if (!_device.canPerformControl) {
+      final isDark = AppTheme.isDarkMode;
+      final isScheduleLimit = !_device.isWithinAllowedSchedule;
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: isDark ? 0.12 : 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isScheduleLimit ? Icons.schedule_rounded : Icons.lock_outline_rounded,
+                color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isScheduleLimit ? "Ngoài khung giờ được phép điều khiển" : "Quyền điều khiển đã bị tạm khóa",
+                    style: TextStyle(
+                      color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isScheduleLimit
+                        ? "Chủ nhà chỉ cho phép điều khiển trong khung giờ ${_device.accessStartTime} - ${_device.accessEndTime}."
+                        : "Tài khoản của bạn là thành viên phụ và chưa được chủ nhà cấp quyền mở/đóng cửa.",
+                    style: TextStyle(
+                      color: isDark ? Colors.white70 : Colors.black87,
+                      fontSize: 11.5,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final isLocked = _device.isChildLockActive;
 
     return Opacity(

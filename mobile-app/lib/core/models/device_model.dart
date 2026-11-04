@@ -80,6 +80,31 @@ class DeviceItem {
   bool get isMember => userRole == FamilyRole.member;
   bool get isGuest => userRole == FamilyRole.guest;
 
+  bool get isWithinAllowedSchedule {
+    if (isOwner) return true;
+    if (!isAccessLimitActive) return true;
+
+    final now = DateTime.now();
+    final dayIdx = (now.weekday - 1) % 7;
+    if (accessDays.length > dayIdx && !accessDays[dayIdx]) {
+      return false;
+    }
+
+    try {
+      final startParts = accessStartTime.split(':');
+      final endParts = accessEndTime.split(':');
+      final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      final endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+      final curMin = now.hour * 60 + now.minute;
+      if (curMin < startMin || curMin > endMin) {
+        return false;
+      }
+    } catch (_) {}
+    return true;
+  }
+
+  bool get canPerformControl => canControl && isWithinAllowedSchedule;
+
   // Thuộc tính động từ Mẫu thương phẩm (Dynamic Schema)
   Map<String, dynamic> currentProperties;
   List<Map<String, dynamic>> assignedProperties;

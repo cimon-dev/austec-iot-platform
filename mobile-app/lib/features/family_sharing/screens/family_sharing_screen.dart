@@ -300,11 +300,12 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         title: const Text("Phân Quyền Thành Viên", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.brandBlue),
-            tooltip: "Mời thành viên mới",
-            onPressed: _openAddMemberModal,
-          ),
+          if (_selectedDevice?.isOwner == true)
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.brandBlue),
+              tooltip: "Mời thành viên mới",
+              onPressed: _openAddMemberModal,
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -386,42 +387,43 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
                     textCol: textCol,
                     cardBg: cardBg,
                     cardBorder: cardBorder,
-                    onEdit: () => _openEditMemberModal(m),
-                    onDelete: () => _deleteMember(m),
+                    onEdit: _selectedDevice?.isOwner == true ? () => _openEditMemberModal(m) : null,
+                    onDelete: _selectedDevice?.isOwner == true ? () => _deleteMember(m) : null,
                   );
                 },
               ),
 
-            const SizedBox(height: 24),
-
-            // Transfer Ownership Button
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppTheme.amberWarning.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Chuyển Giao Quyền Sở Hữu", style: TextStyle(color: AppTheme.amberWarning, fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 6),
-                  const Text("Tạo mã OTP chuyển nhượng thiết bị khi bán nhà hoặc bàn giao.", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 38,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(foregroundColor: AppTheme.amberWarning, side: const BorderSide(color: AppTheme.amberWarning)),
-                      icon: const Icon(Icons.vpn_key_outlined, size: 15),
-                      label: const Text("Tạo Mã OTP Chuyển Nhượng"),
-                      onPressed: _generateTransferOtp,
+            // Transfer Ownership Button (CHỈ HIỂN THỊ KHI LÀ CHỦ SỞ HỮU OWNER)
+            if (_selectedDevice?.isOwner == true) ...[
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppTheme.amberWarning.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Chuyển Giao Quyền Sở Hữu", style: TextStyle(color: AppTheme.amberWarning, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    const Text("Tạo mã OTP chuyển nhượng thiết bị khi bán nhà hoặc bàn giao.", style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 38,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(foregroundColor: AppTheme.amberWarning, side: const BorderSide(color: AppTheme.amberWarning)),
+                        icon: const Icon(Icons.vpn_key_outlined, size: 15),
+                        label: const Text("Tạo Mã OTP Chuyển Nhượng"),
+                        onPressed: _generateTransferOtp,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),

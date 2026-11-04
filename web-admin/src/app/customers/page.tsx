@@ -388,6 +388,7 @@ function CustomersPageContent() {
           isRevoking={isRevoking}
           onConfirmRevoke={handleConfirmRevoke}
           onCancelRevoke={() => setRevokeTarget(null)}
+          canUpdate={canUpdate("mod_customer") || canUpdate("mod_user")}
         />
       )}
 

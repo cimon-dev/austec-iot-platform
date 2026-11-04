@@ -720,49 +720,54 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   ],
                 ),
               ),
-              PopupMenuItem(
-                value: 'rename',
-                child: Row(
-                  children: [
-                    const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
-                    const SizedBox(width: 8),
-                    Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
-                  ],
+              if (device.canConfig)
+                PopupMenuItem(
+                  value: 'rename',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
+                      const SizedBox(width: 8),
+                      Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
-                    const SizedBox(width: 8),
-                    Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
-                  ],
+              if (device.isOwner)
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
+                      const SizedBox(width: 8),
+                      Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(width: 6),
 
-          // NÚT TOGGLE BẬT TẮT DẠNG KHỐI
-          Transform.scale(
-            scale: 1.05,
-            child: Switch(
-              value: isOn,
-              activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.5),
-              activeThumbColor: AppTheme.cyanAccent,
-              inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
-              inactiveThumbColor: Colors.grey,
-              onChanged: _isProcessing
-                  ? null
-                  : (newVal) {
-                      setState(() {
-                        device.isRelayOn = newVal;
-                      });
-                      _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
-                    },
-            ),
-          ),
+          // NÚT TOGGLE BẬT TẮT DẠNG KHỐI (CHỈ HIỂN THỊ KHI CÓ QUYỀN ĐIỀU KHIỂN)
+          if (device.canPerformControl)
+            Transform.scale(
+              scale: 1.05,
+              child: Switch(
+                value: isOn,
+                activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.5),
+                activeThumbColor: AppTheme.cyanAccent,
+                inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                inactiveThumbColor: Colors.grey,
+                onChanged: _isProcessing
+                    ? null
+                    : (newVal) {
+                        setState(() {
+                          device.isRelayOn = newVal;
+                        });
+                        _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                      },
+              ),
+            )
+          else
+            const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 20),
         ],
       ),
     );
@@ -906,26 +911,28 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   if (val == 'delete') _showDeleteDialog(device);
                 },
                 itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'rename',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
-                        const SizedBox(width: 8),
-                        Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
-                      ],
+                  if (device.canConfig)
+                    PopupMenuItem(
+                      value: 'rename',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
+                        ],
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
-                        const SizedBox(width: 8),
-                        Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
-                      ],
+                  if (device.isOwner)
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1240,26 +1247,28 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   }
                 },
                 itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'rename',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_outlined, size: 18, color: isDark ? Colors.white : Colors.black87),
-                        const SizedBox(width: 8),
-                        Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
-                      ],
+                  if (device.canConfig)
+                    PopupMenuItem(
+                      value: 'rename',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, size: 18, color: isDark ? Colors.white : Colors.black87),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
+                        ],
+                      ),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
-                        const SizedBox(width: 8),
-                        Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
-                      ],
+                  if (device.isOwner)
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],
@@ -1377,19 +1386,44 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
           Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
           const SizedBox(height: 12),
 
-          // 4 Nút Bấm Preview Điều Khiển Nhanh
-          if (device.category == DeviceCategory.rollerDoor)
-            _buildRollerDoorPreviewButtons(device)
-          else if (device.category == DeviceCategory.lightSwitch)
-            _buildLightSwitchPreviewButtons(device)
-          else if (device.category == DeviceCategory.camera)
-            _buildCameraPreviewButtons(device)
-          else if (device.category == DeviceCategory.environment)
-            _buildSensorPreviewStats(device)
-          else if (device.category == DeviceCategory.energyManage)
-            _buildUpsPreviewButtons(device)
-          else
-            _buildLockPreviewButtons(device),
+          // 4 Nút Bấm Preview Điều Khiển Nhanh (ẨN KHI KHÔNG CÓ QUYỀN canPerformControl)
+          if (device.canPerformControl) ...[
+            if (device.category == DeviceCategory.rollerDoor)
+              _buildRollerDoorPreviewButtons(device)
+            else if (device.category == DeviceCategory.lightSwitch)
+              _buildLightSwitchPreviewButtons(device)
+            else if (device.category == DeviceCategory.camera)
+              _buildCameraPreviewButtons(device)
+            else if (device.category == DeviceCategory.environment)
+              _buildSensorPreviewStats(device)
+            else if (device.category == DeviceCategory.energyManage)
+              _buildUpsPreviewButtons(device)
+            else
+              _buildLockPreviewButtons(device),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_outline_rounded, color: AppTheme.amberWarning, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.isWithinAllowedSchedule
+                          ? "Quyền điều khiển đã bị chủ nhà tạm khóa"
+                          : "Ngoài khung giờ được phép điều khiển (${device.accessStartTime} - ${device.accessEndTime})",
+                      style: const TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           const SizedBox(height: 12),
 
