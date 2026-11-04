@@ -193,24 +193,6 @@ export function EditDeviceModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Model Thương Phẩm
-              </label>
-              <select
-                value={form.modelName}
-                onChange={(e) => setForm({ ...form, modelName: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
-              >
-                <option value="">-- Chưa gán Model --</option>
-                {models.map(m => (
-                  <option key={m.id || m.modelCode} value={m.modelCode}>
-                    {m.modelName} ({m.modelCode})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Nhóm Sản Phẩm
               </label>
               <select
@@ -222,6 +204,33 @@ export function EditDeviceModal({
                 {groups.map(g => (
                   <option key={g.id || g.code} value={g.groupName}>
                     {g.groupName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Model Thương Phẩm
+              </label>
+              <select
+                value={form.modelName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const found = models.find(m => (m.modelCode || m.id) === val);
+                  setForm(prev => ({
+                    ...prev,
+                    modelName: val,
+                    group: (!prev.group && found?.groupName) ? found.groupName : prev.group,
+                    deviceType: (!prev.deviceType && (found?.typeName || found?.deviceType)) ? (found.typeName || found.deviceType) : prev.deviceType
+                  }));
+                }}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+              >
+                <option value="">-- Chưa gán Model --</option>
+                {models.map(m => (
+                  <option key={m.id || m.modelCode} value={m.modelCode}>
+                    {m.modelName} ({m.modelCode})
                   </option>
                 ))}
               </select>

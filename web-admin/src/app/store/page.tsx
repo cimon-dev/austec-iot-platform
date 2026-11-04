@@ -42,14 +42,14 @@ function StoreContent() {
     id: "",
     name: "",
     category: "DOOR" as ProductItem["category"],
-    price: 1000000,
-    originalPrice: 1200000,
+    price: 0,
+    originalPrice: 0,
     imageUrl: "",
     description: "",
     highlightsText: "",
-    stock: 50,
+    stock: 0,
     status: "ACTIVE" as ProductItem["status"],
-    specsRows: [{ key: "Chất liệu", value: "Hợp kim nhôm" }, { key: "Bảo hành xuất xưởng", value: "24 tháng" }],
+    specsRows: [] as Array<{ key: string; value: string }>,
   });
 
   const fetchProducts = useCallback(async () => {
@@ -127,18 +127,14 @@ function StoreContent() {
       id: `PROD-${Date.now().toString().slice(-6)}`,
       name: "",
       category: "DOOR",
-      price: 15000000,
-      originalPrice: 18000000,
-      imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+      price: 0,
+      originalPrice: 0,
+      imageUrl: "",
       description: "",
-      highlightsText: "Chính hãng Austec, Tiết kiệm điện, Bảo hành tận nơi",
-      stock: 50,
+      highlightsText: "",
+      stock: 0,
       status: "ACTIVE",
-      specsRows: [
-        { key: "Chất liệu", value: "Hợp kim cao cấp" },
-        { key: "Điện áp hoạt động", value: "220V / 50Hz" },
-        { key: "Bảo hành xuất xưởng", value: "24 tháng chính hãng" },
-      ],
+      specsRows: [],
     });
     setIsModalOpen(true);
   };
@@ -151,14 +147,14 @@ function StoreContent() {
       id: p.id,
       name: p.name,
       category: p.category,
-      price: p.price,
-      originalPrice: p.originalPrice || p.price,
-      imageUrl: p.imageUrl,
-      description: p.description,
+      price: p.price || 0,
+      originalPrice: p.originalPrice || p.price || 0,
+      imageUrl: p.imageUrl || "",
+      description: p.description || "",
       highlightsText: (p.highlights || []).join(", "),
-      stock: p.stock,
+      stock: p.stock || 0,
       status: p.status,
-      specsRows: specsArray.length > 0 ? specsArray : [{ key: "Bảo hành", value: "24 tháng" }],
+      specsRows: specsArray,
     });
     setIsModalOpen(true);
   };
@@ -210,15 +206,13 @@ function StoreContent() {
       id: productForm.id || `PROD-${Date.now().toString().slice(-6)}`,
       name: productForm.name.trim(),
       category: productForm.category,
-      price: Number(productForm.price),
-      originalPrice: Number(productForm.originalPrice),
-      imageUrl:
-        productForm.imageUrl.trim() ||
-        "https://images.unsplash.com/photo-1558002038-1055907df827?w=600&auto=format&fit=crop&q=80",
+      price: Number(productForm.price) || 0,
+      originalPrice: Number(productForm.originalPrice) || Number(productForm.price) || 0,
+      imageUrl: productForm.imageUrl.trim(),
       description: productForm.description.trim(),
       highlights: highlightsList,
       specs: specsObj,
-      stock: Number(productForm.stock),
+      stock: Number(productForm.stock) || 0,
       status: productForm.status,
     };
 

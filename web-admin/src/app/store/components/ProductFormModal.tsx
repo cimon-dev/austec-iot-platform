@@ -94,7 +94,7 @@ export function ProductFormModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
             <div>
               <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
                 Phân loại danh mục
@@ -120,8 +120,22 @@ export function ProductFormModal({
                 type="number"
                 required
                 min={0}
-                value={productForm.price}
-                onChange={(e) => setProductForm({ ...productForm, price: Number(e.target.value) })}
+                placeholder="Nhập giá bán..."
+                value={productForm.price === 0 ? "" : productForm.price}
+                onChange={(e) => setProductForm({ ...productForm, price: e.target.value === "" ? 0 : Number(e.target.value) })}
+                className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                Giá gốc niêm yết (VNĐ)
+              </label>
+              <input
+                type="number"
+                min={0}
+                placeholder="Nhập giá gốc..."
+                value={productForm.originalPrice === 0 ? "" : (productForm.originalPrice || "")}
+                onChange={(e) => setProductForm({ ...productForm, originalPrice: e.target.value === "" ? 0 : Number(e.target.value) })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-mono"
               />
             </div>
@@ -132,8 +146,9 @@ export function ProductFormModal({
               <input
                 type="number"
                 min={0}
-                value={productForm.stock}
-                onChange={(e) => setProductForm({ ...productForm, stock: Number(e.target.value) })}
+                placeholder="Nhập số lượng tồn..."
+                value={productForm.stock === 0 ? "" : productForm.stock}
+                onChange={(e) => setProductForm({ ...productForm, stock: e.target.value === "" ? 0 : Number(e.target.value) })}
                 className="w-full text-xs px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 font-mono"
               />
             </div>
