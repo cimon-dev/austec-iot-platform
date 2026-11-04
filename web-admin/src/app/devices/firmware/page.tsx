@@ -21,7 +21,7 @@ import {
   HardDrive, 
   ShieldCheck,
   Radio,
-  FileCheck
+  SlidersHorizontal
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
@@ -73,12 +73,35 @@ interface OtaDeviceRecord {
   retryCount: number;
 }
 
+// Danh mục định nghĩa Nhóm Sản Phẩm (Product Groups)
+export const PRODUCT_GROUPS = [
+  { code: "GRP_DOOR", name: "Cửa cuốn thông minh" },
+  { code: "GRP_LOCK", name: "Khóa cửa thông minh" },
+  { code: "GRP_UPS", name: "Bộ lưu điện & Năng lượng" },
+  { code: "GRP_CAMERA", name: "Giám sát an ninh AI" },
+  { code: "GRP_SENSOR", name: "Cảm biến an toàn" },
+  { code: "GRP_CONTROLLER", name: "Bo mạch điều khiển trung tâm" },
+];
+
+// Danh mục định nghĩa Loại Phần Cứng Kỹ Thuật (Hardware Types)
+export const HARDWARE_TYPES = [
+  { code: "HW_DOOR_GERMAN", name: "Mạch Rơ-le Cửa cuốn Đức (ESP32-C3)", groupCode: "GRP_DOOR" },
+  { code: "HW_DOOR_AUST", name: "Mạch Xung Motor Úc (ESP32 Dual-Core)", groupCode: "GRP_DOOR" },
+  { code: "HW_LOCK_AI", name: "Mạch Khóa FaceID 3D (ESP32-S3)", groupCode: "GRP_LOCK" },
+  { code: "HW_UPS_SINE", name: "Mạch Biến Tần Sin Chuẩn (ESP32-C3)", groupCode: "GRP_UPS" },
+  { code: "HW_CAMERA_AI", name: "Mạch Camera AI NPU (ESP32-S3)", groupCode: "GRP_CAMERA" },
+  { code: "HW_SENSOR_LP", name: "Mạch Cảm Biến Tiết Kiệm Pin (ESP32-C3)", groupCode: "GRP_SENSOR" },
+  { code: "HW_HUB_RS485", name: "Mạch Trung Tâm Modbus RS485 (ESP32-WROOM)", groupCode: "GRP_CONTROLLER" },
+];
+
 interface CommercialModelItem {
   id: string;
   name: string;
   modelCode: string;
-  category: "DOOR" | "LOCK" | "UPS" | "CAMERA" | "SENSOR" | "CONTROLLER";
-  categoryLabel: string;
+  groupCode: string;
+  groupName: string;
+  hardwareTypeCode: string;
+  hardwareTypeName: string;
   mcu: string;
   flashSize: string;
   currentStableVersion: string;
@@ -97,8 +120,10 @@ const COMMERCIAL_MODELS: CommercialModelItem[] = [
     id: "prod_door_german",
     name: "Cửa Cuốn Austec Titadoor A900 Super",
     modelCode: "DOOR_GERMAN_ALU",
-    category: "DOOR",
-    categoryLabel: "Cửa Cuốn Khe Thoáng Đức",
+    groupCode: "GRP_DOOR",
+    groupName: "Cửa cuốn thông minh",
+    hardwareTypeCode: "HW_DOOR_GERMAN",
+    hardwareTypeName: "Mạch Rơ-le Cửa cuốn Đức (ESP32-C3)",
     mcu: "ESP32-C3 RISC-V 160MHz",
     flashSize: "4MB Dual-Bank OTA",
     currentStableVersion: "v1.1.0",
@@ -139,13 +164,11 @@ void setup() {
     pinMode(RELAY_STOP_PIN, OUTPUT);
     pinMode(SENSOR_OBSTACLE, INPUT_PULLUP);
 
-    // Ket noi WiFi & Dang ky kenh OTA MQTT an toan
     initAustecNetwork();
     setupOtaBackgroundService();
 }
 
 void loop() {
-    // 1. Kiem tra lien tuc cam bien an toan vat can
     if (digitalRead(SENSOR_OBSTACLE) == LOW) {
         digitalWrite(RELAY_STOP_PIN, HIGH);
         delay(200);
@@ -153,7 +176,6 @@ void loop() {
         mqttPublishAlert("OBSTACLE_DETECTED_AUTO_STOP");
     }
 
-    // 2. Xu ly goi tin dieu khien qua MQTT & Kiem tra OTA
     processMqttCommands();
     yield();
 }`
@@ -168,14 +190,13 @@ void loop() {
 
 bool performOtaUpdate(const char* binaryUrl, const char* expectedSha256) {
     WiFiClient client;
-    httpUpdate.rebootOnUpdate(false); // Tam dung reboot de kiem tra SHA256
+    httpUpdate.rebootOnUpdate(false);
 
     Serial.printf("[OTA] Bat dau tai firmware tu: %s\\n", binaryUrl);
     t_httpUpdate_return ret = httpUpdate.update(client, binaryUrl);
 
     if (ret == HTTP_UPDATE_OK) {
         Serial.println("[OTA] Tai ghi vao phan vung app1 thanh cong 100%!");
-        // Tinh toan ma bam kiem tra toan ven truoc khi chuyen Bootloader
         if (validateFirmwareSha256(expectedSha256)) {
             Serial.println("[OTA] Ma SHA256 hop le. Chuyen Bootloader & Restart!");
             ESP.restart();
@@ -194,8 +215,10 @@ bool performOtaUpdate(const char* binaryUrl, const char* expectedSha256) {
     id: "prod_door_aust",
     name: "Cửa Cuốn Thép Tấm Liền Austdoor Aust-Steel",
     modelCode: "DOOR_AU_STEEL",
-    category: "DOOR",
-    categoryLabel: "Cửa Cuốn Tấm Liền Úc",
+    groupCode: "GRP_DOOR",
+    groupName: "Cửa cuốn thông minh",
+    hardwareTypeCode: "HW_DOOR_AUST",
+    hardwareTypeName: "Mạch Xung Motor Úc (ESP32 Dual-Core)",
     mcu: "ESP32 Dual-Core 240MHz",
     flashSize: "4MB Dual-Bank OTA",
     currentStableVersion: "v1.0.2",
@@ -216,7 +239,7 @@ bool performOtaUpdate(const char* binaryUrl, const char* expectedSha256) {
 
 void triggerAustMotorPulse(uint8_t relayPin, uint16_t durationMs) {
     digitalWrite(relayPin, HIGH);
-    delay(durationMs); // Xung 250ms chuẩn xác cho bo mạch DC
+    delay(durationMs);
     digitalWrite(relayPin, LOW);
     Serial.printf("[AUST_DOOR] Phat xung kich %dms len Pin %d thanh cong\\n", durationMs, relayPin);
 }`
@@ -227,8 +250,10 @@ void triggerAustMotorPulse(uint8_t relayPin, uint16_t durationMs) {
     id: "prod_lock_masaru",
     name: "Khóa Thông Minh FaceID Masaru Titan X1",
     modelCode: "SMART_LOCK_MASARU",
-    category: "LOCK",
-    categoryLabel: "Khóa Cửa Thông Minh",
+    groupCode: "GRP_LOCK",
+    groupName: "Khóa cửa thông minh",
+    hardwareTypeCode: "HW_LOCK_AI",
+    hardwareTypeName: "Mạch Khóa FaceID 3D (ESP32-S3)",
     mcu: "ESP32-S3 Dual-Core AI 240MHz",
     flashSize: "8MB Dual-Bank OTA",
     currentStableVersion: "v2.0.1",
@@ -259,8 +284,10 @@ bool verifyOneTimeOtp(uint32_t inputOtp, uint32_t currentTimestamp) {
     id: "prod_ups_sine",
     name: "Bộ Lưu Điện Cửa Cuốn Austec Sine 1200 Pro",
     modelCode: "UPS_AC_220V",
-    category: "UPS",
-    categoryLabel: "Bộ Lưu Điện UPS",
+    groupCode: "GRP_UPS",
+    groupName: "Bộ lưu điện & Năng lượng",
+    hardwareTypeCode: "HW_UPS_SINE",
+    hardwareTypeName: "Mạch Biến Tần Sin Chuẩn (ESP32-C3)",
     mcu: "ESP32-C3 RISC-V 160MHz",
     flashSize: "4MB Dual-Bank OTA",
     currentStableVersion: "v1.8.2",
@@ -291,8 +318,10 @@ float readBatteryVoltage() {
     id: "prod_cam_vision",
     name: "Camera Giám Sát AI Vision 4K Ngoài Trời",
     modelCode: "CAMERA_VISION_4K",
-    category: "CAMERA",
-    categoryLabel: "Camera AI",
+    groupCode: "GRP_CAMERA",
+    groupName: "Giám sát an ninh AI",
+    hardwareTypeCode: "HW_CAMERA_AI",
+    hardwareTypeName: "Mạch Camera AI NPU (ESP32-S3)",
     mcu: "ESP32-S3 AI Vision + NPU",
     flashSize: "16MB Dual-Bank OTA",
     currentStableVersion: "v1.0.0",
@@ -324,8 +353,10 @@ void processAiPersonDetection(camera_fb_t* fb) {
     id: "prod_sensor_multi",
     name: "Cảm Biến Đa Năng Môi Trường MultiSensor M1",
     modelCode: "SENSOR_MULTI_M1",
-    category: "SENSOR",
-    categoryLabel: "Cảm Biến Đa Năng",
+    groupCode: "GRP_SENSOR",
+    groupName: "Cảm biến an toàn",
+    hardwareTypeCode: "HW_SENSOR_LP",
+    hardwareTypeName: "Mạch Cảm Biến Tiết Kiệm Pin (ESP32-C3)",
     mcu: "ESP32-C3 Ultra Low Power",
     flashSize: "4MB Dual-Bank",
     currentStableVersion: "v1.0.1",
@@ -355,8 +386,10 @@ void onSmokeDetected() {
     id: "prod_hub_controller",
     name: "Bộ Điều Khiển Trung Tâm Austec IoT Hub",
     modelCode: "CONTROLLER_IOT_HUB",
-    category: "CONTROLLER",
-    categoryLabel: "Bo Mạch Trung Tâm",
+    groupCode: "GRP_CONTROLLER",
+    groupName: "Bo mạch điều khiển trung tâm",
+    hardwareTypeCode: "HW_HUB_RS485",
+    hardwareTypeName: "Mạch Trung Tâm Modbus RS485 (ESP32-WROOM)",
     mcu: "ESP32-WROOM-32D Dual-Core",
     flashSize: "8MB Dual-Bank OTA",
     currentStableVersion: "v1.5.0",
@@ -392,7 +425,11 @@ export default function FirmwareOtaPage() {
   const [records, setRecords] = useState<OtaDeviceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  
+  // 2 Combobox Filter: Nhóm sản phẩm & Loại phần cứng
+  const [groupFilter, setGroupFilter] = useState<string>("ALL");
+  const [hardwareTypeFilter, setHardwareTypeFilter] = useState<string>("ALL");
+
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
   // Tab bên phải: "firmware" (Danh sách bản phát hành & tiến độ) hoặc "code" (Xem mã nguồn)
@@ -468,15 +505,35 @@ export default function FirmwareOtaPage() {
     return COMMERCIAL_MODELS.find(m => m.id === selectedModelId) || COMMERCIAL_MODELS[0];
   }, [selectedModelId]);
 
+  // Danh sách các loại phần cứng tương ứng với nhóm đang chọn
+  const availableHardwareTypes = useMemo(() => {
+    if (groupFilter === "ALL") return HARDWARE_TYPES;
+    return HARDWARE_TYPES.filter(h => h.groupCode === groupFilter);
+  }, [groupFilter]);
+
+  // Xử lý đổi nhóm sản phẩm
+  const handleGroupChange = (newGroup: string) => {
+    setGroupFilter(newGroup);
+    if (newGroup !== "ALL") {
+      const validHw = HARDWARE_TYPES.filter(h => h.groupCode === newGroup);
+      if (!validHw.some(h => h.code === hardwareTypeFilter)) {
+        setHardwareTypeFilter("ALL");
+      }
+    }
+  };
+
+  // Lọc mẫu thương phẩm theo cả Nhóm sản phẩm, Loại phần cứng và Tìm kiếm
   const filteredModels = useMemo(() => {
     return COMMERCIAL_MODELS.filter(m => {
-      const matchCat = categoryFilter === "ALL" || m.category === categoryFilter;
+      const matchGroup = groupFilter === "ALL" || m.groupCode === groupFilter;
+      const matchHw = hardwareTypeFilter === "ALL" || m.hardwareTypeCode === hardwareTypeFilter;
       const matchSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           m.modelCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          m.categoryLabel.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchCat && matchSearch;
+                          m.groupName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          m.hardwareTypeName.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchGroup && matchHw && matchSearch;
     });
-  }, [categoryFilter, searchQuery]);
+  }, [groupFilter, hardwareTypeFilter, searchQuery]);
 
   const modelFirmwares = useMemo(() => {
     return firmwares.filter(f => f.modelCode === currentModel.modelCode);
@@ -636,7 +693,7 @@ export default function FirmwareOtaPage() {
   return (
     <div className="h-[calc(100vh-65px)] flex flex-col min-h-0 overflow-hidden p-2.5 space-y-2 bg-slate-50 dark:bg-slate-950">
       
-      {/* THANH TIÊU ĐỀ TRÊN CÙNG - TINH GỌN, CHUẨN MÀU NEUTRAL */}
+      {/* THANH TIÊU ĐỀ TRÊN CÙNG */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div>
           <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
@@ -680,11 +737,11 @@ export default function FirmwareOtaPage() {
       <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 overflow-hidden">
         
         {/* ========================================================================= */}
-        {/* KHỐI 1 (BÊN TRÁI): KHO MẪU THƯƠNG PHẨM */}
+        {/* KHỐI 1 (BÊN TRÁI): KHO MẪU THƯƠNG PHẨM (2 COMBOBOX BỘ LỌC) */}
         {/* ========================================================================= */}
         <div className="w-full md:w-80 shrink-0 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
           
-          {/* Header & Filter */}
+          {/* Header & 2 Combobox Filter */}
           <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 space-y-2 shrink-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
@@ -694,7 +751,7 @@ export default function FirmwareOtaPage() {
               <span className="text-[10px] text-slate-400">Chọn mẫu để xem</span>
             </div>
 
-            {/* Ô tìm kiếm */}
+            {/* Ô tìm kiếm từ khóa */}
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
@@ -706,29 +763,43 @@ export default function FirmwareOtaPage() {
               />
             </div>
 
-            {/* Bộ lọc nhóm / loại */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[10px]">
-              {[
-                { id: "ALL", label: "Tất cả" },
-                { id: "DOOR", label: "Cửa cuốn" },
-                { id: "LOCK", label: "Khóa" },
-                { id: "UPS", label: "UPS" },
-                { id: "CAMERA", label: "Camera" },
-                { id: "SENSOR", label: "Cảm biến" },
-                { id: "CONTROLLER", label: "Bo mạch" },
-              ].map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoryFilter(cat.id)}
-                  className={`px-2 py-0.5 rounded font-medium whitespace-nowrap transition ${
-                    categoryFilter === cat.id
-                      ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                  }`}
+            {/* 2 COMBOBOX BỘ LỌC: NHÓM SẢN PHẨM & LOẠI PHẦN CỨNG */}
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Nhóm sản phẩm:
+                </label>
+                <select
+                  value={groupFilter}
+                  onChange={(e) => handleGroupChange(e.target.value)}
+                  className="w-full text-[11px] py-1 px-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 cursor-pointer"
                 >
-                  {cat.label}
-                </button>
-              ))}
+                  <option value="ALL">Tất cả nhóm</option>
+                  {PRODUCT_GROUPS.map((grp) => (
+                    <option key={grp.code} value={grp.code}>
+                      {grp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                  Loại phần cứng:
+                </label>
+                <select
+                  value={hardwareTypeFilter}
+                  onChange={(e) => setHardwareTypeFilter(e.target.value)}
+                  className="w-full text-[11px] py-1 px-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 cursor-pointer"
+                >
+                  <option value="ALL">Tất cả phần cứng</option>
+                  {availableHardwareTypes.map((hw) => (
+                    <option key={hw.code} value={hw.code}>
+                      {hw.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -736,7 +807,7 @@ export default function FirmwareOtaPage() {
           <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
             {filteredModels.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
-                Không tìm thấy mẫu thương phẩm phù hợp
+                Không tìm thấy mẫu thương phẩm phù hợp với bộ lọc
               </div>
             ) : (
               filteredModels.map((model) => {
@@ -765,7 +836,7 @@ export default function FirmwareOtaPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase truncate">
-                          {model.categoryLabel}
+                          {model.groupName}
                         </span>
                         <span className="text-[10px] px-1 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-mono shrink-0">
                           {releaseCount} fw
@@ -774,10 +845,10 @@ export default function FirmwareOtaPage() {
                       <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate mt-0.5">
                         {model.name}
                       </h4>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
-                        <span>{model.modelCode}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
+                        <span className="truncate max-w-[140px] font-mono">{model.hardwareTypeName}</span>
                         <span>•</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{model.currentStableVersion}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono shrink-0">{model.currentStableVersion}</span>
                       </div>
                     </div>
                   </div>
@@ -792,7 +863,7 @@ export default function FirmwareOtaPage() {
         {/* ========================================================================= */}
         <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
           
-          {/* Header Thông tin Mẫu Thương phẩm (Thu gọn tinh tế) */}
+          {/* Header Thông tin Mẫu Thương phẩm */}
           <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 shrink-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div className="flex items-center gap-3">
@@ -804,10 +875,13 @@ export default function FirmwareOtaPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase">
-                      {currentModel.categoryLabel}
+                      {currentModel.groupName}
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                      {currentModel.hardwareTypeName}
                     </span>
                     <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
-                      {currentModel.modelCode}
+                      Mã: {currentModel.modelCode}
                     </span>
                   </div>
                   <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
@@ -836,7 +910,7 @@ export default function FirmwareOtaPage() {
             </div>
           </div>
 
-          {/* THANH TAB CHUYỂN ĐỔI: KHO FIRMWARE & TIẾN ĐỘ vs MÃ NGUỒN CỐT LÕI */}
+          {/* THANH TAB CHUYỂN ĐỔI: KHO FIRMWARE vs MÃ NGUỒN CỐT LÕI */}
           <div className="flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shrink-0 text-xs">
             <div className="flex items-center gap-2">
               <button
@@ -887,12 +961,10 @@ export default function FirmwareOtaPage() {
             </div>
           </div>
 
-          {/* VÙNG NỘI DUNG CUỘN NỘI BỘ (KHÔNG GÂY SCROLL TOÀN TRANG) */}
+          {/* VÙNG NỘI DUNG CUỘN NỘI BỘ */}
           <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3.5">
             
-            {/* ===================================================================== */}
             {/* TAB 1: KHO BẢN PHÁT HÀNH FIRMWARE & TIẾN ĐỘ THIẾT BỊ NẠP */}
-            {/* ===================================================================== */}
             {activeRightTab === "firmware" ? (
               <div className="space-y-4">
                 
@@ -1055,9 +1127,7 @@ export default function FirmwareOtaPage() {
 
               </div>
             ) : (
-              /* ===================================================================== */
               /* TAB 2: XEM MÃ NGUỒN CỐT LÕI (FIRMWARE CODE PREVIEW) */
-              /* ===================================================================== */
               <div className="h-full flex flex-col min-h-0">
                 {!isCodeUnlocked ? (
                   <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-8 text-center flex flex-col items-center justify-center my-auto">
