@@ -10,6 +10,7 @@ import '../../chat/screens/chat_hub_screen.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import '../../settings/screens/app_settings_screen.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/network/api_client.dart';
 
 class OrbitalHubScreen extends StatefulWidget {
   const OrbitalHubScreen({super.key});
@@ -54,6 +55,23 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   bool _isChatButtonDismissed = false;
 
   StreamSubscription? _deviceUpdateSub;
+  List<dynamic> _realNotifications = [];
+  Timer? _notiTimer;
+
+  Future<void> _fetchNotifications() async {
+    try {
+      final res = await ApiClient().get('/api/notifications');
+      if (res.success && res.data != null && res.data['notifications'] is List) {
+        if (mounted) {
+          setState(() {
+            _realNotifications = res.data['notifications'];
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("[OrbitalHubScreen] Error fetching notifications: $e");
+    }
+  }
 
   @override
   void initState() {
@@ -68,6 +86,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
 
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+
+    // Nạp thông báo thật từ API và định kỳ kiểm tra thông báo mới
+    _fetchNotifications();
+    _notiTimer = Timer.periodic(const Duration(seconds: 15), (_) => _fetchNotifications());
 
     // Lắng nghe luồng cập nhật thiết bị thời gian thực & Local Cache
     _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
@@ -94,6 +116,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   void dispose() {
     _pulseController.dispose();
     _clockTimer.cancel();
+    _notiTimer?.cancel();
     _deviceUpdateSub?.cancel();
     super.dispose();
   }
@@ -169,79 +192,259 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
+  IconData _getNotiIcon(String? category) {
+    switch (category) {
+      case 'OTA_UPDATE':
+        return Icons.system_update_rounded;
+      case 'MAINTENANCE':
+        return Icons.build_circle_rounded;
+      case 'ALERT':
+        return Icons.warning_amber_rounded;
+      case 'PROMO':
+        return Icons.card_giftcard_rounded;
+      default:
+        return Icons.notifications_active_rounded;
+    }
+  }
+
+  Color _getNotiColor(String? category) {
+    switch (category) {
+      case 'OTA_UPDATE':
+        return AppTheme.cyanAccent;
+      case 'MAINTENANCE':
+        return AppTheme.amberWarning;
+      case 'ALERT':
+        return Colors.redAccent;
+      case 'PROMO':
+        return AppTheme.emeraldSuccess;
+      default:
+        return AppTheme.brandBlue;
+    }
+  }
+
   void _openNotificationCenter() {
+    _fetchNotifications();
     final isDark = AppTheme.isDarkMode;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: isDark ? AppTheme.surface : AppTheme.lightSurface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(top: BorderSide(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, width: 1.5)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(color: isDark ? AppTheme.textMuted : Colors.grey[400], borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                const Icon(Icons.notifications_active, color: AppTheme.cyanAccent, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  AppTheme.t("notifications"),
-                  style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _buildNotiItem("Cửa Cuốn Mặt Tiền (amtuong834) đã đóng an toàn 100%", "Lúc 08:15 • Remote RF #1", Icons.check_circle, AppTheme.emeraldSuccess, isDark),
-            _buildNotiItem("Chế độ Khóa Trẻ Em đã được kích hoạt", "Lúc 10:05 • App Mobile", Icons.security, AppTheme.cyanAccent, isDark),
-            _buildNotiItem("Nhiệt độ phòng khách đạt 32°C • Độ ẩm 68%", "Lúc 11:20 • Cảm biến Môi Trường", Icons.thermostat, AppTheme.amberWarning, isDark),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNotiItem(String title, String time, IconData icon, Color color, bool isDark) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.background : AppTheme.lightBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(color: isDark ? Colors.white : AppTheme.lightTextPrimary, fontSize: 12, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  time,
-                  style: TextStyle(color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary, fontSize: 10),
-                ),
-              ],
-            ),
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
           ),
-        ],
+          decoration: BoxDecoration(
+            color: isDark ? AppTheme.surface : AppTheme.lightSurface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(top: BorderSide(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, width: 1.5)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.textMuted : Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.notifications_active, color: AppTheme.cyanAccent, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        AppTheme.t("notifications"),
+                        style: TextStyle(
+                          color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_realNotifications.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        "${_realNotifications.length} thông báo",
+                        style: const TextStyle(
+                          color: AppTheme.cyanAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Danh sách thông báo thực từ API
+              if (_realNotifications.isEmpty)
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.notifications_none_rounded,
+                          size: 42,
+                          color: isDark ? AppTheme.textMuted : Colors.grey[400],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Không có thông báo mới",
+                          style: TextStyle(
+                            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Bạn đã cập nhật tất cả thông tin mới nhất từ hệ thống.",
+                          style: TextStyle(
+                            color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary,
+                            fontSize: 11,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _realNotifications.length,
+                    itemBuilder: (context, index) {
+                      final noti = _realNotifications[index];
+                      final title = noti['title']?.toString() ?? 'Thông báo hệ thống';
+                      final message = noti['message']?.toString() ?? '';
+                      final time = noti['sentAt']?.toString() ?? noti['createdAt']?.toString() ?? '';
+                      final category = noti['category']?.toString() ?? 'SYSTEM';
+                      final isRead = noti['isRead'] == true;
+                      final id = noti['id'];
+
+                      return InkWell(
+                        onTap: () {
+                          if (!isRead && id != null) {
+                            ApiClient().put('/api/notifications/$id/read');
+                            setSheetState(() {
+                              noti['isRead'] = true;
+                            });
+                            setState(() {
+                              noti['isRead'] = true;
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppTheme.background : AppTheme.lightBackground,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isRead
+                                  ? (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)
+                                  : AppTheme.cyanAccent.withValues(alpha: 0.4),
+                              width: isRead ? 1.0 : 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: _getNotiColor(category).withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _getNotiIcon(category),
+                                  color: _getNotiColor(category),
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            title,
+                                            style: TextStyle(
+                                              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                                              fontSize: 12,
+                                              fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        if (!isRead)
+                                          Container(
+                                            width: 6,
+                                            height: 6,
+                                            margin: const EdgeInsets.only(left: 6),
+                                            decoration: const BoxDecoration(
+                                              color: AppTheme.cyanAccent,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    if (message.isNotEmpty && message != title) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        message,
+                                        style: TextStyle(
+                                          color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary,
+                                          fontSize: 11,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      time,
+                                      style: TextStyle(
+                                        color: isDark ? AppTheme.textMuted.withValues(alpha: 0.7) : Colors.grey[500],
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -552,7 +755,25 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   ),
                   const SizedBox(width: 2),
                   IconButton(
-                    icon: Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
+                        if (_realNotifications.any((n) => n['isRead'] != true))
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.cyanAccent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                     tooltip: AppTheme.t("notifications"),
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(minWidth: 28, minHeight: 28),

@@ -7,9 +7,9 @@ import { authenticate, requireRole } from '../../core/middlewares/auth.middlewar
 export class NotificationsController {
   constructor(private service: NotificationsService) {}
 
+  // Admin endpoint: gets all notifications (SENT, SCHEDULED, DRAFT)
   @Get('/admin/notifications', authenticate)
-  @Get('/notifications', authenticate)
-  public async getNotifications(_req: Request, res: Response) {
+  public async getAdminNotifications(_req: Request, res: Response) {
     try {
       const notifications = await this.service.getAll();
       res.json({ success: true, notifications });
@@ -18,15 +18,33 @@ export class NotificationsController {
     }
   }
 
+  // Public / Mobile endpoint: gets ONLY active notifications whose scheduled time has arrived (SENT)
+  @Get('/notifications')
+  @Get('/customer/notifications')
+  public async getClientNotifications(req: Request, res: Response) {
+    try {
+      const filter = {
+        userId: req.query.userId ? String(req.query.userId) : undefined,
+        model: req.query.model ? String(req.query.model) : undefined,
+        role: req.query.role ? String(req.query.role) : 'CUSTOMER',
+      };
+      const notifications = await this.service.getPublicNotifications(filter);
+      res.json({ success: true, notifications });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
   @Post('/admin/notifications', authenticate, requireRole(['ADMIN', 'CSKH']))
-  @Post('/notifications', authenticate, requireRole(['ADMIN', 'CSKH']))
   public async createNotification(req: Request, res: Response) {
     try {
       const notification = await this.service.create(req.body);
       res.json({
         success: true,
         notification,
-        message: 'Đã phát sóng thông báo thành công!',
+        message: notification.status === 'SCHEDULED'
+          ? 'Đã lên lịch phát sóng thông báo thành công!'
+          : 'Đã phát sóng thông báo thành công!',
       });
     } catch (e: any) {
       res.status(400).json({ success: false, error: e.message });
@@ -34,7 +52,6 @@ export class NotificationsController {
   }
 
   @Delete('/admin/notifications/:id', authenticate, requireRole(['ADMIN']))
-  @Delete('/notifications/:id', authenticate, requireRole(['ADMIN']))
   public async deleteNotification(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
@@ -45,8 +62,8 @@ export class NotificationsController {
     }
   }
 
+  @Put('/notifications/:id/read')
   @Put('/admin/notifications/:id/read', authenticate)
-  @Put('/notifications/:id/read', authenticate)
   public async markAsRead(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);

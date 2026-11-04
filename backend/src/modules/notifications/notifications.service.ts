@@ -8,6 +8,10 @@ export class NotificationsService {
     return this.repo.getAll();
   }
 
+  public async getPublicNotifications(filter?: { role?: string; userId?: string; model?: string }): Promise<NotificationEntity[]> {
+    return this.repo.getPublicNotifications(filter);
+  }
+
   public async create(dto: CreateNotificationDto): Promise<NotificationEntity> {
     if (!dto.title || dto.title.trim().length === 0) {
       throw new Error('Tiêu đề thông báo không được để trống');

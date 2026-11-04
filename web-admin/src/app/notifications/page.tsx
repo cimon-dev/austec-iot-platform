@@ -115,6 +115,7 @@ export default function NotificationsManagementPage() {
         category: composeForm.category,
         channel: composeForm.channel,
         target: composeForm.targetType === "ALL" ? "Tất cả khách hàng (Toàn hệ thống)" : `Model: ${composeForm.targetModel}`,
+        targetModel: composeForm.targetType === "ALL" ? undefined : composeForm.targetModel,
         status: composeForm.scheduleMode === "NOW" ? "SENT" : "SCHEDULED",
         scheduleTime: composeForm.scheduleMode === "NOW" ? undefined : composeForm.scheduleTime
       };

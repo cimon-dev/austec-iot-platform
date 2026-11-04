@@ -10,4 +10,5 @@ export interface CreateNotificationDto {
   status?: 'SENT' | 'SCHEDULED' | 'DRAFT';
   type?: string;
   scheduleTime?: string;
+  targetModel?: string;
 }
