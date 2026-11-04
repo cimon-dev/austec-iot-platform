@@ -527,6 +527,18 @@ class IoTGatewayClient {
 
     final bool isRelayOn = props['is_relay_on'] == true || props['relay_state'] == 'ON' || props['state'] == 'ON';
 
+    final String roleStr = (d['roleInHome'] ?? d['userRole'] ?? 'OWNER').toString().toUpperCase();
+    final FamilyRole uRole = (roleStr == 'GUEST')
+        ? FamilyRole.guest
+        : (roleStr == 'MEMBER' || roleStr == 'FAMILY')
+            ? FamilyRole.member
+            : FamilyRole.owner;
+
+    final bool canControl = d['canControl'] != false && d['can_control'] != false;
+    final bool canViewHistory = d['canViewHistory'] != false && d['can_view_history'] != false;
+    final bool canChildLock = d['canChildLock'] == true || d['can_child_lock'] == true || uRole == FamilyRole.owner;
+    final bool canConfig = d['canConfig'] == true || d['can_config'] == true || uRole == FamilyRole.owner;
+
     return DeviceItem(
       id: d['id']?.toString() ?? hwId,
       hardwareId: hwId,
@@ -548,6 +560,11 @@ class IoTGatewayClient {
               ? d['installationAddress']['fullText']
               : d['installationAddress']) ?? "").toString(),
       isOnline: d['isOnline'] == true,
+      userRole: uRole,
+      canControl: canControl,
+      canViewHistory: canViewHistory,
+      canChildLock: canChildLock,
+      canConfig: canConfig,
       positionPercent: pos,
       batteryPercent: (props['battery_pct'] as num?)?.toInt() ?? 92,
       motorCurrentA: (props['motor_current'] as num?)?.toDouble() ?? 2.4,
@@ -595,6 +612,26 @@ class IoTGatewayClient {
     final startTime = DateTime.now();
     String cryptoSig = "SIG-${DateTime.now().millisecondsSinceEpoch}";
     int netLatency = 120;
+
+    final device = findByHardwareId(hardwareId);
+    if (device != null) {
+      if (!device.canControl) {
+        return CommandResult(
+          success: false,
+          latencyMs: 15,
+          message: "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển",
+          cryptoSignature: cryptoSig,
+        );
+      }
+      if (action == "TOGGLE_CHILD_LOCK" && !device.canChildLock) {
+        return CommandResult(
+          success: false,
+          latencyMs: 15,
+          message: "Bạn không có quyền bật/tắt Khóa an toàn trẻ em",
+          cryptoSignature: cryptoSig,
+        );
+      }
+    }
 
     // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
     final isSocket = hardwareId.toUpperCase().startsWith("OCAM") || hardwareId.toUpperCase().contains("SOCKET");
@@ -644,6 +681,14 @@ class IoTGatewayClient {
         if (data['latencyMs'] != null) {
           netLatency = (data['latencyMs'] as num).toInt();
         }
+      } else if (res.statusCode == 403) {
+        final data = jsonDecode(res.body);
+        return CommandResult(
+          success: false,
+          latencyMs: 25,
+          message: data['error'] ?? 'Bạn không có quyền thực hiện thao tác này',
+          cryptoSignature: cryptoSig,
+        );
       }
     } catch (_) {
       // Offline fallback
@@ -651,7 +696,6 @@ class IoTGatewayClient {
       await Future.delayed(Duration(milliseconds: delayMs));
     }
 
-    final device = findByHardwareId(hardwareId);
     if (device != null) {
       final nowStr = "${DateTime.now().day.toString().padLeft(2, '0')}/${DateTime.now().month.toString().padLeft(2, '0')}/${DateTime.now().year} ${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}:${DateTime.now().second.toString().padLeft(2, '0')}";
 

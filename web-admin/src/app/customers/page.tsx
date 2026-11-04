@@ -94,9 +94,44 @@ function CustomersPageContent() {
     }
   }, []);
 
+  // Family Matrix Tab State
+  const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>([]);
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("");
+  const [selectedHardwareId, setSelectedHardwareId] = useState<string>("");
+  const [revokeTarget, setRevokeTarget] = useState<{ memberId: string; memberName: string; hwId: string } | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [isLoadingMatrix, setIsLoadingMatrix] = useState(false);
+
+  const fetchMatrix = useCallback(async () => {
+    setIsLoadingMatrix(true);
+    try {
+      const data = await customersService.getMatrixData();
+      if (Array.isArray(data) && data.length > 0) {
+        setMatrixData(data);
+        setSelectedOwnerId((prev) => {
+          if (prev && data.some((o) => o.ownerId === prev)) return prev;
+          return data[0].ownerId;
+        });
+        setSelectedHardwareId((prev) => {
+          const owner = data.find((o) => o.ownerId === selectedOwnerId) || data[0];
+          if (owner && owner.devices.length > 0) {
+            if (prev && owner.devices.some((d) => d.hardwareId === prev)) return prev;
+            return owner.devices[0].hardwareId;
+          }
+          return "";
+        });
+      }
+    } catch (err: any) {
+      console.warn("Lỗi nạp ma trận phân quyền:", err);
+    } finally {
+      setIsLoadingMatrix(false);
+    }
+  }, [selectedOwnerId]);
+
   useEffect(() => {
     fetchCustomers();
-  }, [fetchCustomers]);
+    fetchMatrix();
+  }, [fetchCustomers, fetchMatrix]);
 
   const handleDeleteCustomers = async (ids: string[]) => {
     let deleted = 0;
@@ -113,14 +148,8 @@ function CustomersPageContent() {
       setViewCustomer(null);
     }
     toast.success(`Đã xóa ${deleted} khách hàng thành công!`);
+    fetchMatrix();
   };
-
-  // Family Matrix Tab State
-  const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>([]);
-  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("USR-008712");
-  const [selectedHardwareId, setSelectedHardwareId] = useState<string>("AT-DOOR-88239A01");
-  const [revokeTarget, setRevokeTarget] = useState<{ memberId: string; memberName: string; hwId: string } | null>(null);
-  const [isRevoking, setIsRevoking] = useState(false);
 
   // Toggle account active status
   const handleToggleAccountStatus = async (customerId: string) => {
@@ -214,6 +243,7 @@ function CustomersPageContent() {
     field: "canControl" | "canViewHistory" | "canChildLock" | "canConfig" | "scheduleLimitActive"
   ) => {
     const hwId = selectedHardwareId;
+    let nextVal = false;
     setMatrixData((prev) =>
       prev.map((owner) => ({
         ...owner,
@@ -223,14 +253,17 @@ function CustomersPageContent() {
             ...dev,
             members: dev.members.map((m) => {
               if (m.id !== memberId) return m;
-              return { ...m, [field]: !m[field] };
+              nextVal = !m[field];
+              return { ...m, [field]: nextVal };
             }),
           };
         }),
       }))
     );
 
-    customersService.updateMemberPermission(hwId, memberId, { [field]: true }).catch(() => {});
+    customersService.updateMemberPermission(hwId, memberId, { [field]: nextVal }).catch((err) => {
+      console.warn("Lỗi cập nhật quyền:", err);
+    });
     toast.success("Đã cập nhật phân quyền thành viên tức thì!");
   };
 
@@ -262,22 +295,44 @@ function CustomersPageContent() {
   };
 
   // Add Member
-  const handleAddMemberToMatrix = (newMember: MemberPermissionItem) => {
+  const handleAddMemberToMatrix = async (newMember: MemberPermissionItem) => {
     const hwId = selectedHardwareId;
-    setMatrixData((prev) =>
-      prev.map((owner) => ({
-        ...owner,
-        devices: owner.devices.map((dev) => {
-          if (dev.hardwareId !== hwId) return dev;
-          return {
-            ...dev,
-            members: [newMember, ...dev.members],
-          };
-        }),
-      }))
-    );
-    customersService.addMember(hwId, newMember).catch(() => {});
-    toast.success(`Đã cấp quyền điều khiển cho ${newMember.memberName}`);
+    try {
+      const res = await customersService.addMember(hwId, newMember);
+      const savedMember: MemberPermissionItem = res.member
+        ? {
+            id: res.member.id,
+            userId: res.member.user_id || res.member.userId || newMember.userId,
+            memberName: res.member.member_name || res.member.memberName || newMember.memberName,
+            phoneNumber: res.member.phone_number || res.member.phoneNumber || newMember.phoneNumber,
+            role: res.member.role || newMember.role,
+            canControl: res.member.can_control ?? res.member.canControl ?? newMember.canControl,
+            canViewHistory: res.member.can_view_history ?? res.member.canViewHistory ?? newMember.canViewHistory,
+            canChildLock: res.member.can_child_lock ?? res.member.canChildLock ?? newMember.canChildLock,
+            canConfig: res.member.can_config ?? res.member.canConfig ?? newMember.canConfig,
+            scheduleLimitActive: res.member.schedule_limit_active ?? res.member.scheduleLimitActive ?? newMember.scheduleLimitActive,
+            accessStartTime: res.member.access_start_time || newMember.accessStartTime,
+            accessEndTime: res.member.access_end_time || newMember.accessEndTime,
+            accessDays: newMember.accessDays,
+          }
+        : newMember;
+
+      setMatrixData((prev) =>
+        prev.map((owner) => ({
+          ...owner,
+          devices: owner.devices.map((dev) => {
+            if (dev.hardwareId !== hwId) return dev;
+            return {
+              ...dev,
+              members: [savedMember, ...dev.members.filter((m) => m.id !== savedMember.id)],
+            };
+          }),
+        }))
+      );
+      toast.success(`Đã cấp quyền điều khiển cho ${newMember.memberName}`);
+    } catch (e: any) {
+      toast.error(`Lỗi cấp quyền: ${e.message}`);
+    }
   };
 
   if (!canView("mod_customer") && !canView("mod_user")) {

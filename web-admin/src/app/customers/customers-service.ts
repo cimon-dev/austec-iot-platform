@@ -1,11 +1,19 @@
 import { apiClient } from "@/services/api-client";
-import { CustomerAccount } from "./types";
+import { CustomerAccount, MatrixOwnerItem } from "./types";
 
 export const customersService = {
   async getCustomers(): Promise<CustomerAccount[]> {
     const res = await apiClient.get<{ customers: CustomerAccount[] }>("/api/admin/customers");
     if (res.success && Array.isArray(res.customers)) {
       return res.customers;
+    }
+    return [];
+  },
+
+  async getMatrixData(): Promise<MatrixOwnerItem[]> {
+    const res = await apiClient.get<{ success: boolean; matrix: MatrixOwnerItem[] }>("/api/devices/matrix/all");
+    if (res.success && Array.isArray(res.matrix)) {
+      return res.matrix;
     }
     return [];
   },

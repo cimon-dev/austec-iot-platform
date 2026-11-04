@@ -44,16 +44,22 @@ export class DeviceOperationsController {
       const targetUser = req.user!;
       if (this.client.getConnected()) {
         const query = `
-          SELECT di.*, dp.role as user_role, dp.can_control, dp.can_config,
+          SELECT di.*, COALESCE(dp.role, 'OWNER') as user_role,
+                 COALESCE(dp.can_control, true) as can_control,
+                 COALESCE(dp.can_view_history, true) as can_view_history,
+                 COALESCE(dp.can_child_lock, true) as can_child_lock,
+                 COALESCE(dp.can_config, true) as can_config,
+                 COALESCE(dp.schedule_limit_active, false) as schedule_limit_active,
+                 dp.access_start_time, dp.access_end_time, dp.access_days,
                  m.id as model_id, m.model_name, m.model_code, m.properties_config, m.image_url
           FROM device_instances di
-          JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id)
+          LEFT JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id) AND (dp.user_id = $1 OR (dp.phone_number = $2 AND $2 != ''))
           LEFT JOIN device_inventory inv ON LOWER(inv.hardware_id) = LOWER(di.hardware_id)
           LEFT JOIN device_models m ON (m.id = inv.model_id OR LOWER(m.model_name) = LOWER(inv.model_name) OR LOWER(m.model_name) = LOWER(di.custom_name))
-          WHERE dp.user_id = $1
+          WHERE dp.user_id = $1 OR (dp.phone_number = $2 AND $2 != '') OR di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '')
           ORDER BY di.created_at DESC
         `;
-        const result = await this.client.query(query, [targetUser.id]);
+        const result = await this.client.query(query, [targetUser.id, targetUser.phoneNumber || '']);
 
         // Load từ điển thuộc tính động
         const propRes = await this.client.query(`SELECT * FROM device_properties ORDER BY id ASC`);
@@ -110,6 +116,15 @@ export class DeviceOperationsController {
               imageUrl: r.image_url,
               isOnline: r.is_online ?? true,
               roleInHome: r.user_role || 'OWNER',
+              userRole: r.user_role || 'OWNER',
+              canControl: r.can_control !== false,
+              canViewHistory: r.can_view_history !== false,
+              canChildLock: Boolean(r.can_child_lock),
+              canConfig: Boolean(r.can_config),
+              scheduleLimitActive: Boolean(r.schedule_limit_active),
+              accessStartTime: r.access_start_time || '00:00',
+              accessEndTime: r.access_end_time || '23:59',
+              accessDays: r.access_days,
               warrantyUntil,
               warrantyCode,
               currentProperties: r.current_properties || {},
@@ -586,6 +601,84 @@ export class DeviceOperationsController {
         return;
       }
 
+      // 1. Kiểm tra quyền hạn của người dùng (RBAC & Permissions Enforcement)
+      if (targetUser.role !== 'ADMIN') {
+        if (this.client.getConnected()) {
+          const permRes = await this.client.query(
+            `SELECT * FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND (user_id = $2 OR (phone_number = $3 AND $3 != ''))`,
+            [hardwareId, targetUser.id, targetUser.phoneNumber || '']
+          );
+
+          if (permRes.rows.length === 0) {
+            // Kiểm tra xem có phải là chủ sở hữu trực tiếp của thiết bị
+            const instRes = await this.client.query(
+              `SELECT * FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) AND (owner_id = $2 OR (owner_phone = $3 AND $3 != ''))`,
+              [hardwareId, targetUser.id, targetUser.phoneNumber || '']
+            );
+            if (instRes.rows.length === 0) {
+              res.status(403).json({
+                success: false,
+                error: 'Bạn không có quyền truy cập hoặc điều khiển thiết bị này',
+              });
+              return;
+            }
+          } else {
+            const perm = permRes.rows[0];
+            if (perm.role !== 'OWNER') {
+              if (perm.can_control === false) {
+                res.status(403).json({
+                  success: false,
+                  error: 'Quyền điều khiển thiết bị của bạn đã bị chủ nhà tạm khóa',
+                });
+                return;
+              }
+
+              if (command === 'TOGGLE_CHILD_LOCK' && perm.can_child_lock === false) {
+                res.status(403).json({
+                  success: false,
+                  error: 'Bạn không có quyền bật/tắt Khóa an toàn trẻ em',
+                });
+                return;
+              }
+
+              if (perm.schedule_limit_active) {
+                const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
+                const currentHours = nowVN.getUTCHours();
+                const currentMinutes = nowVN.getUTCMinutes();
+                const currentDayIdx = (nowVN.getUTCDay() + 6) % 7; // 0: Thứ 2 -> 6: Chủ Nhật
+
+                let days = [true, true, true, true, true, true, true];
+                if (Array.isArray(perm.access_days)) {
+                  days = perm.access_days;
+                } else if (typeof perm.access_days === 'string') {
+                  try { days = JSON.parse(perm.access_days); } catch (_) {}
+                }
+
+                if (days[currentDayIdx] === false) {
+                  res.status(403).json({
+                    success: false,
+                    error: 'Hôm nay bạn không được phép điều khiển thiết bị theo lịch phân quyền của chủ nhà',
+                  });
+                  return;
+                }
+
+                const startTime = perm.access_start_time || '00:00';
+                const endTime = perm.access_end_time || '23:59';
+                const curTimeStr = `${String(currentHours).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')}`;
+
+                if (curTimeStr < startTime || curTimeStr > endTime) {
+                  res.status(403).json({
+                    success: false,
+                    error: `Ngoài khung giờ điều khiển cho phép (${startTime} - ${endTime})`,
+                  });
+                  return;
+                }
+              }
+            }
+          }
+        }
+      }
+
       const result = await this.commandService.dispatchCommand({
         hardwareId,
         command,
@@ -745,6 +838,165 @@ export class DeviceOperationsController {
       }
 
       res.json({ success: true, logs: [], total: 0 });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * GET /api/devices/matrix/all
+   * GET /api/devices/matrix
+   * Lấy dữ liệu ma trận phân quyền toàn hệ thống (Chủ nhà -> Thiết bị -> Thành viên phụ)
+   */
+  @Get('/matrix/all', authenticate)
+  @Get('/matrix', authenticate)
+  public async getDeviceMatrix(_req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (!this.client.getConnected()) {
+        res.json({ success: true, matrix: [], totalOwners: 0 });
+        return;
+      }
+
+      // 1. Lấy tất cả khách hàng
+      const userRes = await this.client.query(
+        `SELECT id, full_name, email, phone_number, address, province, devices 
+         FROM users 
+         WHERE role = 'CUSTOMER' 
+         ORDER BY registered_at DESC`
+      );
+
+      // 2. Lấy tất cả thiết bị
+      const instRes = await this.client.query(
+        `SELECT di.*, inv.model_name as inv_model_name, m.model_name as def_model_name
+         FROM device_instances di
+         LEFT JOIN device_inventory inv ON LOWER(inv.hardware_id) = LOWER(di.hardware_id)
+         LEFT JOIN device_models m ON (m.id = inv.model_id OR LOWER(m.model_name) = LOWER(inv.model_name))
+         ORDER BY di.created_at DESC`
+      );
+
+      // 3. Lấy tất cả quyền
+      const permRes = await this.client.query(
+        `SELECT dp.*, u.full_name as user_full_name, u.phone_number as user_phone, u.email as user_email
+         FROM device_permissions dp
+         LEFT JOIN users u ON u.id = dp.user_id
+         ORDER BY dp.created_at ASC`
+      );
+
+      const allPermissions = permRes.rows;
+      const allInstances = instRes.rows;
+      const matrixOwners: any[] = [];
+
+      for (const u of userRes.rows) {
+        let userDevicesJson: any[] = [];
+        if (Array.isArray(u.devices)) {
+          userDevicesJson = u.devices;
+        } else if (typeof u.devices === 'string') {
+          try { userDevicesJson = JSON.parse(u.devices); } catch (_) {}
+        }
+
+        const matchedInstances = allInstances.filter(inst => 
+          (inst.owner_id && inst.owner_id === u.id) ||
+          (inst.owner_phone && u.phone_number && inst.owner_phone === u.phone_number) ||
+          userDevicesJson.some(ud => (ud.hardwareId || '').toLowerCase() === (inst.hardware_id || '').toLowerCase())
+        );
+
+        const ownerPermHwIds = allPermissions
+          .filter(p => (p.user_id === u.id || (p.phone_number && p.phone_number === u.phone_number)) && p.role === 'OWNER')
+          .map(p => (p.hardware_id || '').toLowerCase());
+
+        const ownerDevicesMap = new Map<string, any>();
+
+        for (const inst of matchedInstances) {
+          const hw = (inst.hardware_id || '').toUpperCase();
+          ownerDevicesMap.set(hw, {
+            hardwareId: hw,
+            deviceName: inst.custom_name || inst.model_name || 'Cửa Cuốn Austec',
+            modelName: inst.inv_model_name || inst.def_model_name || inst.model_name || 'Austec Titadoor A900 Super',
+            deviceType: inst.device_type || 'Cửa cuốn',
+            isOnline: inst.is_online ?? true,
+            subscriptionType: inst.subscription_type || 'LIMITED',
+          });
+        }
+
+        for (const ud of userDevicesJson) {
+          const hw = (ud.hardwareId || '').toUpperCase();
+          if (hw && !ownerDevicesMap.has(hw)) {
+            ownerDevicesMap.set(hw, {
+              hardwareId: hw,
+              deviceName: ud.modelName || 'Cửa Cuốn Austec',
+              modelName: ud.modelName || 'Austec Titadoor A900 Super',
+              deviceType: ud.deviceType || 'Cửa cuốn',
+              isOnline: ud.isOnline ?? true,
+              subscriptionType: 'LIMITED',
+            });
+          }
+        }
+
+        for (const hwLower of ownerPermHwIds) {
+          const hwUpper = hwLower.toUpperCase();
+          if (!ownerDevicesMap.has(hwUpper)) {
+            const inst = allInstances.find(i => (i.hardware_id || '').toLowerCase() === hwLower);
+            ownerDevicesMap.set(hwUpper, {
+              hardwareId: hwUpper,
+              deviceName: inst?.custom_name || 'Cửa Cuốn Austec',
+              modelName: inst?.model_name || 'Austec Titadoor A900 Super',
+              deviceType: inst?.device_type || 'Cửa cuốn',
+              isOnline: inst?.is_online ?? true,
+              subscriptionType: inst?.subscription_type || 'LIMITED',
+            });
+          }
+        }
+
+        const ownerDevicesList: any[] = [];
+        for (const dev of ownerDevicesMap.values()) {
+          const hwLower = dev.hardwareId.toLowerCase();
+          const devMembers = allPermissions
+            .filter(p => (p.hardware_id || '').toLowerCase() === hwLower && p.role !== 'OWNER')
+            .map(p => {
+              let days = [true, true, true, true, true, true, false];
+              if (Array.isArray(p.access_days)) {
+                days = p.access_days;
+              } else if (typeof p.access_days === 'string') {
+                try { days = JSON.parse(p.access_days); } catch (_) {}
+              }
+              return {
+                id: p.id,
+                userId: p.user_id,
+                memberName: p.member_name || p.user_full_name || 'Thành viên',
+                phoneNumber: p.phone_number || p.user_phone || '',
+                role: p.role || 'MEMBER',
+                canControl: p.can_control !== false,
+                canViewHistory: p.can_view_history !== false,
+                canChildLock: Boolean(p.can_child_lock),
+                canConfig: Boolean(p.can_config),
+                scheduleLimitActive: Boolean(p.schedule_limit_active),
+                accessStartTime: p.access_start_time || '08:00',
+                accessEndTime: p.access_end_time || '18:00',
+                accessDays: days,
+              };
+            });
+
+          ownerDevicesList.push({
+            ...dev,
+            members: devMembers,
+          });
+        }
+
+        matrixOwners.push({
+          ownerId: u.id,
+          ownerName: u.full_name,
+          phoneNumber: u.phone_number || '---',
+          email: u.email || '',
+          address: u.address || u.province || 'Hà Nội',
+          devices: ownerDevicesList,
+        });
+      }
+
+      res.json({
+        success: true,
+        matrix: matrixOwners,
+        totalOwners: matrixOwners.length,
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

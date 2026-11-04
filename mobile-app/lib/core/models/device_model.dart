@@ -70,7 +70,15 @@ class DeviceItem {
   final String warrantyUntil;
   final String warrantyCode;
   final FamilyRole userRole;
+  final bool canControl;
+  final bool canViewHistory;
+  final bool canChildLock;
+  final bool canConfig;
   String ownerName;
+
+  bool get isOwner => userRole == FamilyRole.owner;
+  bool get isMember => userRole == FamilyRole.member;
+  bool get isGuest => userRole == FamilyRole.guest;
 
   // Thuộc tính động từ Mẫu thương phẩm (Dynamic Schema)
   Map<String, dynamic> currentProperties;
@@ -153,6 +161,10 @@ class DeviceItem {
     this.warrantyUntil = "2028-10-21",
     this.warrantyCode = "EW-AUSTEC-24M",
     this.userRole = FamilyRole.owner,
+    this.canControl = true,
+    this.canViewHistory = true,
+    this.canChildLock = true,
+    this.canConfig = true,
     this.ownerName = "Chủ sở hữu",
     this.subscriptionType = 'LIMITED',
     this.subscriptionExpiresAt = '2027-10-21T00:00:00.000Z',
