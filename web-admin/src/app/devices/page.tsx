@@ -120,6 +120,9 @@ function DevicesManagementContent() {
         {activeTab === "import" && (
           <DeviceImportTab 
             devices={devices}
+            models={models}
+            groups={groups}
+            deviceTypes={deviceTypes}
             onImportSuccess={(newDevs) => setDevices(prev => [...newDevs, ...prev])}
             switchTab={switchTab}
             canCreate={canCreate("mod_dev")}

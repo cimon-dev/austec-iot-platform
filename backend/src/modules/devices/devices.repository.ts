@@ -611,16 +611,22 @@ export class DevicesRepository {
     const finalLat = (data.lat != null && !isNaN(Number(data.lat))) ? Number(data.lat) : ((data.latitude != null && !isNaN(Number(data.latitude))) ? Number(data.latitude) : 21.028511);
     const finalLng = (data.lng != null && !isNaN(Number(data.lng))) ? Number(data.lng) : ((data.longitude != null && !isNaN(Number(data.longitude))) ? Number(data.longitude) : 105.854167);
 
+    const batchNumber = data.batchNumber || data.batch_number || '';
+    const macAddress = data.macAddress || data.mac_address || '';
+    const productionDate = data.productionDate || data.production_date || '';
+
     try {
       // 1. Insert into device_inventory
       await this.client.query(
-        `INSERT INTO device_inventory (hardware_id, model_name, device_type, supplier, status, created_at)
-         VALUES ($1, $2, $3, 'Austec Smart Factory', 'IN_USE', NOW())
+        `INSERT INTO device_inventory (hardware_id, model_name, device_type, batch_number, mac_address, production_date, supplier, status, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Austec Smart Factory', 'IN_WAREHOUSE', NOW())
          ON CONFLICT (hardware_id) DO UPDATE SET
            model_name = EXCLUDED.model_name,
            device_type = EXCLUDED.device_type,
-           status = EXCLUDED.status`,
-        [hwId, model, type]
+           batch_number = COALESCE(NULLIF(EXCLUDED.batch_number, ''), device_inventory.batch_number),
+           mac_address = COALESCE(NULLIF(EXCLUDED.mac_address, ''), device_inventory.mac_address),
+           production_date = COALESCE(NULLIF(EXCLUDED.production_date, ''), device_inventory.production_date)`,
+        [hwId, model, type, batchNumber, macAddress, productionDate]
       );
 
       // 2. Insert into device_instances
@@ -678,6 +684,9 @@ export class DevicesRepository {
         subscriptionType: r.subscription_type,
         subscriptionExpiresAt: r.subscription_expires_at,
         subscriptionStatus: r.subscription_status,
+        batchNumber: batchNumber,
+        macAddress: macAddress,
+        productionDate: productionDate,
         createdAt: r.created_at,
       };
     } catch (e: any) {
