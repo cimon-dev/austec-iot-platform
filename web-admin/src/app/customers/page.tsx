@@ -6,7 +6,6 @@ import { useSearchParams } from "next/navigation";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { CustomerAccount, MatrixOwnerItem, MemberPermissionItem } from "./types";
-import { INITIAL_FAMILY_MATRIX } from "./mock-data";
 import { customersService } from "./customers-service";
 import {
   CustomerHeader,
@@ -117,7 +116,7 @@ function CustomersPageContent() {
   };
 
   // Family Matrix Tab State
-  const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>(INITIAL_FAMILY_MATRIX);
+  const [matrixData, setMatrixData] = useState<MatrixOwnerItem[]>([]);
   const [selectedOwnerId, setSelectedOwnerId] = useState<string>("USR-008712");
   const [selectedHardwareId, setSelectedHardwareId] = useState<string>("AT-DOOR-88239A01");
   const [revokeTarget, setRevokeTarget] = useState<{ memberId: string; memberName: string; hwId: string } | null>(null);
@@ -281,8 +280,8 @@ function CustomersPageContent() {
     toast.success(`Đã cấp quyền điều khiển cho ${newMember.memberName}`);
   };
 
-  if (!canView("mod_user")) {
-    return <AccessDenied moduleId="mod_user" moduleName="Quản Lý Khách Hàng & Phân Quyền Gia Đình" />;
+  if (!canView("mod_customer") && !canView("mod_user")) {
+    return <AccessDenied moduleId="mod_customer" moduleName="Quản Lý Khách Hàng & Phân Quyền Gia Đình" />;
   }
 
   return (

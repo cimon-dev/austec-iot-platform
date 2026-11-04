@@ -53,21 +53,21 @@ function SidebarNavigation({
   const [userMenuOpen, setUserMenuOpen] = useState(true);
 
   const deviceSubmodules = [
-    { id: "groups", label: language === "vi" ? "Nhóm sản phẩm" : "Product Groups", href: "/devices?tab=groups" },
-    { id: "types", label: language === "vi" ? "Loại phần cứng" : "Hardware Types", href: "/devices?tab=types" },
-    { id: "properties", label: language === "vi" ? "Từ điển thuộc tính" : "Schema Properties", href: "/devices?tab=properties" },
-    { id: "models", label: language === "vi" ? "Mẫu thương phẩm" : "Device Models", href: "/devices?tab=models" },
-    { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/devices?tab=import" },
-    { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/devices?tab=list" },
-    { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/devices/firmware" },
-  ];
+    { id: "groups", label: language === "vi" ? "Nhóm sản phẩm" : "Product Groups", href: "/devices?tab=groups", perm: canView("mod_dev") },
+    { id: "types", label: language === "vi" ? "Loại phần cứng" : "Hardware Types", href: "/devices?tab=types", perm: canView("mod_dev") },
+    { id: "properties", label: language === "vi" ? "Từ điển thuộc tính" : "Schema Properties", href: "/devices?tab=properties", perm: canView("mod_dev") },
+    { id: "models", label: language === "vi" ? "Mẫu thương phẩm" : "Device Models", href: "/devices?tab=models", perm: canView("mod_dev") },
+    { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/devices?tab=import", perm: canView("mod_dev") },
+    { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/devices?tab=list", perm: canView("mod_dev") },
+    { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/devices/firmware", perm: canView("mod_ota") || canView("mod_dev") },
+  ].filter(s => s.perm);
 
   const userSubmodules = [
-    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin" },
-    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles" },
-    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts" },
-    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix" },
-  ];
+    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin", perm: canView("mod_user") },
+    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles", perm: canView("mod_user") },
+    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts", perm: canView("mod_customer") || canView("mod_user") },
+    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix", perm: canView("mod_customer") || canView("mod_user") },
+  ].filter(s => s.perm);
 
   return (
     <nav className="p-2 space-y-1.5 overflow-y-auto max-h-[calc(100vh-140px)]">
@@ -90,7 +90,7 @@ function SidebarNavigation({
       )}
 
       {/* 2. Device Management (Collapsible) */}
-      {canView("mod_dev") && (
+      {(canView("mod_dev") || canView("mod_ota")) && deviceSubmodules.length > 0 && (
         <div>
           {!isCollapsed ? (
             <div>
@@ -146,7 +146,7 @@ function SidebarNavigation({
       )}
 
       {/* 3. User & Access Management (Collapsible) */}
-      {canView("mod_user") && (
+      {(canView("mod_user") || canView("mod_customer")) && userSubmodules.length > 0 && (
         <div>
           {!isCollapsed ? (
             <div>
@@ -224,7 +224,7 @@ function SidebarNavigation({
       )}
 
       {/* 5. Operations & Support */}
-      {(canView("mod_cskh") || canView("mod_audit")) && (
+      {(canView("mod_cskh") || canView("mod_audit") || canView("mod_store") || canView("mod_guide")) && (
         <div className="pt-1">
           {!isCollapsed && (
             <div className="px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -267,7 +267,7 @@ function SidebarNavigation({
               </Link>
             )}
 
-            {canView("mod_dev") && (
+            {(canView("mod_store") || canView("mod_dev")) && (
               <Link
                 href="/store"
                 onClick={onNavigate}
@@ -284,7 +284,7 @@ function SidebarNavigation({
               </Link>
             )}
 
-            {canView("mod_dev") && (
+            {(canView("mod_guide") || canView("mod_dev")) && (
               <Link
                 href="/guides"
                 onClick={onNavigate}

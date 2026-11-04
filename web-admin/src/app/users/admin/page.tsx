@@ -14,19 +14,13 @@ import {
   AdminFormModal,
 } from "./components";
 
-const DEFAULT_ROLES_LIST = [
-  "Administrator",
-  "Device Admin",
-  "Support Agent",
-  "CSKH Support",
-  "Kỹ Thuật Kho",
-];
+import { rolesService } from "../roles/roles-service";
 
 export default function AdminManagementPage() {
   const { canView, canCreate, canUpdate, canDelete } = usePermissions();
 
   const [admins, setAdmins] = useState<AdminUser[]>([]);
-  const [rolesList, setRolesList] = useState<string[]>(DEFAULT_ROLES_LIST);
+  const [rolesList, setRolesList] = useState<string[]>([]);
 
   // Search state
   const [searchEmpId, setSearchEmpId] = useState("");
@@ -68,10 +62,18 @@ export default function AdminManagementPage() {
         setIsLoading(false);
       });
   }, []);
+  const fetchRoles = useCallback(() => {
+    rolesService.getRoles().then((roles) => {
+      if (roles && Array.isArray(roles) && roles.length > 0) {
+        setRolesList(roles.map((r) => r.name));
+      }
+    });
+  }, []);
 
   useEffect(() => {
     fetchStaff();
-  }, [fetchStaff]);
+    fetchRoles();
+  }, [fetchStaff, fetchRoles]);
 
   const handleBulkDelete = async (ids: (string | number)[]) => {
     let deleted = 0;

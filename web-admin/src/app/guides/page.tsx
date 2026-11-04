@@ -20,6 +20,8 @@ import {
   Play
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
+import { usePermissions } from "@/context/PermissionContext";
+import { AccessDenied } from "@/components/AccessDenied";
 
 interface GuideStep {
   step: number;
@@ -49,6 +51,8 @@ interface InstallationGuide {
 }
 
 export default function InstallationGuidesPage() {
+  const { canView, canUpdate } = usePermissions();
+
   const [guides, setGuides] = useState<InstallationGuide[]>([]);
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -61,10 +65,17 @@ export default function InstallationGuidesPage() {
   const [editResetDesc, setEditResetDesc] = useState<string>("");
   const [editResetSeconds, setEditResetSeconds] = useState<number>(10);
 
+  const getAuthHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const fetchGuides = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/admin/guides`);
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/guides`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) {
         setGuides([]);
         return;
@@ -106,7 +117,10 @@ export default function InstallationGuidesPage() {
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/admin/guides`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           ...activeGuide,
           title: editTitle,
@@ -125,6 +139,15 @@ export default function InstallationGuidesPage() {
     }
   };
 
+  if (!canView("mod_guide") && !canView("mod_dev")) {
+    return (
+      <AccessDenied 
+        moduleName="Hướng Dẫn Lắp Đặt & Reset"
+        requiredModule="mod_guide"
+      />
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -134,7 +157,7 @@ export default function InstallationGuidesPage() {
           </h1>
         </div>
 
-        {activeGuide && (
+        {activeGuide && (canUpdate("mod_guide") || canUpdate("mod_dev")) && (
           <button
             type="button"
             onClick={handleOpenEdit}

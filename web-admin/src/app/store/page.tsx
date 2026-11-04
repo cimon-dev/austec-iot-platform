@@ -272,11 +272,11 @@ function StoreContent() {
     }
   };
 
-  if (!canView("mod_dev")) {
+  if (!canView("mod_store") && !canView("mod_dev")) {
     return (
       <AccessDenied
-        moduleTitle="Quản Lý Gian Hàng & Sản Phẩm Xuất Xưởng"
-        requiredPermission="Quyền truy cập Phân hệ Thiết bị & Thương mại (mod_dev)"
+        moduleName="Gian Hàng & Thương Phẩm"
+        requiredModule="mod_store"
       />
     );
   }

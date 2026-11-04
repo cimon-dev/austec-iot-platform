@@ -619,16 +619,24 @@ export class PostgresService {
         }
         await this.pool.query(`SELECT setval('system_roles_id_seq', (SELECT MAX(id) FROM system_roles))`);
 
-        // Seed Default Permissions for 7 Modules
+        // Seed Default Permissions for 11 Modules
         const modules = [
-          { id: 'mod_dash', name: 'Dashboard Giám Sát Thời Gian Thực' },
-          { id: 'mod_dev', name: 'Quản lý Thiết Bị Tập Trung' },
-          { id: 'mod_user', name: 'Quản lý Người Dùng & Nhân Sự' },
-          { id: 'mod_cskh', name: 'Trung Tâm Hỗ Trợ & CSKH Live Chat' },
+          { id: 'mod_dash', name: 'Dashboard Tổng Quan' },
+          { id: 'mod_dev', name: 'Quản Lý Thiết Bị Tập Trung' },
+          { id: 'mod_ota', name: 'Quản Lý Firmware & OTA' },
+          { id: 'mod_user', name: 'Quản Lý Cán Bộ & Vai Trò' },
+          { id: 'mod_customer', name: 'Quản Lý Khách Hàng & Gia Đình' },
+          { id: 'mod_cskh', name: 'Vận Hành & CSKH Live Chat' },
+          { id: 'mod_noti', name: 'Trung Tâm Thông Báo Push' },
           { id: 'mod_audit', name: 'Hộp Đen Kiểm Toán SHA-256' },
-          { id: 'mod_store', name: 'Gian Hàng & Quản Lý Đơn Hàng' },
-          { id: 'mod_setting', name: 'Cài Đặt Hệ Thống & MQTT Broker' },
+          { id: 'mod_store', name: 'Gian Hàng & Thương Phẩm' },
+          { id: 'mod_guide', name: 'Hướng Dẫn Lắp Đặt & Reset' },
+          { id: 'mod_setting', name: 'Cài Đặt Hệ Thống' },
         ];
+
+        const devMods = ['mod_dash', 'mod_dev', 'mod_ota', 'mod_store', 'mod_guide'];
+        const cskhMods = ['mod_dash', 'mod_customer', 'mod_cskh', 'mod_noti', 'mod_store'];
+        const techMods = ['mod_dash', 'mod_dev', 'mod_store', 'mod_guide'];
 
         for (const m of modules) {
           // Admin full
@@ -638,12 +646,28 @@ export class PostgresService {
             [m.id, m.name]
           );
 
-          // CSKH
-          const isCskhMod = ['mod_dash', 'mod_cskh', 'mod_store'].includes(m.id);
+          // Device Admin
+          const isDevMod = devMods.includes(m.id);
           await this.pool.query(
             `INSERT INTO role_permissions (role_id, module_id, module_name, can_view, can_create, can_update, can_delete, can_all)
-             VALUES (3, $1, $2, $3, $4, $4, false, false)`,
-            [m.id, m.name, isCskhMod, isCskhMod]
+             VALUES (2, $1, $2, $3, $3, $3, false, false)`,
+            [m.id, m.name, isDevMod]
+          );
+
+          // CSKH
+          const isCskhMod = cskhMods.includes(m.id);
+          await this.pool.query(
+            `INSERT INTO role_permissions (role_id, module_id, module_name, can_view, can_create, can_update, can_delete, can_all)
+             VALUES (3, $1, $2, $3, $3, $3, false, false)`,
+            [m.id, m.name, isCskhMod]
+          );
+
+          // Kỹ Thuật Kho
+          const isTechMod = techMods.includes(m.id);
+          await this.pool.query(
+            `INSERT INTO role_permissions (role_id, module_id, module_name, can_view, can_create, can_update, can_delete, can_all)
+             VALUES (4, $1, $2, $3, $3, $3, false, false)`,
+            [m.id, m.name, isTechMod]
           );
         }
         console.log('[PostgresService] Đã nạp 4 Vai trò (System Roles) và Ma trận Phân quyền vào PostgreSQL!');

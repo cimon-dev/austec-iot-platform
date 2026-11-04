@@ -32,6 +32,7 @@ import { createBlackboxRouter } from './modules/blackbox/blackbox.routes.js';
 import { createCskhRouter } from './modules/cskh/cskh.routes.js';
 import { createMqttRouter } from './modules/mqtt/mqtt.routes.js';
 import { createChatRouter } from './modules/chat/chat.routes.js';
+import { createNotificationsRouter } from './modules/notifications/notifications.routes.js';
 import { ChatRepository } from './modules/chat/chat.repository.js';
 
 export interface UnifiedUser {
@@ -187,6 +188,7 @@ export function createApp() {
   app.use('/api', createBlackboxRouter(postgresClient));
   app.use('/api', createCskhRouter(postgresClient));
   app.use('/api', createChatRouter(postgresClient));
+  app.use('/api', createNotificationsRouter(postgresClient));
   app.use('/api', createMqttRouter(mqttGateway));
 
   const chatRepository = new ChatRepository(postgresClient);

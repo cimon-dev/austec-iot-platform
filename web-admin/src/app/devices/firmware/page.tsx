@@ -24,6 +24,8 @@ import {
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
 import { toast } from "sonner";
+import { usePermissions } from "@/context/PermissionContext";
+import { AccessDenied } from "@/components/AccessDenied";
 
 interface FirmwareRelease {
   id: number;
@@ -70,6 +72,8 @@ interface OtaDeviceRecord {
 }
 
 export default function FirmwareOtaPage() {
+  const { canView, canCreate, canUpdate, canDelete } = usePermissions();
+
   const [firmwares, setFirmwares] = useState<FirmwareRelease[]>([]);
   const [campaigns, setCampaigns] = useState<OtaCampaign[]>([]);
   const [records, setRecords] = useState<OtaDeviceRecord[]>([]);
@@ -101,12 +105,18 @@ export default function FirmwareOtaPage() {
   const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
   const [isRetryingSelected, setIsRetryingSelected] = useState<boolean>(false);
 
+  const getAuthHeaders = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      const headers = getAuthHeaders();
       const [fwRes, campRes] = await Promise.all([
-        fetch(`${getApiBaseUrl()}/api/admin/firmware`),
-        fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns`)
+        fetch(`${getApiBaseUrl()}/api/admin/firmware`, { headers }),
+        fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns`, { headers })
       ]);
       const fwData = await fwRes.json();
       const campData = await campRes.json();
@@ -116,7 +126,7 @@ export default function FirmwareOtaPage() {
         setCampaigns(campData.campaigns);
         // Lấy chi tiết campaign mới nhất
         const latestId = campData.campaigns[0].id;
-        const detRes = await fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns/${latestId}`);
+        const detRes = await fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns/${latestId}`, { headers });
         const detData = await detRes.json();
         if (detData.success) {
           setRecords(detData.records || []);
@@ -293,6 +303,15 @@ export default function FirmwareOtaPage() {
     return matchStatus && matchSearch;
   });
 
+  if (!canView("mod_ota") && !canView("mod_dev")) {
+    return (
+      <AccessDenied 
+        moduleName="Quản Lý Firmware & OTA (Firmware Releases & OTA Campaigns)"
+        requiredModule="mod_ota"
+      />
+    );
+  }
+
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
@@ -303,22 +322,26 @@ export default function FirmwareOtaPage() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setShowUploadModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Tải lên bản .BIN</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDeployModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5" />
-            <span>Nạp đồng bộ</span>
-          </button>
+          {(canCreate("mod_ota") || canCreate("mod_dev")) && (
+            <button
+              type="button"
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Tải lên bản .BIN</span>
+            </button>
+          )}
+          {(canUpdate("mod_ota") || canUpdate("mod_dev")) && (
+            <button
+              type="button"
+              onClick={() => setShowDeployModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer"
+            >
+              <Play className="w-3.5 h-3.5" />
+              <span>Nạp đồng bộ</span>
+            </button>
+          )}
         </div>
       </div>
 

@@ -15,13 +15,17 @@ import {
 } from "./components";
 
 const DEFAULT_MODULES: ModulePermission[] = [
-  { id: "mod_dev", name: "Quản lý thiết bị (Device Management)", all: true, create: true, update: true, delete: true, view: true },
-  { id: "mod_user", name: "Quản lý người dùng & Admin (User Management)", all: true, create: true, update: true, delete: true, view: true },
-  { id: "mod_cskh", name: "Vận hành & Hỗ trợ khách hàng (Customer Ops)", all: true, create: true, update: true, delete: true, view: true },
-  { id: "mod_noti", name: "Trung tâm thông báo (Notification Center)", all: true, create: true, update: true, delete: true, view: true },
-  { id: "mod_audit", name: "Hộp đen kiểm toán SHA-256 (Audit Blackbox)", all: false, create: false, update: false, delete: false, view: true },
-  { id: "mod_setting", name: "Cài đặt hệ thống (System Settings)", all: true, create: true, update: true, delete: true, view: true },
-  { id: "mod_ota", name: "Quản lý Firmware OTA (Firmware Release)", all: true, create: true, update: true, delete: false, view: true },
+  { id: "mod_dash", name: "Dashboard Tổng quan", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_dev", name: "Quản lý thiết bị", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_ota", name: "Quản lý Firmware & OTA", all: true, create: true, update: true, delete: false, view: true },
+  { id: "mod_user", name: "Quản lý cán bộ & vai trò", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_customer", name: "Quản lý khách hàng & gia đình", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_cskh", name: "Vận hành & hỗ trợ CSKH", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_noti", name: "Trung tâm thông báo", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_audit", name: "Hộp đen kiểm toán SHA-256", all: false, create: false, update: false, delete: false, view: true },
+  { id: "mod_store", name: "Gian hàng & thương phẩm", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_guide", name: "Hướng dẫn lắp đặt & reset", all: true, create: true, update: true, delete: true, view: true },
+  { id: "mod_setting", name: "Cài đặt hệ thống", all: true, create: true, update: true, delete: true, view: true },
 ];
 
 export default function RolesManagementPage() {
@@ -111,6 +115,10 @@ export default function RolesManagementPage() {
     setIsSaving(true);
     try {
       await rolesService.saveRoles(roles);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("austec_user_roles", JSON.stringify(roles));
+        window.dispatchEvent(new Event("austec_roles_updated"));
+      }
       toast.success("Đã lưu thiết lập ma trận phân quyền thành công!");
     } catch {
       toast.error("Lỗi khi lưu thiết lập phân quyền.");

@@ -22,6 +22,7 @@ import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
 import { Pagination } from "@/components/Pagination";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
+import { getApiBaseUrl } from "@/context/apiConfig";
 
 interface NotificationItem {
   id: number;
@@ -35,113 +36,12 @@ interface NotificationItem {
   deliveredCount: number;
 }
 
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 101,
-    title: "Bảo trì nâng cấp Cloud Broker MQTT v2.5",
-    category: "MAINTENANCE",
-    target: "Tất cả khách hàng (Toàn hệ thống)",
-    channel: "APP_PUSH",
-    sentAt: "17/10/2026 23:00",
-    status: "SENT",
-    readRate: 84.5,
-    deliveredCount: 4250
-  },
-  {
-    id: 102,
-    title: "Cập nhật Firmware v2.1 cho Cửa cuốn Titadoor Super",
-    category: "OTA_UPDATE",
-    target: "Model: AUSTEC-DOOR-A500",
-    channel: "APP_PUSH",
-    sentAt: "15/10/2026 09:30",
-    status: "SENT",
-    readRate: 91.2,
-    deliveredCount: 1850
-  },
-  {
-    id: 103,
-    title: "Nhắc nhở kiểm tra định kỳ ắc quy bộ lưu điện UPS",
-    category: "ALERT",
-    target: "Nhóm: GROUP_UPS_220V",
-    channel: "APP_PUSH",
-    sentAt: "20/10/2026 08:00",
-    status: "SCHEDULED",
-    readRate: 0,
-    deliveredCount: 2300
-  },
-  {
-    id: 104,
-    title: "Chương trình gia hạn gói bảo hành Vàng 24 tháng",
-    category: "PROMO",
-    target: "Khách hàng sắp hết hạn bảo hành",
-    channel: "EMAIL",
-    sentAt: "---",
-    status: "DRAFT",
-    readRate: 0,
-    deliveredCount: 650
-  },
-  {
-    id: 105,
-    title: "Cập nhật ứng dụng Austec Smart v2.5.0 trên App Store & Google Play",
-    category: "SYSTEM",
-    target: "Toàn bộ khách hàng",
-    channel: "APP_PUSH",
-    sentAt: "14/10/2026 15:00",
-    status: "SENT",
-    readRate: 88.5,
-    deliveredCount: 8900
-  },
-  {
-    id: 106,
-    title: "Cảnh báo khẩn: Kiểm tra nguồn sạc dự phòng trong đợt mưa bão",
-    category: "ALERT",
-    target: "Khu vực Miền Trung",
-    channel: "APP_PUSH",
-    sentAt: "12/10/2026 18:20",
-    status: "SENT",
-    readRate: 94.1,
-    deliveredCount: 3200
-  },
-  {
-    id: 107,
-    title: "Khuyến mãi giảm 20% khi lắp đặt thêm Khóa Masaru X1",
-    category: "PROMO",
-    target: "Khách hàng đã sở hữu Cửa cuốn",
-    channel: "SMS",
-    sentAt: "25/10/2026 09:00",
-    status: "SCHEDULED",
-    readRate: 0,
-    deliveredCount: 1500
-  },
-  {
-    id: 108,
-    title: "Firmware OTA v3.1.2 - Khắc phục cảm biến chạm Masaru",
-    category: "OTA_UPDATE",
-    target: "Model: MASARU-X1",
-    channel: "APP_PUSH",
-    sentAt: "10/10/2026 11:00",
-    status: "SENT",
-    readRate: 89.9,
-    deliveredCount: 890
-  },
-  {
-    id: 109,
-    title: "Khảo sát ý kiến người dùng về tính năng chia sẻ chìa khóa số",
-    category: "SYSTEM",
-    target: "Người dùng hoạt động 30 ngày qua",
-    channel: "EMAIL",
-    sentAt: "---",
-    status: "DRAFT",
-    readRate: 0,
-    deliveredCount: 4100
-  }
-];
-
 export default function NotificationsManagementPage() {
   const { t } = useLanguage();
   const { canView, canCreate, canDelete } = usePermissions();
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
@@ -163,9 +63,31 @@ export default function NotificationsManagementPage() {
     scheduleTime: ""
   });
 
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.notifications)) {
+        setNotifications(data.notifications);
+      }
+    } catch (e) {
+      console.warn("Lỗi nạp danh sách thông báo:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
   const filteredNotis = notifications.filter(n => {
     const matchSearch = n.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                        n.target.toLowerCase().includes(searchQuery.toLowerCase());
+                        (n.target || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchCat = !filterCategory || n.category === filterCategory;
     const matchStatus = !filterStatus || n.status === filterStatus;
     return matchSearch && matchCat && matchStatus;
@@ -181,41 +103,57 @@ export default function NotificationsManagementPage() {
     return filteredNotis.slice(start, start + notiPageSize);
   }, [filteredNotis, notiPage, notiPageSize]);
 
-  const handleSendNotification = (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!composeForm.title) return;
+    if (!composeForm.title.trim()) return;
 
-    const newNoti: NotificationItem = {
-      id: Date.now() % 10000,
-      title: composeForm.title,
-      category: composeForm.category,
-      target: composeForm.targetType === "ALL" ? "Tất cả khách hàng (Toàn hệ thống)" : `Model: ${composeForm.targetModel}`,
-      channel: composeForm.channel,
-      sentAt: composeForm.scheduleMode === "NOW" ? new Date().toLocaleString("vi-VN") : composeForm.scheduleTime || "Chờ lịch",
-      status: composeForm.scheduleMode === "NOW" ? "SENT" : "SCHEDULED",
-      readRate: 0,
-      deliveredCount: composeForm.targetType === "ALL" ? 4300 : 1200
-    };
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const payload = {
+        title: composeForm.title.trim(),
+        message: composeForm.body.trim(),
+        category: composeForm.category,
+        channel: composeForm.channel,
+        target: composeForm.targetType === "ALL" ? "Tất cả khách hàng (Toàn hệ thống)" : `Model: ${composeForm.targetModel}`,
+        status: composeForm.scheduleMode === "NOW" ? "SENT" : "SCHEDULED",
+        scheduleTime: composeForm.scheduleMode === "NOW" ? undefined : composeForm.scheduleTime
+      };
 
-    setNotifications([newNoti, ...notifications]);
-    setIsComposeOpen(false);
-    toast.success(
-      composeForm.scheduleMode === "NOW" 
-        ? "Đã phát sóng thông báo thành công đến các thiết bị!" 
-        : "Đã lên lịch phát sóng thông báo thành công!"
-    );
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success && data.notification) {
+        setNotifications(prev => [data.notification, ...prev]);
+        setIsComposeOpen(false);
+        toast.success(
+          composeForm.scheduleMode === "NOW" 
+            ? "Đã phát sóng thông báo thành công đến các thiết bị!" 
+            : "Đã lên lịch phát sóng thông báo thành công!"
+        );
 
-    // Reset Form
-    setComposeForm({
-      title: "",
-      category: "SYSTEM",
-      targetType: "ALL",
-      targetModel: "AUSTEC-DOOR-A500",
-      channel: "APP_PUSH",
-      body: "",
-      scheduleMode: "NOW",
-      scheduleTime: ""
-    });
+        // Reset Form
+        setComposeForm({
+          title: "",
+          category: "SYSTEM",
+          targetType: "ALL",
+          targetModel: "AUSTEC-DOOR-A500",
+          channel: "APP_PUSH",
+          body: "",
+          scheduleMode: "NOW",
+          scheduleTime: ""
+        });
+      } else {
+        toast.error(data.error || "Không thể gửi thông báo");
+      }
+    } catch (err: any) {
+      toast.error(`Lỗi gửi thông báo: ${err.message}`);
+    }
   };
 
   const handleDelete = (item: NotificationItem) => {
@@ -227,9 +165,21 @@ export default function NotificationsManagementPage() {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      setNotifications(prev => prev.filter(n => n.id !== deleteTarget.id));
-      toast.success("Đã xóa chiến dịch thông báo thành công!");
-      setDeleteTarget(null);
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/notifications/${deleteTarget.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNotifications(prev => prev.filter(n => n.id !== deleteTarget.id));
+        toast.success("Đã xóa thông báo thành công!");
+        setDeleteTarget(null);
+      } else {
+        toast.error(data.error || "Không thể xóa thông báo");
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi xóa: ${e.message}`);
     } finally {
       setIsDeleting(false);
     }

@@ -1,10 +1,11 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
+import { getApiBaseUrl } from "./apiConfig";
 
 export interface PermissionMatrixItem {
-  id: string; // mod_dev, mod_user, mod_cskh, mod_noti, mod_audit, mod_setting, mod_ota
+  id: string; // mod_dash, mod_dev, mod_ota, mod_user, mod_customer, mod_cskh, mod_noti, mod_audit, mod_store, mod_guide, mod_setting
   name: string;
   all: boolean;
   create: boolean;
@@ -16,6 +17,7 @@ export interface PermissionMatrixItem {
 export interface SystemRole {
   id: number;
   name: string;
+  roleCode?: string;
   userCount: number;
   isSystem: boolean;
   permissions: PermissionMatrixItem[];
@@ -28,6 +30,8 @@ interface PermissionContextType {
   canDelete: (moduleId: string) => boolean;
   hasFullAccess: boolean;
   currentRoleName: string;
+  roles: SystemRole[];
+  refreshRoles: () => Promise<void>;
 }
 
 const PermissionContext = createContext<PermissionContextType | undefined>(undefined);
@@ -36,7 +40,25 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const { user } = useAuth();
   const [roles, setRoles] = useState<SystemRole[]>([]);
 
-  const loadRoles = () => {
+  const fetchRolesFromApi = useCallback(async () => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/roles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.roles) && data.roles.length > 0) {
+        setRoles(data.roles);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("austec_user_roles", JSON.stringify(data.roles));
+        }
+      }
+    } catch (e) {
+      console.warn("[PermissionContext] Lỗi đồng bộ vai trò từ API:", e);
+    }
+  }, []);
+
+  const loadLocalRoles = useCallback(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("austec_user_roles");
       if (saved) {
@@ -44,44 +66,48 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
             setRoles(parsed);
-            return;
           }
-        } catch (e) {}
+        } catch {}
       }
-    }
-  };
-
-  useEffect(() => {
-    loadRoles();
-    if (typeof window !== "undefined") {
-      window.addEventListener("austec_roles_updated", loadRoles);
-      return () => window.removeEventListener("austec_roles_updated", loadRoles);
     }
   }, []);
 
-  // Map AuthUser role to Role Matrix Name
-  const userRole = user?.role || "ADMIN";
+  useEffect(() => {
+    loadLocalRoles();
+    fetchRolesFromApi();
+
+    const handleUpdate = () => {
+      loadLocalRoles();
+      fetchRolesFromApi();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("austec_roles_updated", handleUpdate);
+      return () => window.removeEventListener("austec_roles_updated", handleUpdate);
+    }
+  }, [loadLocalRoles, fetchRolesFromApi]);
+
+  // Determine user permissions based on user role and database configuration
+  const userRole = (user?.role || "ADMIN").toUpperCase();
   const hasFullAccess = userRole === "ADMIN";
-  const currentRoleName = userRole === "ADMIN" ? "Administrator" : userRole === "CSKH" ? "CSKH Support" : "Customer Role";
+
+  const matchedRole = roles.find(r => {
+    const code = (r.roleCode || "").toUpperCase();
+    const name = (r.name || "").toUpperCase();
+    if (userRole === "ADMIN" && (code === "ROLE_ADMIN" || name.includes("ADMINISTRATOR"))) return true;
+    if (userRole === "CSKH" && (code === "ROLE_CSKH" || name.includes("CSKH"))) return true;
+    if (code === `ROLE_${userRole}` || name === userRole) return true;
+    return false;
+  });
+
+  const currentRoleName = matchedRole?.name || (userRole === "ADMIN" ? "Administrator" : userRole === "CSKH" ? "CSKH Support" : "Customer");
 
   const getModulePerm = (moduleId: string): PermissionMatrixItem | undefined => {
     if (hasFullAccess) {
       return { id: moduleId, name: moduleId, all: true, create: true, update: true, delete: true, view: true };
     }
-    const matchedRole = roles.find(r => 
-      r.name.toLowerCase().includes(userRole.toLowerCase()) || 
-      (userRole === "CSKH" && r.name.toLowerCase().includes("cskh"))
-    );
     if (!matchedRole) {
-      // Default fallback for CSKH if no custom role configured
-      if (userRole === "CSKH") {
-        if (moduleId === "mod_cskh") return { id: moduleId, name: moduleId, all: true, create: true, update: true, delete: false, view: true };
-        if (moduleId === "mod_dev") return { id: moduleId, name: moduleId, all: false, create: false, update: false, delete: false, view: true };
-        if (moduleId === "mod_noti") return { id: moduleId, name: moduleId, all: false, create: true, update: false, delete: false, view: true };
-        // mod_audit, mod_user, mod_setting are forbidden for CSKH
-        return { id: moduleId, name: moduleId, all: false, create: false, update: false, delete: false, view: false };
-      }
-      return { id: moduleId, name: moduleId, all: false, create: false, update: false, delete: false, view: false };
+      return undefined;
     }
     return matchedRole.permissions.find(p => p.id === moduleId);
   };
@@ -119,6 +145,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
         canDelete,
         hasFullAccess,
         currentRoleName,
+        roles,
+        refreshRoles: fetchRolesFromApi,
       }}
     >
       {children}
