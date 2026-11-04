@@ -6,32 +6,22 @@ import {
   Cpu, 
   RotateCw, 
   CheckCircle2, 
-  AlertTriangle, 
-  Clock, 
-  ShieldCheck, 
   Play, 
   Plus, 
   Search, 
-  Filter, 
   FileCode, 
   Check, 
   Copy, 
-  WifiOff, 
-  Server,
-  Trash2,
-  Lock,
-  Unlock,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Layers,
-  ChevronRight,
-  HardDrive,
-  Info,
+  Trash2, 
+  Lock, 
+  Unlock, 
+  KeyRound, 
+  EyeOff, 
+  Layers, 
+  HardDrive, 
+  ShieldCheck,
   Radio,
-  FileCheck2,
-  DownloadCloud,
-  CheckCircle
+  FileCheck
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
@@ -83,7 +73,6 @@ interface OtaDeviceRecord {
   retryCount: number;
 }
 
-// Danh mục Mẫu thương phẩm chuẩn hoá
 interface CommercialModelItem {
   id: string;
   name: string;
@@ -260,7 +249,6 @@ void triggerAustMotorPulse(uint8_t relayPin, uint16_t durationMs) {
 #include <mbedtls/sha256.h>
 
 bool verifyOneTimeOtp(uint32_t inputOtp, uint32_t currentTimestamp) {
-    // Thuat toan xac thuc ma OTP dong dong bo voi Cloud Server
     uint32_t calculatedOtp = generateTimeBasedOtp(currentTimestamp);
     return (inputOtp == calculatedOtp);
 }`
@@ -293,7 +281,7 @@ bool verifyOneTimeOtp(uint32_t inputOtp, uint32_t currentTimestamp) {
 
 float readBatteryVoltage() {
     int raw = analogRead(A0);
-    float voltage = (raw / 4095.0) * 24.0; // He ac-quy 24V DC
+    float voltage = (raw / 4095.0) * 24.0;
     return voltage;
 }`
       }
@@ -358,7 +346,6 @@ void processAiPersonDetection(camera_fb_t* fb) {
 
 void onSmokeDetected() {
     triggerAlarmBuzzer(true);
-    // Gui lenh khan cap qua kenh Broadcast mo toan bo cua thoat hiem
     broadcastEmergencyOpenDoorCommand();
 }`
       }
@@ -407,6 +394,9 @@ export default function FirmwareOtaPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
+
+  // Tab bên phải: "firmware" (Danh sách bản phát hành & tiến độ) hoặc "code" (Xem mã nguồn)
+  const [activeRightTab, setActiveRightTab] = useState<"firmware" | "code">("firmware");
 
   // Model thương phẩm đang được chọn
   const [selectedModelId, setSelectedModelId] = useState<string>(COMMERCIAL_MODELS[0].id);
@@ -474,12 +464,10 @@ export default function FirmwareOtaPage() {
     fetchData();
   }, []);
 
-  // Lấy Mẫu thương phẩm đang chọn
   const currentModel = useMemo(() => {
     return COMMERCIAL_MODELS.find(m => m.id === selectedModelId) || COMMERCIAL_MODELS[0];
   }, [selectedModelId]);
 
-  // Lọc danh sách Mẫu thương phẩm ở Khối bên trái/phải
   const filteredModels = useMemo(() => {
     return COMMERCIAL_MODELS.filter(m => {
       const matchCat = categoryFilter === "ALL" || m.category === categoryFilter;
@@ -490,34 +478,29 @@ export default function FirmwareOtaPage() {
     });
   }, [categoryFilter, searchQuery]);
 
-  // Lọc các bản firmware tương ứng với Model đang chọn
   const modelFirmwares = useMemo(() => {
     return firmwares.filter(f => f.modelCode === currentModel.modelCode);
   }, [firmwares, currentModel.modelCode]);
 
-  // Sao chép mã SHA-256
   const handleCopyHash = (hash: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedHash(hash);
-    toast.success("Đã sao chép mã SHA-256 vào clipboard!");
+    toast.success("Đã sao chép mã SHA-256!");
     setTimeout(() => setCopiedHash(null), 2000);
   };
 
-  // Mở Dialog xác thực Admin
   const handleRequestAuth = (action: "VIEW_CODE" | "UPLOAD_FW") => {
     setAuthActionType(action);
     setOtpCode("");
     setShowAuthModal(true);
   };
 
-  // Nút Demo tự động điền mã xác thực
   const handleAutoFillDemoOtp = () => {
     const demoCode = "882391";
     setOtpCode(demoCode);
-    toast.info("Đã tự động điền mã xác thực thử nghiệm: 882391");
+    toast.info("Đã điền mã xác thực thử nghiệm: 882391");
   };
 
-  // Xác nhận OTP Admin
   const handleConfirmOtp = () => {
     if (!otpCode || otpCode.trim().length < 6) {
       toast.error("Vui lòng nhập đủ mã xác thực 6 chữ số!");
@@ -527,16 +510,16 @@ export default function FirmwareOtaPage() {
     setTimeout(() => {
       setIsVerifyingOtp(false);
       setShowAuthModal(false);
-      toast.success("Xác thực Email Quản trị viên (Admin 2FA) thành công!");
+      toast.success("Xác thực Email Quản trị viên thành công!");
       if (authActionType === "VIEW_CODE") {
         setIsCodeUnlocked(true);
+        setActiveRightTab("code");
       } else if (authActionType === "UPLOAD_FW") {
         setShowUploadModal(true);
       }
-    }, 600);
+    }, 500);
   };
 
-  // Xóa firmware
   const handleConfirmDeleteFw = async () => {
     if (!deleteSingleFwTarget) return;
     setDeletingFw(true);
@@ -560,7 +543,6 @@ export default function FirmwareOtaPage() {
     }
   };
 
-  // Khởi chạy chiến dịch nạp OTA
   const handleDeployCampaign = async () => {
     try {
       setDeploying(true);
@@ -592,7 +574,6 @@ export default function FirmwareOtaPage() {
     }
   };
 
-  // Tạo bản release firmware mới
   const handleCreateRelease = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -627,7 +608,6 @@ export default function FirmwareOtaPage() {
     }
   };
 
-  // Retry thiết bị nạp lỗi
   const handleRetryDevice = async (recordId: number) => {
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${recordId}`, {
@@ -644,7 +624,6 @@ export default function FirmwareOtaPage() {
     }
   };
 
-  // Kiểm tra phân quyền truy cập trang
   if (!canView("mod_ota") && !canView("mod_dev")) {
     return (
       <AccessDenied 
@@ -655,44 +634,40 @@ export default function FirmwareOtaPage() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-0">
-      {/* HEADER TRANG */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
+    <div className="h-[calc(100vh-65px)] flex flex-col min-h-0 overflow-hidden p-2.5 space-y-2 bg-slate-50 dark:bg-slate-950">
+      
+      {/* THANH TIÊU ĐỀ TRÊN CÙNG - TINH GỌN, CHUẨN MÀU NEUTRAL */}
+      <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              <Cpu className="w-6 h-6 text-cyan-500" />
-              Quản trị Firmware & Cập nhật OTA
-            </h1>
-            <span className="px-2 py-0.5 text-[11px] font-semibold bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-400 rounded-full border border-cyan-300 dark:border-cyan-800">
-              Kiến trúc Không dây 100%
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Quản lý kho firmware theo mẫu thương phẩm, xem mã nguồn bảo mật và khởi chạy chiến dịch nạp an toàn từ xa.
+          <h1 className="text-base font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+            Quản trị Firmware & Cập nhật OTA
+          </h1>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Quản lý kho firmware theo mẫu thương phẩm, xem mã nguồn bảo mật và khởi chạy nạp không dây từ xa.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Nút nạp OTA chung */}
+          {/* Nút nạp OTA (Primary Action) */}
           {(canUpdate("mod_ota") || canUpdate("mod_dev")) && (
             <button
               onClick={() => {
                 setDeployVersion(currentModel.currentStableVersion);
                 setShowDeployModal(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition"
             >
               <Play className="w-3.5 h-3.5" />
               Khởi chạy OTA
             </button>
           )}
 
-          {/* Nút thêm Firmware mới */}
+          {/* Nút thêm Firmware mới (Primary Action) */}
           {(canCreate("mod_ota") || canCreate("mod_dev")) && (
             <button
               onClick={() => handleRequestAuth("UPLOAD_FW")}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition"
             >
               <Plus className="w-3.5 h-3.5" />
               Thêm Firmware (.bin)
@@ -701,58 +676,22 @@ export default function FirmwareOtaPage() {
         </div>
       </div>
 
-      {/* THẺ THỐNG KÊ NHANH */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Mẫu thương phẩm</span>
-            <Layers className="w-4 h-4 text-cyan-500" />
-          </div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{COMMERCIAL_MODELS.length}</div>
-          <div className="text-[10px] text-cyan-600 dark:text-cyan-400 mt-0.5">Sẵn sàng nạp OTA</div>
-        </div>
-
-        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Bản phát hành (.bin)</span>
-            <FileCode className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{firmwares.length}</div>
-          <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">Đã lưu trong máy chủ</div>
-        </div>
-
-        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Chiến dịch OTA</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{campaigns.length}</div>
-          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Đã phát hành ra mạch</div>
-        </div>
-
-        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Bảo mật cấp cao</span>
-            <ShieldCheck className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">Admin 2FA</div>
-          <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Khóa xem mã nguồn</div>
-        </div>
-      </div>
-
-      {/* GIAO DIỆN 2 KHỐI CHÍNH */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* NỘI DUNG 2 KHỐI CHÍNH TRỌN VẸN TRONG 100VH */}
+      <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-2.5 overflow-hidden">
         
-        {/* KHỐI 1 (BÊN TRÁI): DANH SÁCH TOÀN BỘ MẪU THƯƠNG PHẨM */}
-        <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
-          {/* Header & Filter Mẫu */}
-          <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+        {/* ========================================================================= */}
+        {/* KHỐI 1 (BÊN TRÁI): KHO MẪU THƯƠNG PHẨM */}
+        {/* ========================================================================= */}
+        <div className="w-full md:w-80 shrink-0 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+          
+          {/* Header & Filter */}
+          <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 space-y-2 shrink-0">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-cyan-500" />
-                Kho Mẫu Thương Phẩm ({filteredModels.length})
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-slate-500" />
+                Mẫu Thương Phẩm ({filteredModels.length})
               </span>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">Chọn để xem chi tiết</span>
+              <span className="text-[10px] text-slate-400">Chọn mẫu để xem</span>
             </div>
 
             {/* Ô tìm kiếm */}
@@ -763,12 +702,12 @@ export default function FirmwareOtaPage() {
                 placeholder="Tìm theo tên hoặc mã model..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
+                className="w-full text-xs pl-8 pr-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 dark:focus:border-slate-500"
               />
             </div>
 
             {/* Bộ lọc nhóm / loại */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+            <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[10px]">
               {[
                 { id: "ALL", label: "Tất cả" },
                 { id: "DOOR", label: "Cửa cuốn" },
@@ -781,9 +720,9 @@ export default function FirmwareOtaPage() {
                 <button
                   key={cat.id}
                   onClick={() => setCategoryFilter(cat.id)}
-                  className={`px-2 py-0.5 rounded-md font-medium whitespace-nowrap transition ${
+                  className={`px-2 py-0.5 rounded font-medium whitespace-nowrap transition ${
                     categoryFilter === cat.id
-                      ? "bg-cyan-600 text-white"
+                      ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                   }`}
                 >
@@ -793,10 +732,10 @@ export default function FirmwareOtaPage() {
             </div>
           </div>
 
-          {/* Danh sách thẻ mẫu thương phẩm */}
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[750px] overflow-y-auto">
+          {/* Danh sách thẻ mẫu thương phẩm (Cuộn bên trong) */}
+          <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
             {filteredModels.length === 0 ? (
-              <div className="p-8 text-center text-xs text-slate-400">
+              <div className="p-6 text-center text-xs text-slate-400">
                 Không tìm thấy mẫu thương phẩm phù hợp
               </div>
             ) : (
@@ -809,43 +748,38 @@ export default function FirmwareOtaPage() {
                     key={model.id}
                     onClick={() => {
                       setSelectedModelId(model.id);
-                      setIsCodeUnlocked(false); // Khóa lại code khi chuyển model để đảm bảo bảo mật
+                      setIsCodeUnlocked(false);
                       setActiveCodeFileIndex(0);
                     }}
-                    className={`p-3 cursor-pointer transition flex items-start gap-3 ${
+                    className={`p-2.5 cursor-pointer transition flex items-center gap-2.5 ${
                       isSelected 
-                        ? "bg-cyan-50/70 dark:bg-cyan-950/30 border-l-4 border-cyan-500" 
-                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                        ? "bg-slate-100/80 dark:bg-slate-800 border-l-2 border-cyan-500" 
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/40"
                     }`}
                   >
                     <img 
                       src={model.imageUrl} 
                       alt={model.name}
-                      className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0 mt-0.5" 
+                      className="w-10 h-10 rounded-md object-cover border border-slate-200 dark:border-slate-700 shrink-0" 
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                        <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase truncate">
                           {model.categoryLabel}
                         </span>
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-semibold text-slate-600 dark:text-slate-300">
-                          {releaseCount} bản fw
+                        <span className="text-[10px] px-1 rounded bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 font-mono shrink-0">
+                          {releaseCount} fw
                         </span>
                       </div>
                       <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate mt-0.5">
                         {model.name}
                       </h4>
-                      <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1 py-0.2 rounded">
-                          {model.modelCode}
-                        </span>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-mono">
+                        <span>{model.modelCode}</span>
                         <span>•</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                          {model.currentStableVersion}
-                        </span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{model.currentStableVersion}</span>
                       </div>
                     </div>
-                    <ChevronRight className={`w-4 h-4 mt-3 transition shrink-0 ${isSelected ? "text-cyan-600 translate-x-0.5" : "text-slate-300 dark:text-slate-600"}`} />
                   </div>
                 );
               })
@@ -853,361 +787,351 @@ export default function FirmwareOtaPage() {
           </div>
         </div>
 
-        {/* KHỐI 2 (BÊN PHẢI): CHI TIẾT MẪU THƯƠNG PHẨM & QUẢN TRỊ FIRMWARE OTA */}
-        <div className="lg:col-span-8 space-y-5">
+        {/* ========================================================================= */}
+        {/* KHỐI 2 (BÊN PHẢI): CHI TIẾT MẪU & QUẢN TRỊ FIRMWARE / CODE / TIẾN ĐỘ */}
+        {/* ========================================================================= */}
+        <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
           
-          {/* 1. THẺ THÔNG TIN CHI TIẾT MẪU THƯƠNG PHẨM */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-3.5">
+          {/* Header Thông tin Mẫu Thương phẩm (Thu gọn tinh tế) */}
+          <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/20 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-3">
                 <img 
                   src={currentModel.imageUrl} 
                   alt={currentModel.name}
-                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs shrink-0" 
+                  className="w-11 h-11 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0" 
                 />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 uppercase">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase">
                       {currentModel.categoryLabel}
                     </span>
-                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      Mã: {currentModel.modelCode}
+                    <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                      {currentModel.modelCode}
                     </span>
                   </div>
-                  <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white mt-1">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-white truncate mt-0.5">
                     {currentModel.name}
                   </h2>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
-                <button
-                  onClick={() => {
-                    setDeployVersion(currentModel.currentStableVersion);
-                    setShowDeployModal(true);
-                  }}
-                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs"
-                >
-                  <Play className="w-3.5 h-3.5" />
-                  Nạp OTA Mẫu Này
-                </button>
-              </div>
-            </div>
-
-            {/* Thông số phần cứng & mô tả */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs">
-              <div>
-                <span className="text-slate-400 block text-[11px]">Chip xử lý (MCU):</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
-                  <Cpu className="w-3.5 h-3.5 text-cyan-500" />
-                  {currentModel.mcu}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[11px]">Bộ nhớ Flash:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
-                  <HardDrive className="w-3.5 h-3.5 text-blue-500" />
-                  {currentModel.flashSize}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-400 block text-[11px]">Bản ổn định khuyến nghị:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+              {/* Thông số phần cứng nhanh */}
+              <div className="flex items-center gap-3 text-[11px] text-slate-600 dark:text-slate-400 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Cpu className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-mono">{currentModel.mcu}</span>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <HardDrive className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="font-mono">{currentModel.flashSize}</span>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold font-mono">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  {currentModel.currentStableVersion} (STABLE)
-                </span>
+                  <span>{currentModel.currentStableVersion}</span>
+                </div>
               </div>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              {currentModel.description}
-            </p>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {currentModel.keyFeatures.map((feat, idx) => (
-                <span key={idx} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                  <Check className="w-3 h-3 text-cyan-500" />
-                  {feat}
-                </span>
-              ))}
             </div>
           </div>
 
-          {/* 2. GIAO DIỆN TRỰC QUAN CÁC PHIÊN BẢN FIRMWARE CỦA MẪU */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <FileCode className="w-4 h-4 text-cyan-500" />
-                  Kho Bản Phát Hành Firmware ({modelFirmwares.length} bản cho {currentModel.modelCode})
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Các tệp nhị phân .bin đã biên dịch, kiểm tra mã băm SHA-256 trước khi triển khai không dây.
-                </p>
-              </div>
-
-              {(canCreate("mod_ota") || canCreate("mod_dev")) && (
-                <button
-                  onClick={() => handleRequestAuth("UPLOAD_FW")}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Thêm bản .bin
-                </button>
-              )}
-            </div>
-
-            {/* Danh sách phiên bản trực quan */}
-            <div className="space-y-3">
-              {modelFirmwares.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                  Chưa có bản phát hành firmware nào cho mẫu này. Hãy bấm "Thêm bản .bin" để tạo phiên bản đầu tiên.
-                </div>
-              ) : (
-                modelFirmwares.map((fw) => (
-                  <div
-                    key={fw.id}
-                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-cyan-500/40 dark:hover:border-cyan-500/40 transition bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5">
-                        <span className="px-2 py-0.5 rounded-md text-xs font-bold font-mono bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
-                          {fw.version}
-                        </span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                          fw.releaseType === "STABLE"
-                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"
-                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300"
-                        }`}>
-                          {fw.releaseType}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {new Date(fw.createdAt).toLocaleDateString("vi-VN")}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setDeployVersion(fw.version);
-                            setShowDeployModal(true);
-                          }}
-                          className="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1 shadow-xs"
-                        >
-                          <Play className="w-3 h-3" />
-                          Nạp OTA
-                        </button>
-
-                        {(canDelete("mod_ota") || canDelete("mod_dev")) && (
-                          <button
-                            onClick={() => setDeleteSingleFwTarget(fw)}
-                            className="p-1 text-slate-400 hover:text-red-500 rounded-md transition"
-                            title="Xóa bản phát hành"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">
-                      {fw.changelog}
-                    </p>
-
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-500">
-                      <div className="flex items-center gap-3">
-                        <span>Dung lượng: <strong className="text-slate-700 dark:text-slate-300">{(fw.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB</strong></span>
-                        <span>Tệp: <code className="text-slate-600 dark:text-slate-400 font-mono">{fw.binaryFilename}</code></span>
-                      </div>
-
-                      {/* Mã băm SHA-256 */}
-                      <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px]">
-                        <span className="text-slate-400">SHA256:</span>
-                        <span className="text-cyan-600 dark:text-cyan-400">
-                          {fw.sha256Checksum.substring(0, 10)}...{fw.sha256Checksum.substring(fw.sha256Checksum.length - 8)}
-                        </span>
-                        <button
-                          onClick={() => handleCopyHash(fw.sha256Checksum)}
-                          className="text-slate-400 hover:text-cyan-500 ml-1"
-                          title="Sao chép toàn bộ mã SHA256"
-                        >
-                          {copiedHash === fw.sha256Checksum ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* 3. KHỐI CODE PREVIEW CỦA MẪU THƯƠNG PHẨM (MẶC ĐỊNH BỊ ẨN / YÊU CẦU XÁC THỰC EMAIL ADMIN) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <FileCode className="w-4 h-4 text-amber-500" />
-                  Mã Nguồn Cốt Lõi (Firmware Code Preview)
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Mã nguồn C/C++ điều khiển vi điều khiển, quản lý rơ-le, thuật toán an toàn và module nạp OTA.
-                </p>
-              </div>
-
-              {isCodeUnlocked && (
-                <button
-                  onClick={() => setIsCodeUnlocked(false)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  Khóa lại mã nguồn
-                </button>
-              )}
-            </div>
-
-            {/* TRẠNG THÁI 1: BỊ KHÓA BẢO MẬT (MẶC ĐỊNH) */}
-            {!isCodeUnlocked ? (
-              <div className="relative rounded-xl border border-dashed border-amber-300 dark:border-amber-800/80 bg-gradient-to-b from-amber-50/50 to-amber-100/30 dark:from-amber-950/20 dark:to-slate-900/60 p-8 text-center flex flex-col items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs mb-3">
-                  <Lock className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Mã Nguồn Được Bảo Vệ Cấp Cao (Admin 2FA)
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mt-1 mb-4 leading-relaxed">
-                  Vì lý do an toàn bản quyền công nghệ và bảo mật vận hành cửa cuốn, bạn cần xác thực mã OTP qua Email Quản trị viên để mở khóa xem mã nguồn mẫu này.
-                </p>
-                <button
-                  onClick={() => handleRequestAuth("VIEW_CODE")}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-xs transition"
-                >
-                  <KeyRound className="w-4 h-4" />
-                  Xác Thực Email Admin Để Xem Code
-                </button>
-              </div>
-            ) : (
-              /* TRẠNG THÁI 2: ĐÃ MỞ KHÓA MÃ NGUỒN (CODE PREVIEW HIỂN THỊ) */
-              <div className="space-y-2.5">
-                {/* Thanh chọn tệp mã nguồn */}
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    {currentModel.codeFiles.map((file, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveCodeFileIndex(idx)}
-                        className={`px-3 py-1 text-xs font-mono rounded-md transition flex items-center gap-1.5 ${
-                          activeCodeFileIndex === idx
-                            ? "bg-slate-900 text-cyan-400 dark:bg-slate-800"
-                            : "bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                        }`}
-                      >
-                        <FileCode className="w-3.5 h-3.5" />
-                        {file.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const code = currentModel.codeFiles[activeCodeFileIndex]?.code || "";
-                      navigator.clipboard.writeText(code);
-                      toast.success("Đã sao chép mã nguồn vào clipboard!");
-                    }}
-                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    Sao chép code
-                  </button>
-                </div>
-
-                {/* Khung xem Code */}
-                <div className="relative rounded-lg overflow-hidden bg-slate-950 border border-slate-800 shadow-inner">
-                  <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900/80 border-b border-slate-800/80 text-[11px] text-slate-400 font-mono">
-                    <span>{currentModel.codeFiles[activeCodeFileIndex]?.name} • C++ (ESP-IDF / Arduino)</span>
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <Unlock className="w-3 h-3" /> Đã mở khóa bảo mật
-                    </span>
-                  </div>
-                  <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-[420px] scrollbar-thin">
-                    <code>{currentModel.codeFiles[activeCodeFileIndex]?.code}</code>
-                  </pre>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 4. GIÁM SÁT THIẾT BỊ NẠP OTA THỰC TẾ (LIVE ROLLOUT MONITORING) */}
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-emerald-500" />
-                  Tiến Độ Nạp Mạch Phần Cứng Thực Tế ({records.length} thiết bị)
-                </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Theo dõi trạng thái tải gói nhị phân, kiểm tra toàn vẹn và xác nhận khởi động thành công của từng mạch.
-                </p>
-              </div>
+          {/* THANH TAB CHUYỂN ĐỔI: KHO FIRMWARE & TIẾN ĐỘ vs MÃ NGUỒN CỐT LÕI */}
+          <div className="flex items-center justify-between px-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 shrink-0 text-xs">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveRightTab("firmware")}
+                className={`py-2 px-3 font-semibold border-b-2 transition flex items-center gap-1.5 ${
+                  activeRightTab === "firmware"
+                    ? "border-cyan-600 text-cyan-600 dark:text-cyan-400 dark:border-cyan-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                <FileCode className="w-3.5 h-3.5" />
+                Kho Bản Phát Hành (.bin) & Tiến Độ Nạp ({modelFirmwares.length})
+              </button>
 
               <button
-                onClick={fetchData}
-                className="p-1.5 text-slate-400 hover:text-cyan-500 rounded-md transition"
-                title="Làm mới trạng thái thiết bị"
+                onClick={() => setActiveRightTab("code")}
+                className={`py-2 px-3 font-semibold border-b-2 transition flex items-center gap-1.5 ${
+                  activeRightTab === "code"
+                    ? "border-cyan-600 text-cyan-600 dark:text-cyan-400 dark:border-cyan-400"
+                    : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
               >
-                <RotateCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                {isCodeUnlocked ? <Unlock className="w-3.5 h-3.5 text-emerald-500" /> : <Lock className="w-3.5 h-3.5 text-amber-500" />}
+                Mã Nguồn Cốt Lõi (Code Preview)
               </button>
             </div>
 
-            {records.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
-                Chưa có thiết bị nào trong tiến trình nạp. Hãy chọn "Khởi chạy OTA" để bắt đầu chiến dịch.
+            <div className="flex items-center gap-1.5 py-1">
+              {activeRightTab === "firmware" && (canCreate("mod_ota") || canCreate("mod_dev")) && (
+                <button
+                  onClick={() => handleRequestAuth("UPLOAD_FW")}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                >
+                  <Plus className="w-3 h-3" />
+                  Thêm bản .bin
+                </button>
+              )}
+
+              {activeRightTab === "code" && isCodeUnlocked && (
+                <button
+                  onClick={() => setIsCodeUnlocked(false)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-md text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition"
+                >
+                  <EyeOff className="w-3 h-3" />
+                  Khóa lại
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* VÙNG NỘI DUNG CUỘN NỘI BỘ (KHÔNG GÂY SCROLL TOÀN TRANG) */}
+          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3.5">
+            
+            {/* ===================================================================== */}
+            {/* TAB 1: KHO BẢN PHÁT HÀNH FIRMWARE & TIẾN ĐỘ THIẾT BỊ NẠP */}
+            {/* ===================================================================== */}
+            {activeRightTab === "firmware" ? (
+              <div className="space-y-4">
+                
+                {/* 1.1 Danh sách các bản phát hành Firmware (.bin) */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                      Các Tệp Nhị Phân Firmware Sẵn Sàng
+                    </span>
+                    <span className="text-[11px] text-slate-400">Kiểm tra SHA-256 trước khi triển khai</span>
+                  </div>
+
+                  {modelFirmwares.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                      Chưa có tệp nhị phân .bin nào cho mẫu này. Bấm "Thêm bản .bin" để phát hành phiên bản mới.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {modelFirmwares.map((fw) => (
+                        <div
+                          key={fw.id}
+                          className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-300 dark:hover:border-slate-700 transition space-y-2 text-xs"
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-slate-900 dark:text-white text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800">
+                                {fw.version}
+                              </span>
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold uppercase ${
+                                fw.releaseType === "STABLE"
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                                  : "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
+                              }`}>
+                                {fw.releaseType}
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                {new Date(fw.createdAt).toLocaleDateString("vi-VN")}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setDeployVersion(fw.version);
+                                  setShowDeployModal(true);
+                                }}
+                                className="px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1 shadow-xs"
+                              >
+                                <Play className="w-3 h-3" />
+                                Nạp OTA
+                              </button>
+
+                              {(canDelete("mod_ota") || canDelete("mod_dev")) && (
+                                <button
+                                  onClick={() => setDeleteSingleFwTarget(fw)}
+                                  className="p-1 text-slate-400 hover:text-red-500 rounded transition"
+                                  title="Xóa bản phát hành"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                            {fw.changelog}
+                          </p>
+
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                            <div className="flex items-center gap-3">
+                              <span>Dung lượng: <strong className="text-slate-700 dark:text-slate-300">{(fw.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB</strong></span>
+                              <span>Tệp: <code className="text-slate-600 dark:text-slate-400 font-mono text-[10px]">{fw.binaryFilename}</code></span>
+                            </div>
+
+                            {/* Mã băm SHA-256 */}
+                            <div className="flex items-center gap-1 font-mono text-[10px] bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                              <span className="text-slate-400">SHA256:</span>
+                              <span className="text-slate-700 dark:text-slate-300">
+                                {fw.sha256Checksum.substring(0, 10)}...{fw.sha256Checksum.substring(fw.sha256Checksum.length - 8)}
+                              </span>
+                              <button
+                                onClick={() => handleCopyHash(fw.sha256Checksum)}
+                                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 ml-1"
+                                title="Sao chép toàn bộ mã SHA256"
+                              >
+                                {copiedHash === fw.sha256Checksum ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 1.2 Tiến độ thiết bị nạp thực tế ngoài đời */}
+                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-slate-500" />
+                      Tiến Độ Nạp Mạch Phần Cứng ({records.length} thiết bị)
+                    </span>
+                    <button
+                      onClick={fetchData}
+                      className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition"
+                      title="Làm mới tiến độ"
+                    >
+                      <RotateCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                    </button>
+                  </div>
+
+                  {records.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                      Chưa có tiến trình nạp nào đang diễn ra. Bấm "Khởi chạy OTA" để bắt đầu nạp xuống thiết bị.
+                    </div>
+                  ) : (
+                    <div className="border border-slate-200 dark:border-slate-800 rounded-lg divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden text-xs">
+                      {records.map((rec) => (
+                        <div key={rec.id} className="p-2.5 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                            <div>
+                              <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                <span>{rec.customerName}</span>
+                                <span className="font-mono text-[10px] px-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
+                                  {rec.hardwareId}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 mt-0.2">
+                                Bản cũ: {rec.currentVersion} ➔ Bản nạp: <strong className="text-slate-700 dark:text-slate-200">{rec.targetVersion}</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              rec.status === "SUCCESS"
+                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                : rec.status === "DOWNLOADING"
+                                ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
+                                : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
+                            }`}>
+                              {rec.status} ({rec.progressPct}%)
+                            </span>
+
+                            {rec.status !== "SUCCESS" && (
+                              <button
+                                onClick={() => handleRetryDevice(rec.id)}
+                                className="px-2 py-0.5 text-[11px] font-medium rounded border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                              >
+                                Thử lại
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-lg">
-                {records.map((rec) => (
-                  <div key={rec.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                      <div>
-                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>{rec.customerName}</span>
-                          <span className="font-mono text-[10px] px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
-                            {rec.hardwareId}
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          Phiên bản: {rec.currentVersion} ➔ <strong className="text-cyan-600 dark:text-cyan-400">{rec.targetVersion}</strong>
-                        </div>
+              /* ===================================================================== */
+              /* TAB 2: XEM MÃ NGUỒN CỐT LÕI (FIRMWARE CODE PREVIEW) */
+              /* ===================================================================== */
+              <div className="h-full flex flex-col min-h-0">
+                {!isCodeUnlocked ? (
+                  <div className="rounded-lg border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-8 text-center flex flex-col items-center justify-center my-auto">
+                    <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 mb-2">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                      Mã Nguồn Được Bảo Vệ Cấp Cao (Admin 2FA)
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
+                      Để bảo vệ bản quyền công nghệ và an toàn cửa cuốn, bạn cần xác thực mã OTP qua Email Quản trị viên để mở khóa xem mã nguồn.
+                    </p>
+                    <button
+                      onClick={() => handleRequestAuth("VIEW_CODE")}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-200 dark:hover:bg-white dark:text-slate-900 transition shadow-xs"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      Xác Thực Email Admin Để Xem Code
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-0 flex flex-col space-y-2">
+                    {/* Header Files & Actions */}
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 shrink-0">
+                      <div className="flex items-center gap-1.5">
+                        {currentModel.codeFiles.map((file, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setActiveCodeFileIndex(idx)}
+                            className={`px-2.5 py-1 text-xs font-mono rounded transition flex items-center gap-1.5 ${
+                              activeCodeFileIndex === idx
+                                ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 font-bold"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            <FileCode className="w-3.5 h-3.5" />
+                            {file.name}
+                          </button>
+                        ))}
                       </div>
+
+                      <button
+                        onClick={() => {
+                          const code = currentModel.codeFiles[activeCodeFileIndex]?.code || "";
+                          navigator.clipboard.writeText(code);
+                          toast.success("Đã sao chép mã nguồn!");
+                        }}
+                        className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Sao chép code
+                      </button>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {/* Trạng thái nạp */}
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        rec.status === "SUCCESS"
-                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
-                          : rec.status === "DOWNLOADING"
-                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
-                          : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
-                      }`}>
-                        {rec.status} ({rec.progressPct}%)
-                      </span>
-
-                      {rec.status !== "SUCCESS" && (
-                        <button
-                          onClick={() => handleRetryDevice(rec.id)}
-                          className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
-                        >
-                          Thử lại
-                        </button>
-                      )}
+                    {/* Khung Editor Hiển thị Code */}
+                    <div className="flex-1 min-h-0 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex flex-col shadow-inner">
+                      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900 border-b border-slate-800 text-[11px] text-slate-400 font-mono shrink-0">
+                        <span>{currentModel.codeFiles[activeCodeFileIndex]?.name} • C++ (ESP-IDF)</span>
+                        <span className="text-emerald-400 flex items-center gap-1 text-[10px]">
+                          <Unlock className="w-3 h-3" /> Đã xác thực an toàn
+                        </span>
+                      </div>
+                      <pre className="flex-1 min-h-0 p-3.5 text-xs font-mono text-slate-200 overflow-auto leading-relaxed scrollbar-thin">
+                        <code>{currentModel.codeFiles[activeCodeFileIndex]?.code}</code>
+                      </pre>
                     </div>
                   </div>
-                ))}
+                )}
               </div>
             )}
+
           </div>
         </div>
+
       </div>
 
       {/* ========================================================================= */}
@@ -1215,41 +1139,34 @@ export default function FirmwareOtaPage() {
       {/* ========================================================================= */}
       {showAuthModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-4 space-y-3.5">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                    Xác Thực Bảo Mật Quản Trị Viên (Admin 2FA)
-                  </h3>
-                  <p className="text-[11px] text-slate-500">Mã xác thực một lần gửi qua Email</p>
-                </div>
+                <ShieldCheck className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase">
+                  Xác Thực Quản Trị Viên (Admin 2FA)
+                </h3>
               </div>
               <button
                 onClick={() => setShowAuthModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                Để thực hiện hành động <strong className="text-amber-600 dark:text-amber-400">
-                  {authActionType === "VIEW_CODE" ? "Xem mã nguồn Firmware" : "Thêm bản Firmware mới"}
-                </strong>, hệ thống yêu cầu xác nhận danh tính qua mã xác thực gửi tới hòm thư:
+            <div className="space-y-2.5 text-xs">
+              <p className="text-slate-600 dark:text-slate-300">
+                Xác nhận danh tính trước khi {authActionType === "VIEW_CODE" ? "xem mã nguồn Firmware" : "thêm bản phát hành mới"}. Mã đã gửi đến:
               </p>
               
-              <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 font-mono text-center font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+              <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 font-mono text-center font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                 admin@austec.vn
               </div>
 
               {/* Ô nhập mã OTP */}
-              <div className="space-y-1.5 pt-1">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block">
                   Nhập mã OTP 6 chữ số:
                 </label>
                 <input
@@ -1258,28 +1175,26 @@ export default function FirmwareOtaPage() {
                   placeholder="Ví dụ: 882391"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full text-center tracking-widest text-lg font-mono font-bold py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                  className="w-full text-center tracking-widest text-base font-mono font-bold py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
                 />
               </div>
 
               {/* Nút Demo Tự Động Điền Mã */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleAutoFillDemoOtp}
-                  className="w-full py-1.5 text-[11px] font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800 transition flex items-center justify-center gap-1.5"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  Tự động điền mã xác thực (Demo: 882391)
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleAutoFillDemoOtp}
+                className="w-full py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition flex items-center justify-center gap-1.5"
+              >
+                <KeyRound className="w-3 h-3" />
+                Tự động điền mã xác thực (Demo: 882391)
+              </button>
             </div>
 
             <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
                 onClick={() => setShowAuthModal(false)}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
+                className="flex-1 py-1.5 text-xs font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
                 Hủy bỏ
               </button>
@@ -1287,7 +1202,7 @@ export default function FirmwareOtaPage() {
                 type="button"
                 onClick={handleConfirmOtp}
                 disabled={isVerifyingOtp}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition shadow-xs flex items-center justify-center gap-1"
+                className="flex-1 py-1.5 text-xs font-semibold rounded bg-slate-900 hover:bg-black dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 transition flex items-center justify-center gap-1"
               >
                 {isVerifyingOtp ? "Đang xác thực..." : "Xác nhận & Mở khóa"}
               </button>
@@ -1301,43 +1216,43 @@ export default function FirmwareOtaPage() {
       {/* ========================================================================= */}
       {showDeployModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Play className="w-4 h-4 text-emerald-500" />
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-4 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase flex items-center gap-1.5">
+                <Play className="w-3.5 h-3.5 text-emerald-600" />
                 Khởi chạy chiến dịch nạp OTA
               </h3>
-              <button onClick={() => setShowDeployModal(false)} className="text-slate-400 text-lg">✕</button>
+              <button onClick={() => setShowDeployModal(false)} className="text-slate-400 text-sm">✕</button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div>
-                <label className="text-slate-500 block mb-1">Mẫu thương phẩm áp dụng:</label>
-                <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200">
-                  {currentModel.name} ({currentModel.modelCode})
+                <label className="text-slate-500 block mb-0.5">Mẫu thương phẩm đích:</label>
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-xs truncate">
+                  {currentModel.name}
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-500 block mb-1">Phiên bản Firmware mục tiêu:</label>
+                <label className="text-slate-500 block mb-0.5">Phiên bản Firmware mục tiêu:</label>
                 <input
                   type="text"
                   value={deployVersion}
                   onChange={(e) => setDeployVersion(e.target.value)}
-                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  className="w-full py-1.5 px-2.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-slate-500 block mb-1">Phạm vi triển khai:</label>
+                <label className="text-slate-500 block mb-0.5">Phạm vi triển khai:</label>
                 <select
                   value={deployMode}
                   onChange={(e) => setDeployMode(e.target.value)}
-                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  className="w-full py-1.5 px-2.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                 >
-                  <option value="ALL">Toàn bộ thiết bị khách hàng thuộc Model này</option>
-                  <option value="CANARY_10">Thử nghiệm 10% thiết bị (Canary Rollout)</option>
-                  <option value="BETA_TESTERS">Chỉ nhóm khách hàng thử nghiệm nội bộ</option>
+                  <option value="ALL">Toàn bộ thiết bị thuộc Model này</option>
+                  <option value="CANARY_10">Thử nghiệm 10% thiết bị</option>
+                  <option value="BETA_TESTERS">Chỉ nhóm khách hàng thử nghiệm</option>
                 </select>
               </div>
             </div>
@@ -1345,16 +1260,16 @@ export default function FirmwareOtaPage() {
             <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setShowDeployModal(false)}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                className="flex-1 py-1.5 text-xs font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               >
                 Hủy
               </button>
               <button
                 onClick={handleDeployCampaign}
                 disabled={deploying}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="flex-1 py-1.5 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {deploying ? "Đang gửi lệnh..." : "Bắt đầu triển khai"}
+                {deploying ? "Đang gửi..." : "Bắt đầu triển khai"}
               </button>
             </div>
           </div>
@@ -1366,57 +1281,57 @@ export default function FirmwareOtaPage() {
       {/* ========================================================================= */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <form onSubmit={handleCreateRelease} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-cyan-500" />
+          <form onSubmit={handleCreateRelease} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-4 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase flex items-center gap-1.5">
+                <UploadCloud className="w-3.5 h-3.5 text-cyan-600" />
                 Thêm bản phát hành Firmware (.bin)
               </h3>
-              <button type="button" onClick={() => setShowUploadModal(false)} className="text-slate-400 text-lg">✕</button>
+              <button type="button" onClick={() => setShowUploadModal(false)} className="text-slate-400 text-sm">✕</button>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div>
-                <label className="text-slate-500 block mb-1">Mẫu thương phẩm đích:</label>
-                <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200">
-                  {currentModel.name} ({currentModel.modelCode})
+                <label className="text-slate-500 block mb-0.5">Mẫu thương phẩm đích:</label>
+                <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-xs truncate">
+                  {currentModel.name}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-500 block mb-1">Phiên bản (VD: v1.2.0):</label>
+                  <label className="text-slate-500 block mb-0.5">Phiên bản (VD: v1.2.0):</label>
                   <input
                     type="text"
                     required
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
-                    className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                    className="w-full py-1.5 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-500 block mb-1">Loại bản phát hành:</label>
+                  <label className="text-slate-500 block mb-0.5">Loại phát hành:</label>
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                    className="w-full py-1.5 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   >
-                    <option value="STABLE">STABLE (Chính thức)</option>
-                    <option value="BETA">BETA (Thử nghiệm)</option>
-                    <option value="HOTFIX">HOTFIX (Sửa gấp)</option>
+                    <option value="STABLE">STABLE</option>
+                    <option value="BETA">BETA</option>
+                    <option value="HOTFIX">HOTFIX</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-500 block mb-1">Nội dung nâng cấp (Changelog):</label>
+                <label className="text-slate-500 block mb-0.5">Nội dung nâng cấp (Changelog):</label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   required
-                  placeholder="Ghi rõ các cải tiến: Tối ưu cảm biến, giảm độ trễ, sửa lỗi kết nối WiFi..."
+                  placeholder="Ghi ngắn gọn cải tiến..."
                   value={newChangelog}
                   onChange={(e) => setNewChangelog(e.target.value)}
-                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                  className="w-full py-1 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs"
                 />
               </div>
             </div>
@@ -1425,13 +1340,13 @@ export default function FirmwareOtaPage() {
               <button
                 type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                className="flex-1 py-1.5 text-xs font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white"
+                className="flex-1 py-1.5 text-xs font-semibold rounded bg-cyan-600 hover:bg-cyan-700 text-white"
               >
                 Lưu vào máy chủ
               </button>
