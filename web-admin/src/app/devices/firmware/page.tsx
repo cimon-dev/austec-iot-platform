@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { 
   UploadCloud, 
   Cpu, 
@@ -17,9 +17,21 @@ import {
   Check, 
   Copy, 
   WifiOff, 
-  ArrowUpRight,
   Server,
-  Trash2
+  Trash2,
+  Lock,
+  Unlock,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Layers,
+  ChevronRight,
+  HardDrive,
+  Info,
+  Radio,
+  FileCheck2,
+  DownloadCloud,
+  CheckCircle
 } from "lucide-react";
 import { getApiBaseUrl } from "@/context/apiConfig";
 import { ConfirmDeleteModal } from "@/components/ConfirmDeleteModal";
@@ -38,7 +50,7 @@ interface FirmwareRelease {
   releaseType: string;
   isActive: boolean;
   changelog: string;
-  releasedBy: string;
+  releasedBy?: string;
   createdAt: string;
 }
 
@@ -71,6 +83,320 @@ interface OtaDeviceRecord {
   retryCount: number;
 }
 
+// Danh mục Mẫu thương phẩm chuẩn hoá
+interface CommercialModelItem {
+  id: string;
+  name: string;
+  modelCode: string;
+  category: "DOOR" | "LOCK" | "UPS" | "CAMERA" | "SENSOR" | "CONTROLLER";
+  categoryLabel: string;
+  mcu: string;
+  flashSize: string;
+  currentStableVersion: string;
+  imageUrl: string;
+  description: string;
+  keyFeatures: string[];
+  codeFiles: {
+    name: string;
+    language: string;
+    code: string;
+  }[];
+}
+
+const COMMERCIAL_MODELS: CommercialModelItem[] = [
+  {
+    id: "prod_door_german",
+    name: "Cửa Cuốn Austec Titadoor A900 Super",
+    modelCode: "DOOR_GERMAN_ALU",
+    category: "DOOR",
+    categoryLabel: "Cửa Cuốn Khe Thoáng Đức",
+    mcu: "ESP32-C3 RISC-V 160MHz",
+    flashSize: "4MB Dual-Bank OTA",
+    currentStableVersion: "v1.1.0",
+    imageUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=300&q=80",
+    description: "Bộ điều khiển cửa cuốn thông minh khe thoáng nhôm công nghệ Đức, tích hợp rơ-le 3 kênh và cảm biến dừng đảo chiều khẩn cấp.",
+    keyFeatures: [
+      "Tự động dừng khi gặp vật cản (Smart Obstacle Stop)",
+      "Điều khiển qua mạng MQTT độ trễ < 50ms",
+      "Hỗ trợ nạp OTA từ xa qua WiFi an toàn tuyệt đối",
+      "Tương thích remote RF 433MHz Rolling Code"
+    ],
+    codeFiles: [
+      {
+        name: "main.cpp",
+        language: "cpp",
+        code: `// ============================================================================
+// AUSTEC SMART IOT - FIRMWARE CỬA CUỐN KHE THOÁNG ĐỨC (DOOR_GERMAN_ALU)
+// Vi điều khiển: ESP32-C3 | Flash: 4MB Dual-Bank | Phiên bản: v1.1.0 STABLE
+// ============================================================================
+#include <Arduino.h>
+#include <WiFi.h>
+#include "ota_engine.h"
+#include "mqtt_austec.h"
+
+#define RELAY_OPEN_PIN     4   // Kích rơ-le Mở Cửa (Xung 500ms)
+#define RELAY_CLOSE_PIN    5   // Kích rơ-le Đóng Cửa (Xung 500ms)
+#define RELAY_STOP_PIN     18  // Kích rơ-le Dừng Khẩn Cấp
+#define SENSOR_OBSTACLE    21  // Cảm biến quang hồng ngoại chống kẹt
+#define SENSOR_LIMIT_TOP   19  // Công tắc hành trình trên
+#define SENSOR_LIMIT_BOT   22  // Công tắc hành trình dưới
+
+void setup() {
+    Serial.begin(115200);
+    Serial.println("[AUSTEC] Khoi dong Bo dieu khien Cua cuon Titadoor A900 v1.1.0");
+
+    pinMode(RELAY_OPEN_PIN, OUTPUT);
+    pinMode(RELAY_CLOSE_PIN, OUTPUT);
+    pinMode(RELAY_STOP_PIN, OUTPUT);
+    pinMode(SENSOR_OBSTACLE, INPUT_PULLUP);
+
+    // Ket noi WiFi & Dang ky kenh OTA MQTT an toan
+    initAustecNetwork();
+    setupOtaBackgroundService();
+}
+
+void loop() {
+    // 1. Kiem tra lien tuc cam bien an toan vat can
+    if (digitalRead(SENSOR_OBSTACLE) == LOW) {
+        digitalWrite(RELAY_STOP_PIN, HIGH);
+        delay(200);
+        digitalWrite(RELAY_STOP_PIN, LOW);
+        mqttPublishAlert("OBSTACLE_DETECTED_AUTO_STOP");
+    }
+
+    // 2. Xu ly goi tin dieu khien qua MQTT & Kiem tra OTA
+    processMqttCommands();
+    yield();
+}`
+      },
+      {
+        name: "ota_engine.cpp",
+        language: "cpp",
+        code: `// MODULE NẠP FIRMWARE KHÔNG DÂY (OTA DUAL-BANK ENGINE)
+#include <HTTPUpdate.h>
+#include <WiFiClientSecure.h>
+#include <mbedtls/sha256.h>
+
+bool performOtaUpdate(const char* binaryUrl, const char* expectedSha256) {
+    WiFiClient client;
+    httpUpdate.rebootOnUpdate(false); // Tam dung reboot de kiem tra SHA256
+
+    Serial.printf("[OTA] Bat dau tai firmware tu: %s\\n", binaryUrl);
+    t_httpUpdate_return ret = httpUpdate.update(client, binaryUrl);
+
+    if (ret == HTTP_UPDATE_OK) {
+        Serial.println("[OTA] Tai ghi vao phan vung app1 thanh cong 100%!");
+        // Tinh toan ma bam kiem tra toan ven truoc khi chuyen Bootloader
+        if (validateFirmwareSha256(expectedSha256)) {
+            Serial.println("[OTA] Ma SHA256 hop le. Chuyen Bootloader & Restart!");
+            ESP.restart();
+            return true;
+        } else {
+            Serial.println("[OTA] LOI: Sai lech ma băm SHA256. Huy bo nap!");
+            return false;
+        }
+    }
+    return false;
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_door_aust",
+    name: "Cửa Cuốn Thép Tấm Liền Austdoor Aust-Steel",
+    modelCode: "DOOR_AU_STEEL",
+    category: "DOOR",
+    categoryLabel: "Cửa Cuốn Tấm Liền Úc",
+    mcu: "ESP32 Dual-Core 240MHz",
+    flashSize: "4MB Dual-Bank OTA",
+    currentStableVersion: "v1.0.2",
+    imageUrl: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=300&q=80",
+    description: "Bo mạch điều khiển tối ưu hóa cho động cơ tấm liền công nghệ Úc tốc độ đóng mở nhanh và chống xô nan.",
+    keyFeatures: [
+      "Xung kích rơ-le siêu nhạy 250ms cho motor DC tấm liền",
+      "Tự động tính toán vị trí hành trình theo thời gian chạy",
+      "Bảo vệ quá dòng động cơ khi kẹt nan",
+      "Khôi phục trạng thái thông minh sau khi cúp điện"
+    ],
+    codeFiles: [
+      {
+        name: "aust_door_motor.cpp",
+        language: "cpp",
+        code: `// THUẬT TOÁN ĐIỀU KHIỂN MOTOR CỬA CUỐN TẤM LIỀN CÔNG NGHỆ ÚC
+#include <Arduino.h>
+
+void triggerAustMotorPulse(uint8_t relayPin, uint16_t durationMs) {
+    digitalWrite(relayPin, HIGH);
+    delay(durationMs); // Xung 250ms chuẩn xác cho bo mạch DC
+    digitalWrite(relayPin, LOW);
+    Serial.printf("[AUST_DOOR] Phat xung kich %dms len Pin %d thanh cong\\n", durationMs, relayPin);
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_lock_masaru",
+    name: "Khóa Thông Minh FaceID Masaru Titan X1",
+    modelCode: "SMART_LOCK_MASARU",
+    category: "LOCK",
+    categoryLabel: "Khóa Cửa Thông Minh",
+    mcu: "ESP32-S3 Dual-Core AI 240MHz",
+    flashSize: "8MB Dual-Bank OTA",
+    currentStableVersion: "v2.0.1",
+    imageUrl: "https://images.unsplash.com/photo-1558002038-1055907df827?w=300&q=80",
+    description: "Khóa cửa thông minh cao cấp tích hợp nhận diện khuôn mặt FaceID 3D, vân tay bán dẫn FPC Thụy Điển và mã số ảo.",
+    keyFeatures: [
+      "Nhận diện FaceID 3D hồng ngoại ban đêm < 0.3s",
+      "Sinh mã mở cửa một lần (One-Time OTP) từ xa trên App",
+      "Chuông hình đàm thoại 2 chiều qua WiFi",
+      "Báo động cạy khóa & gửi ảnh kẻ gian về điện thoại"
+    ],
+    codeFiles: [
+      {
+        name: "masaru_security.cpp",
+        language: "cpp",
+        code: `// MODULE BẢO MẬT KHÓA MASARU TITAN X1 - SINH MÃ OTP & MỞ KHÓA
+#include <Arduino.h>
+#include <mbedtls/sha256.h>
+
+bool verifyOneTimeOtp(uint32_t inputOtp, uint32_t currentTimestamp) {
+    // Thuat toan xac thuc ma OTP dong dong bo voi Cloud Server
+    uint32_t calculatedOtp = generateTimeBasedOtp(currentTimestamp);
+    return (inputOtp == calculatedOtp);
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_ups_sine",
+    name: "Bộ Lưu Điện Cửa Cuốn Austec Sine 1200 Pro",
+    modelCode: "UPS_AC_220V",
+    category: "UPS",
+    categoryLabel: "Bộ Lưu Điện UPS",
+    mcu: "ESP32-C3 RISC-V 160MHz",
+    flashSize: "4MB Dual-Bank OTA",
+    currentStableVersion: "v1.8.2",
+    imageUrl: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&q=80",
+    description: "Bộ lưu điện sin chuẩn Pure Sine Wave chuyên dụng cho motor cửa cuốn, tích hợp giám sát pin thông minh qua Cloud.",
+    keyFeatures: [
+      "Sóng sin chuẩn tinh khiết bảo vệ cuộn dây motor",
+      "Chế độ tự động xả sạc dưỡng ắc quy định kỳ 30 ngày",
+      "Cảnh báo pin yếu & mất điện lưới qua tin nhắn thông báo",
+      "Lưu trữ dung lượng đủ đóng mở 30 - 40 lần khi mất điện"
+    ],
+    codeFiles: [
+      {
+        name: "ups_bms_monitor.cpp",
+        language: "cpp",
+        code: `// GIÁM SÁT DUNG LƯỢNG PIN & CHUYỂN MẠCH SIN CHUẨN
+#include <Arduino.h>
+
+float readBatteryVoltage() {
+    int raw = analogRead(A0);
+    float voltage = (raw / 4095.0) * 24.0; // He ac-quy 24V DC
+    return voltage;
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_cam_vision",
+    name: "Camera Giám Sát AI Vision 4K Ngoài Trời",
+    modelCode: "CAMERA_VISION_4K",
+    category: "CAMERA",
+    categoryLabel: "Camera AI",
+    mcu: "ESP32-S3 AI Vision + NPU",
+    flashSize: "16MB Dual-Bank OTA",
+    currentStableVersion: "v1.0.0",
+    imageUrl: "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=300&q=80",
+    description: "Camera AI nhận diện chuyển động người, cảnh báo kẻ gian vượt hàng rào và đồng bộ với hệ thống cửa cuốn tự đóng.",
+    keyFeatures: [
+      "Độ phân giải siêu nét 4K Ultra HD góc rộng 135 độ",
+      "AI nhận diện người và phương tiện chính xác 99%",
+      "Tự động kích hoạt đóng cửa khi phát hiện đột nhập",
+      "Đèn chiếu sáng rọi đêm có màu Full-Color"
+    ],
+    codeFiles: [
+      {
+        name: "ai_vision_detect.cpp",
+        language: "cpp",
+        code: `// MODULE AI NHẬN DIỆN CHUYỂN ĐỘNG & BÁO ĐỘNG ĐỘT NHẬP
+#include "esp_camera.h"
+
+void processAiPersonDetection(camera_fb_t* fb) {
+    if (detectHumanPresence(fb)) {
+        triggerSecuritySiren();
+        sendAlertSnapshotToCloud(fb);
+    }
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_sensor_multi",
+    name: "Cảm Biến Đa Năng Môi Trường MultiSensor M1",
+    modelCode: "SENSOR_MULTI_M1",
+    category: "SENSOR",
+    categoryLabel: "Cảm Biến Đa Năng",
+    mcu: "ESP32-C3 Ultra Low Power",
+    flashSize: "4MB Dual-Bank",
+    currentStableVersion: "v1.0.1",
+    imageUrl: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&q=80",
+    description: "Cảm biến báo khói, báo cháy, nhiệt độ và độ ẩm, tự động mở cửa cuốn thoát hiểm khi phát hiện sự cố cháy nổ.",
+    keyFeatures: [
+      "Tự động kích hoạt mở cửa cuốn khi phát hiện khói/cháy",
+      "Chế độ ngủ sâu (Deep Sleep) thời lượng pin 2 năm",
+      "Báo cáo nhiệt độ độ ẩm phòng thời gian thực",
+      "Còi hú báo động âm lượng lớn 90dB tại chỗ"
+    ],
+    codeFiles: [
+      {
+        name: "sensor_smoke_alert.cpp",
+        language: "cpp",
+        code: `// KÍCH HOẠT MỞ CỬA THOÁT HIỂM KHI CÓ HỎA HOẠN
+#include <Arduino.h>
+
+void onSmokeDetected() {
+    triggerAlarmBuzzer(true);
+    // Gui lenh khan cap qua kenh Broadcast mo toan bo cua thoat hiem
+    broadcastEmergencyOpenDoorCommand();
+}`
+      }
+    ]
+  },
+  {
+    id: "prod_hub_controller",
+    name: "Bộ Điều Khiển Trung Tâm Austec IoT Hub",
+    modelCode: "CONTROLLER_IOT_HUB",
+    category: "CONTROLLER",
+    categoryLabel: "Bo Mạch Trung Tâm",
+    mcu: "ESP32-WROOM-32D Dual-Core",
+    flashSize: "8MB Dual-Bank OTA",
+    currentStableVersion: "v1.5.0",
+    imageUrl: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&q=80",
+    description: "Bo mạch điều khiển mở rộng 4 kênh công suất lớn, cổng giao tiếp RS485 Modbus công nghiệp và kết nối Internet kép.",
+    keyFeatures: [
+      "4 Rơ-le tải nặng 30A điều khiển động cơ 3 pha",
+      "Giao tiếp Modbus RS485 liên kết hệ thống tòa nhà BMS",
+      "Hỗ trợ kết nối kép WiFi + Cổng mạng LAN Ethernet",
+      "Đồng bộ thời gian thực với Cloud qua MQTT SSL"
+    ],
+    codeFiles: [
+      {
+        name: "hub_modbus_controller.cpp",
+        language: "cpp",
+        code: `// ĐIỀU KHIỂN RƠ-LE CÔNG SUẤT VÀ GIAO TIẾP RS485 MODBUS
+#include <ModbusMaster.h>
+
+void triggerHeavyRelay(uint8_t channel, bool state) {
+    digitalWrite(RELAY_PINS[channel], state ? HIGH : LOW);
+    updateLedIndicator(channel, state);
+}`
+      }
+    ]
+  }
+];
+
 export default function FirmwareOtaPage() {
   const { canView, canCreate, canUpdate, canDelete } = usePermissions();
 
@@ -78,32 +404,38 @@ export default function FirmwareOtaPage() {
   const [campaigns, setCampaigns] = useState<OtaCampaign[]>([]);
   const [records, setRecords] = useState<OtaDeviceRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  // Modal states
+  // Model thương phẩm đang được chọn
+  const [selectedModelId, setSelectedModelId] = useState<string>(COMMERCIAL_MODELS[0].id);
+
+  // Mở khóa xem Code Preview (Yêu cầu xác thực Email Admin)
+  const [isCodeUnlocked, setIsCodeUnlocked] = useState<boolean>(false);
+  const [activeCodeFileIndex, setActiveCodeFileIndex] = useState<number>(0);
+
+  // Modal Xác thực Email Admin (Demo OTP Dialog)
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [authActionType, setAuthActionType] = useState<"VIEW_CODE" | "UPLOAD_FW">("VIEW_CODE");
+  const [otpCode, setOtpCode] = useState<string>("");
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+
+  // Modal Tạo chiến dịch & Upload Firmware
   const [showDeployModal, setShowDeployModal] = useState<boolean>(false);
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
-  const [deployModel, setDeployModel] = useState<string>("DOOR_GERMAN_ALU");
   const [deployVersion, setDeployVersion] = useState<string>("v1.1.0");
   const [deployMode, setDeployMode] = useState<string>("ALL");
   const [deploying, setDeploying] = useState<boolean>(false);
 
-  // Upload Form
+  // Form Upload Firmware mới
   const [newVersion, setNewVersion] = useState<string>("v1.2.0");
-  const [newModel, setNewModel] = useState<string>("DOOR_GERMAN_ALU");
   const [newChangelog, setNewChangelog] = useState<string>("");
   const [newType, setNewType] = useState<string>("STABLE");
 
-  // Multi-select & Bulk Delete
-  const [selectedFwIds, setSelectedFwIds] = useState<number[]>([]);
-  const [showDeleteFwModal, setShowDeleteFwModal] = useState<boolean>(false);
-  const [deletingFw, setDeletingFw] = useState<boolean>(false);
+  // Xóa firmware
   const [deleteSingleFwTarget, setDeleteSingleFwTarget] = useState<FirmwareRelease | null>(null);
-
-  const [selectedRecordIds, setSelectedRecordIds] = useState<number[]>([]);
-  const [isRetryingSelected, setIsRetryingSelected] = useState<boolean>(false);
+  const [deletingFw, setDeletingFw] = useState<boolean>(false);
 
   const getAuthHeaders = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
@@ -124,7 +456,6 @@ export default function FirmwareOtaPage() {
       if (fwData.success) setFirmwares(fwData.releases || []);
       if (campData.success && campData.campaigns && campData.campaigns.length > 0) {
         setCampaigns(campData.campaigns);
-        // Lấy chi tiết campaign mới nhất
         const latestId = campData.campaigns[0].id;
         const detRes = await fetch(`${getApiBaseUrl()}/api/admin/ota/campaigns/${latestId}`, { headers });
         const detData = await detRes.json();
@@ -143,166 +474,177 @@ export default function FirmwareOtaPage() {
     fetchData();
   }, []);
 
+  // Lấy Mẫu thương phẩm đang chọn
+  const currentModel = useMemo(() => {
+    return COMMERCIAL_MODELS.find(m => m.id === selectedModelId) || COMMERCIAL_MODELS[0];
+  }, [selectedModelId]);
+
+  // Lọc danh sách Mẫu thương phẩm ở Khối bên trái/phải
+  const filteredModels = useMemo(() => {
+    return COMMERCIAL_MODELS.filter(m => {
+      const matchCat = categoryFilter === "ALL" || m.category === categoryFilter;
+      const matchSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          m.modelCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          m.categoryLabel.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchCat && matchSearch;
+    });
+  }, [categoryFilter, searchQuery]);
+
+  // Lọc các bản firmware tương ứng với Model đang chọn
+  const modelFirmwares = useMemo(() => {
+    return firmwares.filter(f => f.modelCode === currentModel.modelCode);
+  }, [firmwares, currentModel.modelCode]);
+
+  // Sao chép mã SHA-256
   const handleCopyHash = (hash: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedHash(hash);
+    toast.success("Đã sao chép mã SHA-256 vào clipboard!");
     setTimeout(() => setCopiedHash(null), 2000);
   };
 
-  const handleRetryDevice = async (recordId: number) => {
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${recordId}`, {
-        method: "POST"
-      });
-      const data = await res.json();
-      if (data.success) {
-        setRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: "DOWNLOADING", progressPct: 35, errorReason: null } : r));
+  // Mở Dialog xác thực Admin
+  const handleRequestAuth = (action: "VIEW_CODE" | "UPLOAD_FW") => {
+    setAuthActionType(action);
+    setOtpCode("");
+    setShowAuthModal(true);
+  };
+
+  // Nút Demo tự động điền mã xác thực
+  const handleAutoFillDemoOtp = () => {
+    const demoCode = "882391";
+    setOtpCode(demoCode);
+    toast.info("Đã tự động điền mã xác thực thử nghiệm: 882391");
+  };
+
+  // Xác nhận OTP Admin
+  const handleConfirmOtp = () => {
+    if (!otpCode || otpCode.trim().length < 6) {
+      toast.error("Vui lòng nhập đủ mã xác thực 6 chữ số!");
+      return;
+    }
+    setIsVerifyingOtp(true);
+    setTimeout(() => {
+      setIsVerifyingOtp(false);
+      setShowAuthModal(false);
+      toast.success("Xác thực Email Quản trị viên (Admin 2FA) thành công!");
+      if (authActionType === "VIEW_CODE") {
+        setIsCodeUnlocked(true);
+      } else if (authActionType === "UPLOAD_FW") {
+        setShowUploadModal(true);
       }
-    } catch (e) {
-      console.error("Lỗi khi retry:", e);
-    }
+    }, 600);
   };
 
-  const handleToggleSelectFw = (id: number) => {
-    setSelectedFwIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-
-  const handleSelectAllFw = () => {
-    if (selectedFwIds.length === firmwares.length) {
-      setSelectedFwIds([]);
-    } else {
-      setSelectedFwIds(firmwares.map(f => f.id));
-    }
-  };
-
-  const handleBulkDeleteFw = async () => {
-    if (selectedFwIds.length === 0) return;
-    setDeletingFw(true);
-    try {
-      for (const id of selectedFwIds) {
-        await fetch(`${getApiBaseUrl()}/api/admin/firmware/${id}`, { method: 'DELETE' });
-      }
-      setFirmwares(prev => prev.filter(f => !selectedFwIds.includes(f.id)));
-      toast.success(`Đã xóa thành công ${selectedFwIds.length} bản phát hành firmware!`);
-      setSelectedFwIds([]);
-      setShowDeleteFwModal(false);
-    } catch (e: any) {
-      toast.error(`Lỗi khi xóa firmware: ${e.message}`);
-    } finally {
-      setDeletingFw(false);
-    }
-  };
-
-  const handleConfirmSingleDeleteFw = async () => {
+  // Xóa firmware
+  const handleConfirmDeleteFw = async () => {
     if (!deleteSingleFwTarget) return;
     setDeletingFw(true);
     try {
-      await fetch(`${getApiBaseUrl()}/api/admin/firmware/${deleteSingleFwTarget.id}`, { method: 'DELETE' });
-      setFirmwares(prev => prev.filter(f => f.id !== deleteSingleFwTarget.id));
-      toast.success(`Đã xóa bản phát hành ${deleteSingleFwTarget.version}!`);
-      setDeleteSingleFwTarget(null);
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/firmware/${deleteSingleFwTarget.id}`, { 
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFirmwares(prev => prev.filter(f => f.id !== deleteSingleFwTarget.id));
+        toast.success(`Đã xóa bản phát hành ${deleteSingleFwTarget.version}!`);
+        setDeleteSingleFwTarget(null);
+      } else {
+        toast.error(data.error || "Lỗi khi xóa firmware");
+      }
     } catch (e: any) {
-      toast.error(`Lỗi khi xóa firmware: ${e.message}`);
+      toast.error(`Lỗi kết nối: ${e.message}`);
     } finally {
       setDeletingFw(false);
     }
   };
 
-  const handleToggleSelectRecord = (id: number) => {
-    setSelectedRecordIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-
-  const handleSelectAllRecords = (list: OtaDeviceRecord[]) => {
-    if (selectedRecordIds.length === list.length) {
-      setSelectedRecordIds([]);
-    } else {
-      setSelectedRecordIds(list.map(r => r.id));
-    }
-  };
-
-  const handleRetrySelected = async () => {
-    if (selectedRecordIds.length === 0) return;
-    setIsRetryingSelected(true);
-    try {
-      for (const id of selectedRecordIds) {
-        await handleRetryDevice(id);
-      }
-      toast.success(`Đã gửi lại lệnh cập nhật cho ${selectedRecordIds.length} thiết bị!`);
-      setSelectedRecordIds([]);
-    } catch (e: any) {
-      toast.error(`Lỗi thử lại nạp thiết bị: ${e.message}`);
-    } finally {
-      setIsRetryingSelected(false);
-    }
-  };
-
+  // Khởi chạy chiến dịch nạp OTA
   const handleDeployCampaign = async () => {
     try {
       setDeploying(true);
       const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/deploy`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({
-          name: `Chiến dịch phát hành ${deployVersion} cho ${deployModel}`,
-          targetModel: deployModel,
+          name: `Chiến dịch phát hành ${deployVersion} cho ${currentModel.modelCode}`,
+          targetModel: currentModel.modelCode,
           targetVersion: deployVersion,
           rolloutType: deployMode
         })
       });
       const data = await res.json();
       if (data.success) {
+        toast.success(`Đã khởi tạo chiến dịch nạp OTA cho ${currentModel.name}!`);
         setShowDeployModal(false);
         fetchData();
+      } else {
+        toast.error(data.error || "Không thể khởi chạy chiến dịch");
       }
     } catch (e) {
-      console.error("Lỗi deploy chiến dịch:", e);
+      toast.error("Lỗi kết nối khi khởi chạy OTA");
     } finally {
       setDeploying(false);
     }
   };
 
+  // Tạo bản release firmware mới
   const handleCreateRelease = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/admin/firmware`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({
           version: newVersion,
-          modelCode: newModel,
-          binaryFilename: `firmware_${newModel.toLowerCase()}_${newVersion}.bin`,
-          binaryUrl: `${getApiBaseUrl()}/firmware/${newModel.toLowerCase()}_${newVersion}.bin`,
+          modelCode: currentModel.modelCode,
+          binaryFilename: `firmware_${currentModel.modelCode.toLowerCase()}_${newVersion}.bin`,
+          binaryUrl: `${getApiBaseUrl()}/firmware/${currentModel.modelCode.toLowerCase()}_${newVersion}.bin`,
           fileSizeBytes: 1612000,
           sha256Checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           releaseType: newType,
-          changelog: newChangelog || "Cập nhật tính năng & nâng cao độ ổn định"
+          changelog: newChangelog || "Cập nhật tính năng & nâng cao độ ổn định cho thiết bị"
         })
       });
       const data = await res.json();
       if (data.success) {
+        toast.success(`Đã phát hành firmware ${newVersion} cho ${currentModel.name}!`);
         setShowUploadModal(false);
         setNewChangelog("");
         fetchData();
+      } else {
+        toast.error(data.error || "Lỗi tạo bản release");
       }
     } catch (err) {
-      console.error("Lỗi tạo bản release:", err);
+      toast.error("Lỗi khi gửi dữ liệu lên máy chủ");
     }
   };
 
-  // Tính toán thống kê
-  const total = records.length;
-  const successCount = records.filter(r => r.status === "SUCCESS").length;
-  const inProgressCount = records.filter(r => r.status === "DOWNLOADING" || r.status === "PENDING").length;
-  const failedCount = records.filter(r => r.status === "FAILED_OFFLINE" || r.status === "FAILED_CHECKSUM").length;
-  const successRate = total > 0 ? Math.round((successCount / total) * 100) : 0;
+  // Retry thiết bị nạp lỗi
+  const handleRetryDevice = async (recordId: number) => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${recordId}`, {
+        method: "POST",
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: "DOWNLOADING", progressPct: 35, errorReason: null } : r));
+        toast.success("Đã gửi lại yêu cầu nạp cho thiết bị!");
+      }
+    } catch (e) {
+      toast.error("Lỗi kết nối khi gửi lại lệnh");
+    }
+  };
 
-  const filteredRecords = records.filter(r => {
-    const matchStatus = statusFilter === "ALL" || r.status === statusFilter;
-    const matchSearch = r.hardwareId.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                        r.customerName.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchStatus && matchSearch;
-  });
-
+  // Kiểm tra phân quyền truy cập trang
   if (!canView("mod_ota") && !canView("mod_dev")) {
     return (
       <AccessDenied 
@@ -314,736 +656,800 @@ export default function FirmwareOtaPage() {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+      {/* HEADER TRANG */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200 dark:border-slate-800 shrink-0">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Quản trị Firmware & Cập nhật OTA
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {(canCreate("mod_ota") || canCreate("mod_dev")) && (
-            <button
-              type="button"
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Tải lên bản .BIN</span>
-            </button>
-          )}
-          {(canUpdate("mod_ota") || canUpdate("mod_dev")) && (
-            <button
-              type="button"
-              onClick={() => setShowDeployModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs transition-all cursor-pointer"
-            >
-              <Play className="w-3.5 h-3.5" />
-              <span>Nạp đồng bộ</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Thẻ thống kê tổng quan (Overview Cards) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Tổng thiết bị trong đợt nạp</span>
-            <Cpu className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 dark:text-white mt-2">{total}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
-            <span>Chiến dịch:</span>
-            <span className="text-cyan-600 dark:text-cyan-400 font-mono font-medium">v1.1.0 Titadoor</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900/80 border border-emerald-200 dark:border-emerald-500/20 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Đã cập nhật thành công</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-          </div>
-          <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-2">{successCount}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Tỷ lệ phủ sóng: <span className="text-emerald-600 dark:text-emerald-400 font-bold">{successRate}%</span>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900/80 border border-amber-200 dark:border-amber-500/20 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Đang tải & xác thực</span>
-            <RotateCw className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-spin" />
-          </div>
-          <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-2">{inProgressCount}</div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Đang truyền chunk qua HTTP stream</div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900/80 border border-rose-200 dark:border-rose-500/20 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">Chưa cập nhật / Kẹt lỗi</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
-          </div>
-          <div className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-2">{failedCount}</div>
-          <div className="text-[11px] text-rose-600 dark:text-rose-400/90 mt-1">Cần thử lại hoặc kiểm tra nguồn WiFi</div>
-        </div>
-      </div>
-
-      {/* 3. Tiến trình chiến dịch đang chạy (Active Campaign Banner) */}
-      {campaigns.length > 0 && (
-        <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Chiến dịch phát hành đang hoạt động
-                </span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono border border-slate-300 dark:border-slate-700">
-                  ID: #{campaigns[0].id}
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white mt-1">{campaigns[0].campaignName}</h2>
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400 mt-1.5">
-                <span>Model: <b className="text-slate-800 dark:text-white">{campaigns[0].targetModel}</b></span>
-                <span>Phiên bản đích: <b className="text-slate-900 dark:text-white font-mono">{campaigns[0].targetVersion}</b></span>
-                <span>Bắt đầu lúc: <span className="font-mono text-slate-700 dark:text-slate-300">{campaigns[0].startedAt}</span></span>
-              </div>
-            </div>
-
-            <div className="w-full md:w-72 bg-white dark:bg-slate-950/80 p-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Tiến độ đợt nạp</span>
-                <span className="text-slate-900 dark:text-white font-bold font-mono">{successRate}% Hoàn thành</span>
-              </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500" 
-                  style={{ width: `${successRate}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                <span>{successCount}/{total} Thiết bị</span>
-                <span>{failedCount} Lỗi/Offline</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Kho Bản Phát Hành Firmware (Firmware Releases Catalog) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileCode className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Kho Bản Phát Hành Firmware (.bin)</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono border border-slate-200 dark:border-slate-700">
-              {firmwares.length} bản
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <Cpu className="w-6 h-6 text-cyan-500" />
+              Quản trị Firmware & Cập nhật OTA
+            </h1>
+            <span className="px-2 py-0.5 text-[11px] font-semibold bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-400 rounded-full border border-cyan-300 dark:border-cyan-800">
+              Kiến trúc Không dây 100%
             </span>
           </div>
-          <button 
-            onClick={fetchData} 
-            className="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-            Làm mới
-          </button>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Quản lý kho firmware theo mẫu thương phẩm, xem mã nguồn bảo mật và khởi chạy chiến dịch nạp an toàn từ xa.
+          </p>
         </div>
 
-        {/* Firmware Bulk Action Toolbar */}
-        {selectedFwIds.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border-b border-slate-200 dark:border-slate-800">
-            <span>Đã chọn: <strong>{selectedFwIds.length}</strong> bản phát hành</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedFwIds([])}
-                className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer"
-              >
-                Bỏ chọn
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDeleteFwModal(true)}
-                className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-700 dark:text-rose-400 font-semibold cursor-pointer text-xs"
-              >
-                Xóa đã chọn ({selectedFwIds.length})
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Nút nạp OTA chung */}
+          {(canUpdate("mod_ota") || canUpdate("mod_dev")) && (
+            <button
+              onClick={() => {
+                setDeployVersion(currentModel.currentStableVersion);
+                setShowDeployModal(true);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition"
+            >
+              <Play className="w-3.5 h-3.5" />
+              Khởi chạy OTA
+            </button>
+          )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 font-medium">
-                <th className="p-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={firmwares.length > 0 && selectedFwIds.length === firmwares.length}
-                    onChange={handleSelectAllFw}
-                    className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                    title="Chọn tất cả"
-                  />
-                </th>
-                <th className="p-3">Phiên bản</th>
-                <th className="p-3">Dòng Sản Phẩm</th>
-                <th className="p-3">Tệp Binary</th>
-                <th className="p-3">Dung lượng</th>
-                <th className="p-3">Mã Băm SHA-256</th>
-                <th className="p-3">Loại</th>
-                <th className="p-3">Nhật ký thay đổi (Changelog)</th>
-                <th className="p-3 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <RotateCw className="w-5 h-5 animate-spin text-slate-400" />
-                      <span>Đang nạp kho firmware...</span>
-                    </div>
-                  </td>
-                </tr>
-              ) : firmwares.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
-                    Chưa có bản phát hành firmware nào.
-                  </td>
-                </tr>
-              ) : (
-                firmwares.map((fw) => {
-                  const isChecked = selectedFwIds.includes(fw.id);
-                  return (
-                    <tr
-                      key={fw.id}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
-                        isChecked ? "bg-slate-100 dark:bg-slate-800/80" : ""
-                      }`}
-                    >
-                      <td className="p-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelectFw(fw.id)}
-                          className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </td>
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                        {fw.version}
-                      </td>
-                      <td className="p-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                        {fw.modelCode}
-                      </td>
-                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                        {fw.binaryFilename}
-                      </td>
-                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                        {(fw.fileSizeBytes / 1024 / 1024).toFixed(2)} MB
-                      </td>
-                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                        <button 
-                          onClick={() => handleCopyHash(fw.sha256Checksum)}
-                          className="flex items-center gap-1.5 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer group"
-                          title="Bấm để sao chép SHA-256"
-                        >
-                          <span>{fw.sha256Checksum.slice(0, 10)}...{fw.sha256Checksum.slice(-6)}</span>
-                          {copiedHash === fw.sha256Checksum ? (
-                            <Check className="w-3 h-3 text-emerald-500 dark:text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3 h-3 opacity-50 group-hover:opacity-100" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          fw.releaseType === "STABLE" 
-                            ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900" 
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                        }`}>
-                          {fw.releaseType}
-                        </span>
-                      </td>
-                      <td className="p-3 text-slate-500 dark:text-slate-400 max-w-xs truncate" title={fw.changelog}>
-                        {fw.changelog}
-                      </td>
-                      <td className="p-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setDeleteSingleFwTarget(fw)}
-                          className="p-1 rounded text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer transition-colors"
-                          title="Xóa bản phát hành"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          {/* Nút thêm Firmware mới */}
+          {(canCreate("mod_ota") || canCreate("mod_dev")) && (
+            <button
+              onClick={() => handleRequestAuth("UPLOAD_FW")}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white shadow-xs transition"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Thêm Firmware (.bin)
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 5. Ma Trận Thiết Bị & Tiến Độ Nạp Từng Máy (Devices Rollout Matrix) */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Server className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              Danh Sách Thiết Bị & Trạng Thái Phiên Bản Hiện Tại
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Theo dõi chi tiết từng thiết bị, xử lý các trường hợp không nạp được hoặc bị lỗi gián đoạn WiFi
-            </p>
+      {/* THẺ THỐNG KÊ NHANH */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Mẫu thương phẩm</span>
+            <Layers className="w-4 h-4 text-cyan-500" />
           </div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{COMMERCIAL_MODELS.length}</div>
+          <div className="text-[10px] text-cyan-600 dark:text-cyan-400 mt-0.5">Sẵn sàng nạp OTA</div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Search */}
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Bản phát hành (.bin)</span>
+            <FileCode className="w-4 h-4 text-blue-500" />
+          </div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{firmwares.length}</div>
+          <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">Đã lưu trong máy chủ</div>
+        </div>
+
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Chiến dịch OTA</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          </div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">{campaigns.length}</div>
+          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">Đã phát hành ra mạch</div>
+        </div>
+
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500 dark:text-slate-400">Bảo mật cấp cao</span>
+            <ShieldCheck className="w-4 h-4 text-amber-500" />
+          </div>
+          <div className="text-xl font-bold text-slate-900 dark:text-white mt-1">Admin 2FA</div>
+          <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">Khóa xem mã nguồn</div>
+        </div>
+      </div>
+
+      {/* GIAO DIỆN 2 KHỐI CHÍNH */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        {/* KHỐI 1 (BÊN TRÁI): DANH SÁCH TOÀN BỘ MẪU THƯƠNG PHẨM */}
+        <div className="lg:col-span-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
+          {/* Header & Filter Mẫu */}
+          <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-cyan-500" />
+                Kho Mẫu Thương Phẩm ({filteredModels.length})
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">Chọn để xem chi tiết</span>
+            </div>
+
+            {/* Ô tìm kiếm */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Tìm mã phần cứng / Khách..."
+                placeholder="Tìm theo tên hoặc mã model..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-cyan-500 w-48"
+                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
               />
             </div>
 
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800 text-xs">
-              <button
-                onClick={() => setStatusFilter("ALL")}
-                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                  statusFilter === "ALL" 
-                    ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold shadow-xs" 
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Tất cả ({records.length})
-              </button>
-              <button
-                onClick={() => setStatusFilter("SUCCESS")}
-                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                  statusFilter === "SUCCESS" 
-                    ? "bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20" 
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Đã lên ({records.filter(r => r.status === "SUCCESS").length})
-              </button>
-              <button
-                onClick={() => setStatusFilter("FAILED_OFFLINE")}
-                className={`px-2 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
-                  statusFilter === "FAILED_OFFLINE" 
-                    ? "bg-rose-500/10 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20" 
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                }`}
-              >
-                Kẹt lỗi ({records.filter(r => r.status.startsWith("FAILED")).length})
-              </button>
+            {/* Bộ lọc nhóm / loại */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-[11px]">
+              {[
+                { id: "ALL", label: "Tất cả" },
+                { id: "DOOR", label: "Cửa cuốn" },
+                { id: "LOCK", label: "Khóa" },
+                { id: "UPS", label: "UPS" },
+                { id: "CAMERA", label: "Camera" },
+                { id: "SENSOR", label: "Cảm biến" },
+                { id: "CONTROLLER", label: "Bo mạch" },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategoryFilter(cat.id)}
+                  className={`px-2 py-0.5 rounded-md font-medium whitespace-nowrap transition ${
+                    categoryFilter === cat.id
+                      ? "bg-cyan-600 text-white"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Rollout Bulk Action Toolbar */}
-        {selectedRecordIds.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border-b border-slate-200 dark:border-slate-800">
-            <span>Đã chọn: <strong>{selectedRecordIds.length}</strong> thiết bị</span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedRecordIds([])}
-                className="text-xs text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline cursor-pointer"
-              >
-                Bỏ chọn
-              </button>
-              <button
-                type="button"
-                onClick={handleRetrySelected}
-                disabled={isRetryingSelected}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-900 dark:text-white hover:underline cursor-pointer"
-              >
-                {isRetryingSelected && <RotateCw className="w-3 h-3 animate-spin" />}
-                <span>Thử lại nạp ({selectedRecordIds.length} TB)</span>
-              </button>
-            </div>
-          </div>
-        )}
+          {/* Danh sách thẻ mẫu thương phẩm */}
+          <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[750px] overflow-y-auto">
+            {filteredModels.length === 0 ? (
+              <div className="p-8 text-center text-xs text-slate-400">
+                Không tìm thấy mẫu thương phẩm phù hợp
+              </div>
+            ) : (
+              filteredModels.map((model) => {
+                const isSelected = model.id === currentModel.id;
+                const releaseCount = firmwares.filter(f => f.modelCode === model.modelCode).length;
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-400 font-medium">
-                <th className="p-3 w-10 text-center">
-                  <input
-                    type="checkbox"
-                    checked={filteredRecords.length > 0 && selectedRecordIds.length === filteredRecords.length}
-                    onChange={() => handleSelectAllRecords(filteredRecords)}
-                    className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                    title="Chọn tất cả"
-                  />
-                </th>
-                <th className="p-3">Mã Thiết Bị (Hardware ID)</th>
-                <th className="p-3">Khách Hàng / Điểm Lắp</th>
-                <th className="p-3">Phiên Bản Hiện Tại</th>
-                <th className="p-3">Phiên Bản Đích</th>
-                <th className="p-3">Tiến Độ Nạp</th>
-                <th className="p-3">Trạng Thái</th>
-                <th className="p-3">Chi Tiết / Lý Do</th>
-                <th className="p-3 text-right">Thao Tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60 text-slate-700 dark:text-slate-300">
-              {loading ? (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <RotateCw className="w-5 h-5 animate-spin text-slate-400" />
-                      <span>Đang nạp danh sách thiết bị rollout...</span>
+                return (
+                  <div
+                    key={model.id}
+                    onClick={() => {
+                      setSelectedModelId(model.id);
+                      setIsCodeUnlocked(false); // Khóa lại code khi chuyển model để đảm bảo bảo mật
+                      setActiveCodeFileIndex(0);
+                    }}
+                    className={`p-3 cursor-pointer transition flex items-start gap-3 ${
+                      isSelected 
+                        ? "bg-cyan-50/70 dark:bg-cyan-950/30 border-l-4 border-cyan-500" 
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <img 
+                      src={model.imageUrl} 
+                      alt={model.name}
+                      className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0 mt-0.5" 
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+                          {model.categoryLabel}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 font-semibold text-slate-600 dark:text-slate-300">
+                          {releaseCount} bản fw
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-semibold text-slate-900 dark:text-white truncate mt-0.5">
+                        {model.name}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1 py-0.2 rounded">
+                          {model.modelCode}
+                        </span>
+                        <span>•</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                          {model.currentStableVersion}
+                        </span>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredRecords.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="p-6 text-center text-slate-400 dark:text-slate-500">
-                    Không tìm thấy thiết bị nào phù hợp với bộ lọc
-                  </td>
-                </tr>
-              ) : (
-                filteredRecords.map((rec) => {
-                  const isSuccess = rec.status === "SUCCESS";
-                  const isFailed = rec.status === "FAILED_OFFLINE" || rec.status === "FAILED_CHECKSUM";
-                  const isDownloading = rec.status === "DOWNLOADING";
-                  const isChecked = selectedRecordIds.includes(rec.id);
-
-                  return (
-                    <tr
-                      key={rec.id}
-                      className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${
-                        isChecked ? "bg-slate-100 dark:bg-slate-800/80" : ""
-                      }`}
-                    >
-                      <td className="p-3 w-10 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelectRecord(rec.id)}
-                          className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-0 cursor-pointer w-3.5 h-3.5"
-                        />
-                      </td>
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <Cpu className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{rec.hardwareId}</span>
-                        {rec.hardwareId === 'amtuong1994' && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-sans font-bold">
-                            MẠCH THẬT
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 text-slate-800 dark:text-slate-200 font-medium">
-                        {rec.customerName}
-                      </td>
-                      <td className="p-3 font-mono text-slate-500 dark:text-slate-400">
-                        {rec.currentVersion}
-                      </td>
-                      <td className="p-3 font-mono font-bold text-slate-900 dark:text-white">
-                        {rec.targetVersion}
-                      </td>
-                      <td className="p-3 w-40">
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
-                            <span>{rec.progressPct}%</span>
-                          </div>
-                          <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                            <div 
-                              className={`h-1.5 rounded-full transition-all duration-300 ${
-                                isSuccess ? "bg-emerald-500" : isFailed ? "bg-rose-500" : "bg-slate-900 dark:bg-white"
-                              }`}
-                              style={{ width: `${rec.progressPct}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {isSuccess && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Đã nâng cấp
-                          </span>
-                        )}
-                        {isDownloading && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">
-                            <RotateCw className="w-3 h-3 animate-spin" />
-                            Đang tải {rec.progressPct}%
-                          </span>
-                        )}
-                        {rec.status === "FAILED_OFFLINE" && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
-                            <WifiOff className="w-3 h-3" />
-                            Mất kết nối
-                          </span>
-                        )}
-                        {rec.status === "FAILED_CHECKSUM" && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                            <AlertTriangle className="w-3 h-3" />
-                            Lỗi Checksum
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3 text-slate-500 dark:text-slate-400 text-[11px] max-w-xs truncate" title={rec.errorReason || "Cập nhật thành công không có lỗi"}>
-                        {rec.errorReason ? (
-                          <span className="text-rose-600 dark:text-rose-400 font-medium">{rec.errorReason}</span>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-500">Hoạt động ổn định trên phân vùng App1</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-right">
-                        {isFailed ? (
-                          <button
-                            onClick={() => handleRetryDevice(rec.id)}
-                            className="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded text-[11px] font-bold transition-all cursor-pointer inline-flex items-center gap-1 shadow-xs"
-                          >
-                            <RotateCw className="w-3 h-3" />
-                            Thử lại nạp
-                          </button>
-                        ) : isSuccess ? (
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">Rollback Sẵn Sàng</span>
-                        ) : (
-                          <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono">Đang truyền...</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                    <ChevronRight className={`w-4 h-4 mt-3 transition shrink-0 ${isSelected ? "text-cyan-600 translate-x-0.5" : "text-slate-300 dark:text-slate-600"}`} />
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* 6. Modal: Nạp Đồng Bộ Hàng Loạt (Mass Deploy) */}
-      {showDeployModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Play className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
-              Khởi Chạy Chiến Dịch Nạp Đồng Bộ Hàng Loạt
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Phát lệnh nạp OTA qua MQTT Broker tới toàn bộ thiết bị đang trực tuyến. Các thiết bị ngoại tuyến sẽ được nạp bù tự động khi kết nối lại mạng.
-            </p>
-
-            <div className="space-y-4 mt-5">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Chọn Dòng Sản Phẩm Cần Nạp
-                </label>
-                <select
-                  value={deployModel}
-                  onChange={(e) => setDeployModel(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
-                >
-                  <option value="DOOR_GERMAN_ALU">Cửa cuốn nhôm công nghệ Đức (DOOR_GERMAN_ALU)</option>
-                  <option value="DOOR_AU_STEEL">Cửa cuốn tấm liền Úc (DOOR_AU_STEEL)</option>
-                  <option value="SMART_LOCK_MASARU">Khóa vân tay Masaru (SMART_LOCK_MASARU)</option>
-                  <option value="UPS_AC_220V">Lưu điện Austec Sine 220V (UPS_AC_220V)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Phiên Bản Firmware Đích
-                </label>
-                <select
-                  value={deployVersion}
-                  onChange={(e) => setDeployVersion(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-cyan-600 dark:text-cyan-400 font-mono font-bold focus:outline-none focus:border-cyan-500"
-                >
-                  <option value="v1.1.0">v1.1.0 (Stable - Vật cản thông minh & Auto WiFi)</option>
-                  <option value="v1.0.2">v1.0.2 (Stable - Xung kích rơ-le tối ưu)</option>
-                  <option value="v2.0.1">v2.0.1 (Stable - FaceID 3D & Mã OTP)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Chế Độ Triển Khai
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDeployMode("ALL")}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                      deployMode === "ALL" 
-                        ? "bg-cyan-500/10 border-cyan-500 text-slate-900 dark:text-white font-bold" 
-                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                    }`}
-                  >
-                    <div className="font-semibold text-cyan-600 dark:text-cyan-400">Tất cả thiết bị</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Nạp đồng loạt toàn bộ thiết bị đã lắp đặt</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeployMode("CANARY")}
-                    className={`p-2.5 rounded-lg border text-left text-xs transition-all cursor-pointer ${
-                      deployMode === "CANARY" 
-                        ? "bg-cyan-500/10 border-cyan-500 text-slate-900 dark:text-white font-bold" 
-                        : "bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                    }`}
-                  >
-                    <div className="font-semibold text-cyan-600 dark:text-cyan-400">Canary Rollout</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">Nạp thử nghiệm 5-10 thiết bị phòng Lab trước</div>
-                  </button>
+        {/* KHỐI 2 (BÊN PHẢI): CHI TIẾT MẪU THƯƠNG PHẨM & QUẢN TRỊ FIRMWARE OTA */}
+        <div className="lg:col-span-8 space-y-5">
+          
+          {/* 1. THẺ THÔNG TIN CHI TIẾT MẪU THƯƠNG PHẨM */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-3.5">
+                <img 
+                  src={currentModel.imageUrl} 
+                  alt={currentModel.name}
+                  className="w-16 h-16 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shadow-xs shrink-0" 
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300 uppercase">
+                      {currentModel.categoryLabel}
+                    </span>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      Mã: {currentModel.modelCode}
+                    </span>
+                  </div>
+                  <h2 className="text-base md:text-lg font-bold text-slate-900 dark:text-white mt-1">
+                    {currentModel.name}
+                  </h2>
                 </div>
               </div>
 
-              <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
-                <span>
-                  <b>Cơ chế an toàn Anti-Brick:</b> Thiết bị sẽ tự động tải file vào phân vùng dự phòng (App1). Nếu phát hiện lỗi hoặc không kết nối được WiFi sau 3 lần khởi động, chip sẽ tự động quay về bản cũ.
+              <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+                <button
+                  onClick={() => {
+                    setDeployVersion(currentModel.currentStableVersion);
+                    setShowDeployModal(true);
+                  }}
+                  className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-xs"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  Nạp OTA Mẫu Này
+                </button>
+              </div>
+            </div>
+
+            {/* Thông số phần cứng & mô tả */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 my-4 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <div>
+                <span className="text-slate-400 block text-[11px]">Chip xử lý (MCU):</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
+                  <Cpu className="w-3.5 h-3.5 text-cyan-500" />
+                  {currentModel.mcu}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Bộ nhớ Flash:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1 mt-0.5">
+                  <HardDrive className="w-3.5 h-3.5 text-blue-500" />
+                  {currentModel.flashSize}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 block text-[11px]">Bản ổn định khuyến nghị:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {currentModel.currentStableVersion} (STABLE)
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 mt-6">
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              {currentModel.description}
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {currentModel.keyFeatures.map((feat, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <Check className="w-3 h-3 text-cyan-500" />
+                  {feat}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 2. GIAO DIỆN TRỰC QUAN CÁC PHIÊN BẢN FIRMWARE CỦA MẪU */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-cyan-500" />
+                  Kho Bản Phát Hành Firmware ({modelFirmwares.length} bản cho {currentModel.modelCode})
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Các tệp nhị phân .bin đã biên dịch, kiểm tra mã băm SHA-256 trước khi triển khai không dây.
+                </p>
+              </div>
+
+              {(canCreate("mod_ota") || canCreate("mod_dev")) && (
+                <button
+                  onClick={() => handleRequestAuth("UPLOAD_FW")}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Thêm bản .bin
+                </button>
+              )}
+            </div>
+
+            {/* Danh sách phiên bản trực quan */}
+            <div className="space-y-3">
+              {modelFirmwares.length === 0 ? (
+                <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                  Chưa có bản phát hành firmware nào cho mẫu này. Hãy bấm "Thêm bản .bin" để tạo phiên bản đầu tiên.
+                </div>
+              ) : (
+                modelFirmwares.map((fw) => (
+                  <div
+                    key={fw.id}
+                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-cyan-500/40 dark:hover:border-cyan-500/40 transition bg-slate-50/50 dark:bg-slate-800/30 space-y-2.5"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="px-2 py-0.5 rounded-md text-xs font-bold font-mono bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
+                          {fw.version}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                          fw.releaseType === "STABLE"
+                            ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300"
+                            : "bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300"
+                        }`}>
+                          {fw.releaseType}
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          {new Date(fw.createdAt).toLocaleDateString("vi-VN")}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setDeployVersion(fw.version);
+                            setShowDeployModal(true);
+                          }}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1 shadow-xs"
+                        >
+                          <Play className="w-3 h-3" />
+                          Nạp OTA
+                        </button>
+
+                        {(canDelete("mod_ota") || canDelete("mod_dev")) && (
+                          <button
+                            onClick={() => setDeleteSingleFwTarget(fw)}
+                            className="p-1 text-slate-400 hover:text-red-500 rounded-md transition"
+                            title="Xóa bản phát hành"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">
+                      {fw.changelog}
+                    </p>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-500">
+                      <div className="flex items-center gap-3">
+                        <span>Dung lượng: <strong className="text-slate-700 dark:text-slate-300">{(fw.fileSizeBytes / (1024 * 1024)).toFixed(2)} MB</strong></span>
+                        <span>Tệp: <code className="text-slate-600 dark:text-slate-400 font-mono">{fw.binaryFilename}</code></span>
+                      </div>
+
+                      {/* Mã băm SHA-256 */}
+                      <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700 font-mono text-[10px]">
+                        <span className="text-slate-400">SHA256:</span>
+                        <span className="text-cyan-600 dark:text-cyan-400">
+                          {fw.sha256Checksum.substring(0, 10)}...{fw.sha256Checksum.substring(fw.sha256Checksum.length - 8)}
+                        </span>
+                        <button
+                          onClick={() => handleCopyHash(fw.sha256Checksum)}
+                          className="text-slate-400 hover:text-cyan-500 ml-1"
+                          title="Sao chép toàn bộ mã SHA256"
+                        >
+                          {copiedHash === fw.sha256Checksum ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 3. KHỐI CODE PREVIEW CỦA MẪU THƯƠNG PHẨM (MẶC ĐỊNH BỊ ẨN / YÊU CẦU XÁC THỰC EMAIL ADMIN) */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileCode className="w-4 h-4 text-amber-500" />
+                  Mã Nguồn Cốt Lõi (Firmware Code Preview)
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Mã nguồn C/C++ điều khiển vi điều khiển, quản lý rơ-le, thuật toán an toàn và module nạp OTA.
+                </p>
+              </div>
+
+              {isCodeUnlocked && (
+                <button
+                  onClick={() => setIsCodeUnlocked(false)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  Khóa lại mã nguồn
+                </button>
+              )}
+            </div>
+
+            {/* TRẠNG THÁI 1: BỊ KHÓA BẢO MẬT (MẶC ĐỊNH) */}
+            {!isCodeUnlocked ? (
+              <div className="relative rounded-xl border border-dashed border-amber-300 dark:border-amber-800/80 bg-gradient-to-b from-amber-50/50 to-amber-100/30 dark:from-amber-950/20 dark:to-slate-900/60 p-8 text-center flex flex-col items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs mb-3">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Mã Nguồn Được Bảo Vệ Cấp Cao (Admin 2FA)
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mt-1 mb-4 leading-relaxed">
+                  Vì lý do an toàn bản quyền công nghệ và bảo mật vận hành cửa cuốn, bạn cần xác thực mã OTP qua Email Quản trị viên để mở khóa xem mã nguồn mẫu này.
+                </p>
+                <button
+                  onClick={() => handleRequestAuth("VIEW_CODE")}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-xs transition"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  Xác Thực Email Admin Để Xem Code
+                </button>
+              </div>
+            ) : (
+              /* TRẠNG THÁI 2: ĐÃ MỞ KHÓA MÃ NGUỒN (CODE PREVIEW HIỂN THỊ) */
+              <div className="space-y-2.5">
+                {/* Thanh chọn tệp mã nguồn */}
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    {currentModel.codeFiles.map((file, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveCodeFileIndex(idx)}
+                        className={`px-3 py-1 text-xs font-mono rounded-md transition flex items-center gap-1.5 ${
+                          activeCodeFileIndex === idx
+                            ? "bg-slate-900 text-cyan-400 dark:bg-slate-800"
+                            : "bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        <FileCode className="w-3.5 h-3.5" />
+                        {file.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const code = currentModel.codeFiles[activeCodeFileIndex]?.code || "";
+                      navigator.clipboard.writeText(code);
+                      toast.success("Đã sao chép mã nguồn vào clipboard!");
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    Sao chép code
+                  </button>
+                </div>
+
+                {/* Khung xem Code */}
+                <div className="relative rounded-lg overflow-hidden bg-slate-950 border border-slate-800 shadow-inner">
+                  <div className="flex items-center justify-between px-3.5 py-1.5 bg-slate-900/80 border-b border-slate-800/80 text-[11px] text-slate-400 font-mono">
+                    <span>{currentModel.codeFiles[activeCodeFileIndex]?.name} • C++ (ESP-IDF / Arduino)</span>
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <Unlock className="w-3 h-3" /> Đã mở khóa bảo mật
+                    </span>
+                  </div>
+                  <pre className="p-4 text-xs font-mono text-slate-200 overflow-x-auto leading-relaxed max-h-[420px] scrollbar-thin">
+                    <code>{currentModel.codeFiles[activeCodeFileIndex]?.code}</code>
+                  </pre>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 4. GIÁM SÁT THIẾT BỊ NẠP OTA THỰC TẾ (LIVE ROLLOUT MONITORING) */}
+          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 md:p-5 shadow-xs space-y-3.5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-emerald-500" />
+                  Tiến Độ Nạp Mạch Phần Cứng Thực Tế ({records.length} thiết bị)
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Theo dõi trạng thái tải gói nhị phân, kiểm tra toàn vẹn và xác nhận khởi động thành công của từng mạch.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchData}
+                className="p-1.5 text-slate-400 hover:text-cyan-500 rounded-md transition"
+                title="Làm mới trạng thái thiết bị"
+              >
+                <RotateCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+
+            {records.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-lg">
+                Chưa có thiết bị nào trong tiến trình nạp. Hãy chọn "Khởi chạy OTA" để bắt đầu chiến dịch.
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden border border-slate-200 dark:border-slate-800 rounded-lg">
+                {records.map((rec) => (
+                  <div key={rec.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <div>
+                        <div className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>{rec.customerName}</span>
+                          <span className="font-mono text-[10px] px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 rounded text-slate-500">
+                            {rec.hardwareId}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">
+                          Phiên bản: {rec.currentVersion} ➔ <strong className="text-cyan-600 dark:text-cyan-400">{rec.targetVersion}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* Trạng thái nạp */}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                        rec.status === "SUCCESS"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                          : rec.status === "DOWNLOADING"
+                          ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 animate-pulse"
+                          : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
+                      }`}>
+                        {rec.status} ({rec.progressPct}%)
+                      </span>
+
+                      {rec.status !== "SUCCESS" && (
+                        <button
+                          onClick={() => handleRetryDevice(rec.id)}
+                          className="px-2 py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition"
+                        >
+                          Thử lại
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* DIALOG XÁC THỰC EMAIL QUẢN TRỊ VIÊN (DEMO OTP DIALOG) */}
+      {/* ========================================================================= */}
+      {showAuthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-950/80 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Xác Thực Bảo Mật Quản Trị Viên (Admin 2FA)
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Mã xác thực một lần gửi qua Email</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAuthModal(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-lg leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+                Để thực hiện hành động <strong className="text-amber-600 dark:text-amber-400">
+                  {authActionType === "VIEW_CODE" ? "Xem mã nguồn Firmware" : "Thêm bản Firmware mới"}
+                </strong>, hệ thống yêu cầu xác nhận danh tính qua mã xác thực gửi tới hòm thư:
+              </p>
+              
+              <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/60 font-mono text-center font-bold text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                admin@austec.vn
+              </div>
+
+              {/* Ô nhập mã OTP */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  Nhập mã OTP 6 chữ số:
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="Ví dụ: 882391"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  className="w-full text-center tracking-widest text-lg font-mono font-bold py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Nút Demo Tự Động Điền Mã */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleAutoFillDemoOtp}
+                  className="w-full py-1.5 text-[11px] font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-800 transition flex items-center justify-center gap-1.5"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Tự động điền mã xác thực (Demo: 882391)
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
-                onClick={() => setShowDeployModal(false)}
-                className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
+                onClick={() => setShowAuthModal(false)}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition"
               >
                 Hủy bỏ
               </button>
               <button
                 type="button"
-                onClick={handleDeployCampaign}
-                disabled={deploying}
-                className="px-4 py-2 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold rounded-lg shadow-xs cursor-pointer disabled:opacity-50 transition-colors"
+                onClick={handleConfirmOtp}
+                disabled={isVerifyingOtp}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition shadow-xs flex items-center justify-center gap-1"
               >
-                {deploying ? "Đang phát lệnh qua MQTT..." : "Xác Nhận & Bắt Đầu Nạp"}
+                {isVerifyingOtp ? "Đang xác thực..." : "Xác nhận & Mở khóa"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 7. Modal: Tải Lên Bản Firmware Mới (Upload .bin) */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 dark:bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl animate-in zoom-in-95 duration-150">
-            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <UploadCloud className="w-5 h-5 text-slate-700 dark:text-slate-300" />
-              Tải Lên Bản Phát Hành Firmware (.bin)
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Thêm file nhị phân đã biên dịch từ Arduino / PlatformIO vào kho lưu trữ máy chủ
-            </p>
+      {/* ========================================================================= */}
+      {/* MODAL KHỞI CHẠY CHIẾN DỊCH NẠP OTA */}
+      {/* ========================================================================= */}
+      {showDeployModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Play className="w-4 h-4 text-emerald-500" />
+                Khởi chạy chiến dịch nạp OTA
+              </h3>
+              <button onClick={() => setShowDeployModal(false)} className="text-slate-400 text-lg">✕</button>
+            </div>
 
-            <form onSubmit={handleCreateRelease} className="space-y-4 mt-5">
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-500 block mb-1">Mẫu thương phẩm áp dụng:</label>
+                <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200">
+                  {currentModel.name} ({currentModel.modelCode})
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-500 block mb-1">Phiên bản Firmware mục tiêu:</label>
+                <input
+                  type="text"
+                  value={deployVersion}
+                  onChange={(e) => setDeployVersion(e.target.value)}
+                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-500 block mb-1">Phạm vi triển khai:</label>
+                <select
+                  value={deployMode}
+                  onChange={(e) => setDeployMode(e.target.value)}
+                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                >
+                  <option value="ALL">Toàn bộ thiết bị khách hàng thuộc Model này</option>
+                  <option value="CANARY_10">Thử nghiệm 10% thiết bị (Canary Rollout)</option>
+                  <option value="BETA_TESTERS">Chỉ nhóm khách hàng thử nghiệm nội bộ</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                onClick={() => setShowDeployModal(false)}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleDeployCampaign}
+                disabled={deploying}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {deploying ? "Đang gửi lệnh..." : "Bắt đầu triển khai"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL THÊM BẢN FIRMWARE MỚI (.BIN) */}
+      {/* ========================================================================= */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <form onSubmit={handleCreateRelease} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-cyan-500" />
+                Thêm bản phát hành Firmware (.bin)
+              </h3>
+              <button type="button" onClick={() => setShowUploadModal(false)} className="text-slate-400 text-lg">✕</button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-500 block mb-1">Mẫu thương phẩm đích:</label>
+                <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200">
+                  {currentModel.name} ({currentModel.modelCode})
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Số Phiên Bản (SemVer)
-                  </label>
+                  <label className="text-slate-500 block mb-1">Phiên bản (VD: v1.2.0):</label>
                   <input
                     type="text"
                     required
                     value={newVersion}
                     onChange={(e) => setNewVersion(e.target.value)}
-                    placeholder="vd: v1.2.0"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-slate-500"
+                    className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Dòng Thiết Bị Áp Dụng
-                  </label>
+                  <label className="text-slate-500 block mb-1">Loại bản phát hành:</label>
                   <select
-                    value={newModel}
-                    onChange={(e) => setNewModel(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
+                    value={newType}
+                    onChange={(e) => setNewType(e.target.value)}
+                    className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                   >
-                    <option value="DOOR_GERMAN_ALU">Cửa cuốn Titadoor Đức</option>
-                    <option value="DOOR_AU_STEEL">Cửa cuốn tấm liền Úc</option>
-                    <option value="SMART_LOCK_MASARU">Khóa vân tay Masaru</option>
-                    <option value="UPS_AC_220V">Lưu điện Austec Sine 220V</option>
+                    <option value="STABLE">STABLE (Chính thức)</option>
+                    <option value="BETA">BETA (Thử nghiệm)</option>
+                    <option value="HOTFIX">HOTFIX (Sửa gấp)</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Đính Kèm Tệp Binary (.bin)
-                </label>
-                <div className="p-4 border-2 border-dashed border-slate-300 dark:border-slate-800 hover:border-slate-500 rounded-lg text-center cursor-pointer transition-colors bg-slate-50 dark:bg-slate-950/50">
-                  <FileCode className="w-8 h-8 text-slate-400 mx-auto mb-1" />
-                  <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Kéo thả tệp .bin hoặc bấm chọn file</span>
-                  <p className="text-[10px] text-slate-500 mt-0.5">Dung lượng tối đa 1.8MB cho phân vùng OTA ESP32</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Nhật Ký Thay Đổi (Changelog)
-                </label>
+                <label className="text-slate-500 block mb-1">Nội dung nâng cấp (Changelog):</label>
                 <textarea
                   rows={3}
                   required
+                  placeholder="Ghi rõ các cải tiến: Tối ưu cảm biến, giảm độ trễ, sửa lỗi kết nối WiFi..."
                   value={newChangelog}
                   onChange={(e) => setNewChangelog(e.target.value)}
-                  placeholder="Mô tả các lỗi đã fix hoặc tính năng mới bổ sung..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
-                ></textarea>
+                  className="w-full py-1.5 px-3 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                />
               </div>
+            </div>
 
-              <div className="flex items-center justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white cursor-pointer"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
-                >
-                  Lưu & Đưa Vào Kho Firmware
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowUploadModal(false)}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2 text-xs font-semibold rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white"
+              >
+                Lưu vào máy chủ
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* Single Firmware Delete Confirmation Modal */}
+      {/* MODAL XÁC NHẬN XÓA FIRMWARE */}
       <ConfirmDeleteModal
         isOpen={!!deleteSingleFwTarget}
-        title="Xóa Bản Phát Hành Firmware"
+        title="Xác nhận xóa bản phát hành Firmware"
         itemName={deleteSingleFwTarget?.version}
-        itemType="bản phát hành"
-        description="Thao tác này sẽ gỡ bỏ bản phát hành firmware khỏi kho lưu trữ. Các thiết bị đang chạy phiên bản này sẽ không bị ảnh hưởng."
+        itemType="bản phát hành firmware"
+        description={`Bạn có chắc chắn muốn xóa bản phát hành "${deleteSingleFwTarget?.version}" của mẫu ${deleteSingleFwTarget?.modelCode}? Hành động này không thể hoàn tác.`}
         isDeleting={deletingFw}
-        onConfirm={handleConfirmSingleDeleteFw}
+        onConfirm={handleConfirmDeleteFw}
         onClose={() => setDeleteSingleFwTarget(null)}
-      />
-
-      {/* Bulk Firmware Delete Confirmation Modal */}
-      <ConfirmDeleteModal
-        isOpen={showDeleteFwModal}
-        title="Xóa Hàng Loạt Bản Phát Hành Firmware"
-        itemName={`${selectedFwIds.length} bản phát hành đã chọn`}
-        itemType="danh sách firmware"
-        description={`Bạn có chắc chắn muốn xóa ${selectedFwIds.length} bản phát hành firmware đã chọn? Thao tác này không thể hoàn tác.`}
-        isDeleting={deletingFw}
-        onConfirm={handleBulkDeleteFw}
-        onClose={() => setShowDeleteFwModal(false)}
       />
     </div>
   );
