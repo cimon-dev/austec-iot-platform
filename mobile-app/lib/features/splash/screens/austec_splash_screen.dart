@@ -188,14 +188,44 @@ class _AustecSplashScreenState extends State<AustecSplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Austec App Logo Emblem
+                        Container(
+                          width: 72,
+                          height: 72,
+                          margin: const EdgeInsets.only(bottom: 14),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.cyanAccent.withValues(alpha: 0.6),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.cyanAccent.withValues(alpha: 0.35),
+                                blurRadius: 24,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo-app.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset(
+                                'assets/logo-app.webp',
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
                         // Austec Logo Header
                         Image.asset(
                           'assets/austec_logo_text_transparent.png',
-                          height: 48,
+                          height: 40,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => Image.asset(
                             'assets/logo.png',
-                            height: 48,
+                            height: 40,
                             fit: BoxFit.contain,
                           ),
                         ),
