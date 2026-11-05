@@ -1,11 +1,11 @@
 {
-    "name": "austec_green_app",
-    "short_name": "austec_green_app",
+    "name": "Austec Smart Home",
+    "short_name": "Austec",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0b132b",
+    "theme_color": "#06b6d4",
+    "description": "Austec Smart Home - Ứng dụng điều khiển & giám sát thiết bị thông minh Austec",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

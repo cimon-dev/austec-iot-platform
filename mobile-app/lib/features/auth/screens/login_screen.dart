@@ -149,22 +149,37 @@ class _LoginScreenState extends State<LoginScreen> {
                           height: 68,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [
-                                AppTheme.cyanAccent,
-                                AppTheme.blueAccent
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
                             border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.3),
-                                width: 1.5),
+                              color: AppTheme.cyanAccent.withValues(alpha: 0.5),
+                              width: 1.5,
+                            ),
                           ),
-                          child: const Icon(
-                            Icons.door_sliding_rounded,
-                            color: Colors.black,
-                            size: 36,
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/logo-app.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset(
+                                'assets/logo-app.webp',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  decoration: const BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppTheme.cyanAccent,
+                                        AppTheme.blueAccent
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.door_sliding_rounded,
+                                    color: Colors.black,
+                                    size: 36,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ],
