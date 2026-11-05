@@ -2,9 +2,24 @@ import { postgresClient, PostgresClient } from '../../core/database/postgres.cli
 import { ProductEntity } from './entities/product.entity.js';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto.js';
 
+export interface ReviewEntity {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  userPhone?: string;
+  rating: number;
+  comment: string;
+  isVerifiedBuyer: boolean;
+  isHidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export class StoreRepository {
   private client: PostgresClient;
   private memoryStore: ProductEntity[] = [];
+  private memoryReviews: ReviewEntity[] = [];
   private onPersist?: () => void;
 
   constructor(
@@ -41,11 +56,37 @@ export class StoreRepository {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
+
+      CREATE TABLE IF NOT EXISTS product_reviews (
+        id VARCHAR(100) PRIMARY KEY,
+        product_id VARCHAR(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        user_id VARCHAR(100) NOT NULL,
+        user_name VARCHAR(255) NOT NULL,
+        user_phone VARCHAR(50),
+        rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT NOT NULL,
+        is_verified_buyer BOOLEAN DEFAULT TRUE,
+        is_hidden BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_product_reviews_product_id ON product_reviews(product_id);
+      CREATE INDEX IF NOT EXISTS idx_product_reviews_user_id ON product_reviews(user_id);
+
+      CREATE TABLE IF NOT EXISTS order_items (
+        id SERIAL PRIMARY KEY,
+        order_id VARCHAR(100) REFERENCES orders(id) ON DELETE CASCADE,
+        product_id VARCHAR(100),
+        product_name VARCHAR(255),
+        unit_price NUMERIC(15, 2) NOT NULL,
+        quantity INT DEFAULT 1,
+        image_url TEXT
+      );
     `;
     try {
       await this.client.query(ddl);
     } catch (err: any) {
-      console.warn('[StoreRepository] Error ensuring products table:', err.message);
+      console.warn('[StoreRepository] Error ensuring tables:', err.message);
     }
   }
 
@@ -283,10 +324,351 @@ export class StoreRepository {
           data.notes || '',
         ]
       );
+
+      // Persist order items if provided
+      if (Array.isArray(data.items) && data.items.length > 0) {
+        for (const item of data.items) {
+          try {
+            await this.client.query(
+              `INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, image_url)
+               VALUES ($1, $2, $3, $4, $5, $6)`,
+              [
+                id,
+                item.productId || item.id || '',
+                item.productName || item.name || '',
+                Number(item.unitPrice || item.price) || 0,
+                Number(item.quantity) || 1,
+                item.imageUrl || item.imagePath || '',
+              ]
+            );
+          } catch (_) {}
+        }
+      }
+
       return res.rows[0];
     } catch {
       return { id, ...data };
     }
+  }
+
+  // ==========================================
+  // REVIEW & RATING MANAGEMENT
+  // ==========================================
+  public async canUserReview(
+    userId: string,
+    productId: string,
+    userPhone?: string,
+    userEmail?: string,
+    userRole?: string
+  ): Promise<{ canReview: boolean; reason?: string }> {
+    if (userRole === 'ADMIN') {
+      return { canReview: true };
+    }
+
+    try {
+      await this.ensureTable();
+      // 1. Check orders & order_items
+      const orderCheck = await this.client.query(
+        `SELECT 1 FROM orders o
+         LEFT JOIN order_items oi ON oi.order_id = o.id
+         WHERE (o.customer_id = $1 OR o.customer_phone = $2)
+           AND (oi.product_id = $3 OR o.notes LIKE $4)
+         LIMIT 1`,
+        [userId, userPhone || '', productId, `%${productId}%`]
+      );
+      if (orderCheck.rows && orderCheck.rows.length > 0) {
+        return { canReview: true };
+      }
+
+      // 2. Check devices owned by user (device_instances)
+      const deviceCheck = await this.client.query(
+        `SELECT 1 FROM device_instances di
+         WHERE (di.owner_id = $1 OR di.owner_phone = $2)
+           AND (di.hardware_id = $3 OR di.model_name = $3 OR di.custom_name LIKE $4)
+         LIMIT 1`,
+        [userId, userPhone || '', productId, `%${productId}%`]
+      );
+      if (deviceCheck.rows && deviceCheck.rows.length > 0) {
+        return { canReview: true };
+      }
+    } catch (err: any) {
+      console.warn('[StoreRepository] canUserReview query error:', err.message);
+    }
+
+    return {
+      canReview: false,
+      reason: 'Chỉ người đã đặt mua hoặc sở hữu thiết bị mới được đánh giá.',
+    };
+  }
+
+  public async getReviews(
+    productId: string,
+    includeHidden: boolean = false,
+    currentUserId?: string
+  ): Promise<{
+    reviews: ReviewEntity[];
+    stats: {
+      averageRating: number;
+      totalReviews: number;
+      ratingCounts: Record<string, number>;
+    };
+    canReview: boolean;
+    hasReviewed: boolean;
+    myReview: ReviewEntity | null;
+  }> {
+    try {
+      await this.ensureTable();
+      let sql = 'SELECT * FROM product_reviews WHERE product_id = $1';
+      const params: any[] = [productId];
+
+      if (!includeHidden) {
+        if (currentUserId) {
+          sql += ' AND (is_hidden = false OR user_id = $2)';
+          params.push(currentUserId);
+        } else {
+          sql += ' AND is_hidden = false';
+        }
+      }
+
+      sql += ' ORDER BY created_at DESC';
+
+      const res = await this.client.query(sql, params);
+      const reviews = res.rows.map(r => this.mapRowToReview(r));
+
+      // Calculate stats on non-hidden reviews
+      const nonHidden = reviews.filter(r => !r.isHidden);
+      const ratingCounts: Record<string, number> = { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+      let sum = 0;
+      for (const r of nonHidden) {
+        const key = String(Math.min(5, Math.max(1, Math.round(r.rating))));
+        ratingCounts[key] = (ratingCounts[key] || 0) + 1;
+        sum += r.rating;
+      }
+      const avg = nonHidden.length > 0 ? Math.round((sum / nonHidden.length) * 10) / 10 : 5.0;
+
+      const myReview = currentUserId ? reviews.find(r => r.userId === currentUserId) || null : null;
+
+      return {
+        reviews,
+        stats: {
+          averageRating: avg,
+          totalReviews: nonHidden.length,
+          ratingCounts,
+        },
+        canReview: false, // will be evaluated by caller if user info is present
+        hasReviewed: Boolean(myReview),
+        myReview,
+      };
+    } catch (err: any) {
+      console.warn('[StoreRepository] getReviews DB query failed:', err.message);
+    }
+
+    // Fallback to memory
+    const filtered = this.memoryReviews.filter(
+      r => r.productId === productId && (includeHidden || !r.isHidden || r.userId === currentUserId)
+    );
+    const nonHidden = filtered.filter(r => !r.isHidden);
+    const ratingCounts: Record<string, number> = { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 };
+    let sum = 0;
+    for (const r of nonHidden) {
+      const key = String(Math.min(5, Math.max(1, Math.round(r.rating))));
+      ratingCounts[key] = (ratingCounts[key] || 0) + 1;
+      sum += r.rating;
+    }
+    const avg = nonHidden.length > 0 ? Math.round((sum / nonHidden.length) * 10) / 10 : 5.0;
+    const myReview = currentUserId ? filtered.find(r => r.userId === currentUserId) || null : null;
+
+    return {
+      reviews: filtered,
+      stats: { averageRating: avg, totalReviews: nonHidden.length, ratingCounts },
+      canReview: false,
+      hasReviewed: Boolean(myReview),
+      myReview,
+    };
+  }
+
+  public async createReview(data: {
+    productId: string;
+    userId: string;
+    userName: string;
+    userPhone?: string;
+    userEmail?: string;
+    userRole?: string;
+    rating: number;
+    comment: string;
+  }): Promise<ReviewEntity> {
+    await this.ensureTable();
+
+    // Check if user already reviewed
+    const existing = await this.client.query(
+      'SELECT id FROM product_reviews WHERE product_id = $1 AND user_id = $2 LIMIT 1',
+      [data.productId, data.userId]
+    );
+    if (existing.rows && existing.rows.length > 0) {
+      throw new Error('Bạn đã đánh giá sản phẩm này. Hãy chọn chỉnh sửa nhận xét!');
+    }
+
+    // Check purchase eligibility
+    const eligibility = await this.canUserReview(
+      data.userId,
+      data.productId,
+      data.userPhone,
+      data.userEmail,
+      data.userRole
+    );
+    if (!eligibility.canReview) {
+      throw new Error(eligibility.reason || 'Chỉ người đã mua thiết bị mới được đánh giá.');
+    }
+
+    const id = `REV-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const rating = Math.min(5, Math.max(1, Math.round(data.rating)));
+    const comment = data.comment.trim();
+
+    try {
+      const res = await this.client.query(
+        `INSERT INTO product_reviews (
+           id, product_id, user_id, user_name, user_phone, rating, comment, is_verified_buyer, is_hidden, created_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, true, false, NOW(), NOW())
+         RETURNING *`,
+        [id, data.productId, data.userId, data.userName, data.userPhone || null, rating, comment]
+      );
+      const entity = this.mapRowToReview(res.rows[0]);
+      this.memoryReviews.unshift(entity);
+      await this.recalculateProductRating(data.productId);
+      return entity;
+    } catch (err: any) {
+      console.warn('[StoreRepository] DB createReview failed, fallback to memory:', err.message);
+      const entity: ReviewEntity = {
+        id,
+        productId: data.productId,
+        userId: data.userId,
+        userName: data.userName,
+        userPhone: data.userPhone,
+        rating,
+        comment,
+        isVerifiedBuyer: true,
+        isHidden: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.memoryReviews.unshift(entity);
+      await this.recalculateProductRating(data.productId);
+      return entity;
+    }
+  }
+
+  public async updateReview(
+    productId: string,
+    reviewId: string,
+    userId: string,
+    data: { rating: number; comment: string }
+  ): Promise<ReviewEntity> {
+    await this.ensureTable();
+
+    const rating = Math.min(5, Math.max(1, Math.round(data.rating)));
+    const comment = data.comment.trim();
+
+    try {
+      const res = await this.client.query(
+        `UPDATE product_reviews SET
+           rating = $1, comment = $2, updated_at = NOW()
+         WHERE id = $3 AND user_id = $4 AND product_id = $5
+         RETURNING *`,
+        [rating, comment, reviewId, userId, productId]
+      );
+      if (res.rows.length === 0) {
+        throw new Error('Không tìm thấy nhận xét hoặc bạn không có quyền chỉnh sửa nhận xét này!');
+      }
+      const entity = this.mapRowToReview(res.rows[0]);
+      const idx = this.memoryReviews.findIndex(r => r.id === reviewId);
+      if (idx !== -1) this.memoryReviews[idx] = entity;
+      await this.recalculateProductRating(productId);
+      return entity;
+    } catch (err: any) {
+      console.warn('[StoreRepository] DB updateReview failed, fallback to memory:', err.message);
+      const idx = this.memoryReviews.findIndex(r => r.id === reviewId && r.userId === userId);
+      if (idx === -1) throw new Error('Không tìm thấy nhận xét để chỉnh sửa!');
+      this.memoryReviews[idx] = {
+        ...this.memoryReviews[idx],
+        rating,
+        comment,
+        updatedAt: new Date().toISOString(),
+      };
+      await this.recalculateProductRating(productId);
+      return this.memoryReviews[idx];
+    }
+  }
+
+  public async toggleReviewVisibility(reviewId: string): Promise<{ isHidden: boolean; productId: string }> {
+    await this.ensureTable();
+    try {
+      const res = await this.client.query(
+        `UPDATE product_reviews SET
+           is_hidden = NOT is_hidden, updated_at = NOW()
+         WHERE id = $1
+         RETURNING is_hidden, product_id`,
+        [reviewId]
+      );
+      if (res.rows.length === 0) {
+        throw new Error('Không tìm thấy nhận xét!');
+      }
+      const isHidden = res.rows[0].is_hidden;
+      const productId = res.rows[0].product_id;
+
+      const mem = this.memoryReviews.find(r => r.id === reviewId);
+      if (mem) mem.isHidden = isHidden;
+
+      await this.recalculateProductRating(productId);
+      return { isHidden, productId };
+    } catch (err: any) {
+      const mem = this.memoryReviews.find(r => r.id === reviewId);
+      if (!mem) throw new Error('Không tìm thấy nhận xét!');
+      mem.isHidden = !mem.isHidden;
+      await this.recalculateProductRating(mem.productId);
+      return { isHidden: mem.isHidden, productId: mem.productId };
+    }
+  }
+
+  public async recalculateProductRating(productId: string): Promise<void> {
+    try {
+      const statsRes = await this.client.query(
+        `SELECT ROUND(AVG(rating)::numeric, 1) as avg_rating, COUNT(*) as total_count
+         FROM product_reviews
+         WHERE product_id = $1 AND is_hidden = false`,
+        [productId]
+      );
+      if (statsRes.rows && statsRes.rows.length > 0) {
+        const avg = parseFloat(statsRes.rows[0].avg_rating) || 5.0;
+        const count = parseInt(statsRes.rows[0].total_count, 10) || 0;
+        await this.client.query(
+          `UPDATE products SET rating = $1, reviews_count = $2, updated_at = NOW() WHERE id = $3`,
+          [avg, count, productId]
+        );
+        const mem = this.memoryStore.find(p => p.id === productId);
+        if (mem) {
+          mem.rating = avg;
+          mem.reviewsCount = count;
+        }
+      }
+    } catch (err: any) {
+      console.warn('[StoreRepository] recalculateProductRating error:', err.message);
+    }
+  }
+
+  private mapRowToReview(r: any): ReviewEntity {
+    return {
+      id: r.id,
+      productId: r.product_id,
+      userId: r.user_id,
+      userName: r.user_name,
+      userPhone: r.user_phone || undefined,
+      rating: Number(r.rating) || 5,
+      comment: r.comment || '',
+      isVerifiedBuyer: r.is_verified_buyer ?? true,
+      isHidden: Boolean(r.is_hidden),
+      createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+      updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
+    };
   }
 
   private syncMemoryStore(entity: ProductEntity) {

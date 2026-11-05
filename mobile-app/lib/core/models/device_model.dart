@@ -372,3 +372,73 @@ class ProductItem {
     return "${buffer.toString()} đ";
   }
 }
+
+class ShopReviewItem {
+  final String id;
+  final String productId;
+  final String userId;
+  final String userName;
+  final String? userPhone;
+  final int rating;
+  final String comment;
+  final bool isVerifiedBuyer;
+  final bool isHidden;
+  final String createdAt;
+  final String updatedAt;
+
+  const ShopReviewItem({
+    required this.id,
+    required this.productId,
+    required this.userId,
+    required this.userName,
+    this.userPhone,
+    required this.rating,
+    required this.comment,
+    this.isVerifiedBuyer = true,
+    this.isHidden = false,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory ShopReviewItem.fromJson(Map<String, dynamic> json) {
+    return ShopReviewItem(
+      id: json['id']?.toString() ?? '',
+      productId: json['productId']?.toString() ?? json['product_id']?.toString() ?? '',
+      userId: json['userId']?.toString() ?? json['user_id']?.toString() ?? '',
+      userName: json['userName']?.toString() ?? json['user_name']?.toString() ?? 'Khách hàng',
+      userPhone: json['userPhone']?.toString() ?? json['user_phone']?.toString(),
+      rating: (json['rating'] as num?)?.toInt() ?? 5,
+      comment: json['comment']?.toString() ?? '',
+      isVerifiedBuyer: json['isVerifiedBuyer'] == true || json['is_verified_buyer'] == true,
+      isHidden: json['isHidden'] == true || json['is_hidden'] == true,
+      createdAt: json['createdAt']?.toString() ?? json['created_at']?.toString() ?? '',
+      updatedAt: json['updatedAt']?.toString() ?? json['updated_at']?.toString() ?? '',
+    );
+  }
+}
+
+class ProductReviewStats {
+  final double averageRating;
+  final int totalReviews;
+  final Map<String, int> ratingCounts;
+
+  const ProductReviewStats({
+    required this.averageRating,
+    required this.totalReviews,
+    required this.ratingCounts,
+  });
+
+  factory ProductReviewStats.fromJson(Map<String, dynamic> json) {
+    final Map<String, int> counts = {'5': 0, '4': 0, '3': 0, '2': 0, '1': 0};
+    if (json['ratingCounts'] is Map) {
+      (json['ratingCounts'] as Map).forEach((k, v) {
+        counts[k.toString()] = (v as num?)?.toInt() ?? 0;
+      });
+    }
+    return ProductReviewStats(
+      averageRating: (json['averageRating'] as num?)?.toDouble() ?? 5.0,
+      totalReviews: (json['totalReviews'] as num?)?.toInt() ?? 0,
+      ratingCounts: counts,
+    );
+  }
+}

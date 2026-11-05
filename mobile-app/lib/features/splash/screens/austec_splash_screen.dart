@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_theme.dart';
 
 class AustecRadarSweepPainter extends CustomPainter {
   final double sweepAngle;

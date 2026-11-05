@@ -42,4 +42,41 @@ export class StoreService {
   public async createOrder(data: any): Promise<any> {
     return this.repo.createOrder(data);
   }
+
+  // ==========================================
+  // REVIEW & RATING METHODS
+  // ==========================================
+  public async getReviews(productId: string, includeHidden: boolean = false, currentUserId?: string) {
+    return this.repo.getReviews(productId, includeHidden, currentUserId);
+  }
+
+  public async canUserReview(userId: string, productId: string, userPhone?: string, userEmail?: string, userRole?: string) {
+    return this.repo.canUserReview(userId, productId, userPhone, userEmail, userRole);
+  }
+
+  public async createReview(data: {
+    productId: string;
+    userId: string;
+    userName: string;
+    userPhone?: string;
+    userEmail?: string;
+    userRole?: string;
+    rating: number;
+    comment: string;
+  }) {
+    return this.repo.createReview(data);
+  }
+
+  public async updateReview(
+    productId: string,
+    reviewId: string,
+    userId: string,
+    data: { rating: number; comment: string }
+  ) {
+    return this.repo.updateReview(productId, reviewId, userId, data);
+  }
+
+  public async toggleReviewVisibility(reviewId: string) {
+    return this.repo.toggleReviewVisibility(reviewId);
+  }
 }
