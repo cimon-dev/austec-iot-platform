@@ -273,6 +273,13 @@ class BleDeviceControlService {
           await rxChar.write(utf8.encode("$hardwareId/action/$socketCode"), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
           await Future.delayed(const Duration(milliseconds: 30));
           await rxChar.write(utf8.encode(socketCode), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 30));
+
+          // Kích hoạt đồng thời cả GPIO 3/4 (mã 3: ON, mã 4: OFF) để rơ-le kêu bất kể chân phần cứng
+          final altCode = (socketCode == "13" || socketCode == "1") ? "3" : "4";
+          await rxChar.write(utf8.encode("$uid/$hardwareId/action/$altCode"), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 30));
+          await rxChar.write(utf8.encode(altCode), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
 
           debugPrint("[BLE Socket Control] ⚡ Đã truyền lệnh rơ-le ổ cắm $hardwareId: $primaryPayload");
           return true;

@@ -565,12 +565,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                       )
                     : isSwitchCategory
                         ? GridView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 1.05,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 1.48,
                             ),
                             itemCount: devices.length,
                             itemBuilder: (context, index) {
@@ -620,7 +620,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  // 1. Khối Giao Diện Công Tắc Dạng Khối Vuông/Chữ Nhật (1 Dòng 2 Thiết Bị)
+  // 1. Khối Giao Diện Công Tắc Dạng Chữ Nhật Ngang (1 Dòng 2 Thiết Bị)
   Widget _buildLightSwitchBlock(DeviceItem device, bool isDark, Color textCol) {
     final isOn = device.isRelayOn;
     final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
@@ -629,170 +629,191 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
         : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cardBorder, width: isOn ? 1.6 : 1.2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cardBorder, width: isOn ? 1.5 : 1.1),
         boxShadow: [
           BoxShadow(
             color: isOn
-                ? AppTheme.cyanAccent.withValues(alpha: isDark ? 0.22 : 0.08)
-                : Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-            blurRadius: isOn ? 14 : 8,
-            offset: const Offset(0, 3),
+                ? AppTheme.cyanAccent.withValues(alpha: isDark ? 0.2 : 0.08)
+                : Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
+            blurRadius: isOn ? 10 : 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Bên trái: 3 dòng hiển thị chính
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Dòng 1: Tên thiết bị (hiển thị đầy đủ, không bị cắt cụt)
-                Text(
-                  device.name,
-                  style: TextStyle(
-                    color: textCol,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.bold,
-                    height: 1.25,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                // Dòng 2: Nút bật tắt
-                if (device.canPerformControl)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Transform.scale(
-                        scale: 0.82,
-                        alignment: Alignment.centerLeft,
-                        child: Switch(
-                          value: isOn,
-                          activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
-                          activeThumbColor: AppTheme.cyanAccent,
-                          inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
-                          inactiveThumbColor: Colors.grey,
-                          onChanged: _isProcessing
-                              ? null
-                              : (newVal) {
-                                  setState(() {
-                                    device.isRelayOn = newVal;
-                                  });
-                                  _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
-                                },
-                        ),
-                      ),
-                      Text(
-                        isOn ? "BẬT" : "TẮT",
-                        style: TextStyle(
-                          color: isOn ? AppTheme.cyanAccent : Colors.grey,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 16),
-                        const SizedBox(width: 4),
-                        Text("Bị khóa", style: TextStyle(color: Colors.grey[500], fontSize: 11)),
-                      ],
-                    ),
-                  ),
-
-                // Dòng 3: Dưới cùng là xem chi tiết
-                InkWell(
-                  onTap: () => _navigateToDetail(device),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          "Xem chi tiết",
-                          style: TextStyle(
-                            color: AppTheme.brandBlue,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 3),
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 9.5,
-                          color: AppTheme.brandBlue,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Bên phải (bên phải của cả 3 dòng): 3 chấm để đổi tên / xóa thiết bị
-          PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert_rounded,
-              color: isDark ? AppTheme.textSecondary : Colors.grey[600],
-              size: 20,
-            ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            color: isDark ? AppTheme.surfaceDark : Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            onSelected: (val) {
-              if (val == 'rename') _showRenameDialog(device);
-              if (val == 'delete') _showDeleteDialog(device);
-              if (val == 'details') _navigateToDetail(device);
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'details',
-                child: Row(
+          // Phần trên: Dòng 1 (Tên thiết bị) + Dòng 2 (Nút Bật/Tắt) ở bên trái, nút 3 chấm ở góc phải
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.tune_rounded, size: 17, color: AppTheme.brandBlue),
-                    const SizedBox(width: 8),
-                    Text("Xem chi tiết", style: TextStyle(color: textCol, fontSize: 13)),
+                    // Dòng 1: Tên thiết bị (hiển thị đầy đủ, không bị cắt cụt)
+                    Text(
+                      device.name,
+                      style: TextStyle(
+                        color: textCol,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+
+                    // Dòng 2: Nút bật tắt
+                    if (device.canPerformControl)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Transform.scale(
+                            scale: 0.74,
+                            alignment: Alignment.centerLeft,
+                            child: Switch(
+                              value: isOn,
+                              activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
+                              activeThumbColor: AppTheme.cyanAccent,
+                              inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                              inactiveThumbColor: Colors.grey,
+                              onChanged: _isProcessing
+                                  ? null
+                                  : (newVal) {
+                                      setState(() {
+                                        device.isRelayOn = newVal;
+                                      });
+                                      _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                                    },
+                            ),
+                          ),
+                          Text(
+                            isOn ? "BẬT" : "TẮT",
+                            style: TextStyle(
+                              color: isOn ? AppTheme.cyanAccent : Colors.grey,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 14),
+                            const SizedBox(width: 3),
+                            Text("Bị khóa", style: TextStyle(color: Colors.grey[500], fontSize: 10)),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
-              if (device.canConfig)
-                PopupMenuItem(
-                  value: 'rename',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.edit_outlined, size: 17, color: AppTheme.cyanAccent),
-                      const SizedBox(width: 8),
-                      Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol, fontSize: 13)),
-                    ],
-                  ),
+
+              // Bên phải: Nút 3 chấm đổi tên/xóa thiết bị
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_vert_rounded,
+                  color: isDark ? AppTheme.textSecondary : Colors.grey[600],
+                  size: 18,
                 ),
-              if (device.isOwner)
-                PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.delete_outline, size: 17, color: AppTheme.crimsonDanger),
-                      const SizedBox(width: 8),
-                      Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 13)),
-                    ],
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                color: isDark ? AppTheme.surfaceDark : Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onSelected: (val) {
+                  if (val == 'rename') _showRenameDialog(device);
+                  if (val == 'delete') _showDeleteDialog(device);
+                  if (val == 'details') _navigateToDetail(device);
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'details',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.tune_rounded, size: 16, color: AppTheme.brandBlue),
+                        const SizedBox(width: 8),
+                        Text("Xem chi tiết", style: TextStyle(color: textCol, fontSize: 13)),
+                      ],
+                    ),
                   ),
-                ),
+                  if (device.canConfig)
+                    PopupMenuItem(
+                      value: 'rename',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit_outlined, size: 16, color: AppTheme.cyanAccent),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  if (device.isOwner)
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delete_outline, size: 16, color: AppTheme.crimsonDanger),
+                          const SizedBox(width: 8),
+                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ],
+          ),
+
+          // Dòng 3: Nút Xem chi tiết giống hệt ở bên Doors (Primary Blue, icon tune & arrow)
+          SizedBox(
+            width: double.infinity,
+            height: 27,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                elevation: 0,
+              ),
+              onPressed: () => _navigateToDetail(device),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    color: Colors.white,
+                    size: 13,
+                  ),
+                  SizedBox(width: 5),
+                  Text(
+                    "Chi tiết",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 3),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: Colors.white70,
+                    size: 9,
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

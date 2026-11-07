@@ -110,6 +110,11 @@ export class CommandService {
     
     if (this.mqttGateway) {
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
+      if (isSocket) {
+        // Kích hoạt đồng thời cả GPIO 5 (mã 13/14) và GPIO 3/4 (mã 3/4) để đảm bảo relay kêu bất kể chân phần cứng
+        const altAction = (actionCode === '13' || actionCode === '1') ? '3' : '4';
+        await this.mqttGateway.publishAction(req.actorId, req.hardwareId, altAction);
+      }
     } else {
       const hardwareResponseTimeMs = Math.floor(40 + Math.random() * 50);
       await new Promise(resolve => setTimeout(resolve, hardwareResponseTimeMs));
