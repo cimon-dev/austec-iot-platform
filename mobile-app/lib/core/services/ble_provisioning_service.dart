@@ -499,21 +499,34 @@ class BleProvisioningService {
 
                 onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
                 final bytes = utf8.encode(payloadString);
-                final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
 
                 try {
-                  await rxChar.write(
-                    bytes,
-                    withoutResponse: withoutResponse,
-                    allowLongWrite: true,
-                  ).timeout(const Duration(seconds: 5));
+                  if (rxChar.properties.write) {
+                    // Ưu tiên Write With Response (hỗ trợ Long Write chuẩn trên iOS & Android)
+                    await rxChar.write(
+                      bytes,
+                      withoutResponse: false,
+                      allowLongWrite: true,
+                    ).timeout(const Duration(seconds: 5));
+                  } else if (rxChar.properties.writeWithoutResponse) {
+                    // Nếu chỉ có writeWithoutResponse: Tuyệt đối KHÔNG truyền allowLongWrite: true (tránh lỗi iOS/Android)
+                    await rxChar.write(
+                      bytes,
+                      withoutResponse: true,
+                      allowLongWrite: false,
+                    ).timeout(const Duration(seconds: 5));
+                  } else {
+                    // Mặc định gọi hàm write cơ bản
+                    await rxChar.write(bytes).timeout(const Duration(seconds: 5));
+                  }
                 } catch (writeErr) {
-                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại với withoutResponse=${!withoutResponse}...");
-                  await rxChar.write(
-                    bytes,
-                    withoutResponse: !withoutResponse,
-                    allowLongWrite: true,
-                  ).timeout(const Duration(seconds: 4));
+                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại fallback an toàn...");
+                  try {
+                    await rxChar.write(bytes).timeout(const Duration(seconds: 4));
+                  } catch (err2) {
+                    debugPrint("Fallback write cũng lỗi: $err2");
+                    rethrow;
+                  }
                 }
 
                 // Chờ phản hồi từ bo mạch (tối đa 3 giây)
