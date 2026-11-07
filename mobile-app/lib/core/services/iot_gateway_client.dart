@@ -430,14 +430,13 @@ class IoTGatewayClient {
       debugPrint('[IoTGatewayClient] Không thể kết nối Backend (Chế độ Ngoại tuyến Offline): $e');
     }
 
-    // 3. Nếu không thể kết nối hoặc status != 200 (mất mạng / lỗi 500 khi Supabase offline):
+    // 3. Nếu không thể kết nối hoặc status != 200 (mất mạng / lỗi kết nối):
     if (!syncSuccess) {
       if (_devices.isEmpty) {
         await loadDevicesFromLocalCache();
       }
-      // Đồng bộ trạng thái ngoại tuyến cho toàn bộ thiết bị
+      // Giữ nguyên trạng thái thiết bị trong cache, không ép toàn bộ về offline
       for (var d in _devices) {
-        d.isOnline = false;
         _deviceUpdateStream.add(d);
       }
     }
@@ -570,7 +569,7 @@ class IoTGatewayClient {
           (d['installationAddress'] is Map
               ? d['installationAddress']['fullText']
               : d['installationAddress']) ?? "").toString(),
-      isOnline: d['isOnline'] == true,
+      isOnline: d['isOnline'] == true || d['is_online'] == true || d['status'] == 'ONLINE' || d['status'] == 'online' || d['status'] == 'ACTIVE',
       userRole: uRole,
       canControl: canControl,
       canViewHistory: canViewHistory,

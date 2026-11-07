@@ -793,7 +793,10 @@ class BleProvisioningService {
     DeviceItem? syncedDevice = IoTGatewayClient().findByHardwareId(serverHwId) ??
                                IoTGatewayClient().findByHardwareId(targetDevice.hardwareId);
 
-    if (syncedDevice == null) {
+    if (syncedDevice != null) {
+      syncedDevice.isOnline = true;
+      IoTGatewayClient().addDevice(syncedDevice);
+    } else {
       final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;
       final newDev = DeviceItem(
         id: serverHwId,

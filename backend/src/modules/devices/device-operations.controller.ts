@@ -14,6 +14,29 @@ export interface DeviceOperationsDependencies {
   persistAll?: (force?: boolean) => void;
 }
 
+function formatSafeDate(val: any, fallback: string = '2028-10-23'): string {
+  if (!val) return fallback;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return fallback;
+    const isoMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}/);
+    if (isoMatch) return isoMatch[0];
+    const mmYyyy = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+    if (mmYyyy) {
+      const month = mmYyyy[1].padStart(2, '0');
+      const year = mmYyyy[2];
+      return `${year}-${month}-28`;
+    }
+  }
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().slice(0, 10);
+    }
+  } catch (_) {}
+  return fallback;
+}
+
 @Controller('/devices')
 export class DeviceOperationsController {
   private client: PostgresClient;
@@ -80,7 +103,7 @@ export class DeviceOperationsController {
         const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
 
         if (result.rows.length > 0) {
-          const devices = result.rows.map(r => {
+          const devices = await Promise.all(result.rows.map(async r => {
             let assignedProps: any[] = [];
             const rawConfig = r.properties_config;
             let configList: any[] = [];
@@ -101,7 +124,17 @@ export class DeviceOperationsController {
               assignedProps = allProperties.slice(0, 7);
             }
 
-            const warrantyUntil = r.warranty_end_at ? new Date(r.warranty_end_at).toISOString().slice(0, 10) : '2028-10-22';
+            let isOnline = r.is_online === true;
+            if (!isOnline && this.mqttGateway) {
+              try {
+                isOnline = Boolean(await this.mqttGateway.isHardwareOnline(r.hardware_id, targetUser.id));
+                if (isOnline) {
+                  this.client.query('UPDATE device_instances SET is_online = true WHERE hardware_id = $1', [r.hardware_id]).catch(() => {});
+                }
+              } catch (_) {}
+            }
+
+            const warrantyUntil = formatSafeDate(r.warranty_end_at, '2028-10-22');
             const warrantyCode = `EW-${(r.hardware_id || '').replace(/-/g, '').toUpperCase()}-24M`;
 
             return {
@@ -114,7 +147,7 @@ export class DeviceOperationsController {
               modelCode: r.model_code || 'DOOR_GERMAN_ALU',
               deviceType: r.device_type || 'Cửa cuốn',
               imageUrl: r.image_url,
-              isOnline: r.is_online ?? true,
+              isOnline: isOnline,
               roleInHome: r.user_role || 'OWNER',
               userRole: r.user_role || 'OWNER',
               canControl: r.can_control !== false,
@@ -135,7 +168,7 @@ export class DeviceOperationsController {
               lat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
               lng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
             };
-          });
+          }));
 
           // Lọc theo danh mục nếu được yêu cầu
           const category = (req.query.category as string || '').toLowerCase().trim();
@@ -194,7 +227,7 @@ export class DeviceOperationsController {
         deviceType: d.deviceType || 'Cửa cuốn',
         isOnline: d.isOnline ?? true,
         roleInHome: 'OWNER',
-        warrantyUntil: d.warrantyEndAt || '2028-10-22',
+        warrantyUntil: formatSafeDate(d.warrantyEndAt, '2028-10-22'),
         warrantyCode: `EW-${(d.hardwareId || '').replace(/-/g, '').toUpperCase()}-24M`,
         currentProperties: d.currentProperties || {},
         assignedProperties: [],
@@ -275,16 +308,18 @@ export class DeviceOperationsController {
 
         const instRes = await this.client.query(
           `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
              owner_phone = EXCLUDED.owner_phone,
              custom_name = EXCLUDED.custom_name,
              device_type = EXCLUDED.device_type,
+             is_online = true,
              address_display = EXCLUDED.address_display,
              location_lat = EXCLUDED.location_lat,
-             location_lng = EXCLUDED.location_lng
+             location_lng = EXCLUDED.location_lng,
+             warranty_end_at = COALESCE(device_instances.warranty_end_at, EXCLUDED.warranty_end_at)
            RETURNING *`,
           [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, finalLocation, resolvedDeviceType, finalLat, finalLng]
         );
@@ -296,16 +331,31 @@ export class DeviceOperationsController {
           [permId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone]
         );
         const inst = instRes.rows[0];
-        const warrantyUntil = inst.warranty_end_at ? new Date(inst.warranty_end_at).toISOString().slice(0, 10) : '2028-10-23';
+        const warrantyUntil = formatSafeDate(inst?.warranty_end_at, '2028-10-23');
         const warrantyCode = `EW-${resolvedHwId.replace(/-/g, '').toUpperCase()}-24M`;
+
+        if (this.mqttGateway) {
+          try {
+            await this.mqttGateway.hotCache?.setDeviceState(resolvedHwId, {
+              isOnline: true,
+              lastHeartbeat: new Date().toISOString(),
+            });
+          } catch (_) {}
+        }
 
         res.json({
           success: true,
           message: 'Ghép nối thiết bị và kích hoạt bảo hành điện tử thành công!',
           hardwareId: resolvedHwId,
-          instance: inst,
+          instance: {
+            ...inst,
+            isOnline: true,
+            is_online: true,
+          },
           device: {
             ...inst,
+            isOnline: true,
+            is_online: true,
             hardwareId: resolvedHwId,
             customName: finalName,
             addressDisplay: finalLocation,
@@ -329,15 +379,21 @@ export class DeviceOperationsController {
           addressDisplay: location,
         });
         this.persistAll?.(true);
-        const warrantyUntil = new Date(Date.now() + 24 * 30 * 24 * 3600 * 1000).toISOString().slice(0, 10);
+        const warrantyUntil = formatSafeDate(new Date(Date.now() + 24 * 30 * 24 * 3600 * 1000), '2028-10-23');
         const warrantyCode = `EW-${hardwareId.replace(/-/g, '').toUpperCase()}-24M`;
 
         res.json({
           success: true,
           message: 'Ghép nối thiết bị thành công!',
-          instance: pairResult.device,
+          instance: {
+            ...pairResult.device,
+            isOnline: true,
+            is_online: true,
+          },
           device: {
             ...pairResult.device,
+            isOnline: true,
+            is_online: true,
             warrantyUntil,
             warrantyCode,
           },
