@@ -217,13 +217,19 @@ export class MqttGateway {
 
         if (isSocket) {
           // Xử lý ổ cắm theo ocammoi: "13" = BẬT, "14" = TẮT, "3" = DỪNG
-          const isRelayOn = payload === '13' || payload === '1' || payload === '3';
+          const isRelayOn = payload === '13' || payload === '1';
           console.log(`[MQTT Gateway] ⚡ [${hwId}] Ổ cắm ocammoi phản hồi Rơ-le: Action = ${payload} -> ${isRelayOn ? 'BẬT (ON)' : 'TẮT (OFF)'}`);
           await this.hotCache.setDeviceState(hwId, {
             isOnline: true,
             currentProperties: { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF', lastAction: payload, ownerId: user },
             lastHeartbeat: new Date().toISOString(),
           });
+          try {
+            await this.postgresService.query(
+              `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text, current_properties = current_properties || jsonb_build_object('is_relay_on', $2::boolean, 'relay_state', $3) WHERE LOWER(hardware_id) = LOWER($1)`,
+              [hwId, isRelayOn, isRelayOn ? 'ON' : 'OFF']
+            );
+          } catch (_) {}
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
           }

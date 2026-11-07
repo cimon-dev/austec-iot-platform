@@ -25,6 +25,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         fullName: user.fullName,
+        phoneNumber: user.phoneNumber,
       },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -55,7 +56,13 @@ export class AuthService {
       return next();
     }
     if (token === 'austec-customer-token') {
-      req.user = { id: '00000000-0000-0000-0000-000000000001', email: 'ducduc02092005@gmail.com', role: 'CUSTOMER', fullName: 'Nguyễn Mạnh Đức' };
+      req.user = { 
+        id: 'USR-330967', 
+        email: 'ducduc02092005@gmail.com', 
+        role: 'CUSTOMER', 
+        fullName: 'Nguyễn Mạnh Đức',
+        phoneNumber: '0944102588',
+      };
       return next();
     }
 

@@ -83,12 +83,16 @@ export class CommandService {
         actionCode = '14';
       }
     } else if (isSocket) {
-      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1' || req.command === '3') {
+      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1') {
         actionCode = '13'; // Khớp ocammoi: case 13 -> ocam.BAT()
-      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '14' || req.command === '0' || req.command === '4') {
+      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '14' || req.command === '0') {
         actionCode = '14'; // Khớp ocammoi: case 14 -> ocam.TAT()
-      } else if (req.command === 'STOP') {
+      } else if (req.command === 'STOP' || req.command === '3') {
         actionCode = '3';  // Khớp ocammoi: case 3 -> ocam.dung()
+      } else if (req.command === 'RF_SETUP' || req.command === '11') {
+        actionCode = '11'; // Khớp ocammoi: case 11 -> ocam.RF_setup()
+      } else if (req.command === 'RF_CLEAR' || req.command === '12') {
+        actionCode = '12'; // Khớp ocammoi: case 12 -> ocam.RF_clear()
       } else if (req.command === 'TOGGLE_RELAY') {
         const isCurrentlyOn = currentState?.currentProperties?.is_relay_on === true || currentState?.currentProperties?.relay_state === 'ON';
         actionCode = isCurrentlyOn ? '14' : '13';
@@ -109,12 +113,8 @@ export class CommandService {
     }
     
     if (this.mqttGateway) {
+      // Phát mã lệnh chuẩn trực tiếp qua MQTT tới thiết bị phần cứng
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
-      if (isSocket) {
-        // Kích hoạt đồng thời cả GPIO 5 (mã 13/14) và GPIO 3/4 (mã 3/4) để đảm bảo relay kêu bất kể chân phần cứng
-        const altAction = (actionCode === '13' || actionCode === '1') ? '3' : '4';
-        await this.mqttGateway.publishAction(req.actorId, req.hardwareId, altAction);
-      }
     } else {
       const hardwareResponseTimeMs = Math.floor(40 + Math.random() * 50);
       await new Promise(resolve => setTimeout(resolve, hardwareResponseTimeMs));

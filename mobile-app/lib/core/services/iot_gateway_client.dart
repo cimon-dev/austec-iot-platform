@@ -689,7 +689,11 @@ class IoTGatewayClient {
     }
 
     if (isSocket) {
-      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "3" || resolvedSocketAction == "13") ? "13" : (resolvedSocketAction == "STOP" ? "3" : "14");
+      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "13" || resolvedSocketAction == "1") ? "13"
+          : (resolvedSocketAction == "STOP" || resolvedSocketAction == "3") ? "3"
+          : (resolvedSocketAction == "RF_SETUP" || resolvedSocketAction == "11") ? "11"
+          : (resolvedSocketAction == "RF_CLEAR" || resolvedSocketAction == "12") ? "12"
+          : "14";
       unawaited(BleDeviceControlService().sendSocketAction(
         hardwareId: hardwareId,
         actionNumber: sAction,
@@ -869,10 +873,55 @@ class IoTGatewayClient {
           AuditLog(
             time: nowStr,
             action: turnOn ? "Bật rơ-le / ổ cắm" : "Tắt rơ-le / ổ cắm",
-            actionCode: turnOn ? 3 : 4,
+            actionCode: turnOn ? 13 : 14,
             triggeredBy: currentActor,
             deviceCode: device.hardwareId,
           ),
+        );
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: turnOn ? "Đã bật cấp điện rơ-le (mã 13)" : "Đã ngắt điện rơ-le (mã 14)",
+          cryptoSignature: cryptoSig,
+        );
+      } else if (action == "STOP") {
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
+        device.auditLogs.insert(
+          0,
+          AuditLog(
+            time: nowStr,
+            action: "Dừng rơ-le / xung ổ cắm",
+            actionCode: 3,
+            triggeredBy: currentActor,
+            deviceCode: device.hardwareId,
+          ),
+        );
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đã gửi lệnh dừng rơ-le (mã 3)",
+          cryptoSignature: cryptoSig,
+        );
+      } else if (action == "RF_SETUP" || action == "RF_CLEAR") {
+        final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
+        device.auditLogs.insert(
+          0,
+          AuditLog(
+            time: nowStr,
+            action: action == "RF_SETUP" ? "Học lệnh Remote RF" : "Xóa Remote RF",
+            actionCode: action == "RF_SETUP" ? 11 : 12,
+            triggeredBy: currentActor,
+            deviceCode: device.hardwareId,
+          ),
+        );
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: action == "RF_SETUP" ? "Đang mở chế độ học Remote RF (7s, mã 11)..." : "Đã gửi lệnh xóa toàn bộ Remote RF (mã 12)",
+          cryptoSignature: cryptoSig,
         );
       } else if (action == "STREAM_START" || action == "TAKE_SNAPSHOT" || action == "STREAM_STOP") {
         final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
