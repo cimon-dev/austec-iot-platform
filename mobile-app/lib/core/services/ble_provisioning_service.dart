@@ -506,9 +506,27 @@ class BleProvisioningService {
                 try {
                   await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
                 } catch (writeErr) {
-                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử ghi lại với lệnh ghi cơ bản...");
-                  await Future.delayed(const Duration(milliseconds: 200));
-                  await rxChar.write(utf8.encode(payloadString)).timeout(const Duration(seconds: 4));
+                  final errStr = writeErr.toString().toLowerCase();
+                  if (errStr.contains('disconnected') || errStr.contains('disconnect')) {
+                    // Bo mạch ESP32 sau khi nhận chuỗi cấu hình mạng đã gọi ESP.restart()
+                    // làm ngắt kết nối BLE đột ngột. Đây là hành vi nạp thành công chuẩn của firmware!
+                    debugPrint("ESP32 đã tiếp nhận cấu hình và tự khởi động lại (ngắt kết nối BLE dự kiến): $writeErr");
+                    bleSuccess = true;
+                  } else {
+                    debugPrint("Lần 1 ghi lỗi ($writeErr), thử ghi lại với lệnh ghi cơ bản...");
+                    await Future.delayed(const Duration(milliseconds: 200));
+                    try {
+                      await rxChar.write(utf8.encode(payloadString)).timeout(const Duration(seconds: 4));
+                    } catch (err2) {
+                      final errStr2 = err2.toString().toLowerCase();
+                      if (errStr2.contains('disconnected') || errStr2.contains('disconnect')) {
+                        debugPrint("ESP32 đã tiếp nhận cấu hình và tự khởi động lại: $err2");
+                        bleSuccess = true;
+                      } else {
+                        rethrow;
+                      }
+                    }
+                  }
                 }
 
                 onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
@@ -533,8 +551,15 @@ class BleProvisioningService {
             }
           }
         } catch (e) {
-          bleErrorMessage = "Lỗi kết nối Bluetooth: $e";
-          debugPrint("BLE native provision error: $e");
+          final errStr = e.toString().toLowerCase();
+          if (errStr.contains('disconnected') || errStr.contains('disconnect')) {
+            // Bo mạch ESP32 khởi động lại ngắt kết nối BLE để vào mạng Wi-Fi
+            debugPrint("ESP32 đã tiếp nhận cấu hình và tự khởi động lại (outer catch): $e");
+            bleSuccess = true;
+          } else {
+            bleErrorMessage = "Lỗi kết nối Bluetooth: $e";
+            debugPrint("BLE native provision error: $e");
+          }
         }
       }
 
