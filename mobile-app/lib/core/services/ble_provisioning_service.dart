@@ -407,72 +407,70 @@ class BleProvisioningService {
           } else {
             onProgress("Đang kết nối Bluetooth tới [${targetDevice.hardwareId}]...", 0.42);
 
-            // Kết nối Bluetooth
+            // Kết nối Bluetooth (Giữ nguyên luồng chuẩn ổn định từ commit d52f6cd)
             if (!devToConnect.isConnected) {
               await devToConnect.connect(
                 license: License.nonprofit,
-                timeout: const Duration(seconds: 8),
-              ).timeout(const Duration(seconds: 9));
-            }
-
-            // Tăng MTU lên 512 bytes (Chỉ áp dụng trên Android; trên iOS CoreBluetooth tự động đàm phán MTU 185 bytes khi kết nối)
-            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-              try {
-                await devToConnect.requestMtu(512).timeout(const Duration(seconds: 2));
-              } catch (_) {}
-              await Future.delayed(const Duration(milliseconds: 200));
+                timeout: const Duration(seconds: 6),
+              ).timeout(const Duration(seconds: 7));
             }
 
             // Khám phá toàn bộ Services
-            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 7));
+            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 6));
             if (services.isEmpty) {
               bleErrorMessage = "Không đọc được dịch vụ (Services) từ thiết bị BLE.";
             } else {
+              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
               final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
               final normTxChar = (profile.bleTxCharUuid ?? '').replaceAll('-', '').toUpperCase();
 
-              BluetoothCharacteristic? rxChar;
-              BluetoothCharacteristic? txChar;
+              // Định vị Service của bo mạch (Cửa cuốn / Ổ cắm: 6E400001, Camera: 4FAFC201, bỏ qua GAP 0x1800)
+              final targetService = services.firstWhere(
+                (s) {
+                  final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
+                  return normTargetUuids.any((t) => sUuid.contains(t));
+                },
+                orElse: () => services.firstWhere(
+                  (s) {
+                    final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
+                    return !sUuid.contains("1800") && !sUuid.contains("1801");
+                  },
+                  orElse: () => services.first,
+                ),
+              );
 
-              // Tìm trên TOÀN BỘ các services (tránh bị kẹt ở Generic Access Service 0x1800)
-              for (final s in services) {
-                for (final c in s.characteristics) {
-                  final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
-                  if (cUuid.contains(normRxChar) ||
-                      cUuid.contains("6E400002") ||
-                      cUuid.contains("BEA5C122") ||
-                      cUuid.contains("BEA5A000")) {
-                    rxChar = c;
-                  }
-                  if ((normTxChar.isNotEmpty && cUuid.contains(normTxChar)) ||
-                      cUuid.contains("6E400003") ||
-                      (cUuid.contains("BEA5C122") && c.properties.notify)) {
-                    txChar = c;
-                  }
-                }
-              }
-
-              // Dự phòng: Tìm bất kỳ characteristic nào có quyền Write
-              if (rxChar == null) {
-                for (final s in services) {
-                  for (final c in s.characteristics) {
-                    if (c.properties.write || c.properties.writeWithoutResponse) {
-                      rxChar = c;
-                      break;
-                    }
-                  }
-                  if (rxChar != null) break;
-                }
-              }
-
-              if (rxChar == null) {
-                bleErrorMessage = "Không tìm thấy cổng ghi dữ liệu (RX Characteristic) trên bo mạch.";
+              final chars = targetService.characteristics;
+              if (chars.isEmpty) {
+                bleErrorMessage = "Không tìm thấy Characteristic nào trong dịch vụ của thiết bị.";
               } else {
+                // RX Characteristic: Nhận chuỗi cấu hình mạng (Cửa cuốn / Ổ cắm: 6E400002, Camera: BEA5C122)
+                final rxChar = chars.firstWhere(
+                  (c) {
+                    final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+                    return cUuid.contains(normRxChar) ||
+                           cUuid.contains("6E400002") ||
+                           cUuid.contains("BEA5C122") ||
+                           cUuid.contains("BEA5A000");
+                  },
+                  orElse: () => chars.firstWhere(
+                    (c) => c.properties.write || c.properties.writeWithoutResponse,
+                    orElse: () => chars.first,
+                  ),
+                );
+
+                // TX Characteristic: Phát tín hiệu phản hồi (Notify)
+                BluetoothCharacteristic? txChar;
+                if (normTxChar.isNotEmpty) {
+                  txChar = chars.cast<BluetoothCharacteristic?>().firstWhere(
+                    (c) => c != null && c.uuid.toString().replaceAll('-', '').toUpperCase().contains(normTxChar),
+                    orElse: () => null,
+                  );
+                }
                 final notifyChar = (txChar != null && txChar.properties.notify)
                     ? txChar
                     : (rxChar.properties.notify
                         ? rxChar
-                        : null);
+                        : chars.cast<BluetoothCharacteristic?>().firstWhere((c) => c != null && c.properties.notify, orElse: () => null));
 
                 StreamSubscription? notifySub;
                 Completer<bool> wifiCheckCompleter = Completer();
@@ -499,33 +497,19 @@ class BleProvisioningService {
                   }
                 }
 
-                onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
-                final bytes = utf8.encode(payloadString);
+                // Ghi dữ liệu nạp Wi-Fi trực tiếp vào RX Characteristic (chuẩn commit d52f6cd)
                 final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
-
                 try {
-                  // Ghi gói tin trực tiếp không dùng prepare write (allowLongWrite: false) để tránh bo mạch ESP32 bị ngắt kết nối
-                  await rxChar.write(
-                    bytes,
-                    withoutResponse: withoutResponse,
-                    allowLongWrite: false,
-                  ).timeout(const Duration(seconds: 5));
+                  await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
                 } catch (writeErr) {
-                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại với withoutResponse ngược lại...");
-                  try {
-                    await rxChar.write(
-                      bytes,
-                      withoutResponse: !withoutResponse,
-                      allowLongWrite: false,
-                    ).timeout(const Duration(seconds: 4));
-                  } catch (err2) {
-                    debugPrint("Lần 2 ghi cũng lỗi ($err2), thử gọi write cơ bản...");
-                    await rxChar.write(bytes).timeout(const Duration(seconds: 4));
-                  }
+                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử ghi lại với lệnh ghi cơ bản...");
+                  await rxChar.write(utf8.encode(payloadString)).timeout(const Duration(seconds: 4));
                 }
 
-                // Chờ phản hồi từ bo mạch (tối đa 3 giây)
-                final timer = Timer(const Duration(milliseconds: 3000), () {
+                onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
+
+                // Chờ phản hồi kiểm tra từ bo mạch (tối đa 4 giây)
+                final timer = Timer(const Duration(milliseconds: 4000), () {
                   if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                 });
                 await wifiCheckCompleter.future;
@@ -536,7 +520,7 @@ class BleProvisioningService {
                   bleSuccess = true;
                 }
 
-                await Future.delayed(const Duration(milliseconds: 300));
+                await Future.delayed(const Duration(milliseconds: 400));
                 try {
                   await devToConnect.disconnect();
                 } catch (_) {}
