@@ -321,8 +321,9 @@ export class DeviceOperationsController {
         res.status(400).json({ success: false, error: 'Thiếu thông tin Hardware ID' });
         return;
       }
-      const isCam = hardwareId.toUpperCase().startsWith('CAM') || hardwareId.toUpperCase().includes('CAMERA');
-      const isSocket = hardwareId.toUpperCase().startsWith('OCAM') || hardwareId.toUpperCase().includes('SOCKET');
+      const upperHwId = hardwareId.toUpperCase();
+      const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
+      const isCam = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
       const defaultDeviceType = isCam ? 'Camera' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
       const resolvedModelCode = isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU';
       const resolvedModelName = isCam ? 'AI Camera 360' : isSocket ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
@@ -440,16 +441,34 @@ export class DeviceOperationsController {
         const warrantyUntil = formatSafeDate(new Date(Date.now() + 24 * 30 * 24 * 3600 * 1000), '2028-10-23');
         const warrantyCode = `EW-${hardwareId.replace(/-/g, '').toUpperCase()}-24M`;
 
+        if (!pairResult.success && !pairResult.device) {
+          res.status(400).json({
+            success: false,
+            error: pairResult.message || 'Không thể ghép nối thiết bị',
+          });
+          return;
+        }
+
         res.json({
           success: true,
           message: 'Ghép nối thiết bị thành công!',
           instance: {
             ...pairResult.device,
+            hardwareId,
+            customName: finalName,
+            deviceName: finalName,
+            category,
+            deviceCategory: category,
             isOnline: true,
             is_online: true,
           },
           device: {
             ...pairResult.device,
+            hardwareId,
+            customName: finalName,
+            deviceName: finalName,
+            category,
+            deviceCategory: category,
             isOnline: true,
             is_online: true,
             warrantyUntil,

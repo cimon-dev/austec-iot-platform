@@ -691,8 +691,8 @@ class IoTGatewayClient {
     if (isSocket) {
       final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "13" || resolvedSocketAction == "1") ? "13"
           : (resolvedSocketAction == "STOP" || resolvedSocketAction == "3") ? "3"
-          : (resolvedSocketAction == "RF_SETUP" || resolvedSocketAction == "11") ? "11"
-          : (resolvedSocketAction == "RF_CLEAR" || resolvedSocketAction == "12") ? "12"
+          : (resolvedSocketAction == "RF_SETUP" || resolvedSocketAction == "RF_PAIR_NEW" || resolvedSocketAction == "11") ? "11"
+          : (resolvedSocketAction == "RF_CLEAR" || resolvedSocketAction == "RF_CLEAR_ALL" || resolvedSocketAction == "12") ? "12"
           : "14";
       unawaited(BleDeviceControlService().sendSocketAction(
         hardwareId: hardwareId,
@@ -734,7 +734,7 @@ class IoTGatewayClient {
           'action': beAction,
           'parameters': parameters ?? {},
         }),
-      ).timeout(const Duration(milliseconds: 3000));
+      ).timeout(const Duration(milliseconds: 6000));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);

@@ -62,6 +62,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       setState(() {
         _device.isRelayOn = target;
       });
+    } else if (action == "TOGGLE_CHILD_LOCK") {
+      setState(() {
+        _device.isChildLockActive = !_device.isChildLockActive;
+      });
     }
 
     setState(() => _isBusy = true);
@@ -590,7 +594,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Card Trạng Thái Cấp Điện Chính
+        // Card Điều Khiển Rơ-le Chính
         Container(
           padding: const EdgeInsets.all(20),
           decoration: AppTheme.glassBox(),
@@ -623,36 +627,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                         child: Icon(
                           isOn ? Icons.power_settings_new_rounded : Icons.power_off_rounded,
                           color: isOn ? AppTheme.cyanAccent : AppTheme.textMuted,
-                          size: 28,
+                          size: 30,
                         ),
                       ),
                       const SizedBox(width: 14),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isOn ? "ĐANG CẤP ĐIỆN (BẬT)" : "ĐÃ NGẮT ĐIỆN (TẮT)",
-                            style: TextStyle(
-                              color: isOn ? AppTheme.cyanAccent : Colors.white70,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            isOn ? "Rơ-le đóng tiếp điểm 220V" : "Rơ-le nhả an toàn, ngắt tải",
-                            style: TextStyle(
-                              color: isOn ? AppTheme.emeraldSuccess : AppTheme.textMuted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        isOn ? "ĐANG BẬT" : "ĐANG TẮT",
+                        style: TextStyle(
+                          color: isOn ? AppTheme.cyanAccent : Colors.white70,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
                       ),
                     ],
                   ),
                   Transform.scale(
-                    scale: 1.15,
+                    scale: 1.35,
                     child: Switch(
                       value: isOn,
                       activeThumbColor: Colors.white,
@@ -670,7 +661,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               const Divider(color: AppTheme.cardBorder, height: 1),
               const SizedBox(height: 16),
 
-              // Cụm phím điều khiển trực tiếp chuẩn ocammoi
+              // Chỉ đúng 2 nút BẬT và TẮT tối giản, không số, không mô tả
               Row(
                 children: [
                   Expanded(
@@ -678,39 +669,27 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
                       ),
-                      icon: const Icon(Icons.power_settings_new_rounded, size: 18),
-                      label: const Text("BẬT (13)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: const Icon(Icons.power_settings_new_rounded, size: 20),
+                      label: const Text("BẬT", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 0.8)),
                       onPressed: () => _triggerAction("TURN_ON"),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF59E0B),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      icon: const Icon(Icons.pause_circle_filled_rounded, size: 18),
-                      label: const Text("DỪNG (3)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      onPressed: () => _triggerAction("STOP"),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFEF4444),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
                       ),
-                      icon: const Icon(Icons.power_off_rounded, size: 18),
-                      label: const Text("TẮT (14)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      icon: const Icon(Icons.power_off_rounded, size: 20),
+                      label: const Text("TẮT", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 0.8)),
                       onPressed: () => _triggerAction("TURN_OFF"),
                     ),
                   ),
@@ -722,97 +701,78 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
         const SizedBox(height: 16),
 
-        // Thẻ Quản Lý Remote RF (Chuẩn ocammoi: case 11 học lệnh RF, case 12 xóa RF)
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: AppTheme.glassBox(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.settings_remote_rounded, color: AppTheme.cyanAccent, size: 20),
-                  const SizedBox(width: 10),
-                  const Text(
-                    "Cài Đặt Tay Cầm Remote RF 433MHz",
-                    style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                "Lệnh nạp vi điều khiển: RF_setup (mã 11, mở học lệnh 7s) • RF_clear (mã 12, xóa toàn bộ)",
-                style: TextStyle(color: AppTheme.textMuted, fontSize: 11.5),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.cyanAccent,
-                        side: const BorderSide(color: AppTheme.cyanAccent),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      icon: const Icon(Icons.add_circle_outline_rounded, size: 16),
-                      label: const Text("Học Tay Cầm (11)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      onPressed: () => _triggerAction("RF_SETUP"),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.crimsonDanger,
-                        side: const BorderSide(color: AppTheme.crimsonDanger),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                      label: const Text("Xóa Hết RF (12)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                      onPressed: () => _triggerAction("RF_CLEAR"),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        // CÀI ĐẶT AN TOÀN & TAY ĐIỀU KHIỂN RF (Giống hệt dạng cửa cuốn)
+        const Text(
+          "CÀI ĐẶT AN TOÀN & TAY ĐIỀU KHIỂN RF",
+          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
-
-        const SizedBox(height: 16),
-
-        // Thông số đo đạc tải viễn thám thực tế
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(18),
           decoration: AppTheme.glassBox(),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "THÔNG SỐ HOẠT ĐỘNG Ổ CẮM THỰC TẾ",
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              // Khóa an toàn trẻ em
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Khóa An Toàn Trẻ Em", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                      Text("Vô hiệu hóa toàn bộ remote RF chống bấm nhầm", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                  Switch(
+                    value: _device.isChildLockActive,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: AppTheme.crimsonDanger,
+                    onChanged: (val) => _triggerAction("TOGGLE_CHILD_LOCK"),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              _buildTelemetryRow(
-                "Điện áp ngõ ra tải",
-                isOn ? "220 VAC (50 Hz Chuẩn)" : "0 VAC (Đã ngắt an toàn)",
-                Icons.bolt,
-              ),
-              _buildTelemetryRow(
-                "Trạng thái tiếp điểm Rơ-le",
-                isOn ? "ĐÓNG MẠCH (TIẾP ĐIỆN)" : "NHẢ TIẾP ĐIỂM (NGẮT TẢI)",
-                Icons.power_rounded,
-              ),
-              _buildTelemetryRow(
-                "Cường độ sóng kết nối WiFi",
-                "-52 dBm (Tín hiệu rất tốt)",
-                Icons.wifi,
-              ),
-              _buildTelemetryRow(
-                "Kênh điều khiển tương thích",
-                "MQTT Cloud & Bluetooth BLE UART",
-                Icons.sync_rounded,
+              const Divider(color: AppTheme.cardBorder, height: 20),
+
+              // Quản lý Remote RF
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Remote RF Đã Gán: ${_device.rfRemoteCount} tay cầm",
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      const Text("Học lệnh RF_setup / Xóa RF_clear từ xa", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.cyanAccent,
+                          side: const BorderSide(color: AppTheme.cyanAccent),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _triggerAction("RF_SETUP"),
+                        child: const Text("Học Lệnh", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.roseDanger,
+                          side: const BorderSide(color: AppTheme.roseDanger),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () => _triggerAction("RF_CLEAR"),
+                        child: const Text("Xóa Hết", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),

@@ -570,7 +570,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                               crossAxisCount: 2,
                               crossAxisSpacing: 10,
                               mainAxisSpacing: 10,
-                              childAspectRatio: 1.48,
+                              childAspectRatio: 1.32,
                             ),
                             itemCount: devices.length,
                             itemBuilder: (context, index) {
@@ -671,39 +671,43 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                     const SizedBox(height: 2),
 
-                    // Dòng 2: Nút bật tắt
+                    // Dòng 2: Nút bật tắt kích thước lớn, thao tác rõ ràng
                     if (device.canPerformControl)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Transform.scale(
-                            scale: 0.74,
-                            alignment: Alignment.centerLeft,
-                            child: Switch(
-                              value: isOn,
-                              activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
-                              activeThumbColor: AppTheme.cyanAccent,
-                              inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
-                              inactiveThumbColor: Colors.grey,
-                              onChanged: _isProcessing
-                                  ? null
-                                  : (newVal) {
-                                      setState(() {
-                                        device.isRelayOn = newVal;
-                                      });
-                                      _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
-                                    },
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Transform.scale(
+                              scale: 1.15,
+                              alignment: Alignment.centerLeft,
+                              child: Switch(
+                                value: isOn,
+                                activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
+                                activeThumbColor: AppTheme.cyanAccent,
+                                inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                                inactiveThumbColor: Colors.grey,
+                                onChanged: _isProcessing
+                                    ? null
+                                    : (newVal) {
+                                        setState(() {
+                                          device.isRelayOn = newVal;
+                                        });
+                                        _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                                      },
+                              ),
                             ),
-                          ),
-                          Text(
-                            isOn ? "BẬT" : "TẮT",
-                            style: TextStyle(
-                              color: isOn ? AppTheme.cyanAccent : Colors.grey,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
+                            const SizedBox(width: 4),
+                            Text(
+                              isOn ? "BẬT" : "TẮT",
+                              style: TextStyle(
+                                color: isOn ? AppTheme.cyanAccent : Colors.grey,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       )
                     else
                       Padding(

@@ -62,17 +62,33 @@ export class ProvisioningService {
    * Ghép nối thiết bị mới qua mã QR và Hardware ID chuẩn
    */
   public pairDevice(req: PairingRequest): PairingResult {
-    const item = this.inventoryStore.get(req.hardwareId);
+    let item = this.inventoryStore.get(req.hardwareId);
 
     if (!item) {
-      return {
-        success: false,
-        message: `Hardware ID '${req.hardwareId}' không tồn tại trong hệ sinh thái Austec.`,
-        errorCode: 'NOT_FOUND',
+      // Tự động khởi tạo thiết bị thực tế nếu chưa có trong danh mục kho
+      const upperHw = req.hardwareId.toUpperCase();
+      const isSocketHw = upperHw.startsWith('OCAM') || upperHw.includes('SOCKET') || upperHw.includes('OCAM');
+      const isCamHw = !isSocketHw && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
+      const createdItem: DeviceInventory = {
+        id: `inv-${req.hardwareId}`,
+        hardwareId: req.hardwareId,
+        macAddress: `FC:B4:67:${req.hardwareId.replace(/[^A-Za-z0-9]/g, '').slice(0, 4)}`,
+        modelId: isCamHw ? 5 : (isSocketHw ? 4 : 1),
+        batchNumber: 'BATCH-2026-AUTO',
+        supplier: 'Austec Factory',
+        qrCodeHash: req.qrCodeHash || '',
+        producedAt: '2026-10-23',
+        warrantyMonths: 24,
+        status: 'IN_WAREHOUSE',
+        createdAt: new Date().toISOString(),
       };
+      this.inventoryStore.set(req.hardwareId, createdItem);
+      item = createdItem;
     }
 
-    if (item.qrCodeHash !== req.qrCodeHash) {
+    const currentItem: DeviceInventory = item;
+
+    if (currentItem.qrCodeHash && req.qrCodeHash && currentItem.qrCodeHash !== req.qrCodeHash) {
       return {
         success: false,
         message: 'Mã băm QR Code bảo mật không khớp hoặc tem đã bị làm giả!',
@@ -80,7 +96,7 @@ export class ProvisioningService {
       };
     }
 
-    if (item.status === 'ACTIVATED') {
+    if (currentItem.status === 'ACTIVATED') {
       const existingInstance = this.instanceStore.get(req.hardwareId);
       if (existingInstance && existingInstance.ownerId === req.userId) {
         return {
@@ -99,19 +115,19 @@ export class ProvisioningService {
     // Tiến hành kích hoạt bảo hành điện tử
     const now = new Date();
     const warrantyEnd = new Date(now);
-    warrantyEnd.setMonth(warrantyEnd.getMonth() + (item.warrantyMonths || 24));
+    warrantyEnd.setMonth(warrantyEnd.getMonth() + (currentItem.warrantyMonths || 24));
 
     // Cập nhật trạng thái kho
-    item.status = 'ACTIVATED';
-    this.inventoryStore.set(item.hardwareId, item);
+    currentItem.status = 'ACTIVATED';
+    this.inventoryStore.set(currentItem.hardwareId, currentItem);
 
     // Tạo Instance người dùng
     const subscriptionExpires = new Date(now);
     subscriptionExpires.setMonth(subscriptionExpires.getMonth() + 12); // Mặc định 12 tháng khi lần đầu kích hoạt
 
     const newInstance: DeviceInstance = {
-      id: `inst-${item.hardwareId}-${Date.now()}`,
-      hardwareId: item.hardwareId,
+      id: `inst-${currentItem.hardwareId}-${Date.now()}`,
+      hardwareId: currentItem.hardwareId,
       customName: req.customName,
       ownerId: req.userId,
       firmwareVersionCurrent: 'v2.4.1',
@@ -127,17 +143,17 @@ export class ProvisioningService {
       subscriptionType: 'LIMITED',
       subscriptionExpiresAt: subscriptionExpires.toISOString(),
       subscriptionStatus: 'ACTIVE',
-      deviceType: item.modelId === 2 
+      deviceType: currentItem.modelId === 2 
         ? 'Khóa thông minh' 
-        : (item.modelId === 3 
+        : (currentItem.modelId === 3 
           ? 'Bộ lưu điện' 
-          : (item.modelId === 4 || item.hardwareId.toUpperCase().startsWith('OCAM') || item.hardwareId.toUpperCase().includes('SOCKET')
+          : (currentItem.modelId === 4 || currentItem.hardwareId.toUpperCase().startsWith('OCAM') || currentItem.hardwareId.toUpperCase().includes('SOCKET')
             ? 'Ổ cắm' 
-            : (item.modelId === 5 || item.hardwareId.toUpperCase().startsWith('CAM')
+            : (currentItem.modelId === 5 || currentItem.hardwareId.toUpperCase().startsWith('CAM')
               ? 'Camera' 
-              : (item.hardwareId.toUpperCase().startsWith('AMTUONG') || item.hardwareId.toUpperCase().startsWith('AT-DOOR')
+              : (currentItem.hardwareId.toUpperCase().startsWith('AMTUONG') || currentItem.hardwareId.toUpperCase().startsWith('AT-DOOR')
                 ? 'Cửa cuốn' 
-                : ((item as any).deviceType || 'Thiết bị thông minh'))))),
+                : ((currentItem as any).deviceType || 'Thiết bị thông minh'))))),
       installationAddress: {
         fullText: req.addressDisplay || 'Hà Nội, Việt Nam',
       },

@@ -71,31 +71,32 @@ export class CommandService {
       }
     }
 
-    // 2. Phân loại thiết bị & Ánh xạ mã lệnh phần cứng
-    const isCamera = req.hardwareId.toUpperCase().startsWith('CAM_') || req.hardwareId.toUpperCase().includes('CAM');
-    const isSocket = req.hardwareId.toUpperCase().startsWith('OCAM') || req.hardwareId.toUpperCase().includes('OCAM') || req.hardwareId.toUpperCase().includes('SOCKET');
+    // 2. Phân loại thiết bị & Ánh xạ mã lệnh phần cứng (Ưu tiên kiểm tra ổ cắm trước để tránh ocam chứa chữ cam)
+    const upperHwId = req.hardwareId.toUpperCase();
+    const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
+    const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
 
     let actionCode = req.command;
-    if (isCamera) {
-      if (req.command === 'STREAM_START' || req.command === 'START_STREAM' || req.command === '13' || req.command === 'TAKE_SNAPSHOT') {
-        actionCode = '13';
-      } else if (req.command === 'STREAM_STOP' || req.command === 'STOP_STREAM' || req.command === '14') {
-        actionCode = '14';
-      }
-    } else if (isSocket) {
+    if (isSocket) {
       if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1') {
         actionCode = '13'; // Khớp ocammoi: case 13 -> ocam.BAT()
       } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '14' || req.command === '0') {
         actionCode = '14'; // Khớp ocammoi: case 14 -> ocam.TAT()
       } else if (req.command === 'STOP' || req.command === '3') {
         actionCode = '3';  // Khớp ocammoi: case 3 -> ocam.dung()
-      } else if (req.command === 'RF_SETUP' || req.command === '11') {
+      } else if (req.command === 'RF_SETUP' || req.command === 'RF_PAIR_NEW' || req.command === '11') {
         actionCode = '11'; // Khớp ocammoi: case 11 -> ocam.RF_setup()
-      } else if (req.command === 'RF_CLEAR' || req.command === '12') {
+      } else if (req.command === 'RF_CLEAR' || req.command === 'RF_CLEAR_ALL' || req.command === '12') {
         actionCode = '12'; // Khớp ocammoi: case 12 -> ocam.RF_clear()
       } else if (req.command === 'TOGGLE_RELAY') {
         const isCurrentlyOn = currentState?.currentProperties?.is_relay_on === true || currentState?.currentProperties?.relay_state === 'ON';
         actionCode = isCurrentlyOn ? '14' : '13';
+      }
+    } else if (isCamera) {
+      if (req.command === 'STREAM_START' || req.command === 'START_STREAM' || req.command === '13' || req.command === 'TAKE_SNAPSHOT') {
+        actionCode = '13';
+      } else if (req.command === 'STREAM_STOP' || req.command === 'STOP_STREAM' || req.command === '14') {
+        actionCode = '14';
       }
     } else {
       // Mặc định: Cửa cuốn Austec
