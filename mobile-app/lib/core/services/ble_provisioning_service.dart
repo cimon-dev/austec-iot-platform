@@ -334,6 +334,7 @@ class BleProvisioningService {
           try {
             if (FlutterBluePlus.isScanningNow) {
               await FlutterBluePlus.stopScan();
+              await Future.delayed(const Duration(milliseconds: 150));
             }
           } catch (_) {}
 
@@ -413,10 +414,12 @@ class BleProvisioningService {
                 license: License.nonprofit,
                 timeout: const Duration(seconds: 6),
               ).timeout(const Duration(seconds: 7));
+              await Future.delayed(const Duration(milliseconds: 250));
             }
 
             // Khám phá toàn bộ Services
             final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 6));
+            await Future.delayed(const Duration(milliseconds: 150));
             if (services.isEmpty) {
               bleErrorMessage = "Không đọc được dịch vụ (Services) từ thiết bị BLE.";
             } else {
@@ -499,10 +502,12 @@ class BleProvisioningService {
 
                 // Ghi dữ liệu nạp Wi-Fi trực tiếp vào RX Characteristic (chuẩn commit d52f6cd)
                 final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
+                await Future.delayed(const Duration(milliseconds: 150));
                 try {
                   await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
                 } catch (writeErr) {
                   debugPrint("Lần 1 ghi lỗi ($writeErr), thử ghi lại với lệnh ghi cơ bản...");
+                  await Future.delayed(const Duration(milliseconds: 200));
                   await rxChar.write(utf8.encode(payloadString)).timeout(const Duration(seconds: 4));
                 }
 
