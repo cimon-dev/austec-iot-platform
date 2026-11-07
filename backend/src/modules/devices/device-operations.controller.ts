@@ -66,6 +66,28 @@ export class DeviceOperationsController {
     try {
       const targetUser = req.user!;
       if (this.client.getConnected()) {
+        // Auto-heal device_type and status in database for sockets and cameras
+        await this.client.query(`
+          UPDATE device_instances 
+          SET device_type = 'Ổ cắm' 
+          WHERE (LOWER(hardware_id) LIKE 'ocam%' OR LOWER(hardware_id) LIKE '%socket%') AND (device_type != 'Ổ cắm' OR device_type IS NULL)
+        `).catch(() => {});
+        await this.client.query(`
+          UPDATE device_instances 
+          SET device_type = 'Camera' 
+          WHERE (LOWER(hardware_id) LIKE 'cam%' OR LOWER(hardware_id) LIKE '%esp32-cam%') AND (device_type != 'Camera' OR device_type IS NULL)
+        `).catch(() => {});
+        await this.client.query(`
+          UPDATE device_inventory 
+          SET device_type = 'Ổ cắm' 
+          WHERE (LOWER(hardware_id) LIKE 'ocam%' OR LOWER(hardware_id) LIKE '%socket%') AND (device_type != 'Ổ cắm' OR device_type IS NULL)
+        `).catch(() => {});
+        await this.client.query(`
+          UPDATE device_inventory 
+          SET device_type = 'Camera' 
+          WHERE (LOWER(hardware_id) LIKE 'cam%' OR LOWER(hardware_id) LIKE '%esp32-cam%') AND (device_type != 'Camera' OR device_type IS NULL)
+        `).catch(() => {});
+
         const query = `
           SELECT di.*, COALESCE(dp.role, 'OWNER') as user_role,
                  COALESCE(dp.can_control, true) as can_control,
@@ -137,15 +159,32 @@ export class DeviceOperationsController {
             const warrantyUntil = formatSafeDate(r.warranty_end_at, '2028-10-22');
             const warrantyCode = `EW-${(r.hardware_id || '').replace(/-/g, '').toUpperCase()}-24M`;
 
+            const hwUpper = (r.hardware_id || '').toUpperCase();
+            const isCamDev = hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA');
+            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.includes('OCAM');
+
+            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : 'Cửa cuốn';
+            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
+            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU';
+            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : 'Cửa cuốn Austec';
+
+            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (r.device_type || defaultDevType));
+            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_ECO' : (isCamDev ? 'AI_CAMERA_360' : (r.model_code || defaultDevModelCode));
+            const resolvedModelName = isSocketDev ? 'Ổ cắm thông minh Austec' : (isCamDev ? 'AI Camera 360' : (r.model_name || defaultDevModelName));
+            const finalDevName = r.custom_name || (r.model_name && !r.model_name.includes('A900') ? r.model_name : defaultDevName);
+            const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : 'rollerDoor');
+
             return {
               id: r.id,
               hardwareId: r.hardware_id,
               customName: r.custom_name,
-              deviceName: r.custom_name || r.model_name || 'Cửa cuốn Austec',
-              name: r.custom_name || r.model_name || 'Cửa cuốn Austec',
-              modelName: r.model_name || 'Austec Titadoor A900 Super',
-              modelCode: r.model_code || 'DOOR_GERMAN_ALU',
-              deviceType: r.device_type || 'Cửa cuốn',
+              deviceName: finalDevName,
+              name: finalDevName,
+              modelName: resolvedModelName,
+              modelCode: resolvedModelCode,
+              deviceType: resolvedDevType,
+              category: resolvedCategory,
+              deviceCategory: resolvedCategory,
               imageUrl: r.image_url,
               isOnline: isOnline,
               roleInHome: r.user_role || 'OWNER',
@@ -280,9 +319,12 @@ export class DeviceOperationsController {
         res.status(400).json({ success: false, error: 'Thiếu thông tin Hardware ID' });
         return;
       }
-      const isCam = hardwareId.toUpperCase().startsWith('CAM');
-      const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
+      const isCam = hardwareId.toUpperCase().startsWith('CAM') || hardwareId.toUpperCase().includes('CAMERA');
+      const isSocket = hardwareId.toUpperCase().startsWith('OCAM') || hardwareId.toUpperCase().includes('SOCKET');
       const defaultDeviceType = isCam ? 'Camera' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
+      const resolvedModelCode = isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU';
+      const resolvedModelName = isCam ? 'AI Camera 360' : isSocket ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
+      const category = isCam ? 'camera' : isSocket ? 'lightSwitch' : 'rollerDoor';
       const finalName = customName || deviceName || (isCam ? `Camera ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
       const finalLocation = location || address || 'Nhà riêng';
       const finalLat = (lat != null && !isNaN(Number(lat))) ? Number(lat) : ((latitude != null && !isNaN(Number(latitude))) ? Number(latitude) : 21.028511);
@@ -294,11 +336,13 @@ export class DeviceOperationsController {
           [hardwareId]
         );
         const resolvedHwId = invRes.rows.length > 0 ? invRes.rows[0].hardware_id : hardwareId;
-        const resolvedDeviceType = invRes.rows.length > 0 && invRes.rows[0].device_type ? invRes.rows[0].device_type : defaultDeviceType;
+        const resolvedDeviceType = (isCam || isSocket)
+          ? defaultDeviceType
+          : (invRes.rows.length > 0 && invRes.rows[0].device_type ? invRes.rows[0].device_type : defaultDeviceType);
 
         await this.client.query(
-          `UPDATE device_inventory SET status = 'ACTIVE', device_type = COALESCE(device_type, $2) WHERE hardware_id = $1`,
-          [resolvedHwId, resolvedDeviceType]
+          `UPDATE device_inventory SET status = 'ACTIVE', device_type = $2, model_name = $3 WHERE hardware_id = $1`,
+          [resolvedHwId, resolvedDeviceType, resolvedModelName]
         );
 
         const uRes = await this.client.query(`SELECT id, full_name, phone_number, email FROM users WHERE id = $1`, [targetUser.id]);
@@ -307,21 +351,22 @@ export class DeviceOperationsController {
         const ownerPhone = dbUser?.phone_number || '---';
 
         const instRes = await this.client.query(
-          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9, $10, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, model_name, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10, $11, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
              owner_phone = EXCLUDED.owner_phone,
              custom_name = EXCLUDED.custom_name,
              device_type = EXCLUDED.device_type,
+             model_name = EXCLUDED.model_name,
              is_online = true,
              address_display = EXCLUDED.address_display,
              location_lat = EXCLUDED.location_lat,
              location_lng = EXCLUDED.location_lng,
              warranty_end_at = COALESCE(device_instances.warranty_end_at, EXCLUDED.warranty_end_at)
            RETURNING *`,
-          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, finalLocation, resolvedDeviceType, finalLat, finalLng]
+          [resolvedHwId, resolvedHwId, targetUser.id, ownerFullName, ownerPhone, finalName, finalLocation, resolvedDeviceType, resolvedModelName, finalLat, finalLng]
         );
         const permId = `PERM-${resolvedHwId}-${targetUser.id.slice(0, 8)}`;
         await this.client.query(
@@ -351,6 +396,11 @@ export class DeviceOperationsController {
             ...inst,
             isOnline: true,
             is_online: true,
+            device_type: resolvedDeviceType,
+            category,
+            deviceCategory: category,
+            modelName: resolvedModelName,
+            modelCode: resolvedModelCode,
           },
           device: {
             ...inst,
@@ -358,6 +408,12 @@ export class DeviceOperationsController {
             is_online: true,
             hardwareId: resolvedHwId,
             customName: finalName,
+            deviceName: finalName,
+            deviceType: resolvedDeviceType,
+            category,
+            deviceCategory: category,
+            modelName: resolvedModelName,
+            modelCode: resolvedModelCode,
             addressDisplay: finalLocation,
             lat: finalLat,
             lng: finalLng,

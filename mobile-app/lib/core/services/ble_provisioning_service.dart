@@ -795,6 +795,7 @@ class BleProvisioningService {
 
     if (syncedDevice != null) {
       syncedDevice.isOnline = true;
+      syncedDevice.category = targetDevice.profile.category;
       IoTGatewayClient().addDevice(syncedDevice);
     } else {
       final finalAddress = (address != null && address.trim().isNotEmpty) ? address.trim() : location;

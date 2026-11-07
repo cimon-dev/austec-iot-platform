@@ -62,7 +62,7 @@ class DeviceItem {
   final String modelName;
   final String modelCode;
   final String? imageUrl;
-  final DeviceCategory category;
+  DeviceCategory category;
   String roomName;
   final String badgeText; // e.g. "ÂM TƯỜNG", "GARA", "CHÍNH"
   final String deviceNumber; // e.g. "834", "1834"
@@ -300,6 +300,8 @@ class DeviceItem {
       'modelName': modelName,
       'modelCode': modelCode,
       'imageUrl': imageUrl,
+      'category': category.name,
+      'deviceCategory': category.name,
       'deviceType': categoryDisplayName,
       'currentProperties': {
         ...currentProperties,
