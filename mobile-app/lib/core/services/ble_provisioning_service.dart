@@ -284,10 +284,21 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Sử dụng địa chỉ Broker thực tế từ cấu hình/backend (không dùng IP fallback cố định)
-    final String targetBrokerIp = (brokerIp != null && brokerIp.trim().isNotEmpty)
+    // Sử dụng địa chỉ Broker thực tế từ cấu hình/backend (tránh trỏ nhầm domain Render không mở port TCP 1883)
+    String targetBrokerIp = (brokerIp != null && brokerIp.trim().isNotEmpty)
         ? brokerIp.trim()
         : (Uri.tryParse(ApiConfig.baseUrl)?.host ?? '');
+
+    // Nếu targetBrokerIp là Render Cloud hoặc rỗng hoặc localhost:
+    // Render chỉ mở port HTTP/HTTPS (443), KHÔNG mở port TCP 1883 cho MQTT!
+    // MQTT Broker công cộng chuẩn mà Backend Austec sử dụng là broker.emqx.io!
+    if (targetBrokerIp.isEmpty ||
+        targetBrokerIp.contains('onrender.com') ||
+        targetBrokerIp.contains('render.com') ||
+        targetBrokerIp == 'localhost' ||
+        targetBrokerIp == '127.0.0.1') {
+      targetBrokerIp = 'broker.emqx.io';
+    }
 
     final profile = targetDevice.profile;
     final inputData = ProvisioningInputData(
@@ -644,20 +655,21 @@ class BleProvisioningService {
     // GIAI ĐOẠN 3: KIỂM TRA BO MẠCH KHỞI ĐỘNG LẠI & KẾT NỐI VÀO WI-FI / MQTT
     // =========================================================================
     bool hardwareIsOnline = false;
-    const int onlineCheckAttempts = 6;
+    // ESP32 cần ~10-18 giây để hoàn tất chu kỳ: Khởi động lại (2-3s) -> Kết nối Wi-Fi WPA2 DHCP (5-8s) -> Kết nối MQTT (2-3s)
+    const int onlineCheckAttempts = 16; // Thử trong ~20 giây (16 * 1250ms)
     for (int i = 0; i < onlineCheckAttempts; i++) {
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-      final currentCheckProgress = 0.65 + ((i + 1) / onlineCheckAttempts) * 0.22;
+      final currentCheckProgress = 0.55 + ((i + 1) / onlineCheckAttempts) * 0.33;
       onProgress(
-        "Đang chờ bo mạch kết nối Wi-Fi & MQTT (lần ${i + 1}/$onlineCheckAttempts)...",
+        "Đang chờ bo mạch kết nối Wi-Fi [$cleanSsid] & MQTT (lần ${i + 1}/$onlineCheckAttempts)...",
         double.parse(currentCheckProgress.toStringAsFixed(2)),
       );
 
-      await Future.delayed(const Duration(milliseconds: 1200));
+      await Future.delayed(const Duration(milliseconds: 1250));
 
       try {
-        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
+        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}&userId=$currentUserId');
         final checkRes = await http.get(checkUri).timeout(const Duration(milliseconds: 1500));
         if (checkRes.statusCode == 200) {
           final body = jsonDecode(checkRes.body);

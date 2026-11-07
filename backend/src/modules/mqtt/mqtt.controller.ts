@@ -33,11 +33,12 @@ export class MqttController {
   public async checkHardwareOnline(req: Request, res: Response) {
     try {
       const hwId = (req.query.hardwareId || '').toString().trim();
+      const userId = (req.query.userId || '').toString().trim();
       if (!hwId) {
         res.status(400).json({ success: false, isOnline: false, error: 'hardwareId is required' });
         return;
       }
-      const isOnline = await this.mqttGateway.isHardwareOnline(hwId);
+      const isOnline = await this.mqttGateway.isHardwareOnline(hwId, userId);
       res.json({ success: true, hardwareId: hwId, isOnline });
     } catch (e: any) {
       res.status(500).json({ success: false, isOnline: false, error: e.message });

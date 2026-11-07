@@ -375,7 +375,7 @@ export class MqttGateway {
     };
   }
 
-  public async isHardwareOnline(hwId: string): Promise<boolean> {
+  public async isHardwareOnline(hwId: string, userId?: string): Promise<boolean> {
     const cleanId = hwId.trim().toLowerCase();
     try {
       const state = await this.hotCache.getDeviceState(hwId);
@@ -393,9 +393,14 @@ export class MqttGateway {
 
     // Chủ động phát gói thăm dò (ping) xuống topic sub/isonline của Cửa cuốn / Ổ cắm
     try {
-      this.publishMessage(`+/${hwId}/sub/isonline`, '1').catch(() => {});
+      if (userId && userId.trim().length > 0) {
+        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => {});
+      }
       this.publishMessage(`00000000-0000-0000-0000-000000000001/${hwId}/sub/isonline`, '1').catch(() => {});
       this.publishMessage(`austec/${hwId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`admin/${hwId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`root/${hwId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`devices/${hwId}/sub/isonline`, '1').catch(() => {});
     } catch (_) {}
 
     return false;
