@@ -415,11 +415,13 @@ class BleProvisioningService {
               ).timeout(const Duration(seconds: 9));
             }
 
-            // Tăng MTU lên 512 bytes (Tối quan trọng trên Android để không bị cắt bớt chuỗi 80+ bytes)
-            try {
-              await devToConnect.requestMtu(512).timeout(const Duration(seconds: 2));
-            } catch (_) {}
-            await Future.delayed(const Duration(milliseconds: 250));
+            // Tăng MTU lên 512 bytes (Chỉ áp dụng trên Android; trên iOS CoreBluetooth tự động đàm phán MTU 185 bytes khi kết nối)
+            if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+              try {
+                await devToConnect.requestMtu(512).timeout(const Duration(seconds: 2));
+              } catch (_) {}
+              await Future.delayed(const Duration(milliseconds: 200));
+            }
 
             // Khám phá toàn bộ Services
             final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 7));
@@ -499,33 +501,26 @@ class BleProvisioningService {
 
                 onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
                 final bytes = utf8.encode(payloadString);
+                final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
 
                 try {
-                  if (rxChar.properties.write) {
-                    // Ưu tiên Write With Response (hỗ trợ Long Write chuẩn trên iOS & Android)
-                    await rxChar.write(
-                      bytes,
-                      withoutResponse: false,
-                      allowLongWrite: true,
-                    ).timeout(const Duration(seconds: 5));
-                  } else if (rxChar.properties.writeWithoutResponse) {
-                    // Nếu chỉ có writeWithoutResponse: Tuyệt đối KHÔNG truyền allowLongWrite: true (tránh lỗi iOS/Android)
-                    await rxChar.write(
-                      bytes,
-                      withoutResponse: true,
-                      allowLongWrite: false,
-                    ).timeout(const Duration(seconds: 5));
-                  } else {
-                    // Mặc định gọi hàm write cơ bản
-                    await rxChar.write(bytes).timeout(const Duration(seconds: 5));
-                  }
+                  // Ghi gói tin trực tiếp không dùng prepare write (allowLongWrite: false) để tránh bo mạch ESP32 bị ngắt kết nối
+                  await rxChar.write(
+                    bytes,
+                    withoutResponse: withoutResponse,
+                    allowLongWrite: false,
+                  ).timeout(const Duration(seconds: 5));
                 } catch (writeErr) {
-                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại fallback an toàn...");
+                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại với withoutResponse ngược lại...");
                   try {
-                    await rxChar.write(bytes).timeout(const Duration(seconds: 4));
+                    await rxChar.write(
+                      bytes,
+                      withoutResponse: !withoutResponse,
+                      allowLongWrite: false,
+                    ).timeout(const Duration(seconds: 4));
                   } catch (err2) {
-                    debugPrint("Fallback write cũng lỗi: $err2");
-                    rethrow;
+                    debugPrint("Lần 2 ghi cũng lỗi ($err2), thử gọi write cơ bản...");
+                    await rxChar.write(bytes).timeout(const Duration(seconds: 4));
                   }
                 }
 
