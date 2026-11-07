@@ -308,6 +308,7 @@ class BleProvisioningService {
       bool bleSuccess = false;
       bool isWifiCheckFailed = false;
       String wifiErrorMessage = "Mật khẩu Wi-Fi không chính xác hoặc bo mạch không kết nối được tới router này!";
+      String? bleErrorMessage;
 
       if (kIsWeb) {
         try {
@@ -338,77 +339,138 @@ class BleProvisioningService {
 
           // Native FlutterBluePlus trên Android / iOS
           BluetoothDevice? devToConnect = targetDevice.nativeDevice;
+
+          // Nếu devToConnect chưa có hoặc bị mất: Tìm kiếm trong lastScanResults
           if (devToConnect == null) {
             final scanResults = FlutterBluePlus.lastScanResults;
-            if (scanResults.isNotEmpty) {
-              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toLowerCase()).toList();
-              final match = scanResults.cast<ScanResult?>().firstWhere(
+            final targetUpper = targetDevice.hardwareId.toUpperCase();
+            final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
+
+            final match = scanResults.cast<ScanResult?>().firstWhere(
+              (r) {
+                if (r == null) return false;
+                final pName = r.device.platformName.toUpperCase();
+                final advName = r.advertisementData.advName.toUpperCase();
+                final rId = r.device.remoteId.str.toUpperCase();
+                final advUuids = r.advertisementData.serviceUuids.map((u) => u.toString().replaceAll('-', '').toUpperCase()).toList();
+
+                return pName == targetUpper ||
+                       advName == targetUpper ||
+                       (targetUpper.isNotEmpty && (pName.contains(targetUpper) || targetUpper.contains(pName))) ||
+                       rId == targetUpper ||
+                       advUuids.any((adv) => normTargetUuids.any((t) => adv.contains(t)));
+              },
+              orElse: () => null,
+            );
+
+            if (match != null) {
+              devToConnect = match.device;
+            }
+          }
+
+          // Nếu vẫn null (do scan đã dừng từ trước khi user nhập form): Chạy quét nhanh 2.5s để bắt lại thiết bị
+          if (devToConnect == null) {
+            onProgress("Đang định vị lại sóng BLE của ${targetDevice.modelName}...", 0.40);
+            try {
+              await FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+              await Future.delayed(const Duration(milliseconds: 2500));
+              try { await FlutterBluePlus.stopScan(); } catch (_) {}
+
+              final results = FlutterBluePlus.lastScanResults;
+              final targetUpper = targetDevice.hardwareId.toUpperCase();
+              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
+
+              final match = results.cast<ScanResult?>().firstWhere(
                 (r) {
                   if (r == null) return false;
-                  final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
-                  final advUuids = r.advertisementData.serviceUuids.map((u) => u.toString().replaceAll('-', '').toLowerCase()).toList();
-                  return (targetDevice.hardwareId.isNotEmpty && n == targetDevice.hardwareId.toLowerCase()) ||
-                         advUuids.any((adv) => normTargetUuids.any((target) => adv.contains(target)));
+                  final pName = r.device.platformName.toUpperCase();
+                  final advName = r.advertisementData.advName.toUpperCase();
+                  final rId = r.device.remoteId.str.toUpperCase();
+                  final advUuids = r.advertisementData.serviceUuids.map((u) => u.toString().replaceAll('-', '').toUpperCase()).toList();
+
+                  return pName == targetUpper ||
+                         advName == targetUpper ||
+                         (targetUpper.isNotEmpty && (pName.contains(targetUpper) || targetUpper.contains(pName))) ||
+                         rId == targetUpper ||
+                         advUuids.any((adv) => normTargetUuids.any((t) => adv.contains(t)));
                 },
                 orElse: () => null,
               );
               if (match != null) {
                 devToConnect = match.device;
               }
-            }
+            } catch (_) {}
           }
 
-          if (devToConnect != null) {
+          if (devToConnect == null) {
+            bleErrorMessage = "Không tìm thấy sóng Bluetooth của thiết bị [${targetDevice.hardwareId}]. Hãy đảm bảo thiết bị đang bật nguồn.";
+          } else {
+            onProgress("Đang kết nối Bluetooth tới [${targetDevice.hardwareId}]...", 0.42);
+
+            // Kết nối Bluetooth
             if (!devToConnect.isConnected) {
               await devToConnect.connect(
                 license: License.nonprofit,
-                timeout: const Duration(seconds: 6),
-              ).timeout(const Duration(seconds: 7));
+                timeout: const Duration(seconds: 8),
+              ).timeout(const Duration(seconds: 9));
             }
-            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 6));
-            if (services.isNotEmpty) {
-              final normTargetUuids = profile.bleServiceUuids.map((u) => u.replaceAll('-', '').toUpperCase()).toList();
+
+            // Tăng MTU lên 512 bytes (Tối quan trọng trên Android để không bị cắt bớt chuỗi 80+ bytes)
+            try {
+              await devToConnect.requestMtu(512).timeout(const Duration(seconds: 2));
+            } catch (_) {}
+            await Future.delayed(const Duration(milliseconds: 250));
+
+            // Khám phá toàn bộ Services
+            final services = await devToConnect.discoverServices().timeout(const Duration(seconds: 7));
+            if (services.isEmpty) {
+              bleErrorMessage = "Không đọc được dịch vụ (Services) từ thiết bị BLE.";
+            } else {
               final normRxChar = profile.bleRxCharUuid.replaceAll('-', '').toUpperCase();
               final normTxChar = (profile.bleTxCharUuid ?? '').replaceAll('-', '').toUpperCase();
 
-              final targetService = services.firstWhere(
-                (s) {
-                  final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
-                  return normTargetUuids.any((t) => sUuid.contains(t));
-                },
-                orElse: () => services.first,
-              );
+              BluetoothCharacteristic? rxChar;
+              BluetoothCharacteristic? txChar;
 
-              final chars = targetService.characteristics;
-              if (chars.isNotEmpty) {
-                // RX Characteristic: Nhận chuỗi cấu hình mạng
-                final rxChar = chars.firstWhere(
-                  (c) {
-                    final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
-                    return cUuid.contains(normRxChar) ||
-                           cUuid.contains("6E400002") ||
-                           cUuid.contains("BEA5C122") ||
-                           cUuid.contains("BEA5A000");
-                  },
-                  orElse: () => chars.firstWhere(
-                    (c) => c.properties.write || c.properties.writeWithoutResponse,
-                    orElse: () => chars.first,
-                  ),
-                );
-
-                // TX Characteristic: Phát tín hiệu phản hồi (Notify)
-                BluetoothCharacteristic? txChar;
-                if (normTxChar.isNotEmpty) {
-                  txChar = chars.cast<BluetoothCharacteristic?>().firstWhere(
-                    (c) => c != null && c.uuid.toString().replaceAll('-', '').toUpperCase().contains(normTxChar),
-                    orElse: () => null,
-                  );
+              // Tìm trên TOÀN BỘ các services (tránh bị kẹt ở Generic Access Service 0x1800)
+              for (final s in services) {
+                for (final c in s.characteristics) {
+                  final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+                  if (cUuid.contains(normRxChar) ||
+                      cUuid.contains("6E400002") ||
+                      cUuid.contains("BEA5C122") ||
+                      cUuid.contains("BEA5A000")) {
+                    rxChar = c;
+                  }
+                  if ((normTxChar.isNotEmpty && cUuid.contains(normTxChar)) ||
+                      cUuid.contains("6E400003") ||
+                      (cUuid.contains("BEA5C122") && c.properties.notify)) {
+                    txChar = c;
+                  }
                 }
+              }
+
+              // Dự phòng: Tìm bất kỳ characteristic nào có quyền Write
+              if (rxChar == null) {
+                for (final s in services) {
+                  for (final c in s.characteristics) {
+                    if (c.properties.write || c.properties.writeWithoutResponse) {
+                      rxChar = c;
+                      break;
+                    }
+                  }
+                  if (rxChar != null) break;
+                }
+              }
+
+              if (rxChar == null) {
+                bleErrorMessage = "Không tìm thấy cổng ghi dữ liệu (RX Characteristic) trên bo mạch.";
+              } else {
                 final notifyChar = (txChar != null && txChar.properties.notify)
                     ? txChar
                     : (rxChar.properties.notify
                         ? rxChar
-                        : chars.cast<BluetoothCharacteristic?>().firstWhere((c) => c != null && c.properties.notify, orElse: () => null));
+                        : null);
 
                 StreamSubscription? notifySub;
                 Completer<bool> wifiCheckCompleter = Completer();
@@ -422,7 +484,11 @@ class BleProvisioningService {
                       if (str.contains("WIFI_FAIL") || str.contains("FAIL")) {
                         isWifiCheckFailed = true;
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(false);
-                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK") || str.contains("OK") || str.contains("SUCCESS") || str.contains(targetDevice.hardwareId)) {
+                      } else if (str.contains("WIFI_OK") ||
+                                 str.contains("PAIRED_OK") ||
+                                 str.contains("OK") ||
+                                 str.contains("SUCCESS") ||
+                                 (targetDevice.hardwareId.isNotEmpty && str.toUpperCase().contains(targetDevice.hardwareId.toUpperCase()))) {
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                       }
                     });
@@ -431,13 +497,27 @@ class BleProvisioningService {
                   }
                 }
 
-                final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
-                await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
-
                 onProgress("Đang nạp thông số Wi-Fi vào bo mạch phần cứng...", 0.45);
+                final bytes = utf8.encode(payloadString);
+                final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
 
-                // Chờ phản hồi kiểm tra từ bo mạch (tối đa 4 giây)
-                final timer = Timer(const Duration(milliseconds: 4000), () {
+                try {
+                  await rxChar.write(
+                    bytes,
+                    withoutResponse: withoutResponse,
+                    allowLongWrite: true,
+                  ).timeout(const Duration(seconds: 5));
+                } catch (writeErr) {
+                  debugPrint("Lần 1 ghi lỗi ($writeErr), thử lại với withoutResponse=${!withoutResponse}...");
+                  await rxChar.write(
+                    bytes,
+                    withoutResponse: !withoutResponse,
+                    allowLongWrite: true,
+                  ).timeout(const Duration(seconds: 4));
+                }
+
+                // Chờ phản hồi từ bo mạch (tối đa 3 giây)
+                final timer = Timer(const Duration(milliseconds: 3000), () {
                   if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                 });
                 await wifiCheckCompleter.future;
@@ -447,7 +527,8 @@ class BleProvisioningService {
                 if (!isWifiCheckFailed) {
                   bleSuccess = true;
                 }
-                await Future.delayed(const Duration(milliseconds: 400));
+
+                await Future.delayed(const Duration(milliseconds: 300));
                 try {
                   await devToConnect.disconnect();
                 } catch (_) {}
@@ -455,6 +536,7 @@ class BleProvisioningService {
             }
           }
         } catch (e) {
+          bleErrorMessage = "Lỗi kết nối Bluetooth: $e";
           debugPrint("BLE native provision error: $e");
         }
       }
@@ -483,7 +565,7 @@ class BleProvisioningService {
           ownerName: "",
           warrantyCode: "",
           warrantyUntil: "",
-          errorMessage: "Không thể truyền dữ liệu cấu hình sang bo mạch qua BLE. Vui lòng thử lại gần thiết bị hơn.",
+          errorMessage: bleErrorMessage ?? "Không thể truyền dữ liệu cấu hình sang bo mạch qua BLE. Vui lòng thử lại gần thiết bị hơn.",
         );
       }
 
@@ -539,17 +621,22 @@ class BleProvisioningService {
     // =========================================================================
     // GIAI ĐOẠN 3: KIỂM TRA BO MẠCH KHỞI ĐỘNG LẠI & KẾT NỐI VÀO WI-FI / MQTT
     // =========================================================================
-    onProgress("Đang kiểm tra kết nối mạng Wi-Fi [$cleanSsid] từ bo mạch...", 0.70);
-
     bool hardwareIsOnline = false;
-    const int onlineCheckAttempts = 6; // Thử trong ~9 giây (ESP32 cần 4-7s khởi động lại & kết nối Wi-Fi/MQTT)
+    const int onlineCheckAttempts = 6;
     for (int i = 0; i < onlineCheckAttempts; i++) {
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-      await Future.delayed(const Duration(milliseconds: 1400));
+
+      final currentCheckProgress = 0.65 + ((i + 1) / onlineCheckAttempts) * 0.22;
+      onProgress(
+        "Đang chờ bo mạch kết nối Wi-Fi & MQTT (lần ${i + 1}/$onlineCheckAttempts)...",
+        double.parse(currentCheckProgress.toStringAsFixed(2)),
+      );
+
+      await Future.delayed(const Duration(milliseconds: 1200));
 
       try {
         final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
-        final checkRes = await http.get(checkUri).timeout(const Duration(seconds: 3));
+        final checkRes = await http.get(checkUri).timeout(const Duration(milliseconds: 1500));
         if (checkRes.statusCode == 200) {
           final body = jsonDecode(checkRes.body);
           if (body['success'] == true && body['isOnline'] == true) {
@@ -572,7 +659,7 @@ class BleProvisioningService {
         ownerName: "",
         warrantyCode: "",
         warrantyUntil: "",
-        errorMessage: "Bo mạch đã nhận thông số nhưng không thể kết nối tới Wi-Fi [$cleanSsid] hoặc máy chủ MQTT. Vui lòng kiểm tra lại mật khẩu Wi-Fi (lưu ý chỉ hỗ trợ băng tần 2.4GHz) và khoảng cách tới Router.",
+        errorMessage: "Mật khẩu Wi-Fi không chính xác hoặc bo mạch không kết nối được tới Router [$cleanSsid] / máy chủ MQTT. Vui lòng kiểm tra lại mật khẩu (chỉ hỗ trợ băng tần 2.4GHz) và khoảng cách tới Router.",
       );
     }
 
