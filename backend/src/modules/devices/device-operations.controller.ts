@@ -748,8 +748,13 @@ export class DeviceOperationsController {
         const isCam = hardwareId.toUpperCase().startsWith('CAM');
         const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
 
-        if (isSocket || command === '3' || command === '4' || command === 'ON' || command === 'OFF' || command === 'TURN_ON' || command === 'TURN_OFF') {
-          const isRelayOn = command === '3' || command === 'ON' || command === 'TURN_ON';
+        if (isSocket || command === '3' || command === '4' || command === 'ON' || command === 'OFF' || command === 'TURN_ON' || command === 'TURN_OFF' || command === 'TOGGLE_RELAY') {
+          let isRelayOn = command === '3' || command === 'ON' || command === 'TURN_ON' || command === '13';
+          if (command === 'TOGGLE_RELAY') {
+            const curRes = await this.client.query(`SELECT current_properties FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1 LIMIT 1`, [hardwareId]);
+            const curProps = curRes.rows[0]?.current_properties || {};
+            isRelayOn = !(curProps.is_relay_on === true || curProps.relay_state === 'ON');
+          }
           await this.client.query(
             `UPDATE device_instances 
              SET current_properties = jsonb_set(

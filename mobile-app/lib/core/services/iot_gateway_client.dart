@@ -647,8 +647,13 @@ class IoTGatewayClient {
 
     // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
     final isSocket = hardwareId.toUpperCase().startsWith("OCAM") || hardwareId.toUpperCase().contains("SOCKET");
+    String resolvedSocketAction = action;
+    if (action == "TOGGLE_RELAY") {
+      resolvedSocketAction = (device != null && device.isRelayOn) ? "TURN_OFF" : "TURN_ON";
+    }
+
     if (isSocket) {
-      final sAction = (action == "TURN_ON" || action == "ON" || action == "3") ? "3" : "4";
+      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "3" || resolvedSocketAction == "13") ? "3" : "4";
       unawaited(BleDeviceControlService().sendSocketAction(hardwareId: hardwareId, actionNumber: sAction));
     } else {
       final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
@@ -668,7 +673,9 @@ class IoTGatewayClient {
               ? "CLOSE"
               : action == "STOP_DOOR"
                   ? "STOP"
-                  : action;
+                  : action == "TOGGLE_RELAY"
+                      ? resolvedSocketAction
+                      : action;
 
       final userToken = AuthService().token ?? 'austec-customer-token';
       final res = await http.post(

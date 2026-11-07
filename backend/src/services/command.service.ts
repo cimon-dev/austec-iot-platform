@@ -89,6 +89,9 @@ export class CommandService {
         actionCode = '14'; // Khớp ocammoi: case 14 -> ocam.TAT()
       } else if (req.command === 'STOP') {
         actionCode = '3';  // Khớp ocammoi: case 3 -> ocam.dung()
+      } else if (req.command === 'TOGGLE_RELAY') {
+        const isCurrentlyOn = currentState?.currentProperties?.is_relay_on === true || currentState?.currentProperties?.relay_state === 'ON';
+        actionCode = isCurrentlyOn ? '14' : '13';
       }
     } else {
       // Mặc định: Cửa cuốn Austec

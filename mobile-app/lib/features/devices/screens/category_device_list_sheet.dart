@@ -626,76 +626,87 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
       ),
       child: Row(
         children: [
-          // Icon công tắc
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: isOn
-                  ? AppTheme.cyanAccent.withValues(alpha: 0.18)
-                  : (isDark ? Colors.white10 : Colors.grey[200]),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isOn ? AppTheme.cyanAccent : Colors.transparent,
-                width: 1.2,
-              ),
-            ),
-            child: Icon(
-              Icons.power_settings_new_rounded,
-              color: isOn ? AppTheme.cyanAccent : Colors.grey,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // Tên khối công tắc & thông tin phụ
+          // Nhấp vào Icon hoặc Tên để mở màn hình Điều Khiển Chi Tiết
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  device.name,
-                  style: TextStyle(
-                    color: textCol,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
+            child: InkWell(
+              onTap: () => _navigateToDetail(device),
+              borderRadius: BorderRadius.circular(12),
+              child: Row(
+                children: [
+                  // Icon công tắc
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: isOn
+                          ? AppTheme.cyanAccent.withValues(alpha: 0.18)
+                          : (isDark ? Colors.white10 : Colors.grey[200]),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isOn ? AppTheme.cyanAccent : Colors.transparent,
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.power_settings_new_rounded,
+                      color: isOn ? AppTheme.cyanAccent : Colors.grey,
+                      size: 26,
+                    ),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
-                      ),
+                  const SizedBox(width: 14),
+
+                  // Tên khối công tắc & thông tin phụ
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          device.name,
+                          style: TextStyle(
+                            color: textCol,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isOn ? "ĐANG BẬT" : "ĐANG TẮT",
+                              style: TextStyle(
+                                color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "• ${device.roomName}",
+                              style: TextStyle(
+                                color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isOn ? "ĐANG BẬT" : "ĐANG TẮT",
-                      style: TextStyle(
-                        color: isOn ? AppTheme.emeraldSuccess : Colors.grey,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      "• ${device.roomName}",
-                      style: TextStyle(
-                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
-                        fontSize: 10.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
 
