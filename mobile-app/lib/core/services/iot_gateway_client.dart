@@ -625,6 +625,7 @@ class IoTGatewayClient {
       accessEndTime: accessEnd,
       accessDays: accessDays,
       ownerName: (d['ownerName'] ?? (AuthService().currentUser?.fullName ?? 'Chủ sở hữu')).toString(),
+      ownerId: (d['ownerId'] ?? d['owner_id'])?.toString(),
       warrantyUntil: (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().length >= 10
           ? (d['warrantyEndAt'] ?? d['warrantyUntil'] ?? d['subscriptionExpiresAt'] ?? '2028-10-23').toString().substring(0, 10)
           : '2028-10-23',
@@ -692,7 +693,7 @@ class IoTGatewayClient {
       unawaited(BleDeviceControlService().sendSocketAction(
         hardwareId: hardwareId,
         actionNumber: sAction,
-        userId: AuthService().currentUser?.id,
+        userId: device?.ownerId ?? AuthService().currentUser?.id,
       ));
     } else {
       final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"

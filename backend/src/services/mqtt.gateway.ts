@@ -307,15 +307,37 @@ export class MqttGateway {
       candidateTopics.add(`austec/${hwId}/sub/action`);
       candidateTopics.add(`amtuong/${hwId}/sub/action`);
       candidateTopics.add(`${hwId}/sub/action`);
-
-      try {
-        const state = await this.hotCache.getDeviceState(hwId);
-        const knownOwner = (state?.currentProperties as any)?.ownerId;
-        if (knownOwner) {
-          candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
-        }
-      } catch (_) {}
     }
+
+    // Luôn truy vấn database PostgreSQL để bổ sung topic {owner_id}/{hwId}/sub/action chính xác của chủ thiết bị
+    try {
+      if (this.postgresService && typeof this.postgresService.query === 'function') {
+        const ownersRes = await this.postgresService.query(
+          `SELECT owner_id FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1 LIMIT 1`,
+          [hwId]
+        );
+        if (ownersRes && ownersRes.rows && ownersRes.rows.length > 0 && ownersRes.rows[0].owner_id) {
+          candidateTopics.add(`${ownersRes.rows[0].owner_id}/${hwId}/sub/action`);
+        }
+        const permsRes = await this.postgresService.query(
+          `SELECT user_id FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1`,
+          [hwId]
+        );
+        if (permsRes && permsRes.rows && permsRes.rows.length > 0) {
+          for (const row of permsRes.rows) {
+            if (row.user_id) candidateTopics.add(`${row.user_id}/${hwId}/sub/action`);
+          }
+        }
+      }
+    } catch (_) {}
+
+    try {
+      const state = await this.hotCache.getDeviceState(hwId);
+      const knownOwner = (state?.currentProperties as any)?.ownerId;
+      if (knownOwner) {
+        candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
+      }
+    } catch (_) {}
 
     let anySuccess = false;
     for (const topic of candidateTopics) {

@@ -75,6 +75,7 @@ class DeviceItem {
   final bool canChildLock;
   final bool canConfig;
   String ownerName;
+  final String? ownerId;
 
   bool get isOwner => userRole == FamilyRole.owner;
   bool get isMember => userRole == FamilyRole.member;
@@ -191,6 +192,7 @@ class DeviceItem {
     this.canChildLock = true,
     this.canConfig = true,
     this.ownerName = "Chủ sở hữu",
+    this.ownerId,
     this.subscriptionType = 'LIMITED',
     this.subscriptionExpiresAt = '2027-10-21T00:00:00.000Z',
     this.subscriptionStatus = 'ACTIVE',
@@ -321,6 +323,7 @@ class DeviceItem {
       'isOnline': isOnline,
       'addressDisplay': roomName,
       'ownerName': ownerName,
+      'ownerId': ownerId,
       'warrantyUntil': warrantyUntil,
       'warrantyCode': warrantyCode,
       'subscriptionType': subscriptionType,

@@ -202,6 +202,8 @@ export class DeviceOperationsController {
               currentProperties: r.current_properties || {},
               assignedProperties: assignedProps,
               addressDisplay: r.address_display || 'Nhà riêng',
+              ownerId: r.owner_id,
+              ownerName: r.owner_name,
               locationLat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
               locationLng: r.location_lng != null ? parseFloat(r.location_lng) : 105.854167,
               lat: r.location_lat != null ? parseFloat(r.location_lat) : 21.028511,
