@@ -1053,8 +1053,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
         return "OTHERS\nCONTROL";
       case "DATA ANALYTICS":
         return "DATA\nANALYTICS";
+      case "CAMERA":
       case "AI CAMERA":
-        return "AI\nCAMERA";
+        return "CAMERA";
       default:
         return rawTitle;
     }

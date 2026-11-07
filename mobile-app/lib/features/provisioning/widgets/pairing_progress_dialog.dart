@@ -166,7 +166,10 @@ class PairingProgressDialog extends StatelessWidget {
                             Navigator.of(context).pop();
                             onControlDoor(pairingResult!.hardwareId);
                           },
-                          child: const Text("Điều Khiển Cửa", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: Text(
+                            _getControlActionTitle(pairingResult?.modelName ?? "", pairingResult?.hardwareId ?? ""),
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ],
@@ -331,5 +334,22 @@ class PairingProgressDialog extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _getControlActionTitle(String modelName, String hardwareId) {
+    final lower = "$modelName $hardwareId".toLowerCase();
+    if (lower.contains("ổ cắm") || lower.contains("ocam") || lower.contains("socket") || lower.contains("switch") || lower.contains("relay")) {
+      return "Điều Khiển Ổ Cắm";
+    }
+    if (lower.contains("camera") || lower.contains("cam")) {
+      return "Xem Camera";
+    }
+    if (lower.contains("khóa") || lower.contains("lock") || lower.contains("masaru")) {
+      return "Mở Khóa";
+    }
+    if (lower.contains("lưu điện") || lower.contains("ups")) {
+      return "Quản Lý Nguồn";
+    }
+    return "Điều Khiển Cửa";
   }
 }

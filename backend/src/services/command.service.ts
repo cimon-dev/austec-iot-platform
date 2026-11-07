@@ -83,10 +83,12 @@ export class CommandService {
         actionCode = '14';
       }
     } else if (isSocket) {
-      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '3' || req.command === '1') {
-        actionCode = '3';
-      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '4' || req.command === '0' || req.command === '2') {
-        actionCode = '4';
+      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1' || req.command === '3') {
+        actionCode = '13'; // Khớp ocammoi: case 13 -> ocam.BAT()
+      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '14' || req.command === '0' || req.command === '4') {
+        actionCode = '14'; // Khớp ocammoi: case 14 -> ocam.TAT()
+      } else if (req.command === 'STOP') {
+        actionCode = '3';  // Khớp ocammoi: case 3 -> ocam.dung()
       }
     } else {
       // Mặc định: Cửa cuốn Austec
@@ -113,10 +115,10 @@ export class CommandService {
     // 3. Cập nhật trạng thái sau khi thực thi lệnh vào Hot Cache
     const updatedProperties = { ...(currentState?.currentProperties || {}) };
     if (isSocket) {
-      if (actionCode === '3') {
+      if (actionCode === '13' || actionCode === '3') {
         updatedProperties.is_relay_on = true;
         updatedProperties.relay_state = 'ON';
-      } else if (actionCode === '4') {
+      } else if (actionCode === '14' || actionCode === '4') {
         updatedProperties.is_relay_on = false;
         updatedProperties.relay_state = 'OFF';
       }

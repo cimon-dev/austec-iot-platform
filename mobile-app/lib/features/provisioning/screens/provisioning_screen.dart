@@ -973,10 +973,16 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                             ),
                             child: Text(
                               dev.category == DeviceCategory.camera
-                                  ? "CAMERA AI"
+                                  ? "CAMERA"
                                   : dev.category == DeviceCategory.rollerDoor
                                       ? "CỬA CUỐN"
-                                      : "THIẾT BỊ",
+                                      : dev.category == DeviceCategory.lightSwitch
+                                          ? "Ổ CẮM"
+                                          : dev.category == DeviceCategory.othersControl
+                                              ? (dev.profile.defaultModelCode == "SMART_LOCK_MASARU" ? "KHÓA THÔNG MINH" : "CHƯA ĐĂNG KÝ")
+                                              : dev.category == DeviceCategory.energyManage
+                                                  ? "LƯU ĐIỆN"
+                                                  : "THIẾT BỊ",
                               style: TextStyle(
                                 color: accent,
                                 fontSize: 9,

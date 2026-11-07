@@ -92,8 +92,8 @@ class IoTGatewayClient {
     // 7. CAMERA (Top Center)
     CategoryMeta(
       category: DeviceCategory.camera,
-      title: "AI CAMERA",
-      subtitle: "CAMERA AN NINH AI",
+      title: "CAMERA",
+      subtitle: "CAMERA AN NINH",
       assetPath: "assets/data.png",
       neonColor: Color(0xFFE4E4E7),
       offsetX: 0.0,
@@ -482,17 +482,28 @@ class IoTGatewayClient {
     final modelCode = (d['modelCode'] ?? d['model_code'] ?? 'DOOR_GERMAN_ALU').toString();
     final typeStr = (d['deviceType'] ?? '').toString();
 
-    DeviceCategory cat = DeviceCategory.rollerDoor;
-    if (typeStr.contains('Khóa') || hwId.toUpperCase().contains('LOCK')) {
-      cat = DeviceCategory.othersControl;
-    } else if (typeStr.contains('điện') || hwId.toUpperCase().contains('UPS')) {
-      cat = DeviceCategory.energyManage;
-    } else if (typeStr.contains('biến') || hwId.toUpperCase().contains('SENSOR')) {
-      cat = DeviceCategory.environment;
-    } else if (typeStr.contains('Camera') || hwId.toUpperCase().contains('CAM') || modelCode.contains('CAM')) {
+    DeviceCategory cat;
+    final upperHwId = hwId.toUpperCase();
+    final lowerName = name.toLowerCase();
+    final lowerType = typeStr.toLowerCase();
+    final upperModel = modelCode.toUpperCase();
+
+    if (lowerType.contains('cửa') || upperHwId.contains('DOOR') || upperHwId.contains('AMTUONG') || upperModel.contains('DOOR') || lowerName.contains('cửa')) {
+      cat = DeviceCategory.rollerDoor;
+    } else if (lowerType.contains('camera') || upperHwId.contains('CAM') || upperModel.contains('CAM') || lowerName.contains('camera')) {
       cat = DeviceCategory.camera;
-    } else if (typeStr.contains('công tắc') || typeStr.contains('ổ cắm') || hwId.toUpperCase().contains('OCAM') || modelCode.contains('SOCKET') || name.toLowerCase().contains('ổ cắm') || name.toLowerCase().contains('công tắc')) {
+    } else if (lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperHwId.contains('OCAM') || upperHwId.contains('SOCKET') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc')) {
       cat = DeviceCategory.lightSwitch;
+    } else if (lowerType.contains('khóa') || upperHwId.contains('LOCK') || upperHwId.contains('MASARU') || upperModel.contains('LOCK') || lowerName.contains('khóa')) {
+      cat = DeviceCategory.othersControl;
+    } else if (lowerType.contains('điện') || lowerType.contains('năng lượng') || upperHwId.contains('UPS') || upperHwId.contains('ENERGY') || upperModel.contains('UPS')) {
+      cat = DeviceCategory.energyManage;
+    } else if (lowerType.contains('biến') || lowerType.contains('môi trường') || upperHwId.contains('SENSOR') || upperModel.contains('SENSOR')) {
+      cat = DeviceCategory.environment;
+    } else if (lowerType.contains('phân tích') || upperModel.contains('ANALYTICS')) {
+      cat = DeviceCategory.dataAnalytics;
+    } else {
+      cat = DeviceCategory.othersControl; // Thiết bị chưa phân loại vào OTHERS CONTROL, tuyệt đối không gán bừa Cửa cuốn!
     }
 
     final props = d['currentProperties'] is Map ? Map<String, dynamic>.from(d['currentProperties']) : <String, dynamic>{};
@@ -549,7 +560,7 @@ class IoTGatewayClient {
       category: cat,
       currentProperties: props,
       assignedProperties: assignedProps,
-      badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : cat == DeviceCategory.camera ? "AI CAM" : cat == DeviceCategory.lightSwitch ? "CÔNG TẮC" : "SMART",
+      badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : cat == DeviceCategory.camera ? "CAMERA" : cat == DeviceCategory.lightSwitch ? "CÔNG TẮC" : "SMART",
       deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
       roomName: (d['location'] ?? d['roomName'] ?? d['addressDisplay'] ??
           (d['installationAddress'] is Map

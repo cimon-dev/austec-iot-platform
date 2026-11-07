@@ -422,7 +422,7 @@ class BleProvisioningService {
                       if (str.contains("WIFI_FAIL") || str.contains("FAIL")) {
                         isWifiCheckFailed = true;
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(false);
-                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK") || str.contains("OK")) {
+                      } else if (str.contains("WIFI_OK") || str.contains("PAIRED_OK") || str.contains("OK") || str.contains("SUCCESS") || str.contains(targetDevice.hardwareId)) {
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                       }
                     });
@@ -461,7 +461,7 @@ class BleProvisioningService {
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-      // Nếu bo mạch báo lỗi mật khẩu Wi-Fi không chính xác: Dừng ngay lập tức!
+      // Nếu bo mạch báo lỗi mật khẩu Wi-Fi không chính xác: Dừng ngay lập tức, không lưu CSDL!
       if (isWifiCheckFailed) {
         return PairingResult(
           success: false,
@@ -474,11 +474,20 @@ class BleProvisioningService {
         );
       }
 
-      if (bleSuccess) {
-        onProgress("Bo mạch đã tiếp nhận cấu hình mạng! Đang khởi động lại...", 0.50);
-      } else {
-        onProgress("Đang nạp thông số Wi-Fi [$cleanSsid] vào bo mạch...", 0.50);
+      // Nếu truyền BLE không thành công: Dừng ngay lập tức, không lưu CSDL!
+      if (!bleSuccess) {
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: "Không thể truyền dữ liệu cấu hình sang bo mạch qua BLE. Vui lòng thử lại gần thiết bị hơn.",
+        );
       }
+
+      onProgress("Bo mạch đã tiếp nhận cấu hình mạng! Đang khởi động lại...", 0.50);
       await Future.delayed(const Duration(milliseconds: 500));
     } else {
       // WiFi SoftAP: Bo mạch phát Access Point tại 192.168.4.1
@@ -486,27 +495,91 @@ class BleProvisioningService {
       bool apSuccess = false;
       try {
         final apUri = profile.buildSoftApUri(inputData, apHost: '192.168.4.1');
-        final apRes = await http.get(apUri).timeout(const Duration(seconds: 4));
+        http.Response apRes;
+        if (targetDevice.category == DeviceCategory.camera || profile.defaultModelCode.contains('CAM')) {
+          // Camera OV2640 lắng nghe POST /save với form body (ssid, pass, mqtt)
+          apRes = await http.post(
+            apUri,
+            body: {
+              'ssid': inputData.ssid,
+              'pass': inputData.password,
+              'mqtt': targetBrokerIp,
+            },
+          ).timeout(const Duration(seconds: 4));
+        } else {
+          // Cửa cuốn & Ổ cắm Austec lắng nghe GET /?SSID=...
+          apRes = await http.get(apUri).timeout(const Duration(seconds: 4));
+        }
         if (apRes.statusCode == 200) {
           apSuccess = true;
         }
       } catch (_) {}
 
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-      if (apSuccess) {
-        onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.50);
-      } else {
-        onProgress("Đang nạp thông số Wi-Fi [$cleanSsid] qua kênh SoftAP...", 0.50);
+
+      // Nếu truyền SoftAP thất bại: Dừng ngay lập tức, không lưu CSDL!
+      if (!apSuccess) {
+        return PairingResult(
+          success: false,
+          hardwareId: targetDevice.hardwareId,
+          modelName: targetDevice.modelName,
+          ownerName: "",
+          warrantyCode: "",
+          warrantyUntil: "",
+          errorMessage: "Không thể gửi dữ liệu cấu hình tới bo mạch qua Wi-Fi SoftAP (192.168.4.1). Vui lòng kiểm tra kết nối mạng của bạn.",
+        );
       }
+
+      onProgress("Bo mạch đã nhận cấu hình qua Wi-Fi SoftAP! Đang khởi động lại...", 0.50);
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
     // =========================================================================
-    // GIAI ĐOẠN 3: LƯU THIẾT BỊ VÀO CSDL MÁY CHỦ & KIỂM TRA TRẠNG THÁI TRỰC TUYẾN
+    // GIAI ĐOẠN 3: KIỂM TRA BO MẠCH KHỞI ĐỘNG LẠI & KẾT NỐI VÀO WI-FI / MQTT
     // =========================================================================
-    onProgress("Giai đoạn 3/3: Đang kích hoạt quyền sở hữu & lưu thiết bị lên hệ thống...", 0.70);
+    onProgress("Đang kiểm tra kết nối mạng Wi-Fi [$cleanSsid] từ bo mạch...", 0.70);
+
+    bool hardwareIsOnline = false;
+    const int onlineCheckAttempts = 6; // Thử trong ~9 giây (ESP32 cần 4-7s khởi động lại & kết nối Wi-Fi/MQTT)
+    for (int i = 0; i < onlineCheckAttempts; i++) {
+      if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+      await Future.delayed(const Duration(milliseconds: 1400));
+
+      try {
+        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
+        final checkRes = await http.get(checkUri).timeout(const Duration(seconds: 3));
+        if (checkRes.statusCode == 200) {
+          final body = jsonDecode(checkRes.body);
+          if (body['success'] == true && body['isOnline'] == true) {
+            hardwareIsOnline = true;
+            break;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
+
+    // NẾU BO MẠCH KHÔNG KẾT NỐI ĐƯỢC VÀO WI-FI / MQTT:
+    // Tuyệt đối KHÔNG LƯU vào CSDL Backend! Dừng ngay và báo lỗi chính xác!
+    if (!hardwareIsOnline) {
+      return PairingResult(
+        success: false,
+        hardwareId: targetDevice.hardwareId,
+        modelName: targetDevice.modelName,
+        ownerName: "",
+        warrantyCode: "",
+        warrantyUntil: "",
+        errorMessage: "Bo mạch đã nhận thông số nhưng không thể kết nối tới Wi-Fi [$cleanSsid] hoặc máy chủ MQTT. Vui lòng kiểm tra lại mật khẩu Wi-Fi (lưu ý chỉ hỗ trợ băng tần 2.4GHz) và khoảng cách tới Router.",
+      );
+    }
+
+    // =========================================================================
+    // GIAI ĐOẠN 4: THIẾT BỊ ĐÃ ONLINE - LƯU VÀO CSDL MÁY CHỦ & KÍCH HOẠT BẢO HÀNH
+    // =========================================================================
+    onProgress("Bo mạch đã kết nối trực tuyến! Đang kích hoạt quyền sở hữu...", 0.90);
     String warrantyUntil = "2028-10-23";
     String warrantyCode = "EW-${targetDevice.hardwareId.replaceAll('-', '').toUpperCase()}-24M";
     String confirmedOwner = currentUserName;
@@ -590,30 +663,6 @@ class BleProvisioningService {
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
-    // Kiểm tra trạng thái Wi-Fi / MQTT trực tuyến từ bo mạch
-    onProgress("Đang kiểm tra kết nối mạng Wi-Fi [$cleanSsid] từ bo mạch...", 0.85);
-
-    bool hardwareIsOnline = false;
-    const int onlineCheckAttempts = 4; // Thử trong ~5 giây
-    for (int i = 0; i < onlineCheckAttempts; i++) {
-      if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-      await Future.delayed(const Duration(milliseconds: 1200));
-
-      try {
-        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}');
-        final checkRes = await http.get(checkUri).timeout(const Duration(seconds: 3));
-        if (checkRes.statusCode == 200) {
-          final body = jsonDecode(checkRes.body);
-          if (body['success'] == true && body['isOnline'] == true) {
-            hardwareIsOnline = true;
-            break;
-          }
-        }
-      } catch (_) {}
-    }
-
-    if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
-
     await IoTGatewayClient().fetchDevicesFromBackend(token: authToken);
 
     final String serverHwId = (pairResponseData != null && pairResponseData['hardwareId'] != null)
@@ -631,7 +680,7 @@ class BleProvisioningService {
         name: targetDevice.modelName,
         category: targetDevice.profile.category,
         modelName: targetDevice.profile.defaultTitle,
-        isOnline: hardwareIsOnline,
+        isOnline: true,
         warrantyCode: warrantyCode,
         warrantyUntil: warrantyUntil,
         ownerName: confirmedOwner,
@@ -644,11 +693,7 @@ class BleProvisioningService {
       syncedDevice = newDev;
     }
 
-    if (hardwareIsOnline) {
-      onProgress("Ghép nối thành công & Đã kết nối Wi-Fi trực tuyến!", 1.0);
-    } else {
-      onProgress("Ghép nối hoàn tất! Đã lưu thiết bị & sẵn sàng điều khiển qua BLE", 1.0);
-    }
+    onProgress("Ghép nối thành công & Đã kết nối Wi-Fi trực tuyến!", 1.0);
 
     return PairingResult(
       success: true,
@@ -657,7 +702,7 @@ class BleProvisioningService {
       ownerName: confirmedOwner,
       warrantyCode: warrantyCode,
       warrantyUntil: warrantyUntil,
-      isOnlineWifi: hardwareIsOnline,
+      isOnlineWifi: true,
     );
   }
 

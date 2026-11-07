@@ -2502,10 +2502,10 @@ export class PostgresService {
     const defaultModelName = isCam ? 'CAMERA AN NINH AI OV2640'
       : isSocket ? 'Ổ CẮM THÔNG MINH AUSTEC'
       : 'CỬA CUỐN NHÔM CÔNG NGHỆ ĐỨC';
-    const defaultDeviceType = isCam ? 'Camera AI'
+    const defaultDeviceType = isCam ? 'Camera'
       : isSocket ? 'Ổ cắm'
       : 'Cửa cuốn';
-    const defaultCustomName = customName || (isCam ? `Camera AI ${hwId}` : isSocket ? `Ổ cắm ${hwId}` : `Cửa cuốn ${hwId}`);
+    const defaultCustomName = customName || (isCam ? `Camera ${hwId}` : isSocket ? `Ổ cắm ${hwId}` : `Cửa cuốn ${hwId}`);
     const defaultProperties = isCam ? { hasStream: true, streamResolution: 'VGA 640x480' }
       : isSocket ? { is_relay_on: false, relay_state: 'OFF' }
       : { open_state: 'CLOSED', is_locked: false, battery_pct: 100 };

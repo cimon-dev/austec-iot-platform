@@ -127,7 +127,17 @@ export class ProvisioningService {
       subscriptionType: 'LIMITED',
       subscriptionExpiresAt: subscriptionExpires.toISOString(),
       subscriptionStatus: 'ACTIVE',
-      deviceType: item.modelId === 2 ? 'Khóa thông minh' : (item.modelId === 3 ? 'Bộ lưu điện' : 'Cửa cuốn'),
+      deviceType: item.modelId === 2 
+        ? 'Khóa thông minh' 
+        : (item.modelId === 3 
+          ? 'Bộ lưu điện' 
+          : (item.modelId === 4 || item.hardwareId.toUpperCase().startsWith('OCAM') || item.hardwareId.toUpperCase().includes('SOCKET')
+            ? 'Ổ cắm' 
+            : (item.modelId === 5 || item.hardwareId.toUpperCase().startsWith('CAM')
+              ? 'Camera' 
+              : (item.hardwareId.toUpperCase().startsWith('AMTUONG') || item.hardwareId.toUpperCase().startsWith('AT-DOOR')
+                ? 'Cửa cuốn' 
+                : ((item as any).deviceType || 'Thiết bị thông minh'))))),
       installationAddress: {
         fullText: req.addressDisplay || 'Hà Nội, Việt Nam',
       },

@@ -41,15 +41,17 @@ export class MqttGateway {
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
         
         // Đăng ký nhận chính xác các kênh của Austec:
-        // 1. Cửa cuốn: {user}/{device_id}/pub/... và {user}/{device_id}/onboard
-        // 2. Camera AI: devices/+/status, devices/+/camera/#
-        // 3. Ổ cắm thông minh: +/status, +/response (có filter OCAM lọc người lạ)
+        // 1. Cửa cuốn & Ổ cắm (ocammoi): {user}/{device_id}/pub/... và {user}/{device_id}/onboard
+        // 2. Camera AI (espcam.pdf): esp32/+/status, esp32/+/photo, devices/+/status, devices/+/camera/#
+        // 3. Ổ cắm legacy: +/status, +/response
         this.client?.subscribe([
           '+/+/pub/#',
           '+/+/onboard',
           'austec/#',
           'devices/+/status',
           'devices/+/camera/#',
+          'esp32/+/status',
+          'esp32/+/photo',
           '+/status',
           '+/response',
         ], (err) => {
@@ -78,10 +80,10 @@ export class MqttGateway {
   private async handleIncomingMessage(topic: string, message: Buffer) {
     if (topic.startsWith('$SYS')) return;
 
-    // A. XỬ LÝ KHUNG HÌNH CAMERA (JPEG BINARY BUFFER)
-    if (topic.includes('/camera/photo')) {
+    // A. XỬ LÝ KHUNG HÌNH CAMERA (JPEG BINARY BUFFER từ espcam.pdf và platform)
+    if (topic.includes('/camera/photo') || (topic.startsWith('esp32/') && topic.endsWith('/photo'))) {
       const parts = topic.split('/');
-      // topic: devices/{hwId}/camera/photo
+      // topic: devices/{hwId}/camera/photo HOẶC esp32/{device_name}/photo
       const hwId = parts.length >= 2 ? parts[1] : 'CAM_UNKNOWN';
       this.cameraSnapshots.set(hwId, { buffer: message, timestamp: Date.now() });
       this.recordMessage(topic, `[JPEG Photo: ${message.length} bytes]`, 'INCOMING');
@@ -101,8 +103,8 @@ export class MqttGateway {
     const payload = message.toString('utf-8');
     this.recordMessage(topic, payload, 'INCOMING');
 
-    // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status
-    if (topic.startsWith('devices/') && topic.endsWith('/status')) {
+    // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status HOẶC esp32/{hwId}/status (espcam.pdf)
+    if ((topic.startsWith('devices/') && topic.endsWith('/status')) || (topic.startsWith('esp32/') && topic.endsWith('/status'))) {
       const parts = topic.split('/');
       const hwId = parts[1];
       console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${payload}`);
@@ -207,8 +209,25 @@ export class MqttGateway {
         }
       }
 
-      // 3. Gói tin Báo Cảm Biến / Hành Trình Cửa: {user}/{hwId}/pub/action
+      // 3. Gói tin Báo Cảm Biến / Hành Trình Cửa HOẶC Trạng Thái Ổ Cắm (ocammoi): {user}/{hwId}/pub/action
       if (subType === 'pub' && parts[3] === 'action') {
+        const isSocket = hwId.toLowerCase().startsWith('ocam') || hwId.toLowerCase().includes('socket');
+
+        if (isSocket) {
+          // Xử lý ổ cắm theo ocammoi: "13" = BẬT, "14" = TẮT, "3" = DỪNG
+          const isRelayOn = payload === '13' || payload === '1' || payload === '3';
+          console.log(`[MQTT Gateway] ⚡ [${hwId}] Ổ cắm ocammoi phản hồi Rơ-le: Action = ${payload} -> ${isRelayOn ? 'BẬT (ON)' : 'TẮT (OFF)'}`);
+          await this.hotCache.setDeviceState(hwId, {
+            isOnline: true,
+            currentProperties: { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF', lastAction: payload, ownerId: user },
+            lastHeartbeat: new Date().toISOString(),
+          });
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+          }
+          return;
+        }
+
         console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi rơ-le/cảm biến: Action = ${payload}`);
         let openState = 'MOVING';
         if (payload === '4') openState = 'OPEN';        // Chạm công tắc trên CB_UP (Mở hoàn toàn)
@@ -272,6 +291,10 @@ export class MqttGateway {
     if (isCamera) {
       candidateTopics.add(`devices/${hwId}/camera/cmd`);
     } else if (isSocket) {
+      // Ổ cắm theo chuẩn ocammoi lắng nghe tại {user}/{hwId}/sub/action
+      candidateTopics.add(`${userId || 'austec'}/${hwId}/sub/action`);
+      candidateTopics.add(`austec/${hwId}/sub/action`);
+      candidateTopics.add(`${hwId}/sub/action`);
       candidateTopics.add(`${hwId}/set`);
     } else {
       candidateTopics.add(`${userId || 'austec'}/${hwId}/sub/action`);

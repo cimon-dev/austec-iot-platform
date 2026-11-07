@@ -111,7 +111,7 @@ class DeviceProvisioningCatalog {
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Chuẩn Nordic UART Service
       "6e400001",
     ],
-    nameKeywords: ["amtuong", "cuacuon", "austec", "door", "esp"],
+    nameKeywords: ["amtuong", "cuacuon", "austec", "door", "roller", "at-door"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     // Cú pháp nạp Cửa cuốn: onboard/{ssid}/{pass}/{userId}/{brokerIp}/{port}
@@ -128,7 +128,7 @@ class DeviceProvisioningCatalog {
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile cameraProfile = DeviceProvisioningProfile(
     category: DeviceCategory.camera,
-    defaultTitle: "Camera An Ninh AI",
+    defaultTitle: "Camera An Ninh",
     defaultModelCode: "AI_CAMERA_360",
     icon: Icons.videocam_rounded,
     accentColor: AppTheme.purpleAccent,
@@ -149,7 +149,7 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 3. Ổ CẮM THÔNG MINH AUSTEC (ESP32 Relay - OCAM)
+  // 3. Ổ CẮM THÔNG MINH AUSTEC (ESP32 Relay - OCAM từ ocammoi)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartSocketProfile = DeviceProvisioningProfile(
     category: DeviceCategory.lightSwitch,
@@ -158,17 +158,20 @@ class DeviceProvisioningCatalog {
     icon: Icons.power_rounded,
     accentColor: AppTheme.amberWarning,
     bleServiceUuids: [
-      "4faac861-11a3-45d6-964d-c57406320509", // UUID chuẩn trong OCAM.txt
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Chuẩn Nordic UART của ocammoi
+      "4faac861-11a3-45d6-964d-c57406320509", // Hỗ trợ mạch cũ nếu có
       "4faac861",
+      "6e400001",
     ],
-    nameKeywords: ["ocam", "socket", "switch", "relay", "ocamping"],
-    bleRxCharUuid: "bea5a000-15d5-4240-b4d7-5a830bed4136",
-    bleTxCharUuid: "bea5a000-15d5-4240-b4d7-5a830bed4136",
-    // Cú pháp nạp Ổ cắm qua BLE: {ssid},{pass},{brokerIp}
+    nameKeywords: ["ocam", "socket", "ocamping"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+    // Cú pháp nạp Ổ cắm qua BLE: Khớp 100% cú pháp onboard của ocammoi (bluetooth.h)
     buildBlePayload: (data) =>
-        "${data.ssid},${data.password},${data.brokerIp}",
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    // Cú pháp nạp SoftAP: Khớp Web_Server.h của ocammoi
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
-      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&MQTT=${Uri.encodeComponent(data.brokerIp)}',
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
     ),
   );
 
@@ -191,25 +194,81 @@ class DeviceProvisioningCatalog {
     ),
   );
 
+  // ---------------------------------------------------------------------------
+  // 5. THIẾT BỊ BLE CHƯA ĐĂNG KÝ (GENERIC / UNREGISTERED) - KHÔNG DÙNG FALLBACK ÉP KIỂU!
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile unregisteredDeviceProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.othersControl,
+    defaultTitle: "Thiết Bị BLE",
+    defaultModelCode: "GENERIC_BLE_DEVICE",
+    icon: Icons.bluetooth_searching_rounded,
+    accentColor: Colors.blueGrey,
+    bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+    nameKeywords: [],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
   /// Danh sách toàn bộ các Profile có trong hệ thống
   static final List<DeviceProvisioningProfile> allProfiles = [
-    rollerDoorProfile,  // Ưu tiên 1: Cửa cuốn
-    cameraProfile,      // Ưu tiên 2: Camera
-    smartSocketProfile, // Ưu tiên 3: Ổ cắm thông minh OCAM
-    smartLockProfile,   // Ưu tiên 4: Khóa thông minh
+    smartSocketProfile, // Ổ cắm thông minh OCAM (ocammoi)
+    cameraProfile,      // Camera An Ninh AI (espcam.pdf)
+    smartLockProfile,   // Khóa thông minh Masaru
+    rollerDoorProfile,  // Cửa cuốn Austec (amtuong / at-door)
   ];
 
-  /// Hàm tự động tìm và khớp Profile cho một thiết bị quét được
+  /// Hàm tìm và khớp Profile CHÍNH XÁC - TUYỆT ĐỐI KHÔNG FALLBACK ÉP VỀ CỬA CUỐN
   static DeviceProvisioningProfile resolveProfile({
     required String rawName,
     List<String> advertisedUuids = const [],
   }) {
+    final lowerName = rawName.toLowerCase().trim();
+
+    // 1. Khớp ưu tiên theo tiền tố Hardware ID hoặc từ khóa đặc thù (Độ chính xác cao nhất)
+    if (lowerName.startsWith("ocam") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
+      return smartSocketProfile;
+    }
+    if (lowerName.startsWith("cam") || lowerName.contains("camera") || lowerName.contains("ov2640")) {
+      return cameraProfile;
+    }
+    if (lowerName.startsWith("lock") || lowerName.contains("masaru") || lowerName.contains("khoa")) {
+      return smartLockProfile;
+    }
+    if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door") || lowerName.contains("cuacuon")) {
+      return rollerDoorProfile;
+    }
+
+    // 2. Khớp theo Service UUID đặc thù
+    if (advertisedUuids.isNotEmpty) {
+      final normAdvUuids = advertisedUuids.map((u) => u.toLowerCase().replaceAll('-', '')).toList();
+      // Camera UUID: 4fafc201
+      if (normAdvUuids.any((u) => u.contains("4fafc201"))) {
+        return cameraProfile;
+      }
+      // Khóa UUID: 6e400001-lock
+      if (normAdvUuids.any((u) => u.contains("6e400001lock"))) {
+        return smartLockProfile;
+      }
+      // Nordic UART: Phân biệt Cửa cuốn hay Ổ cắm dựa vào tiền tố
+      if (normAdvUuids.any((u) => u.contains("6e400001"))) {
+        if (lowerName.startsWith("ocam")) return smartSocketProfile;
+        if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door")) return rollerDoorProfile;
+      }
+    }
+
+    // 3. Khớp qua profile.matches cho các từ khóa phụ
     for (final profile in allProfiles) {
       if (profile.matches(rawName: rawName, advertisedUuids: advertisedUuids)) {
         return profile;
       }
     }
-    // Mặc định nếu không khớp từ khóa đặc biệt, coi là Cửa cuốn Austec (phần cứng chủ đạo)
-    return rollerDoorProfile;
+
+    // 4. TUYỆT ĐỐI KHÔNG DÙNG FALLBACK ÉP THÀNH CỬA CUỐN
+    // Nếu thiết bị chưa đăng ký trong Catalog -> trả về unregisteredDeviceProfile minh bạch
+    return unregisteredDeviceProfile;
   }
 }

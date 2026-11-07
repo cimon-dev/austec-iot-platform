@@ -856,7 +856,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            "AI CAMERA",
+                            "CAMERA",
                             style: TextStyle(
                               color: AppTheme.cyanAccent,
                               fontSize: 9.5,

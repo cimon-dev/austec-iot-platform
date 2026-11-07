@@ -857,7 +857,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
     final isDark = AppTheme.isDarkMode;
     final linkedCam = _gateway.findByHardwareId(_linkedCameraHwId!);
-    final camName = linkedCam?.name ?? "AI Camera ($_linkedCameraHwId)";
+    final camName = linkedCam?.name ?? "Camera ($_linkedCameraHwId)";
 
     return Container(
       width: double.infinity,

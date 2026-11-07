@@ -249,8 +249,8 @@ export class DeviceOperationsController {
       }
       const isCam = hardwareId.toUpperCase().startsWith('CAM');
       const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
-      const defaultDeviceType = isCam ? 'Camera AI' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
-      const finalName = customName || deviceName || (isCam ? `Camera AI ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
+      const defaultDeviceType = isCam ? 'Camera' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
+      const finalName = customName || deviceName || (isCam ? `Camera ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
       const finalLocation = location || address || 'Nhà riêng';
       const finalLat = (lat != null && !isNaN(Number(lat))) ? Number(lat) : ((latitude != null && !isNaN(Number(latitude))) ? Number(latitude) : 21.028511);
       const finalLng = (lng != null && !isNaN(Number(lng))) ? Number(lng) : ((longitude != null && !isNaN(Number(longitude))) ? Number(longitude) : 105.854167);
@@ -1407,7 +1407,7 @@ export class DevicePairingController {
       const isCam = hardwareId.toUpperCase().startsWith('CAM');
       const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
       const targetModel = modelCode || (isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU');
-      const finalCustomerName = customerName || (isCam ? `Camera AI ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : `Cửa cuốn ${hardwareId}`);
+      const finalCustomerName = customerName || (isCam ? `Camera ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : `Cửa cuốn ${hardwareId}`);
       const finalOwnerName = ownerName || customerName || 'Chủ sở hữu';
 
       if (this.postgresService && this.client.getConnected()) {
