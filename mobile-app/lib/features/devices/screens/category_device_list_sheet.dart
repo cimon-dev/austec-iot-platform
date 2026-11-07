@@ -107,10 +107,17 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
       _isLoadingCameras = false;
     });
 
-    // Gửi mã 13 (STREAM_START) cho đợt camera đầu tiên
+    // Gửi mã 13 (STREAM_START) cho đợt camera đầu tiên và các camera đã lưu
     for (final cam in batch) {
       _activeStreamingCameras.add(cam.hardwareId);
       _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+    }
+    final localCams = _gateway.getDevicesByCategory(DeviceCategory.camera);
+    for (final cam in localCams) {
+      if (!_activeStreamingCameras.contains(cam.hardwareId)) {
+        _activeStreamingCameras.add(cam.hardwareId);
+        _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+      }
     }
   }
 
@@ -414,7 +421,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     final isCameraCategory = widget.categoryMeta.category == DeviceCategory.camera;
     final isSwitchCategory = widget.categoryMeta.category == DeviceCategory.lightSwitch;
     final devices = isCameraCategory
-        ? _pagedCameras
+        ? (_pagedCameras.isNotEmpty ? _pagedCameras : _gateway.getDevicesByCategory(DeviceCategory.camera))
         : _gateway.getDevicesByCategory(widget.categoryMeta.category);
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;

@@ -180,14 +180,30 @@ class BleDeviceControlService {
   }
 
   /// Gửi lệnh điều khiển trực tiếp tới Ổ cắm thông minh OCAM qua BLE:
-  /// Cú pháp firmware OCAM.txt (MyCharacteristicCallbacks):
-  ///   "3": Đóng rơ-le mức cao (Bật điện)
-  ///   "4": Ngắt rơ-le mức thấp (Tắt điện)
+  /// Khớp 100% firmware ocammoi (bluetooth.h - handleReceivedData):
+  ///   "13" hoặc "1": ocam.BAT() (Bật rơ-le)
+  ///   "14": ocam.TAT() (Tắt rơ-le)
+  ///   "3": ocam.dung() (Dừng rơ-le)
+  /// Định dạng chuỗi BLE: {uid}/{device_id}/action/{code}
   Future<bool> sendSocketAction({
     required String hardwareId,
-    required String actionNumber, // "3" hoặc "4"
+    required String actionNumber, // "13" (Bật), "14" (Tắt), "3" (Dừng) hoặc "1"/"0"
+    String? userId,
   }) async {
     if (kIsWeb) return false;
+
+    // Chuẩn hóa mã lệnh theo ocammoi (case 13: BAT, case 14: TAT, case 3: dung)
+    final String socketCode = (actionNumber == "TURN_ON" || actionNumber == "ON" || actionNumber == "13" || actionNumber == "1" || actionNumber == "3")
+        ? "13"
+        : (actionNumber == "STOP" || actionNumber == "DUNG")
+            ? "3"
+            : "14";
+
+    final String uid = (userId != null && userId.isNotEmpty)
+        ? userId
+        : (AuthService().currentUser?.id ?? '00000000-0000-0000-0000-000000000001');
+
+    final String primaryPayload = "$uid/$hardwareId/action/$socketCode";
 
     try {
       BluetoothDevice? targetDevice;
@@ -216,16 +232,50 @@ class BleDeviceControlService {
           await targetDevice.connect(license: License.nonprofit, timeout: const Duration(seconds: 4));
         }
         final services = await targetDevice.discoverServices();
+        BluetoothCharacteristic? rxChar;
+
+        // 1. Tìm Nordic UART RX Characteristic 6E400002 (chuẩn ocammoi)
         for (final s in services) {
-          for (final c in s.characteristics) {
-            final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
-            if (cUuid.contains("BEA5A000") || cUuid.contains("BEA5")) {
-              final bool withoutResp = c.properties.writeWithoutResponse && !c.properties.write;
-              await c.write(utf8.encode(actionNumber), withoutResponse: withoutResp);
-              debugPrint("[BLE Socket Control] ⚡ Đã gửi lệnh rơ-le ổ cắm $hardwareId: $actionNumber");
-              return true;
+          final sUuid = s.uuid.toString().replaceAll('-', '').toUpperCase();
+          if (sUuid.contains("6E400001")) {
+            for (final c in s.characteristics) {
+              final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+              if (cUuid.contains("6E400002")) {
+                rxChar = c;
+                break;
+              }
             }
           }
+          if (rxChar != null) break;
+        }
+
+        // 2. Fallback tìm trên tất cả các dịch vụ (hỗ trợ cả UUID BEA5 hoặc characteristic có cờ write)
+        if (rxChar == null) {
+          for (final s in services) {
+            for (final c in s.characteristics) {
+              final cUuid = c.uuid.toString().replaceAll('-', '').toUpperCase();
+              if (cUuid.contains("6E400002") || cUuid.contains("BEA5A000") || cUuid.contains("BEA5")) {
+                rxChar = c;
+                break;
+              }
+            }
+            if (rxChar != null) break;
+          }
+        }
+
+        if (rxChar != null) {
+          final bool withoutResp = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
+          // Gửi theo định dạng chuẩn ocammoi
+          await rxChar.write(utf8.encode(primaryPayload), withoutResponse: withoutResp).timeout(const Duration(seconds: 2));
+          await Future.delayed(const Duration(milliseconds: 30));
+          await rxChar.write(utf8.encode("austec/$hardwareId/action/$socketCode"), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 30));
+          await rxChar.write(utf8.encode("$hardwareId/action/$socketCode"), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
+          await Future.delayed(const Duration(milliseconds: 30));
+          await rxChar.write(utf8.encode(socketCode), withoutResponse: withoutResp).timeout(const Duration(seconds: 1));
+
+          debugPrint("[BLE Socket Control] ⚡ Đã truyền lệnh rơ-le ổ cắm $hardwareId: $primaryPayload");
+          return true;
         }
       }
     } catch (e) {

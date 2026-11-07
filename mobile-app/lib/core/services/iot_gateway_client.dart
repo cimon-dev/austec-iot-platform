@@ -653,8 +653,12 @@ class IoTGatewayClient {
     }
 
     if (isSocket) {
-      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "3" || resolvedSocketAction == "13") ? "3" : "4";
-      unawaited(BleDeviceControlService().sendSocketAction(hardwareId: hardwareId, actionNumber: sAction));
+      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "3" || resolvedSocketAction == "13") ? "13" : (resolvedSocketAction == "STOP" ? "3" : "14");
+      unawaited(BleDeviceControlService().sendSocketAction(
+        hardwareId: hardwareId,
+        actionNumber: sAction,
+        userId: AuthService().currentUser?.id,
+      ));
     } else {
       final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
           : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"

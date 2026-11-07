@@ -86,6 +86,8 @@ export class MqttGateway {
       // topic: devices/{hwId}/camera/photo HOẶC esp32/{device_name}/photo
       const hwId = parts.length >= 2 ? parts[1] : 'CAM_UNKNOWN';
       this.cameraSnapshots.set(hwId, { buffer: message, timestamp: Date.now() });
+      this.cameraSnapshots.set(hwId.toLowerCase(), { buffer: message, timestamp: Date.now() });
+      this.cameraSnapshots.set(hwId.toUpperCase(), { buffer: message, timestamp: Date.now() });
       this.recordMessage(topic, `[JPEG Photo: ${message.length} bytes]`, 'INCOMING');
       console.log(`[MQTT Gateway] 📸 [${hwId}] Nhận khung hình Camera JPEG: ${message.length} bytes`);
 
@@ -290,6 +292,10 @@ export class MqttGateway {
 
     if (isCamera) {
       candidateTopics.add(`devices/${hwId}/camera/cmd`);
+      candidateTopics.add(`devices/${hwId}/cmd`);
+      candidateTopics.add(`esp32/${hwId}/cmd`);
+      candidateTopics.add(`esp32/${hwId}/sub/action`);
+      candidateTopics.add(`${hwId}/cmd`);
     } else if (isSocket) {
       // Ổ cắm theo chuẩn ocammoi lắng nghe tại {user}/{hwId}/sub/action
       candidateTopics.add(`${userId || 'austec'}/${hwId}/sub/action`);
