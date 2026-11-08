@@ -34,6 +34,7 @@ import { createMqttRouter } from './modules/mqtt/mqtt.routes.js';
 import { createChatRouter } from './modules/chat/chat.routes.js';
 import { createNotificationsRouter } from './modules/notifications/notifications.routes.js';
 import { ChatRepository } from './modules/chat/chat.repository.js';
+import { CskhRepository } from './modules/cskh/cskh.repository.js';
 
 export interface UnifiedUser {
   id: string;
@@ -316,16 +317,38 @@ export function createApp() {
               customerId: ws.userData.customerId,
             }));
 
-            // Nếu là nhân viên CSKH/Admin vừa vào, gửi toàn bộ tickets đang có
+            // Nếu là nhân viên CSKH/Admin vừa vào, gửi toàn bộ tickets đang có (kết hợp cả DB và SupportService)
             if (ws.userData.role === 'ADMIN' || ws.userData.role === 'CSKH') {
-              const rawTickets = supportService.getAllOpenTickets();
-              const tickets = rawTickets
-                .filter(t => supportService.hasActiveMessages(t.id))
-                .map(t => {
-                  const rawMsgs = supportService.getMessagesByTicket(t.id);
-                  return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
-                });
-              ws.send(JSON.stringify({ type: 'TICKETS_UPDATED', tickets }));
+              try {
+                const cskhRepo = new CskhRepository(postgresClient);
+                const dbTickets = await cskhRepo.getTickets();
+                const rawTickets = supportService.getAllOpenTickets();
+                const memTickets = rawTickets
+                  .filter(t => supportService.hasActiveMessages(t.id))
+                  .map(t => {
+                    const rawMsgs = supportService.getMessagesByTicket(t.id);
+                    return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
+                  });
+
+                // Merge deduplicated
+                const merged = [...dbTickets];
+                for (const mt of memTickets) {
+                  if (!merged.some(dt => dt.id === mt.id)) {
+                    merged.push(mt as any);
+                  }
+                }
+                ws.send(JSON.stringify({ type: 'TICKETS_UPDATED', tickets: merged }));
+              } catch (e: any) {
+                console.warn('[WebSocket] Error loading tickets on JOIN:', e.message);
+                const rawTickets = supportService.getAllOpenTickets();
+                const tickets = rawTickets
+                  .filter(t => supportService.hasActiveMessages(t.id))
+                  .map(t => {
+                    const rawMsgs = supportService.getMessagesByTicket(t.id);
+                    return enrichTicket(t, rawMsgs.map(m => formatLiveMessage(m)));
+                  });
+                ws.send(JSON.stringify({ type: 'TICKETS_UPDATED', tickets }));
+              }
             } else if (ws.userData.customerId) {
               // Nếu là Customer, gửi lại ticket hiện tại của họ nếu có
               const myTicket = supportService.findActiveCustomerTicket(ws.userData.customerId);
@@ -389,6 +412,88 @@ export function createApp() {
             const actualText = (text || message || '').toString().trim();
             const actualAttachments = images || attachmentUrls || [];
             if (!actualText && actualAttachments.length === 0) return;
+
+            // Xử lý trực tiếp nếu ticketId là conversation CSKH (cskh-conv-...)
+            if (ticketId && ticketId.startsWith('cskh-')) {
+              const isCSKH = sender === 'CSKH' || senderRole === 'CSKH' || ws.userData?.role === 'CSKH' || ws.userData?.role === 'ADMIN';
+              const role = isCSKH ? 'CSKH' : 'CUSTOMER';
+              const senderId = isCSKH ? (ws.userData?.customerId || 'admin-001') : (customerId || ws.userData?.customerId || 'customer');
+              const senderName = isCSKH ? 'Kỹ thuật viên Austec' : (ws.userData?.customerName || 'Khách Hàng Austec');
+
+              await chatRepository.ensureCskhConversation(senderId, senderName);
+
+              const savedMsg = await chatRepository.saveMessage({
+                conversationId: ticketId,
+                senderId,
+                senderRole: role,
+                senderName,
+                messageType: actualAttachments.length > 0 ? 'IMAGE' : 'TEXT',
+                content: actualText,
+                attachments: actualAttachments.map((url: string) => ({ url, mediaType: 'image' })),
+                clientTempId,
+                metadata: selectedDevice ? { selectedDevice } : {},
+              });
+
+              // ACK về sender
+              ws.send(JSON.stringify({
+                type: 'MESSAGE_ACK',
+                ticketId,
+                clientTempId,
+                conversationId: ticketId,
+                message: savedMsg,
+              }));
+
+              // Broadcast tới khách hàng tham gia cuộc hội thoại (Mobile app)
+              const convBroadcast = JSON.stringify({
+                type: 'NEW_CONVERSATION_MESSAGE',
+                conversationId: ticketId,
+                message: savedMsg,
+              });
+
+              for (const c of wsClients) {
+                if (c !== ws && c.readyState === WebSocket.OPEN) {
+                  const inRoom = c.userData?.currentConversationId === ticketId;
+                  const isCustomerForTicket = c.userData?.customerId && ticketId.includes(c.userData.customerId);
+                  if (inRoom || isCustomerForTicket) {
+                    c.send(convBroadcast);
+                  }
+                }
+              }
+
+              // Broadcast tới nhân viên CSKH khác
+              const d = new Date(savedMsg.createdAt || Date.now());
+              const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              const attUrls = (savedMsg.attachments || []).map((a: any) => typeof a === 'string' ? a : (a.url || ''));
+              const cskhFormatted = {
+                id: savedMsg.id,
+                ticketId,
+                sender: role === 'CSKH' ? 'CSKH' : 'user',
+                senderRole: role,
+                text: savedMsg.content,
+                message: savedMsg.content,
+                time: timeStr,
+                createdAt: savedMsg.createdAt,
+                attachmentUrls: attUrls,
+                images: attUrls,
+                selectedDevice: savedMsg.metadata?.selectedDevice,
+                clientTempId: savedMsg.clientTempId,
+              };
+
+              const cskhStaffPayload = JSON.stringify({
+                type: 'NEW_MESSAGE',
+                ticketId,
+                customerId: senderId,
+                message: cskhFormatted,
+              });
+
+              for (const c of wsClients) {
+                if (c !== ws && c.readyState === WebSocket.OPEN && (c.userData?.role === 'ADMIN' || c.userData?.role === 'CSKH' || !c.userData?.role)) {
+                  c.send(cskhStaffPayload);
+                }
+              }
+
+              break;
+            }
 
             let ticket: any;
             if (ticketId) {
@@ -514,6 +619,10 @@ export function createApp() {
               break;
             }
 
+            if (conversationId.startsWith('cskh-')) {
+              await chatRepository.ensureCskhConversation(actualSenderId, actualSenderName);
+            }
+
             const savedMsg = await chatRepository.saveMessage({
               conversationId,
               senderId: actualSenderId,
@@ -549,10 +658,58 @@ export function createApp() {
               if (client !== ws && client.readyState === WebSocket.OPEN) {
                 const inRoom = client.userData?.currentConversationId === conversationId;
                 const isPart = client.userData?.userId && participantIds.includes(client.userData.userId);
+                const isCustomerForTicket = client.userData?.customerId && conversationId.includes(client.userData.customerId);
                 const isStaffForCskh = (client.userData?.role === 'ADMIN' || client.userData?.role === 'CSKH') && conversationId.startsWith('cskh-');
 
-                if (inRoom || isPart || isStaffForCskh) {
+                if (inRoom || isPart || isCustomerForTicket || isStaffForCskh) {
                   client.send(broadcastPayload);
+                }
+              }
+            }
+
+            // Đồng bộ sang giao diện CSKH Web Admin nếu là luồng hỗ trợ CSKH
+            if (conversationId.startsWith('cskh-')) {
+              const d = new Date(savedMsg.createdAt || Date.now());
+              const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+              const attUrls = (savedMsg.attachments || []).map((a: any) => typeof a === 'string' ? a : (a.url || ''));
+              const cskhFormatted = {
+                id: savedMsg.id,
+                ticketId: conversationId,
+                sender: actualSenderRole === 'CSKH' || actualSenderRole === 'ADMIN' ? 'CSKH' : 'user',
+                senderRole: actualSenderRole,
+                text: savedMsg.content,
+                message: savedMsg.content,
+                time: timeStr,
+                createdAt: savedMsg.createdAt,
+                attachmentUrls: attUrls,
+                images: attUrls,
+                selectedDevice: savedMsg.metadata?.selectedDevice,
+                clientTempId: savedMsg.clientTempId,
+              };
+
+              const cskhTicketPayload = JSON.stringify({
+                type: 'NEW_MESSAGE',
+                ticketId: conversationId,
+                customerId: actualSenderId,
+                message: cskhFormatted,
+                ticket: {
+                  id: conversationId,
+                  customerId: actualSenderId,
+                  customerName: actualSenderName,
+                  customerPhone: ws.userData?.customerPhone || '---',
+                  subject: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC',
+                  status: 'PROCESSING',
+                  priority: 'NORMAL',
+                  createdAt: savedMsg.createdAt,
+                  updatedAt: savedMsg.createdAt,
+                  messages: [cskhFormatted],
+                  selectedDevice: savedMsg.metadata?.selectedDevice,
+                }
+              });
+
+              for (const client of wsClients) {
+                if (client !== ws && client.readyState === WebSocket.OPEN && (client.userData?.role === 'ADMIN' || client.userData?.role === 'CSKH' || !client.userData?.role)) {
+                  client.send(cskhTicketPayload);
                 }
               }
             }

@@ -497,6 +497,28 @@ export class ChatRepository {
       }
     }
 
+    // Đảm bảo conversation_id tồn tại trước khi insert tin nhắn (tránh vi phạm Foreign Key)
+    try {
+      const convCheck = await this.client.query(
+        `SELECT id FROM chat_conversations WHERE id = $1 LIMIT 1`,
+        [data.conversationId]
+      );
+      if (convCheck.rows.length === 0) {
+        await this.client.query(
+          `INSERT INTO chat_conversations (id, type, title, creator_id, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $5)
+           ON CONFLICT (id) DO NOTHING`,
+          [data.conversationId, data.conversationId.startsWith('cskh-') ? 'CSKH' : 'DIRECT', 'Hỗ trợ CSKH Austec', data.senderId, now]
+        );
+        await this.client.query(
+          `INSERT INTO chat_participants (conversation_id, user_id, role, joined_at)
+           VALUES ($1, $2, 'MEMBER', $3)
+           ON CONFLICT DO NOTHING`,
+          [data.conversationId, data.senderId, now]
+        );
+      }
+    } catch (_) {}
+
     try {
       const msgType = data.messageType || 'TEXT';
       const res = await this.client.query(

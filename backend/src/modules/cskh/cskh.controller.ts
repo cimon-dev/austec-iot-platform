@@ -83,6 +83,46 @@ export class CskhController {
     }
   }
 
+  @Post('/tickets/:ticketId/message', authenticate)
+  public async sendMessageSingle(req: AuthenticatedRequest, res: Response) {
+    return this.sendMessage(req, res);
+  }
+
+  @Post('/active-chat/messages', authenticate)
+  public async sendActiveChatMessage(req: AuthenticatedRequest, res: Response) {
+    try {
+      const customerId = req.body.customerId || req.user?.id || '00000000-0000-0000-0000-000000000001';
+      const text = req.body.text || req.body.message || '';
+      const attachments = req.body.attachmentUrls || req.body.images || [];
+
+      // Find active CSKH ticket/conversation
+      const data = await this.service.getActiveChat(customerId);
+      let ticketId = data.ticket?.id;
+
+      if (!ticketId) {
+        const newTicket = await this.service.createTicket({
+          customerId,
+          subject: 'Hỗ trợ CSKH trực tuyến',
+          priority: 'NORMAL',
+          initialMessage: text,
+        });
+        ticketId = newTicket.id;
+      } else {
+        await this.service.sendMessage({
+          ticketId,
+          senderId: customerId,
+          senderRole: 'CUSTOMER',
+          message: text,
+          attachmentUrls: attachments,
+        });
+      }
+
+      res.status(201).json({ success: true, message: 'Gửi tin nhắn CSKH thành công!', ticketId });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
   /**
    * GET /api/cskh/requests
    * Lấy danh sách phiếu yêu cầu hỗ trợ kỹ thuật của khách hàng

@@ -24,6 +24,10 @@ export class PostgresClient {
       return true;
     }
 
+    if (process.env.DATABASE_URL) {
+      this.connectionString = process.env.DATABASE_URL;
+    }
+
     try {
       const isRemote =
         this.connectionString.includes('supabase.co') ||

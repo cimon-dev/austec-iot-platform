@@ -120,6 +120,10 @@ export class MqttGateway {
       const parts = topic.split('/');
       const hwId = parts[1];
       if (!hwId || hwId === 'status') return;
+      
+      // Chỉ nhận diện Camera theo đúng chuẩn espcam.pdf (tên bắt đầu bằng CAM) hoặc thiết bị Austec
+      const isAustecCam = hwId.toUpperCase().startsWith('CAM') || topic.startsWith('devices/');
+      if (!isAustecCam) return;
       console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${shortPayload}`);
 
       const camOnlineState = {

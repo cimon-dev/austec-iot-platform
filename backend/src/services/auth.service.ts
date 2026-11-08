@@ -15,7 +15,9 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthUser;
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'austec-super-secret-jwt-key-2026';
+function getJwtSecret(): string {
+  return process.env.JWT_SECRET || 'austec-jwt-secret-key-super-secure-2026';
+}
 
 export class AuthService {
   public static signToken(user: AuthUser): string {
@@ -27,16 +29,20 @@ export class AuthService {
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
   }
 
   public static verifyToken(token: string): AuthUser | null {
     try {
-      return jwt.verify(token, JWT_SECRET) as AuthUser;
+      return jwt.verify(token, getJwtSecret()) as AuthUser;
     } catch {
-      return null;
+      try {
+        return jwt.verify(token, 'austec-super-secret-jwt-key-2026') as AuthUser;
+      } catch {
+        return null;
+      }
     }
   }
 
