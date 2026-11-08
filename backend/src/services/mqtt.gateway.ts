@@ -40,20 +40,18 @@ export class MqttGateway {
         this.isRunning = true;
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
         
-        // Đăng ký nhận chính xác các kênh của Austec:
-        // 1. Cửa cuốn & Ổ cắm (ocammoi): {user}/{device_id}/pub/... và {user}/{device_id}/onboard
-        // 2. Camera AI (espcam.pdf): esp32/+/status, esp32/+/photo, devices/+/status, devices/+/camera/#
-        // 3. Ổ cắm legacy: +/status, +/response
+        // Đăng ký nhận chính xác các kênh của Austec (loại bỏ wildcard đơn +/status để tránh rác công cộng trên EMQX):
+        // 1. Cửa cuốn & Ổ cắm (ocammoi): USR-330967/#, amtuong/#, +/+/pub/#, +/+/onboard, austec/#
+        // 2. Camera AI (espcam.pdf): esp32/+/status, esp32/+/photo, devices/+/camera/#
         this.client?.subscribe([
+          'USR-330967/#',
+          'amtuong/#',
+          'austec/#',
           '+/+/pub/#',
           '+/+/onboard',
-          'austec/#',
-          'devices/+/status',
           'devices/+/camera/#',
           'esp32/+/status',
           'esp32/+/photo',
-          '+/status',
-          '+/response',
         ], (err) => {
           if (!err) {
             console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm Austec trên EMQX!');
@@ -113,14 +111,16 @@ export class MqttGateway {
       return;
     }
 
-    const payload = message.toString('utf-8');
-    this.recordMessage(topic, payload, 'INCOMING');
+    const payload = message.length > 2048 ? message.subarray(0, 2048).toString('utf-8') : message.toString('utf-8');
+    const shortPayload = payload.length > 80 ? payload.slice(0, 80) + '...' : payload;
+    this.recordMessage(topic, shortPayload, 'INCOMING');
 
     // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status HOẶC esp32/{hwId}/status (espcam.pdf)
     if ((topic.startsWith('devices/') && topic.endsWith('/status')) || (topic.startsWith('esp32/') && topic.endsWith('/status'))) {
       const parts = topic.split('/');
       const hwId = parts[1];
-      console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${payload}`);
+      if (!hwId || hwId === 'status') return;
+      console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${shortPayload}`);
 
       const camOnlineState = {
         isOnline: true,
