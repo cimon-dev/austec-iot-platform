@@ -126,6 +126,11 @@ function CSKHContent() {
                 messages: deduplicateTicketMessages(t.messages),
               }));
               setTickets(cleaned);
+              setSelectedTicketId((prev) => {
+                if (!prev && cleaned.length > 0) return cleaned[0].id;
+                if (prev && !cleaned.some((t: any) => t.id === prev) && cleaned.length > 0) return cleaned[0].id;
+                return prev;
+              });
             } else if (data.type === "NEW_TICKET" && data.ticket) {
               const cleanedTicket = {
                 ...data.ticket,
@@ -134,34 +139,77 @@ function CSKHContent() {
               setTickets((prev) => [cleanedTicket, ...prev.filter((t) => t.id !== data.ticket.id)]);
               setSelectedTicketId(data.ticket.id);
               toast.info(`Khách hàng ${data.ticket.customerName} vừa bắt đầu phiên hỗ trợ mới!`);
-            } else if ((data.type === "NEW_MESSAGE" || data.type === "MESSAGE_ACK") && data.message) {
+            } else if (
+              (data.type === "NEW_MESSAGE" || data.type === "MESSAGE_ACK" || data.type === "NEW_CONVERSATION_MESSAGE") &&
+              (data.message || data.ticket)
+            ) {
               const msg = data.message;
-              const targetTicketId = data.ticketId;
-              setTickets((prev) =>
-                prev.map((t) => {
-                  if (t.id === targetTicketId) {
-                    const existingIndex = t.messages.findIndex(
-                      (m: any) =>
-                        (msg.id && String(m.id) === String(msg.id)) ||
-                        (msg.clientTempId && m.clientTempId === msg.clientTempId)
-                    );
-                    let updatedMsgs: any[];
-                    if (existingIndex !== -1) {
-                      updatedMsgs = [...t.messages];
-                      updatedMsgs[existingIndex] = { ...updatedMsgs[existingIndex], ...msg };
-                    } else {
-                      updatedMsgs = [...t.messages, msg];
-                    }
-                    return {
-                      ...t,
-                      status: "PROCESSING",
-                      messages: deduplicateTicketMessages(updatedMsgs),
-                      selectedDevice: msg.selectedDevice || t.selectedDevice,
-                    };
+              const targetTicketId = data.ticketId || data.conversationId;
+              if (!targetTicketId) return;
+
+              const isCskhSender = msg && (msg.senderRole === "CSKH" || msg.senderRole === "ADMIN" || msg.sender === "CSKH");
+              const normalizedMsg = msg ? {
+                id: msg.id,
+                clientTempId: msg.clientTempId,
+                sender: isCskhSender ? ("CSKH" as const) : ("user" as const),
+                senderRole: msg.senderRole || (isCskhSender ? "CSKH" : "CUSTOMER"),
+                text: msg.text || msg.message || msg.content || "",
+                message: msg.text || msg.message || msg.content || "",
+                time: msg.time || (msg.createdAt ? `${String(new Date(msg.createdAt).getHours()).padStart(2, "0")}:${String(new Date(msg.createdAt).getMinutes()).padStart(2, "0")}` : "Vừa xong"),
+                createdAt: msg.createdAt || new Date().toISOString(),
+                attachmentUrls: msg.attachmentUrls || msg.images || (Array.isArray(msg.attachments) ? msg.attachments.map((a: any) => typeof a === "string" ? a : a.url || "") : []),
+                selectedDevice: msg.selectedDevice || msg.metadata?.selectedDevice,
+              } : null;
+
+              setTickets((prev) => {
+                const existingIndex = prev.findIndex((t) => t.id === targetTicketId);
+                if (existingIndex === -1) {
+                  const newT: Ticket = data.ticket ? {
+                    ...data.ticket,
+                    messages: deduplicateTicketMessages(data.ticket.messages || (normalizedMsg ? [normalizedMsg] : [])),
+                  } : {
+                    id: targetTicketId,
+                    customerId: data.customerId || "customer",
+                    customerName: msg?.senderName || "Khách Hàng Austec",
+                    customerPhone: "---",
+                    customerEmail: "",
+                    hardwareId: normalizedMsg?.selectedDevice?.hardwareId || "AT-DOOR-88239A01",
+                    deviceName: normalizedMsg?.selectedDevice?.deviceName || "Thiết bị Austec",
+                    subject: "HỖ TRỢ KỸ THUẬT & CSKH AUSTEC",
+                    status: "PROCESSING",
+                    priority: "NORMAL",
+                    createdAt: new Date().toISOString(),
+                    messages: normalizedMsg ? [normalizedMsg] : [],
+                    selectedDevice: normalizedMsg?.selectedDevice,
+                  };
+
+                  setSelectedTicketId((curr) => curr || targetTicketId);
+                  if (!isCskhSender) {
+                    toast.info(`Tin nhắn mới từ ${newT.customerName}: ${normalizedMsg?.text || "Đính kèm tệp"}`);
                   }
-                  return t;
-                })
-              );
+                  return [newT, ...prev];
+                }
+
+                const currentT = prev[existingIndex];
+                const updatedMsgs = normalizedMsg
+                  ? deduplicateTicketMessages([...currentT.messages, normalizedMsg])
+                  : currentT.messages;
+
+                const updatedTicket: Ticket = {
+                  ...currentT,
+                  status: "PROCESSING",
+                  messages: updatedMsgs,
+                  selectedDevice: normalizedMsg?.selectedDevice || currentT.selectedDevice,
+                };
+
+                if (!isCskhSender) {
+                  toast.info(`Tin nhắn mới từ ${currentT.customerName}: ${normalizedMsg?.text || "Đính kèm tệp"}`);
+                }
+
+                const newTickets = [...prev];
+                newTickets[existingIndex] = updatedTicket;
+                return newTickets;
+              });
             }
           } catch {}
         };
@@ -228,15 +276,30 @@ function CSKHContent() {
     };
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          type: "SEND_MESSAGE",
-          ticketId: currentTicket.id,
-          sender: "CSKH",
-          text: replyText.trim(),
-          clientTempId: tempId,
-        })
-      );
+      if (currentTicket.id.startsWith("cskh-")) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "SEND_CONVERSATION_MESSAGE",
+            conversationId: currentTicket.id,
+            senderId: "cskh-admin",
+            senderRole: "CSKH",
+            senderName: "Kỹ thuật viên Austec",
+            content: replyText.trim(),
+            text: replyText.trim(),
+            clientTempId: tempId,
+          })
+        );
+      } else {
+        wsRef.current.send(
+          JSON.stringify({
+            type: "SEND_MESSAGE",
+            ticketId: currentTicket.id,
+            sender: "CSKH",
+            text: replyText.trim(),
+            clientTempId: tempId,
+          })
+        );
+      }
     }
 
     setTickets((prev) =>

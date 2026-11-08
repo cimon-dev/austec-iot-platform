@@ -94,6 +94,7 @@ export function DeviceListTab({
   const [searchFilter, setSearchFilter] = useState<string>("");
   const [filterGroup, setFilterGroup] = useState<string>("ALL");
   const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterModel, setFilterModel] = useState<string>("ALL");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [deviceCurrentPage, setDeviceCurrentPage] = useState<number>(1);
   const [devicePageSize, setDevicePageSize] = useState<number>(10);
@@ -169,6 +170,29 @@ export function DeviceListTab({
     ) || null;
   }, [selectedDevice, models]);
 
+  // Unique models list for commercial model combobox
+  const availableModels = useMemo(() => {
+    const map = new Map<string, { code: string; name: string }>();
+    if (Array.isArray(models)) {
+      models.forEach((m: any) => {
+        const code = m.modelCode || m.model_code || m.code || m.name || m.modelName;
+        const name = m.modelName || m.model_name || m.name || code;
+        if (code) {
+          map.set(code.toLowerCase(), { code, name });
+        }
+      });
+    }
+    if (Array.isArray(devices)) {
+      devices.forEach((d: any) => {
+        const mName = getModel(d);
+        if (mName && !map.has(mName.toLowerCase())) {
+          map.set(mName.toLowerCase(), { code: mName, name: mName });
+        }
+      });
+    }
+    return Array.from(map.values());
+  }, [models, devices]);
+
   // Filtering
   const filteredDevices = useMemo(() => {
     return devices.filter((d) => {
@@ -195,10 +219,15 @@ export function DeviceListTab({
         devType.toUpperCase() === filterType.toUpperCase() ||
         (d.deviceType && d.deviceType.toUpperCase() === filterType.toUpperCase()) ||
         (d.type && d.type.toUpperCase() === filterType.toUpperCase());
+      const devModel = getModel(d).toLowerCase();
+      const matchModel = filterModel === "ALL" || 
+        devModel === filterModel.toLowerCase() ||
+        (d.modelCode && d.modelCode.toLowerCase() === filterModel.toLowerCase()) ||
+        (d.model_code && d.model_code.toLowerCase() === filterModel.toLowerCase());
       const matchStatus = filterStatus === "ALL" || d.status === filterStatus;
-      return matchSearch && matchGroup && matchType && matchStatus;
+      return matchSearch && matchGroup && matchType && matchModel && matchStatus;
     });
-  }, [devices, searchFilter, filterGroup, filterType, filterStatus]);
+  }, [devices, searchFilter, filterGroup, filterType, filterModel, filterStatus]);
 
   const paginatedDevices = useMemo(() => {
     const start = (deviceCurrentPage - 1) * devicePageSize;
@@ -501,6 +530,23 @@ export function DeviceListTab({
             </select>
           </div>
 
+          {/* Combobox: Mẫu thương phẩm */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0 hidden sm:inline">Mẫu TP:</span>
+            <select
+              value={filterModel}
+              onChange={(e) => setFilterModel(e.target.value)}
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md px-2 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-cyan-500 font-medium cursor-pointer"
+            >
+              <option value="ALL">Tất cả mẫu thương phẩm</option>
+              {availableModels.map((m) => (
+                <option key={m.code} value={m.code}>
+                  {m.name !== m.code ? `${m.name} (${m.code})` : m.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Combobox: Trạng thái kết nối */}
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0 hidden sm:inline">Trạng thái:</span>
@@ -517,13 +563,14 @@ export function DeviceListTab({
           </div>
 
           {/* Reset Filters Button */}
-          {(searchFilter || filterGroup !== "ALL" || filterType !== "ALL" || filterStatus !== "ALL") && (
+          {(searchFilter || filterGroup !== "ALL" || filterType !== "ALL" || filterModel !== "ALL" || filterStatus !== "ALL") && (
             <button
               type="button"
               onClick={() => {
                 setSearchFilter("");
                 setFilterGroup("ALL");
                 setFilterType("ALL");
+                setFilterModel("ALL");
                 setFilterStatus("ALL");
               }}
               className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400 font-medium px-2 py-1 rounded bg-slate-200/50 dark:bg-slate-800/50 cursor-pointer transition-colors"

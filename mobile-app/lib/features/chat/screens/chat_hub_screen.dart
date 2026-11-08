@@ -78,7 +78,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
       orElse: () => ConversationItem(
         id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
         type: 'CSKH',
-        title: 'Hỗ trợ Kỹ thuật & CSKH Austec 24/7',
+        title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
         lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
       ),
@@ -396,7 +396,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
       orElse: () => ConversationItem(
         id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
         type: 'CSKH',
-        title: 'Hỗ trợ Kỹ thuật & CSKH Austec 24/7',
+        title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
         lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
       ),
@@ -544,7 +544,7 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      "Hỗ trợ Kỹ thuật & CSKH Austec",
+                                      "HỖ TRỢ KỸ THUẬT & CSKH AUSTEC",
                                       style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
                                     ),
                                     const SizedBox(width: 6),

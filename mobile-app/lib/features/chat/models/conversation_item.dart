@@ -104,7 +104,7 @@ class ConversationItem {
     return ConversationItem(
       id: (json['id'] ?? '').toString(),
       type: (json['type'] ?? 'DIRECT').toString().toUpperCase(),
-      title: (json['title'] ?? (json['type'] == 'CSKH' ? 'Hỗ trợ Kỹ thuật & CSKH Austec' : 'Cuộc trò chuyện')).toString(),
+      title: (json['title'] ?? (json['type'] == 'CSKH' ? 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC' : 'Cuộc trò chuyện')).toString(),
       avatarUrl: json['avatarUrl'] ?? json['avatar_url'],
       creatorId: json['creatorId'] ?? json['creator_id'],
       lastMessage: json['lastMessage'] ?? json['last_message'],

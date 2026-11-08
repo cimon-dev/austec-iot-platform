@@ -143,34 +143,60 @@ class _AustecSplashScreenState extends State<AustecSplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+
     return Scaffold(
       backgroundColor: const Color(0xFF070B14),
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background graphic overlay
+          // Background graphic overlay - Zoom to ra & kéo lên trên để che khuất chữ công nghệ tiên tiến phía dưới
           Positioned.fill(
-            child: Opacity(
-              opacity: 0.18,
-              child: Image.asset(
-                'assets/austec_banner_bg.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            child: OverflowBox(
+              alignment: const Alignment(0, -0.45),
+              maxWidth: screenSize.width * 1.45,
+              maxHeight: screenSize.height * 1.45,
+              child: Opacity(
+                opacity: 0.22,
+                child: Image.asset(
+                  'assets/austec_banner_bg.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
               ),
             ),
           ),
 
-          // Deep radial vignette
+          // Deep radial vignette & bottom gradient che chữ phía dưới
           Container(
             decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment.center,
-                radius: 1.2,
+                center: const Alignment(0, -0.2),
+                radius: 1.25,
                 colors: [
                   Colors.transparent,
-                  const Color(0xFF070B14).withValues(alpha: 0.8),
+                  const Color(0xFF070B14).withValues(alpha: 0.75),
                   const Color(0xFF070B14),
                 ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: screenSize.height * 0.45,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    const Color(0xFF070B14).withValues(alpha: 0.9),
+                    const Color(0xFF070B14),
+                  ],
+                ),
               ),
             ),
           ),
@@ -181,30 +207,30 @@ class _AustecSplashScreenState extends State<AustecSplashScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Spacer(flex: 3),
+                  const Spacer(flex: 2),
 
-                  // Brand Logo with Breathing Animation
+                  // Brand Logo with Breathing Animation - Zoom to ra & kéo lên trên
                   ScaleTransition(
                     scale: _pulseAnimation,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Austec App Logo Emblem
+                        // Austec App Logo Emblem - Zoom to ra (94x94)
                         Container(
-                          width: 72,
-                          height: 72,
-                          margin: const EdgeInsets.only(bottom: 14),
+                          width: 94,
+                          height: 94,
+                          margin: const EdgeInsets.only(bottom: 16),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.6),
-                              width: 1.5,
+                              color: AppTheme.cyanAccent.withValues(alpha: 0.7),
+                              width: 2.0,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.cyanAccent.withValues(alpha: 0.35),
-                                blurRadius: 24,
-                                spreadRadius: 4,
+                                color: AppTheme.cyanAccent.withValues(alpha: 0.4),
+                                blurRadius: 32,
+                                spreadRadius: 6,
                               ),
                             ],
                           ),
@@ -219,40 +245,29 @@ class _AustecSplashScreenState extends State<AustecSplashScreen>
                             ),
                           ),
                         ),
-                        // Austec Logo Header
+                        // Austec Logo Header - Phóng to thêm (height 50)
                         Image.asset(
                           'assets/austec_logo_text_transparent.png',
-                          height: 40,
+                          height: 50,
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) => Image.asset(
                             'assets/logo.png',
-                            height: 40,
+                            height: 50,
                             fit: BoxFit.contain,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Your space · Our technology',
-                          style: TextStyle(
-                            fontFamily: 'serif',
-                            fontStyle: FontStyle.italic,
-                            fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.72),
-                            letterSpacing: 0.6,
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 44),
+                  const SizedBox(height: 38),
 
                   // 360° Radar Sweep Animation
                   AnimatedBuilder(
                     animation: _radarController,
                     builder: (context, _) {
                       return CustomPaint(
-                        size: const Size(200, 200),
+                        size: const Size(190, 190),
                         painter: AustecRadarSweepPainter(
                           sweepAngle: _radarController.value * 2 * math.pi,
                         ),

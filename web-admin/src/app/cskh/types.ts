@@ -1,11 +1,16 @@
 export interface TicketMessage {
+  id?: any;
+  clientTempId?: string;
   sender: "CUSTOMER" | "CSKH" | string;
   senderRole?: string;
   text: string;
+  message?: string;
+  content?: string;
   time: string;
   createdAt?: string;
   hasSnapshot?: boolean;
   attachmentUrls?: string[];
+  images?: string[];
   selectedDevice?: {
     isOwned: boolean;
     hardwareId?: string;

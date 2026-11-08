@@ -133,7 +133,7 @@ export const ChatConversationArea: React.FC<ChatConversationAreaProps> = ({
                 </div>
               )}
 
-              {m.text}
+              {m.text || m.message || m.content || ""}
             </div>
             <span className="text-[9px] text-slate-400 font-mono mt-0.5 px-1">{m.time}</span>
           </div>

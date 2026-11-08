@@ -440,7 +440,7 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
               child: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 40),
             ),
             const SizedBox(height: 16),
-            const Text("Trung Tâm Hỗ Trợ Kỹ Thuật Austec", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text("TRUNG TÂM HỖ TRỢ KỸ THUẬT & CSKH AUSTEC", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             const Text(
               "Kênh chat 1-1 trực tiếp với kỹ sư & CSKH Austec. Hỗ trợ giải đáp sự cố và kết nối thiết bị từ xa.",

@@ -366,7 +366,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _conversation.title,
+                      _conversation.isCskh ? "HỖ TRỢ KỸ THUẬT & CSKH AUSTEC" : _conversation.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),

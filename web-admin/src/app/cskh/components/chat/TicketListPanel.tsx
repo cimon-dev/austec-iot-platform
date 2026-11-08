@@ -115,7 +115,7 @@ export const TicketListPanel: React.FC<TicketListPanelProps> = ({
                   {isUnread && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 ml-1"></span>}
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                  {lastMsg ? lastMsg.text : t.subject}
+                  {lastMsg ? (lastMsg.text || (lastMsg as any).content || (lastMsg as any).message || "[Đã gửi tin nhắn]") : t.subject}
                 </div>
                 <div className="text-[10px] font-mono text-slate-400 mt-1 flex justify-between">
                   <span>{t.customerPhone}</span>

@@ -88,13 +88,18 @@ export function DeviceGeoMap() {
           const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any) => {
             const provinceName = d.province || "Hà Nội";
             const defCoords = PROVINCE_COORDS[provinceName] || { lat: 21.0285, lng: 105.8542 };
+            const rawStatus = String(d.status || (d.isOnline ? 'ONLINE' : 'OFFLINE')).toUpperCase();
+            const normalizedStatus: "ONLINE" | "OFFLINE" | "IN_STOCK" =
+              rawStatus === 'ONLINE' || rawStatus === 'TRUE' ? 'ONLINE' :
+              rawStatus === 'OFFLINE' || rawStatus === 'FALSE' ? 'OFFLINE' : 'IN_STOCK';
+
             return {
               hardwareId: d.hardwareId || d.hwId || '',
               serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId || ''}`,
               deviceName: d.name || d.customName || 'Thiết bị Austec',
               deviceType: (d.typeName?.includes('Khóa') ? 'Khóa thông minh' : d.typeName?.includes('Lưu điện') ? 'Bộ lưu điện' : 'Cửa cuốn') as any,
               modelName: d.modelName || 'Austec Smart Series',
-              status: d.status || (d.isOnline ? 'ONLINE' : 'OFFLINE'),
+              status: normalizedStatus,
               ownerName: d.ownerName || 'Chưa gán',
               phoneNumber: d.ownerPhone || '---',
               lat: typeof d.lat === 'number' ? d.lat : defCoords.lat,
@@ -275,20 +280,18 @@ export function DeviceGeoMap() {
 
       filteredDevices.forEach((device) => {
         const isSelected = selectedDevice?.hardwareId === device.hardwareId;
+        const isOnline = device.status === "ONLINE";
+        const isOffline = device.status === "OFFLINE";
 
-        const colorClass = 
-          device.status === "ONLINE" ? "bg-emerald-500 border-emerald-200" :
-          device.status === "OFFLINE" ? "bg-rose-500 border-rose-200" :
-          "bg-sky-500 border-sky-200";
-
-        const pulseClass = device.status === "ONLINE" ? "animate-ping" : "";
+        const markerBgColor = isOnline ? "#10b981" : isOffline ? "#ef4444" : "#0284c7";
+        const pulseHtml = isOnline
+          ? `<span style="position: absolute; width: 100%; height: 100%; border-radius: 9999px; background-color: #10b981; opacity: 0.75;" class="animate-ping"></span>`
+          : (isOffline ? `<span style="position: absolute; width: 100%; height: 100%; border-radius: 9999px; background-color: #ef4444; opacity: 0.4;" class="animate-pulse"></span>` : "");
 
         const markerHtml = `
           <div style="position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-            ${device.status === "ONLINE" ? `<span style="position: absolute; width: 100%; height: 100%; border-radius: 9999px; background-color: #10b981; opacity: 0.75;" class="${pulseClass}"></span>` : ""}
-            <div style="width: 14px; height: 14px; border-radius: 9999px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); background-color: ${
-              device.status === "ONLINE" ? "#10b981" : device.status === "OFFLINE" ? "#f43f5e" : "#0284c7"
-            }; ${isSelected ? "transform: scale(1.4); outline: 2px solid #06b6d4;" : ""}"></div>
+            ${pulseHtml}
+            <div style="width: 14px; height: 14px; border-radius: 9999px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.35); background-color: ${markerBgColor}; ${isSelected ? "transform: scale(1.4); outline: 2.5px solid #06b6d4;" : ""}"></div>
           </div>
         `;
 
@@ -311,8 +314,8 @@ export function DeviceGeoMap() {
             <div style="font-family: monospace; color: #0284c7; font-weight: 600; font-size: 10px; margin-bottom: 4px;">${device.hardwareId} • ${device.modelName}</div>
             <div style="color: #475569; margin-bottom: 6px; line-height: 1.35;">📍 ${device.formattedAddress}</div>
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-              <span style="font-weight: bold; color: ${device.status === "ONLINE" ? "#059669" : device.status === "OFFLINE" ? "#e11d48" : "#0284c7"}">
-                ● ${device.status === "ONLINE" ? "Trực tuyến" : device.status === "OFFLINE" ? "Ngoại tuyến" : "Tồn kho"}
+              <span style="font-weight: bold; color: ${isOnline ? "#059669" : isOffline ? "#dc2626" : "#0284c7"}">
+                ● ${isOnline ? "Trực tuyến" : isOffline ? "Ngoại tuyến (Offline)" : "Tồn kho"}
               </span>
               <span style="font-size: 9px; color: #64748b; font-family: monospace;">${device.lat.toFixed(4)}, ${device.lng.toFixed(4)}</span>
             </div>
@@ -402,16 +405,19 @@ export function DeviceGeoMap() {
             </div>
 
             {/* Filter Status Combobox */}
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="text-[11px] px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-400 cursor-pointer"
-            >
-              <option value="ALL">Mọi trạng thái ({deviceList.length})</option>
-              <option value="ONLINE">● Trực tuyến</option>
-              <option value="OFFLINE">● Ngoại tuyến</option>
-              <option value="IN_STOCK">● Tồn kho</option>
-            </select>
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-950 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 shrink-0">Trạng thái:</span>
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="text-[11px] py-0.5 bg-transparent text-slate-900 dark:text-white focus:outline-none cursor-pointer font-medium"
+              >
+                <option value="ALL">Tất cả ({deviceList.length})</option>
+                <option value="ONLINE">🟢 Trực tuyến ({deviceList.filter(d => d.status === 'ONLINE').length})</option>
+                <option value="OFFLINE">🔴 Ngoại tuyến ({deviceList.filter(d => d.status === 'OFFLINE').length})</option>
+                <option value="IN_STOCK">🔵 Tồn kho ({deviceList.filter(d => d.status === 'IN_STOCK').length})</option>
+              </select>
+            </div>
 
             {/* Quick Jump Province Buttons */}
             <div className="flex items-center gap-1 bg-slate-200/60 dark:bg-slate-800/80 p-0.5 rounded-md overflow-x-auto max-w-full">
@@ -544,8 +550,8 @@ export function DeviceGeoMap() {
               <span className="text-slate-700 dark:text-slate-300">Trực tuyến</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-              <span className="text-slate-700 dark:text-slate-300">Ngoại tuyến</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+              <span className="text-red-600 dark:text-red-400 font-semibold">Ngoại tuyến (Đỏ)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
@@ -686,7 +692,10 @@ export function DeviceGeoMap() {
                             : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                         }`}
                       >
-                        <span className="font-mono">{d.hardwareId}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.status === "ONLINE" ? "bg-emerald-500" : d.status === "OFFLINE" ? "bg-red-500" : "bg-sky-500"}`} />
+                          <span className="font-mono">{d.hardwareId}</span>
+                        </div>
                         <span className="truncate max-w-[110px] text-slate-400">{d.province}</span>
                       </button>
                     ))}

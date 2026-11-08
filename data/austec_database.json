@@ -279,8 +279,160 @@
     }
   ],
   "requests": [],
-  "supportTickets": [],
-  "supportMessages": [],
+  "supportTickets": [
+    {
+      "id": "ticket-1794116673896",
+      "customerId": "cust-1794116667581",
+      "hardwareId": "AT-DOOR-88239A01",
+      "status": "OPEN",
+      "priority": "NORMAL",
+      "subject": "Kênh hỗ trợ trực tiếp cho khách hàng",
+      "createdAt": "2026-11-08T05:44:33.896Z",
+      "updatedAt": "2026-11-08T05:44:33.958Z"
+    },
+    {
+      "id": "ticket-1794116930921",
+      "customerId": "00000000-0000-0000-0000-000000000001",
+      "hardwareId": "AT-DOOR-88239A01",
+      "status": "OPEN",
+      "priority": "NORMAL",
+      "subject": "Kênh hỗ trợ trực tiếp cho khách hàng",
+      "createdAt": "2026-11-08T05:48:50.921Z",
+      "updatedAt": "2026-11-08T05:49:46.070Z"
+    },
+    {
+      "id": "ticket-1794117063119",
+      "customerId": "test-user-1793567655482",
+      "hardwareId": "AT-DOOR-88239A01",
+      "status": "OPEN",
+      "priority": "NORMAL",
+      "subject": "Kênh hỗ trợ trực tiếp cho khách hàng",
+      "createdAt": "2026-11-08T05:51:03.119Z",
+      "updatedAt": "2026-11-08T05:54:35.021Z"
+    }
+  ],
+  "supportMessages": [
+    {
+      "id": 1,
+      "ticketId": "ticket-1794116673896",
+      "senderId": "cust-1794116667581",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:44:33.896Z"
+    },
+    {
+      "id": 2,
+      "ticketId": "ticket-1794116673896",
+      "senderId": "admin-001",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, kỹ thuật viên khu vực đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:44:33.958Z"
+    },
+    {
+      "id": 3,
+      "ticketId": "ticket-1794116930921",
+      "senderId": "00000000-0000-0000-0000-000000000001",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:48:50.922Z"
+    },
+    {
+      "id": 4,
+      "ticketId": "ticket-1794116930921",
+      "senderId": "admin-001",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:48:50.983Z"
+    },
+    {
+      "id": 5,
+      "ticketId": "ticket-1794116930921",
+      "senderId": "00000000-0000-0000-0000-000000000001",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:49:46.009Z"
+    },
+    {
+      "id": 6,
+      "ticketId": "ticket-1794116930921",
+      "senderId": "admin-001",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:49:46.070Z"
+    },
+    {
+      "id": 7,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "test-user-1793567655482",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:51:03.119Z"
+    },
+    {
+      "id": 8,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "admin-001",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:51:03.180Z"
+    },
+    {
+      "id": 9,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "test-user-1793567655482",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:52:34.860Z"
+    },
+    {
+      "id": 10,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "admin-001",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:52:34.923Z"
+    },
+    {
+      "id": 11,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "test-user-1793567655482",
+      "senderRole": "CUSTOMER",
+      "message": "Cửa cuốn báo lỗi E-03 cảm biến va chạm!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:54:34.961Z"
+    },
+    {
+      "id": 12,
+      "ticketId": "ticket-1794117063119",
+      "senderId": "staff-1793568129381",
+      "senderRole": "CSKH",
+      "message": "Kỹ thuật viên đã tiếp nhận mã lỗi E-03, đang liên hệ anh ngay!",
+      "attachmentUrls": [],
+      "deviceSnapshot": {},
+      "createdAt": "2026-11-08T05:54:35.021Z"
+    }
+  ],
   "deviceInventory": [
     {
       "id": "10000000-0000-0000-0000-000000000001",
@@ -558,6 +710,6 @@
     }
   ],
   "blackboxLogs": [],
-  "lastSavedAt": "2026-11-03T06:44:43.660Z",
+  "lastSavedAt": "2026-11-08T05:54:35.284Z",
   "version": "1.0"
 }
