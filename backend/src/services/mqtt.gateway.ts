@@ -91,11 +91,22 @@ export class MqttGateway {
       this.recordMessage(topic, `[JPEG Photo: ${message.length} bytes]`, 'INCOMING');
       console.log(`[MQTT Gateway] 📸 [${hwId}] Nhận khung hình Camera JPEG: ${message.length} bytes`);
 
-      await this.hotCache.setDeviceState(hwId, {
+      const camPhotoState = {
         isOnline: true,
         currentProperties: { hasStream: true, lastPhotoAt: new Date().toISOString(), photoSize: message.length },
         lastHeartbeat: new Date().toISOString(),
-      });
+      };
+      await this.hotCache.setDeviceState(hwId, camPhotoState);
+      await this.hotCache.setDeviceState(hwId.toLowerCase(), camPhotoState);
+      await this.hotCache.setDeviceState(hwId.toUpperCase(), camPhotoState);
+
+      try {
+        await this.postgresService?.query(
+          `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+          [hwId]
+        );
+      } catch (_) {}
+
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { cameraFrame: true, size: message.length });
       }
@@ -110,11 +121,23 @@ export class MqttGateway {
       const parts = topic.split('/');
       const hwId = parts[1];
       console.log(`[MQTT Gateway] 📷 Camera [${hwId}] thông báo ONLINE! Payload: ${payload}`);
-      await this.hotCache.setDeviceState(hwId, {
+
+      const camOnlineState = {
         isOnline: true,
         currentProperties: { hasStream: true, streamResolution: 'VGA 640x480' },
         lastHeartbeat: new Date().toISOString(),
-      });
+      };
+      await this.hotCache.setDeviceState(hwId, camOnlineState);
+      await this.hotCache.setDeviceState(hwId.toLowerCase(), camOnlineState);
+      await this.hotCache.setDeviceState(hwId.toUpperCase(), camOnlineState);
+
+      try {
+        await this.postgresService?.query(
+          `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+          [hwId]
+        );
+      } catch (_) {}
+
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { isOnline: true });
       }
@@ -290,7 +313,9 @@ export class MqttGateway {
    * Lấy khung hình chụp Camera JPEG mới nhất trong cache bộ nhớ
    */
   public getCameraSnapshot(hwId: string): { buffer: Buffer; timestamp: number } | undefined {
-    return this.cameraSnapshots.get(hwId);
+    return this.cameraSnapshots.get(hwId) ||
+           this.cameraSnapshots.get(hwId.toLowerCase()) ||
+           this.cameraSnapshots.get(hwId.toUpperCase());
   }
 
   /**

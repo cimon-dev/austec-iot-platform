@@ -289,6 +289,15 @@ class BleProvisioningService {
         ? brokerIp.trim()
         : (Uri.tryParse(ApiConfig.baseUrl)?.host ?? '');
 
+    // Làm sạch chuỗi broker IP/Host (loại bỏ protocol và port nếu có)
+    targetBrokerIp = targetBrokerIp
+        .replaceAll('mqtt://', '')
+        .replaceAll('http://', '')
+        .replaceAll('https://', '')
+        .split(':')[0]
+        .split('/')[0]
+        .trim();
+
     // Nếu targetBrokerIp là Render Cloud hoặc rỗng hoặc localhost:
     // Render chỉ mở port HTTP/HTTPS (443), KHÔNG mở port TCP 1883 cho MQTT!
     // MQTT Broker công cộng chuẩn mà Backend Austec sử dụng là broker.emqx.io!
