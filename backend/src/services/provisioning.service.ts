@@ -66,14 +66,11 @@ export class ProvisioningService {
 
     if (!item) {
       // Tự động khởi tạo thiết bị thực tế nếu chưa có trong danh mục kho
-      const upperHw = req.hardwareId.toUpperCase();
-      const isSocketHw = upperHw.startsWith('OCAM') || upperHw.includes('SOCKET') || upperHw.includes('OCAM');
-      const isCamHw = !isSocketHw && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
       const createdItem: DeviceInventory = {
         id: `inv-${req.hardwareId}`,
         hardwareId: req.hardwareId,
         macAddress: `FC:B4:67:${req.hardwareId.replace(/[^A-Za-z0-9]/g, '').slice(0, 4)}`,
-        modelId: isCamHw ? 5 : (isSocketHw ? 4 : 1),
+        modelId: req.hardwareId.toUpperCase().includes('CAM') ? 5 : (req.hardwareId.toUpperCase().includes('OCAM') ? 4 : 1),
         batchNumber: 'BATCH-2026-AUTO',
         supplier: 'Austec Factory',
         qrCodeHash: req.qrCodeHash || '',
