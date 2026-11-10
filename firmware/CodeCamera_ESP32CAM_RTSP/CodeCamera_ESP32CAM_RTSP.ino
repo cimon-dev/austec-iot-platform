@@ -102,31 +102,53 @@ bool initCameraHardware() {
     config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
 
-    if (psramFound()) {
-        config.frame_size   = FRAMESIZE_VGA; // Phát hình VGA 640x480 sắc nét khi có PSRAM ngoài
+    // Kiểm tra thực tế dung lượng PSRAM ngoài có sẵn và sử dụng được không
+    bool hasPSRAM = (psramFound() && ESP.getFreePsram() > 100000);
+    Serial.printf("-> [BỘ NHỚ]: SRAM tự do: %u bytes | PSRAM tự do: %u bytes\n", ESP.getFreeHeap(), ESP.getFreePsram());
+
+    if (hasPSRAM) {
+        config.frame_size   = FRAMESIZE_VGA;  // 640x480 sắc nét khi có PSRAM ngoài
         config.jpeg_quality = 12;
-        config.fb_count     = 2;             // Double buffer mượt mà 15-20 FPS
+        config.fb_count     = 2;              // Double buffer
         config.fb_location  = CAMERA_FB_IN_PSRAM;
         config.grab_mode    = CAMERA_GRAB_LATEST;
-        Serial.println(F("-> [PHẦN CỨNG]: Đã kích hoạt cấu hình phân giải VGA 640x480 chạy trên bộ nhớ PSRAM ngoài."));
+        Serial.println(F("-> [CẤU HÌNH]: Đã chọn phân giải VGA 640x480 trên bộ nhớ PSRAM ngoài."));
     } else {
-        config.frame_size   = FRAMESIZE_QVGA; // Hạ phân giải về QVGA 320x240 khi dùng RAM trong
+        // Phân giải an toàn khi không có chip PSRAM vật lý hoặc PSRAM không gắn kết
+        config.frame_size   = FRAMESIZE_QVGA; // 320x240 (chỉ ~7KB/frame, cực mượt 20 FPS trên DRAM nội bộ)
         config.jpeg_quality = 14;
         config.fb_count     = 1;
         config.fb_location  = CAMERA_FB_IN_DRAM;
         config.grab_mode    = CAMERA_GRAB_WHEN_EMPTY;
-        Serial.println(F("-> [PHẦN CỨNG]: Cảnh báo - Chạy phân giải QVGA 320x240 trên bộ nhớ SRAM trong."));
+        Serial.println(F("-> [CẤU HÌNH]: Chạy phân giải QVGA 320x240 trên SRAM nội bộ (An toàn 100%)."));
     }
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
-        Serial.printf(" - Thử lần 1 thất bại (mã: 0x%x). Đang thử lại chế độ an toàn 1 buffer...\n", err);
-        config.fb_count = 1;
-        config.frame_size = FRAMESIZE_VGA;
+        Serial.printf(" - Thử lần 1 thất bại (mã: 0x%x). Chuyển sang chế độ dự phòng DRAM nội bộ...\n", err);
+        esp_camera_deinit();
+        delay(200);
+
+        config.fb_count     = 1;
+        config.frame_size   = FRAMESIZE_QVGA;
+        config.fb_location  = CAMERA_FB_IN_DRAM;
+        config.grab_mode    = CAMERA_GRAB_WHEN_EMPTY;
+        config.jpeg_quality = 16;
         err = esp_camera_init(&config);
+
         if (err != ESP_OK) {
-            Serial.printf(" - LỖI: Không thể khởi tạo Camera! Mã lỗi: 0x%x\n", err);
-            return false;
+            Serial.printf(" - Thử lần 2 thất bại (mã: 0x%x). Đang thử lại phân giải QQVGA (160x120)...\n", err);
+            esp_camera_deinit();
+            delay(200);
+
+            config.frame_size   = FRAMESIZE_QQVGA;
+            err = esp_camera_init(&config);
+
+            if (err != ESP_OK) {
+                Serial.printf(" - LỖI: Không thể khởi tạo Camera! Mã lỗi: 0x%x\n", err);
+                Serial.println(F(" -> VUI LÒNG KIỂM TRA: Cáp dẹt camera OV2640 đã cắm chặt và đúng chiều vào khe cắm chưa!"));
+                return false;
+            }
         }
     }
 
@@ -392,7 +414,7 @@ void setup() {
     Serial.begin(115200);
 
     // Chân RXD0 (GPIO 3) làm nút bấm Reset Factory
-    pinMode(BUTTON_RESET_PIN, INPUT);
+    pinMode(BUTTON_RESET_PIN, INPUT_PULLUP);
 
     uint8_t mac[6];
     esp_read_mac(mac, ESP_MAC_WIFI_STA);
