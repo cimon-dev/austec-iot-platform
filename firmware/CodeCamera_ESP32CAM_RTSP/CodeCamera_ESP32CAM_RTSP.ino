@@ -78,6 +78,8 @@ uint32_t lastSDFrame = 0;
 
 // --- HÀM KHỞI TẠO CAMERA QUA ESP-IDF DRIVER TIÊU CHUẨN ---
 bool initCameraHardware() {
+    if (hardwareInitialized) return true;
+
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer   = LEDC_TIMER_0;
@@ -97,7 +99,7 @@ bool initCameraHardware() {
     config.pin_sscb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn     = PWDN_GPIO_NUM;
     config.pin_reset    = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 10000000; // Khóa cứng 10MHz để DMA tín hiệu ổn định tuyệt đối
+    config.xclk_freq_hz = 20000000;
     config.pixel_format = PIXFORMAT_JPEG;
 
     if (psramFound()) {
@@ -108,20 +110,34 @@ bool initCameraHardware() {
         config.grab_mode    = CAMERA_GRAB_LATEST;
         Serial.println(F("-> [PHẦN CỨNG]: Đã kích hoạt cấu hình phân giải VGA 640x480 chạy trên bộ nhớ PSRAM ngoài."));
     } else {
-        config.frame_size   = FRAMESIZE_CIF; // Hạ phân giải về CIF 352x288 khi dùng RAM trong
-        config.jpeg_quality = 15;
+        config.frame_size   = FRAMESIZE_QVGA; // Hạ phân giải về QVGA 320x240 khi dùng RAM trong
+        config.jpeg_quality = 14;
         config.fb_count     = 1;
         config.fb_location  = CAMERA_FB_IN_DRAM;
         config.grab_mode    = CAMERA_GRAB_WHEN_EMPTY;
-        Serial.println(F("-> [PHẦN CỨNG]: Cảnh báo - Chạy phân giải CIF 352x288 trên bộ nhớ SRAM trong."));
+        Serial.println(F("-> [PHẦN CỨNG]: Cảnh báo - Chạy phân giải QVGA 320x240 trên bộ nhớ SRAM trong."));
     }
 
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
-        Serial.printf(" - LỖI: Không thể khởi tạo Camera! Mã lỗi: 0x%x\n", err);
-        return false;
+        Serial.printf(" - Thử lần 1 thất bại (mã: 0x%x). Đang thử lại chế độ an toàn 1 buffer...\n", err);
+        config.fb_count = 1;
+        config.frame_size = FRAMESIZE_VGA;
+        err = esp_camera_init(&config);
+        if (err != ESP_OK) {
+            Serial.printf(" - LỖI: Không thể khởi tạo Camera! Mã lỗi: 0x%x\n", err);
+            return false;
+        }
     }
+
+    sensor_t *s = esp_camera_sensor_get();
+    if (s != NULL) {
+        s->set_vflip(s, 1);
+        s->set_hmirror(s, 0);
+    }
+
     Serial.println(F("-> [PHẦN CỨNG]: Khởi tạo phần cứng cảm biến Camera OV2640 THÀNH CÔNG."));
+    hardwareInitialized = true;
     return true;
 }
 
@@ -280,26 +296,31 @@ void startDualProvisioning() {
 // --- KHỞI CHẠY PHẦN CỨNG VÀ MÁY CHỦ RTSP ---
 void startHardwareAndRTSP() {
     if (!hardwareInitialized) {
-        Serial.println(F("-> [PHẦN CỨNG] Đang khởi tạo kết nối mạch Thẻ SD và Camera..."));
+        if (!initCameraHardware()) {
+            return;
+        }
+    }
 
-        // Kích hoạt khe cắm thẻ MicroSD ở chế độ 1-bit để không xung đột chân GPIO
+    // Chỉ thử đọc thẻ SD một lần duy nhất lúc khởi động
+    static bool sd_checked = false;
+    if (!sd_checked) {
+        sd_checked = true;
         if (!SD_MMC.begin("/sdcard", true)) {
-            Serial.println(F(" - Mạch khe cắm thẻ SD: KHÔNG TÌM THẤY THẺ VẬT LÝ TRONG KHE CẮM."));
+            Serial.println(F(" - Mạch khe cắm thẻ SD: KHÔNG CÓ THẺ VẬT LÝ (Chế độ phát trực tuyến RTSP)."));
             sd_card_available = false;
         } else {
             Serial.printf(" - Mạch khe cắm thẻ SD: ĐÃ SẴN SÀNG HẠ TẦNG. Dung lượng: %llu MB\n", SD_MMC.cardSize() / (1024 * 1024));
             sd_card_available = true;
         }
-
-        if (!initCameraHardware()) {
-            return;
-        }
-        hardwareInitialized = true;
     }
 
-    streamer.begin();
-    rtspStarted = true;
-    Serial.printf("-> [RTSP SERVER]: Luồng RTSP sẵn sàng tại: rtsp://%s:8554/live\n", WiFi.localIP().toString().c_str());
+    if (!rtspStarted) {
+        streamer.begin();
+        rtspStarted = true;
+        Serial.println(F("\n============================================="));
+        Serial.printf("-> [RTSP SERVER]: Luồng RTSP sẵn sàng tại: rtsp://%s:8554/live\n", WiFi.localIP().toString().c_str());
+        Serial.println(F("=============================================\n"));
+    }
 }
 
 // --- XỬ LÝ PHÁT LUỒNG VIDEO RTSP VÀ GHI HÌNH THẺ NHỚ ---
@@ -384,7 +405,10 @@ void setup() {
     Serial.println(F("  GIAO THỨC TRUYỀN: RTSP STREAMING (PORT :8554)\n"));
     Serial.println(F("============================================="));
 
-    // Đọc cấu hình Wi-Fi đã lưu
+    // 1. Khởi tạo Camera ngay đầu setup khi SRAM nội bộ còn nguyên 100%
+    initCameraHardware();
+
+    // 2. Đọc cấu hình Wi-Fi đã lưu
     preferences.begin("iot-config", true);
     wifi_ssid = preferences.getString("ssid", "");
     wifi_pass = preferences.getString("pass", "");
@@ -428,7 +452,7 @@ void loop() {
         webServer.handleClient();
     } else {
         if (WiFi.status() == WL_CONNECTED) {
-            if (!rtspStarted) {
+            if (!rtspStarted && hardwareInitialized) {
                 startHardwareAndRTSP();
             }
             if (rtspStarted) {
