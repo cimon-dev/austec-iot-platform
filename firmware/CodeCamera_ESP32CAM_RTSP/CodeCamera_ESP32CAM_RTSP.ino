@@ -154,7 +154,8 @@ void thietlap_BLE() {
         CHARACTERISTIC_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
-    pCharacteristic->setCallbacks(new MyBLECallbacks());
+    static MyBLECallbacks chrCallbacks;
+    pCharacteristic->setCallbacks(chrCallbacks);
     pService->start();
 
     NimBLEAdvertising *pAdvertising = NimBLEDevice::getAdvertising();

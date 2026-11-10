@@ -133,8 +133,8 @@ private:
                 m_rtcpPort = m_rtpPort + 1;
             }
             m_isTcp = false;
-            m_udp.begin(0);
-            respTransport = "RTP/AVP;unicast;client_port=" + String(m_rtpPort) + "-" + String(m_rtcpPort) + ";server_port=" + String(m_udp.localPort());
+            m_udp.begin(8556);
+            respTransport = "RTP/AVP;unicast;client_port=" + String(m_rtpPort) + "-" + String(m_rtcpPort) + ";server_port=8556-8557";
         }
 
         m_state = READY;
