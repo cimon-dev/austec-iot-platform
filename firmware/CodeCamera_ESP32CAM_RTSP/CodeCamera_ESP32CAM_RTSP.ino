@@ -1,4 +1,4 @@
-#pragma GCC optimize ("Os") // Nén kích thước mã máy tối đa chống tràn bộ nhớ IRAM
+// #pragma GCC optimize ("Os")
 
 #include <Arduino.h>
 #include <WiFi.h>
@@ -8,8 +8,21 @@
 #include "SD_MMC.h"
 #include "esp_camera.h"
 
-// --- SỬ DỤNG NIMBLE SIÊU NHẸ THAY VÌ BLUEDROID GỐC (TIẾT KIỆM ~80KB RAM) ---
+// ============================================================================
+// CHẾ ĐỘ CẤU HÌNH WIFI (PROVISIONING)
+// ESP32-CAM AI-Thinker chỉ có 520KB SRAM và 128KB IRAM phần cứng.
+// Khi kích hoạt Camera DMA + Wi-Fi RTSP + PSRAM fix, IRAM đạt ngưỡng tối đa.
+// Cơ chế chuẩn công nghiệp cho ESP32-CAM là dùng SoftAP Captive Portal:
+// - Camera phát Wi-Fi "AUSTEC-CAM-xxxx" (192.168.4.1) với giao diện Web cấu hình.
+// - Sau khi lưu Wi-Fi thành công, tắt AP để dành 100% RAM và ăng-ten 2.4GHz cho RTSP 20 FPS.
+// ============================================================================
+#define ENABLE_BLE_PROVISIONING 0
+
+#if ENABLE_BLE_PROVISIONING
 #include <NimBLEDevice.h>
+#define SERVICE_UUID        "4FAFC201-1FB5-459E-8FCC-C5C9C331914B"
+#define CHARACTERISTIC_UUID "BEA5C122-3D83-11ED-A261-0242AC120002"
+#endif
 
 // --- MÁY CHỦ PHÁT LUỒNG RTSP VIDEO THỜI GIAN THỰC (CỔNG 8554) ---
 #include "OV2640Streamer.h"
@@ -18,10 +31,6 @@
 #if !defined(BOARD_HAS_PSRAM)
 #define BOARD_HAS_PSRAM
 #endif
-
-// --- CẤU HÌNH UUID CHO BLUETOOTH BLE PROVISIONING (ĐỒNG BỘ 100% VỚI APP AUSTEC) ---
-#define SERVICE_UUID        "4FAFC201-1FB5-459E-8FCC-C5C9C331914B"
-#define CHARACTERISTIC_UUID "BEA5C122-3D83-11ED-A261-0242AC120002"
 
 // --- SƠ ĐỒ CHÂN PHẦN CỨNG BẢN QUYỀN BOARD AI-THINKER ESP32-CAM ---
 #define PWDN_GPIO_NUM     32
@@ -49,7 +58,9 @@ Preferences preferences;
 WebServer webServer(80);
 OV2640Streamer streamer(8554); // Cổng máy chủ truyền video RTSP chuẩn quốc tế
 
+#if ENABLE_BLE_PROVISIONING
 NimBLEServer *pServer = NULL;
+#endif
 bool ble_running = false;
 bool isConfigured = false;
 bool hardwareInitialized = false;
@@ -111,6 +122,7 @@ bool initCameraHardware() {
     return true;
 }
 
+#if ENABLE_BLE_PROVISIONING
 // --- CALLBACK NHẬN DỮ LIỆU CẤU HÌNH BLE (TƯƠNG THÍCH MỌI PHIÊN BẢN NIMBLE) ---
 class MyBLECallbacks: public NimBLECharacteristicCallbacks {
     void handleReceivedData(NimBLECharacteristic *pCharacteristic) {
@@ -172,6 +184,10 @@ void tat_BLE() {
     pServer = NULL;
     Serial.println(F("-> Đã TẮT VĨNH VIỄN mạng Bluetooth BLE để tối ưu RAM cho hệ thống."));
 }
+#else
+inline void thietlap_BLE() {}
+inline void tat_BLE() {}
+#endif
 
 // --- CHẾ ĐỘ GHÉP ĐÔI KÉP (SOFTAP + BLE) ---
 void startDualProvisioning() {
