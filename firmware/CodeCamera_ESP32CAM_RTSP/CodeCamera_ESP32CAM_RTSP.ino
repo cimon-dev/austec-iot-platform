@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DNSServer.h>
 #include <Preferences.h>
+#include <esp_mac.h>
 #include "FS.h"
 #include "SD_MMC.h"
 #include "esp_camera.h"
@@ -56,6 +58,7 @@
 // --- KHAI BÁO CÁC ĐỐI TƯỢNG HỆ THỐNG BIẾN TOÀN CỤC ---
 Preferences preferences;
 WebServer webServer(80);
+DNSServer dnsServer;
 OV2640Streamer streamer(8554); // Cổng máy chủ truyền video RTSP chuẩn quốc tế
 
 #if ENABLE_BLE_PROVISIONING
@@ -189,26 +192,89 @@ inline void thietlap_BLE() {}
 inline void tat_BLE() {}
 #endif
 
-// --- CHẾ ĐỘ GHÉP ĐÔI KÉP (SOFTAP + BLE) ---
+// --- CHẾ ĐỘ GHÉP NỐI WEB CAPTIVE PORTAL (SOFTAP) ---
 void startDualProvisioning() {
+    IPAddress apIP(192, 168, 4, 1);
+    IPAddress netMsk(255, 255, 255, 0);
     WiFi.mode(WIFI_AP);
+    WiFi.softAPConfig(apIP, apIP, netMsk);
     WiFi.softAP(device_name.c_str(), "12345678");
 
-    webServer.on("/save", HTTP_POST, [](){
-        if (webServer.hasArg("ssid") && webServer.hasArg("pass")) {
-            preferences.begin("iot-config", false);
-            preferences.putString("ssid", webServer.arg("ssid"));
-            preferences.putString("pass", webServer.arg("pass"));
-            preferences.end();
-            webServer.send(200, "text/plain", "OK");
-            delay(1000);
-            ESP.restart();
+    dnsServer.start(53, "*", apIP);
+
+    webServer.on("/", HTTP_GET, [](){
+        int n = WiFi.scanNetworks();
+        String html = "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'>";
+        html += "<title>Cấu hình Camera Austec</title><style>";
+        html += "body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#e2e8f0;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;padding:16px;box-sizing:border-box}";
+        html += ".card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:28px 22px;max-width:380px;width:100%;box-shadow:0 10px 25px rgba(0,0,0,0.5);text-align:center}";
+        html += "h2{color:#38bdf8;margin:0 0 6px 0;font-size:22px}p{color:#94a3b8;font-size:13px;margin:0 0 20px 0}";
+        html += "label{display:block;text-align:left;color:#cbd5e1;font-size:13px;margin:14px 0 6px 2px;font-weight:600}";
+        html += "select,input{width:100%;padding:12px;margin:0;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#f8fafc;font-size:14px;box-sizing:border-box}";
+        html += "select{cursor:pointer}select:focus,input:focus{outline:none;border-color:#38bdf8}";
+        html += "button{width:100%;padding:14px;background:#0284c7;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;margin-top:24px;transition:0.2s}";
+        html += "button:hover{background:#0369a1}";
+        html += "</style></head><body><div class='card'>";
+        html += "<h2>AUSTEC AI CAMERA</h2><p>Cấu hình kết nối mạng Wi-Fi (2.4GHz)</p>";
+        html += "<form action='/save' method='POST'>";
+        html += "<label>CHỌN MẠNG WI-FI XUNG QUANH:</label>";
+        html += "<select name='ssid' id='ssidSelect' onchange='checkCustom(this)'>";
+        if (n > 0) {
+            for (int i = 0; i < n; ++i) {
+                String curSSID = WiFi.SSID(i);
+                if (curSSID.length() > 0) {
+                    html += "<option value='" + curSSID + "'>" + curSSID + " (" + String(WiFi.RSSI(i)) + " dBm)</option>";
+                }
+            }
         }
+        html += "<option value='__custom'>-- Nhập Wi-Fi khác thủ công --</option>";
+        html += "</select>";
+        html += "<input type='text' name='custom_ssid' id='customSsid' placeholder='Nhập tên Wi-Fi...' style='display:none;margin-top:8px;'>";
+        html += "<label>MẬT KHẨU WI-FI:</label>";
+        html += "<input type='password' name='pass' placeholder='Nhập mật khẩu Wi-Fi...' required>";
+        html += "<button type='submit'>LƯU VÀ KẾT NỐI CAMERA</button>";
+        html += "</form>";
+        html += "<script>";
+        html += "function checkCustom(sel){var c=document.getElementById('customSsid');if(sel.value==='__custom'){c.style.display='block';c.required=true;}else{c.style.display='none';c.required=false;}}";
+        html += "</script>";
+        html += "</div></body></html>";
+        webServer.send(200, "text/html", html);
+    });
+
+    webServer.on("/save", HTTP_POST, [](){
+        String s = webServer.arg("ssid");
+        if (s == "__custom") {
+            s = webServer.arg("custom_ssid");
+        }
+        String p = webServer.arg("pass");
+        if (s.length() > 0) {
+            preferences.begin("iot-config", false);
+            preferences.putString("ssid", s);
+            preferences.putString("pass", p);
+            preferences.end();
+            String resHtml = "<!DOCTYPE html><html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'>";
+            resHtml += "<style>body{font-family:sans-serif;background:#0f172a;color:#fff;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center}.card{background:#1e293b;padding:30px;border-radius:16px;max-width:360px}h2{color:#4ade80}</style></head>";
+            resHtml += "<body><div class='card'><h2>LƯU THÀNH CÔNG!</h2><p>Camera đang khởi động lại để kết nối vào Wi-Fi: <b>" + s + "</b></p><p style='color:#94a3b8;font-size:13px'>Bạn có thể đóng trang này và mở VLC hoặc App Austec.</p></div></body></html>";
+            webServer.send(200, "text/html", resHtml);
+            delay(1500);
+            ESP.restart();
+        } else {
+            webServer.send(400, "text/plain", "Missing SSID");
+        }
+    });
+
+    webServer.onNotFound([](){
+        webServer.sendHeader("Location", "http://192.168.4.1/", true);
+        webServer.send(302, "text/plain", "");
     });
 
     webServer.begin();
     thietlap_BLE();
-    Serial.printf("-> Chế độ Ghép nối Kép đã kích hoạt. Hãy kết nối vào Wi-Fi AP [%s]\n", device_name.c_str());
+    Serial.println(F("\n============================================="));
+    Serial.printf("-> Chế độ Ghép nối Web Captive Portal đã kích hoạt.\n");
+    Serial.printf("-> Wi-Fi phát: [%s] | Pass: [12345678]\n", device_name.c_str());
+    Serial.println(F("-> Mở trình duyệt gõ: http://192.168.4.1 để cấu hình Wi-Fi\n"));
+    Serial.println(F("============================================="));
 }
 
 // --- KHỞI CHẠY PHẦN CỨNG VÀ MÁY CHỦ RTSP ---
@@ -307,10 +373,11 @@ void setup() {
     // Chân RXD0 (GPIO 3) làm nút bấm Reset Factory
     pinMode(BUTTON_RESET_PIN, INPUT);
 
-    WiFi.mode(WIFI_MODE_STA);
-    String macStr = WiFi.macAddress();
-    macStr.replace(":", "");
-    device_name = "CAM" + macStr;
+    uint8_t mac[6];
+    esp_read_mac(mac, ESP_MAC_WIFI_STA);
+    char macBuf[13];
+    snprintf(macBuf, sizeof(macBuf), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    device_name = "CAM" + String(macBuf);
 
     Serial.println(F("\n============================================="));
     Serial.printf("  AUSTEC REALTIME AI CAMERA - %s\n", device_name.c_str());
@@ -357,6 +424,7 @@ void loop() {
     checkResetFactoryTrigger();
 
     if (!isConfigured) {
+        dnsServer.processNextRequest();
         webServer.handleClient();
     } else {
         if (WiFi.status() == WL_CONNECTED) {
