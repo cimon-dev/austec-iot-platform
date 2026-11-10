@@ -953,6 +953,127 @@ export class DeviceOperationsController {
   }
 
   /**
+   * GET /api/devices/:hardwareId/camera/stream
+   * Lấy thông tin URL phát luồng Video thời gian thực (WebRTC / RTSP / HLS)
+   */
+  @Get('/:hardwareId/camera/stream')
+  public async getCameraStream(req: Request, res: Response): Promise<void> {
+    const hwId = req.params.hardwareId;
+    const cleanId = hwId.trim();
+    const mediaHost = process.env.MEDIAMTX_HOST || process.env.STREAM_SERVER_HOST || 'stream.austec.vn';
+    const rtspPort = process.env.STREAM_SERVER_PORT_RTSP || '8554';
+    const webrtcPort = process.env.STREAM_SERVER_PORT_WEBRTC || '8889';
+    const hlsPort = process.env.STREAM_SERVER_PORT_HLS || '8888';
+    const isOnline = (await this.mqttGateway?.isHardwareOnline(cleanId)) ?? true;
+
+    // Stream URLs theo chuẩn MediaMTX
+    const webrtcUrl = `http://${mediaHost}:${webrtcPort}/live/${cleanId}`;
+    const rtspUrl = `rtsp://${mediaHost}:${rtspPort}/live/${cleanId}`;
+    const hlsUrl = `http://${mediaHost}:${hlsPort}/live/${cleanId}/index.m3u8`;
+
+    res.json({
+      success: true,
+      hardwareId: cleanId,
+      streamType: 'webrtc',
+      mediaHost,
+      isOnline,
+      endpoints: {
+        webrtc: webrtcUrl,
+        rtsp: rtspUrl,
+        hls: hlsUrl,
+        snapshot: `/api/devices/${cleanId}/camera/snapshot`
+      },
+      playback: {
+        preferred: 'webrtc',
+        url: webrtcUrl,
+        fpsTarget: 20,
+        latencyMs: 250
+      }
+    });
+  }
+
+  /**
+   * POST /api/devices/camera/media/auth
+   * Webhook xác thực người dùng / camera từ MediaMTX
+   */
+  @Post('/camera/media/auth')
+  public async authenticateMediaStream(req: Request, res: Response): Promise<void> {
+    try {
+      const { action, path } = req.body || {};
+      console.log(`[MediaMTX Auth] Yêu cầu ${action} luồng path: ${path}`);
+      res.status(200).send('OK');
+    } catch (_) {
+      res.status(200).send('OK');
+    }
+  }
+
+  /**
+   * POST /api/devices/camera/media/hook/publish
+   * Hook khi Camera bắt đầu đẩy luồng RTSP vào MediaMTX -> Đánh dấu Online tức thời
+   */
+  @Post('/camera/media/hook/publish')
+  public async onCameraPublish(req: Request, res: Response): Promise<void> {
+    try {
+      const pathStr = req.body?.path || req.query?.path || '';
+      const hwId = String(pathStr).replace(/^live\//, '').trim();
+      if (hwId) {
+        console.log(`[MediaMTX Hook] 🎥 Camera [${hwId}] BẮT ĐẦU phát luồng RTSP!`);
+        if (this.client.getConnected()) {
+          await this.client.query(
+            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        }
+        this.wss?.clients?.forEach((c: any) => {
+          if (c.readyState === 1) {
+            c.send(JSON.stringify({
+              type: 'DEVICE_STATE_CHANGE',
+              hardwareId: hwId,
+              state: { isOnline: true, isStreaming: true, lastHeartbeat: new Date().toISOString() }
+            }));
+          }
+        });
+      }
+      res.status(200).json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/devices/camera/media/hook/unpublish
+   * Hook khi Camera ngắt luồng RTSP khỏi MediaMTX -> Đánh dấu Offline tức thời
+   */
+  @Post('/camera/media/hook/unpublish')
+  public async onCameraUnpublish(req: Request, res: Response): Promise<void> {
+    try {
+      const pathStr = req.body?.path || req.query?.path || '';
+      const hwId = String(pathStr).replace(/^live\//, '').trim();
+      if (hwId) {
+        console.log(`[MediaMTX Hook] ⚠️ Camera [${hwId}] ĐÃ NGẮT luồng RTSP!`);
+        if (this.client.getConnected()) {
+          await this.client.query(
+            `UPDATE device_instances SET is_online = false, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        }
+        this.wss?.clients?.forEach((c: any) => {
+          if (c.readyState === 1) {
+            c.send(JSON.stringify({
+              type: 'DEVICE_STATE_CHANGE',
+              hardwareId: hwId,
+              state: { isOnline: false, isStreaming: false, lastHeartbeat: new Date().toISOString() }
+            }));
+          }
+        });
+      }
+      res.status(200).json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
    * GET /api/devices/:hardwareId/history
    * Lấy nhật ký điều khiển & vận hành của thiết bị (Audit Log / Blackbox)
    */

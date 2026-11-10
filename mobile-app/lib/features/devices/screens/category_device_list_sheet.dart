@@ -337,6 +337,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   child: Image.network(
                     "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
                     fit: BoxFit.contain,
+                    gaplessPlayback: true,
                     errorBuilder: (context, error, stackTrace) => Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -1009,6 +1010,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     Image.network(
                       "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
                       fit: BoxFit.cover,
+                      gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) => Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,

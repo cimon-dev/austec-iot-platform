@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import '../../../core/constants/app_theme.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
@@ -24,6 +27,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   bool _isBusy = false;
   int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
   Timer? _snapshotRefreshTimer;
+  Map<String, dynamic>? _streamEndpoints;
 
   @override
   void initState() {
@@ -31,6 +35,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     _device = widget.device;
 
     if (_device.category == DeviceCategory.camera) {
+      _fetchStreamInfo();
       if (!widget.isAlreadyStreaming) {
         // Chỉ gửi mã 13 nếu chưa phát stream từ trước
         _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_START");
@@ -43,6 +48,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         }
       });
     }
+  }
+
+  Future<void> _fetchStreamInfo() async {
+    try {
+      final res = await http.get(Uri.parse("${ApiConfig.baseUrl}/api/devices/${_device.hardwareId}/camera/stream"));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (mounted) {
+          setState(() {
+            _streamEndpoints = data;
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -804,6 +823,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     child: Image.network(
                       "${ApiConfig.baseUrl}/api/devices/${_device.hardwareId}/camera/snapshot?t=$_snapshotKey",
                       fit: BoxFit.cover,
+                      gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) => Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -861,6 +881,82 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               ),
             ],
           ),
+          if (_streamEndpoints != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.stream_rounded, color: AppTheme.cyanAccent, size: 16),
+                      const SizedBox(width: 8),
+                      const Text(
+                        "LUỒNG REALTIME (15-20 FPS)",
+                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.emeraldSuccess.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.emeraldSuccess.withValues(alpha: 0.5)),
+                        ),
+                        child: const Text("MediaMTX", style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 9, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "• WebRTC: ${_streamEndpoints?['endpoints']?['webrtc'] ?? 'N/A'}",
+                    style: const TextStyle(color: Colors.white70, fontSize: 10, fontFamily: 'monospace'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "• RTSP: ${_streamEndpoints?['endpoints']?['rtsp'] ?? 'N/A'}",
+                    style: const TextStyle(color: Colors.white70, fontSize: 10, fontFamily: 'monospace'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.cyanAccent,
+                        side: const BorderSide(color: AppTheme.cyanAccent),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                      ),
+                      icon: const Icon(Icons.copy_rounded, size: 14),
+                      label: const Text("Sao chép link WebRTC xem 20 FPS", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        final webrtc = _streamEndpoints?['endpoints']?['webrtc'] ?? '';
+                        if (webrtc.isNotEmpty) {
+                          Clipboard.setData(ClipboardData(text: webrtc));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Đã sao chép link WebRTC! Mở trình duyệt Chrome/Safari hoặc VLC để xem luồng mượt mà 20 FPS."),
+                              backgroundColor: AppTheme.cyanAccent,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

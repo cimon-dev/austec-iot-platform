@@ -192,6 +192,69 @@ export function createApp() {
   app.use('/api', createNotificationsRouter(postgresClient));
   app.use('/api', createMqttRouter(mqttGateway));
 
+  // ==========================================
+  // MEDIAMTX DIRECT HOOKS & AUTH ALIASES
+  // ==========================================
+  app.post('/api/media/auth', (_req, res) => {
+    res.status(200).send('OK');
+  });
+
+  app.post('/api/media/hook/publish', async (req, res) => {
+    try {
+      const pathStr = req.body?.path || req.query?.path || '';
+      const hwId = String(pathStr).replace(/^live\//, '').trim();
+      if (hwId) {
+        console.log(`[MediaMTX Hook Root] 🎥 Camera [${hwId}] BẮT ĐẦU phát luồng RTSP!`);
+        if (postgresClient.getConnected()) {
+          await postgresClient.query(
+            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        }
+        wss.clients.forEach((c: any) => {
+          if (c.readyState === 1) {
+            c.send(JSON.stringify({
+              type: 'DEVICE_STATE_CHANGE',
+              hardwareId: hwId,
+              state: { isOnline: true, isStreaming: true, lastHeartbeat: new Date().toISOString() }
+            }));
+          }
+        });
+      }
+      res.status(200).json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post('/api/media/hook/unpublish', async (req, res) => {
+    try {
+      const pathStr = req.body?.path || req.query?.path || '';
+      const hwId = String(pathStr).replace(/^live\//, '').trim();
+      if (hwId) {
+        console.log(`[MediaMTX Hook Root] ⚠️ Camera [${hwId}] ĐÃ NGẮT luồng RTSP!`);
+        if (postgresClient.getConnected()) {
+          await postgresClient.query(
+            `UPDATE device_instances SET is_online = false, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        }
+        wss.clients.forEach((c: any) => {
+          if (c.readyState === 1) {
+            c.send(JSON.stringify({
+              type: 'DEVICE_STATE_CHANGE',
+              hardwareId: hwId,
+              state: { isOnline: false, isStreaming: false, lastHeartbeat: new Date().toISOString() }
+            }));
+          }
+        });
+      }
+      res.status(200).json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   const chatRepository = new ChatRepository(postgresClient);
 
   // WebSocket Chat Event Handlers

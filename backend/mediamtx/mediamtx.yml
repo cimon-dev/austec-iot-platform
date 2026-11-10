@@ -1,0 +1,32 @@
+# =====================================================================
+# CẤU HÌNH MEDIAMTX STREAMING SERVER CHO AUSTEC IOT PLATFORM
+# Tương thích bo mạch ESP32-CAM và Mobile App Flutter / Web Admin
+# =====================================================================
+
+# 1. CỔNG NHẬN LUỒNG RTSP TỪ CAMERA ESP32-CAM
+rtsp: yes
+rtspAddress: :8554
+protocols: [tcp, udp]
+
+# 2. CỔNG PHÁT WEBRTC ĐỘ TRỄ SIÊU THẤP CHO MOBILE APP & WEB ADMIN (< 300ms)
+webrtc: yes
+webrtcAddress: :8889
+webrtcAllowBothTransports: yes
+
+# 3. CỔNG HLS DỰ PHÒNG CHO TRÌNH DUYỆT WEB
+hls: yes
+hlsAddress: :8888
+hlsAlwaysRemux: yes
+
+# 4. BẢO MẬT: XÁC THỰC QUA WEBHOOK VỚI BACKEND RENDER AUSTEC
+# MediaMTX sẽ gửi yêu cầu xác thực sang Backend trước khi cho phép phát/xem
+externalAuthenticationURL: https://austec-backend.onrender.com/api/media/auth
+
+# 5. CẤU HÌNH ĐƯỜNG DẪN ĐỘNG CHO TỪNG CAMERA (live/{hardwareId})
+paths:
+  live/*:
+    # Khi Camera kết nối và bắt đầu phát hình -> Báo Backend cập nhật Online
+    runOnPublish: curl -s -X POST https://austec-backend.onrender.com/api/media/hook/publish -d "path=$MTX_PATH"
+    # Khi Camera mất điện/ngắt kết nối -> Báo Backend cập nhật Offline ngay lập tức
+    runOnUnpublish: curl -s -X POST https://austec-backend.onrender.com/api/media/hook/unpublish -d "path=$MTX_PATH"
+

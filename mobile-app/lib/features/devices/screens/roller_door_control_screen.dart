@@ -950,6 +950,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     Image.network(
                       "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
                       fit: BoxFit.cover,
+                      gaplessPlayback: true,
                       errorBuilder: (context, error, stackTrace) => Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1352,6 +1353,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   child: Image.network(
                     "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
                     fit: BoxFit.contain,
+                    gaplessPlayback: true,
                     errorBuilder: (context, error, stackTrace) => const Center(
                       child: Text("Đang kết nối camera...", style: TextStyle(color: Colors.white70)),
                     ),
