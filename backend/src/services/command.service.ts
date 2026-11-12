@@ -114,6 +114,13 @@ export class CommandService {
     }
     
     if (this.mqttGateway) {
+      // Nếu là lệnh bật stream camera ("13") và Backend có MEDIAMTX_HOST từ .env -> đẩy động xuống ESP32 qua MQTT
+      // để khi PC đổi IP Wi-Fi hoặc chuyển lên VPS không cần cắm cáp nạp lại firmware ESP32
+      const configuredMediaHost = (process.env.MEDIAMTX_HOST || process.env.STREAM_SERVER_HOST || '').trim();
+      const configuredRtspPort = (process.env.STREAM_SERVER_PORT_RTSP || '8554').trim();
+      if (isCamera && actionCode === '13' && configuredMediaHost) {
+        await this.mqttGateway.publishAction(req.actorId, req.hardwareId, `rtsp:${configuredMediaHost}:${configuredRtspPort}`);
+      }
       // Phát mã lệnh chuẩn trực tiếp qua MQTT tới thiết bị phần cứng
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
     } else {

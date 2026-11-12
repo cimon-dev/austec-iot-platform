@@ -1,14 +1,11 @@
-import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
 import '../../../core/constants/app_theme.dart';
-import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../cskh/cskh.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
+import '../widgets/camera_webrtc_player.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final DeviceItem device;
@@ -25,8 +22,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   final IoTGatewayClient _gateway = IoTGatewayClient();
   late DeviceItem _device;
   bool _isBusy = false;
-  int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
-  Timer? _snapshotRefreshTimer;
+  bool _isStreamActive = true;
+  int _streamReloadNonce = 0;
   Map<String, dynamic>? _streamEndpoints;
 
   @override
@@ -35,38 +32,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     _device = widget.device;
 
     if (_device.category == DeviceCategory.camera) {
-      _fetchStreamInfo();
       if (!widget.isAlreadyStreaming) {
         // Chỉ gửi mã 13 nếu chưa phát stream từ trước
         _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_START");
       }
-      _snapshotRefreshTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-        if (mounted) {
-          setState(() {
-            _snapshotKey = DateTime.now().millisecondsSinceEpoch;
-          });
-        }
-      });
     }
-  }
-
-  Future<void> _fetchStreamInfo() async {
-    try {
-      final res = await http.get(Uri.parse("${ApiConfig.baseUrl}/api/devices/${_device.hardwareId}/camera/stream"));
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (mounted) {
-          setState(() {
-            _streamEndpoints = data;
-          });
-        }
-      }
-    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _snapshotRefreshTimer?.cancel();
     if (!widget.isAlreadyStreaming && _device.category == DeviceCategory.camera) {
       // Dừng stream nếu màn hình này tự phát stream
       _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_STOP");
@@ -820,22 +794,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Image.network(
-                      "${ApiConfig.baseUrl}/api/devices/${_device.hardwareId}/camera/snapshot?t=$_snapshotKey",
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 48),
-                            const SizedBox(height: 8),
-                            Text("LIVE STREAM • ${_device.streamResolution}", style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                            const SizedBox(height: 4),
-                            const Text("Đang chờ khung hình từ ESP32-CAM...", style: TextStyle(color: Colors.white38, fontSize: 11)),
-                          ],
-                        ),
-                      ),
+                    child: CameraWebRtcPlayer(
+                      hardwareId: _device.hardwareId,
+                      isActive: _isStreamActive,
+                      reloadNonce: _streamReloadNonce,
+                      onStreamInfoLoaded: (data) {
+                        if (mounted) {
+                          setState(() => _streamEndpoints = data);
+                        }
+                      },
                     ),
                   ),
                   Positioned(
@@ -861,23 +828,26 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 label: const Text("Bật Stream", style: TextStyle(fontWeight: FontWeight.bold)),
                 onPressed: () {
                   _triggerAction("STREAM_START");
-                  setState(() => _snapshotKey = DateTime.now().millisecondsSinceEpoch);
+                  setState(() {
+                    _isStreamActive = true;
+                    _streamReloadNonce++;
+                  });
                 },
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey, foregroundColor: Colors.white),
                 icon: const Icon(Icons.stop_rounded),
                 label: const Text("Dừng", style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () => _triggerAction("STREAM_STOP"),
+                onPressed: () {
+                  _triggerAction("STREAM_STOP");
+                  setState(() => _isStreamActive = false);
+                },
               ),
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.purpleAccent, foregroundColor: Colors.white),
                 icon: const Icon(Icons.camera_alt),
                 label: const Text("Chụp", style: TextStyle(fontWeight: FontWeight.bold)),
-                onPressed: () {
-                  _triggerAction("TAKE_SNAPSHOT");
-                  setState(() => _snapshotKey = DateTime.now().millisecondsSinceEpoch);
-                },
+                onPressed: () => _triggerAction("TAKE_SNAPSHOT"),
               ),
             ],
           ),

@@ -1,32 +1,38 @@
 # =====================================================================
-# CẤU HÌNH MEDIAMTX STREAMING SERVER CHO AUSTEC IOT PLATFORM
-# Tương thích bo mạch ESP32-CAM và Mobile App Flutter / Web Admin
+# CẤU HÌNH MEDIAMTX STREAMING SERVER (LOCAL WINDOWS / VPS DOCKER)
+# Phiên bản tương thích MediaMTX v1.21.x + FFmpeg (bluenviron/mediamtx:latest-ffmpeg)
+# Toàn bộ IP / Port / Webhook đọc từ file .env tập trung qua biến MTX_* của Docker Compose!
 # =====================================================================
 
-# 1. CỔNG NHẬN LUỒNG RTSP TỪ CAMERA ESP32-CAM
+logLevel: info
+
+# 1. CỔNG NHẬN LUỒNG RTSP TỪ CAMERA ESP32-CAM (PUSH vào raw/<hardwareId>)
+# Ghi đè động qua MTX_RTSPADDRESS trong docker-compose.yml (.env)
 rtsp: yes
-rtspAddress: :8554
-protocols: [tcp, udp]
+rtspTransports: [tcp, udp]
 
-# 2. CỔNG PHÁT WEBRTC ĐỘ TRỄ SIÊU THẤP CHO MOBILE APP & WEB ADMIN (< 300ms)
+# 2. CỔNG PHÁT WEBRTC ĐỘ TRỄ SIÊU THẤP CHO MOBILE APP & TRÌNH DUYỆT (< 300ms)
+# Ghi đè động MTX_WEBRTCADDITIONALHOSTS=${MEDIAMTX_HOST} từ .env (không fix cứng IP ở đây)
 webrtc: yes
-webrtcAddress: :8889
-webrtcAllowBothTransports: yes
 
-# 3. CỔNG HLS DỰ PHÒNG CHO TRÌNH DUYỆT WEB
+# 3. CỔNG HLS CHO TRÌNH DUYỆT WEB ADMIN
 hls: yes
-hlsAddress: :8888
-hlsAlwaysRemux: yes
+hlsAlwaysRemux: true
 
-# 4. BẢO MẬT: XÁC THỰC QUA WEBHOOK VỚI BACKEND RENDER AUSTEC
-# MediaMTX sẽ gửi yêu cầu xác thực sang Backend trước khi cho phép phát/xem
-externalAuthenticationURL: https://austec-backend.onrender.com/api/media/auth
+# 4. BẢO MẬT: XÁC THỰC QUA WEBHOOK VỚI BACKEND AUSTEC
+# Ghi đè động qua MTX_AUTHHTTPADDRESS=${MEDIAMTX_AUTH_URL} từ .env
+authMethod: http
 
-# 5. CẤU HÌNH ĐƯỜNG DẪN ĐỘNG CHO TỪNG CAMERA (live/{hardwareId})
+# 5. ĐƯỜNG DẪN ĐỘNG CHO TỪNG CAMERA
 paths:
-  live/*:
-    # Khi Camera kết nối và bắt đầu phát hình -> Báo Backend cập nhật Online
-    runOnPublish: curl -s -X POST https://austec-backend.onrender.com/api/media/hook/publish -d "path=$MTX_PATH"
-    # Khi Camera mất điện/ngắt kết nối -> Báo Backend cập nhật Offline ngay lập tức
-    runOnUnpublish: curl -s -X POST https://austec-backend.onrender.com/api/media/hook/unpublish -d "path=$MTX_PATH"
+  # Kênh gốc ESP32-CAM OV2640 đẩy RTSP MJPEG lên (rtsp://<MEDIAMTX_HOST>:8554/raw/<hardwareId>)
+  # Tự động dùng FFmpeg chuyển mã MJPEG -> H.264 Low-Latency sang live/<hardwareId> để chạy WebRTC/HLS/RTSP
+  "~^raw/(.+)$":
+    runOnAvailable: 'ffmpeg -loglevel warning -rtsp_transport tcp -fflags nobuffer -flags low_delay -analyzeduration 300000 -probesize 65536 -i rtsp://127.0.0.1:$RTSP_PORT/$MTX_PATH -an -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -g 15 -pkt_size 1300 -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:$RTSP_PORT/live/$G1'
+    runOnAvailableRestart: true
 
+  # Kênh chuẩn sau chuyển mã để Mobile App / Web / VLC xem tại live/<hardwareId>
+  # Biến $MEDIAMTX_HOOK_BASE_URL được truyền vào container từ file .env
+  "~^live/(.+)$":
+    runOnOnline: 'sh -c "wget -qO- --post-data=\"\" \"${MEDIAMTX_HOOK_BASE_URL}/publish?path=${MTX_PATH}\" >/dev/null 2>&1"'
+    runOnOffline: 'sh -c "wget -qO- --post-data=\"\" \"${MEDIAMTX_HOOK_BASE_URL}/unpublish?path=${MTX_PATH}\" >/dev/null 2>&1"'

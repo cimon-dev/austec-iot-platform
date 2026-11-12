@@ -958,12 +958,19 @@ export class DeviceOperationsController {
    */
   @Get('/:hardwareId/camera/stream')
   public async getCameraStream(req: Request, res: Response): Promise<void> {
-    const hwId = req.params.hardwareId;
-    const cleanId = hwId.trim();
-    const mediaHost = process.env.MEDIAMTX_HOST || process.env.STREAM_SERVER_HOST || 'stream.austec.vn';
-    const rtspPort = process.env.STREAM_SERVER_PORT_RTSP || '8554';
-    const webrtcPort = process.env.STREAM_SERVER_PORT_WEBRTC || '8889';
-    const hlsPort = process.env.STREAM_SERVER_PORT_HLS || '8888';
+    const rawHwId = req.params.hardwareId;
+    const cleanId = (Array.isArray(rawHwId) ? rawHwId[0] : rawHwId || '').trim();
+    const mediaHost = (process.env.MEDIAMTX_HOST || process.env.STREAM_SERVER_HOST || '').trim();
+    if (!mediaHost) {
+      res.status(500).json({
+        success: false,
+        message: 'Chưa cấu hình MEDIAMTX_HOST trong file .env (không dùng host mặc định giả).',
+      });
+      return;
+    }
+    const rtspPort = (process.env.STREAM_SERVER_PORT_RTSP || '8554').trim();
+    const webrtcPort = (process.env.STREAM_SERVER_PORT_WEBRTC || '8889').trim();
+    const hlsPort = (process.env.STREAM_SERVER_PORT_HLS || '8888').trim();
     const isOnline = (await this.mqttGateway?.isHardwareOnline(cleanId)) ?? true;
 
     // Stream URLs theo chuẩn MediaMTX

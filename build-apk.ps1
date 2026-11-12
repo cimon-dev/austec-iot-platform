@@ -123,7 +123,47 @@ try {
     Write-Host "Quá trình này có thể mất từ 1 - 3 phút, vui lòng chờ..." -ForegroundColor Gray
     Write-Host ""
 
-    & flutter build apk --release --build-name=$TargetVerName --build-number=$TargetVerCode
+    # Nạp biến từ file .env tập trung ở thư mục gốc dự án (nếu có) để truyền vào App qua --dart-define
+    $RootEnvPath = Join-Path $ScriptDir ".env"
+    $DartDefines = @()
+    if (Test-Path $RootEnvPath) {
+        $EnvMap = @{}
+        Get-Content $RootEnvPath -Encoding UTF8 | ForEach-Object {
+            $line = $_.Trim()
+            if ($line -and -not $line.StartsWith('#') -and $line.Contains('=')) {
+                $idx = $line.IndexOf('=')
+                $k = $line.Substring(0, $idx).Trim()
+                $v = $line.Substring($idx + 1).Trim()
+                $EnvMap[$k] = $v
+            }
+        }
+        if ($EnvMap["CLOUD_BACKEND_URL"]) {
+            $DartDefines += "--dart-define=CLOUD_BACKEND_URL=$($EnvMap["CLOUD_BACKEND_URL"])"
+        }
+        if ($EnvMap["LOCAL_BACKEND_URL"]) {
+            $DartDefines += "--dart-define=LOCAL_BACKEND_URL=$($EnvMap["LOCAL_BACKEND_URL"])"
+        } elseif ($EnvMap["SERVER_HOST"]) {
+            $PortVal = if ($EnvMap["BACKEND_PORT"]) { $EnvMap["BACKEND_PORT"] } else { "4000" }
+            $DartDefines += "--dart-define=LOCAL_BACKEND_URL=http://$($EnvMap["SERVER_HOST"]):$PortVal"
+        }
+        if ($EnvMap["MEDIAMTX_HOST"]) {
+            $DartDefines += "--dart-define=MEDIAMTX_HOST=$($EnvMap["MEDIAMTX_HOST"])"
+        }
+        if ($EnvMap["STREAM_SERVER_PORT_WEBRTC"]) {
+            $DartDefines += "--dart-define=STREAM_SERVER_PORT_WEBRTC=$($EnvMap["STREAM_SERVER_PORT_WEBRTC"])"
+        }
+        if ($EnvMap["STREAM_SERVER_PORT_RTSP"]) {
+            $DartDefines += "--dart-define=STREAM_SERVER_PORT_RTSP=$($EnvMap["STREAM_SERVER_PORT_RTSP"])"
+        }
+        if ($EnvMap["STREAM_SERVER_PORT_HLS"]) {
+            $DartDefines += "--dart-define=STREAM_SERVER_PORT_HLS=$($EnvMap["STREAM_SERVER_PORT_HLS"])"
+        }
+        if ($DartDefines.Count -gt 0) {
+            Write-Host "-> Đã nạp cấu hình Server từ .env: $($DartDefines -join ' ')" -ForegroundColor Cyan
+        }
+    }
+
+    & flutter build apk --release --build-name=$TargetVerName --build-number=$TargetVerCode @DartDefines
 
     if ($LASTEXITCODE -ne 0) {
         Write-Host ""

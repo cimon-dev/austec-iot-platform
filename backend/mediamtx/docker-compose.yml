@@ -1,11 +1,29 @@
-version: '3.8'
-
 services:
   austec-mediamtx:
-    image: bluenviron/mediamtx:latest
+    image: bluenviron/mediamtx:latest-ffmpeg
     container_name: austec_mediamtx
-    restart: always
-    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - ../../.env
+    environment:
+      - MTX_RTSPADDRESS=:${STREAM_SERVER_PORT_RTSP:?Thiếu STREAM_SERVER_PORT_RTSP trong .env}
+      - MTX_HLSADDRESS=:${STREAM_SERVER_PORT_HLS:?Thiếu STREAM_SERVER_PORT_HLS trong .env}
+      - MTX_WEBRTCADDRESS=:${STREAM_SERVER_PORT_WEBRTC:?Thiếu STREAM_SERVER_PORT_WEBRTC trong .env}
+      - MTX_WEBRTCLOCALUDPADDRESS=:${STREAM_SERVER_PORT_ICE:?Thiếu STREAM_SERVER_PORT_ICE trong .env}
+      - MTX_WEBRTCLOCALTCPADDRESS=:${STREAM_SERVER_PORT_ICE:?Thiếu STREAM_SERVER_PORT_ICE trong .env}
+      - MTX_WEBRTCADDITIONALHOSTS=${MEDIAMTX_HOST:?Thiếu MEDIAMTX_HOST trong .env}
+      - MTX_AUTHHTTPADDRESS=${MEDIAMTX_AUTH_URL:?Thiếu MEDIAMTX_AUTH_URL trong .env}
+      - MEDIAMTX_HOOK_BASE_URL=${MEDIAMTX_HOOK_BASE_URL:?Thiếu MEDIAMTX_HOOK_BASE_URL trong .env}
+    # [NOTE LOCAL vs VPS]
+    # Trên Docker Desktop Windows dùng ports tường minh vì network_mode: host không áp dụng ổn định trên Windows.
+    # Khi chạy trên VPS Linux, có thể giữ nguyên ports này hoặc chuyển sang network_mode: host.
+    ports:
+      - "${STREAM_SERVER_PORT_RTSP}:${STREAM_SERVER_PORT_RTSP}"         # RTSP TCP (/raw/<id> & /live/<id>)
+      - "${STREAM_SERVER_PORT_HLS}:${STREAM_SERVER_PORT_HLS}"           # HLS HTTP (/live/<id>/index.m3u8)
+      - "${STREAM_SERVER_PORT_WEBRTC}:${STREAM_SERVER_PORT_WEBRTC}"     # WebRTC HTTP/WHEP (/live/<id>)
+      - "${STREAM_SERVER_PORT_ICE}:${STREAM_SERVER_PORT_ICE}/udp"       # WebRTC ICE UDP
+      - "${STREAM_SERVER_PORT_ICE}:${STREAM_SERVER_PORT_ICE}/tcp"       # WebRTC ICE TCP
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
-

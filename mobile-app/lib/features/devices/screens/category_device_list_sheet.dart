@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
-import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import 'device_detail_screen.dart';
 import 'device_settings_screen.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'roller_door_control_screen.dart';
+import '../widgets/camera_webrtc_player.dart';
 
 class CategoryDeviceListSheet extends StatefulWidget {
   final CategoryMeta categoryMeta;
@@ -30,8 +30,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
   bool _hasMoreCameras = true;
   int _cameraOffset = 0;
   static const int _batchSize = 5; // 4-6 camera mỗi lần
-  Timer? _snapshotRefreshTimer;
-  int _snapshotKey = DateTime.now().millisecondsSinceEpoch;
   StreamSubscription<DeviceItem>? _deviceUpdateSub;
 
   @override
@@ -46,13 +44,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     if (widget.categoryMeta.category == DeviceCategory.camera) {
       _loadInitialCameraBatch();
       _scrollController.addListener(_onScroll);
-      _snapshotRefreshTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-        if (mounted) {
-          setState(() {
-            _snapshotKey = DateTime.now().millisecondsSinceEpoch;
-          });
-        }
-      });
     }
   }
 
@@ -61,7 +52,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     WidgetsBinding.instance.removeObserver(this);
     _deviceUpdateSub?.cancel();
     _scrollController.dispose();
-    _snapshotRefreshTimer?.cancel();
 
     // Dừng toàn bộ luồng camera khi thoát danh sách (Gửi mã 14)
     if (widget.categoryMeta.category == DeviceCategory.camera) {
@@ -334,25 +324,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   maxScale: 6.0,
                   panEnabled: true,
                   scaleEnabled: true,
-                  child: Image.network(
-                    "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                    errorBuilder: (context, error, stackTrace) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.videocam_outlined, color: AppTheme.cyanAccent, size: 64),
-                          const SizedBox(height: 12),
-                          Text(
-                            device.name,
-                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text("Đang truyền luồng video từ camera...", style: TextStyle(color: Colors.white70, fontSize: 12)),
-                        ],
-                      ),
-                    ),
+                  child: CameraWebRtcPlayer(
+                    hardwareId: device.hardwareId,
+                    isActive: true,
                   ),
                 ),
               ),
@@ -1007,25 +981,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      "${ApiConfig.baseUrl}/api/devices/${device.hardwareId}/camera/snapshot?t=$_snapshotKey",
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.videocam_rounded, color: AppTheme.cyanAccent, size: 44),
-                            const SizedBox(height: 6),
-                            Text(
-                              "LIVE STREAM • ${device.streamResolution}",
-                              style: const TextStyle(color: Colors.white70, fontSize: 11),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text("Đang lấy khung hình ESP32-CAM...", style: TextStyle(color: Colors.white38, fontSize: 10)),
-                          ],
-                        ),
-                      ),
+                    CameraWebRtcPlayer(
+                      hardwareId: device.hardwareId,
+                      isActive: _activeStreamingCameras.contains(device.hardwareId),
                     ),
                     Positioned(
                       top: 10,

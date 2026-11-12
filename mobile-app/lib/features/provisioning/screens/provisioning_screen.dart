@@ -35,6 +35,10 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   BluetoothAdapterState _adapterState = BluetoothAdapterState.unknown;
   StreamSubscription? _adapterStateSub;
   StreamSubscription<List<ScanResult>>? _scanResultSub;
+  StreamSubscription<bool>? _isScanningSub;
+  bool _permissionsReadyForBle = false;
+  int _scanSessionId = 0;
+  String? _bleErrorMessage;
 
   bool _isScanningWifi = false;
   String _currentWifiSsid = "";
@@ -67,46 +71,65 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     super.initState();
     _detectCurrentWifi();
 
-    // Tự động xin quyền và lấy tọa độ GPS vệ tinh ngay khi người dùng vào màn hình Thêm Thiết Bị
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: false);
-      }
-    });
-
     if (!kIsWeb) {
       _adapterStateSub = FlutterBluePlus.adapterState.listen((state) {
         if (!mounted) return;
+        final prevState = _adapterState;
         setState(() => _adapterState = state);
         if (state == BluetoothAdapterState.on) {
-          _triggerScan();
+          // Chỉ tự động quét khi bước xin quyền lần đầu đã hoàn tất và Bluetooth vừa bật lại
+          if (_permissionsReadyForBle && prevState != BluetoothAdapterState.on) {
+            _triggerScan(clearPrevious: true, forceRestart: true);
+          }
         } else {
           setState(() => _isScanning = false);
         }
       });
 
-      FlutterBluePlus.isScanning.listen((scanning) {
+      _isScanningSub = FlutterBluePlus.isScanning.listen((scanning) {
         if (mounted) setState(() => _isScanning = scanning);
       });
+    }
 
-      // Kiểm tra trạng thái hiện tại và kích hoạt quét ngay
-      FlutterBluePlus.adapterState.first.then((state) {
-        if (!mounted) return;
-        setState(() => _adapterState = state);
-        _triggerScan();
-      }).catchError((_) {
-        _triggerScan();
-      });
-    } else {
+    // Tuần tự hóa xin quyền Vị trí trước rồi mới xin quyền & quét BLE mới mỗi lần vào màn hình
+    // Tránh Android hủy dialog quyền BLUETOOTH_SCAN khi hai hộp thoại xin quyền OS bật cùng lúc.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initPermissionsAndFreshScan();
+    });
+  }
+
+  Future<void> _initPermissionsAndFreshScan() async {
+    if (!mounted) return;
+
+    if (!kIsWeb) {
+      try {
+        LocationPermission locPerm = await Geolocator.checkPermission();
+        if (locPerm == LocationPermission.denied) {
+          await Geolocator.requestPermission();
+        }
+      } catch (_) {}
+    }
+    if (!mounted) return;
+
+    // Lấy tọa độ GPS & đọc tên Wi-Fi ngầm (không bật thêm dialog OS nữa vì vừa xử lý xong ở trên)
+    unawaited(_getCurrentGpsLocation(promptIfDenied: false, showSuccessSnackbar: false));
+
+    _permissionsReadyForBle = true;
+
+    if (kIsWeb) {
       _startContinuousBleScanning();
+    } else {
+      await _triggerScan(clearPrevious: true, forceRestart: true);
     }
   }
 
   @override
   void dispose() {
+    _scanSessionId++;
     _progressSmoothTimer?.cancel();
     _autoDiscoveryTimer?.cancel();
     _scanResultSub?.cancel();
+    _isScanningSub?.cancel();
     _adapterStateSub?.cancel();
     if (!kIsWeb) {
       try {
@@ -123,13 +146,30 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     super.dispose();
   }
 
-  Future<void> _triggerScan() async {
-    if (_isScanning) return;
-    setState(() => _isScanning = true);
+  Future<void> _triggerScan({bool clearPrevious = true, bool forceRestart = true}) async {
+    if (!forceRestart && _isScanning) return;
+    final int mySession = ++_scanSessionId;
+
+    if (clearPrevious && mounted) {
+      setState(() {
+        _discoveredDevices = [];
+        _selectedDevice = null;
+        _bleErrorMessage = null;
+        _isScanning = true;
+      });
+    } else if (mounted) {
+      setState(() {
+        _bleErrorMessage = null;
+        _isScanning = true;
+      });
+    }
 
     if (kIsWeb) {
-      final devs = await _bleService.scanForHardwareDevices(triggerWebBle: true);
-      if (mounted) {
+      final devs = await _bleService.scanForHardwareDevices(
+        triggerWebBle: true,
+        includeCachedBle: false,
+      );
+      if (mounted && mySession == _scanSessionId) {
         setState(() {
           _isScanning = false;
           _mergeDevices(devs);
@@ -140,43 +180,76 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
     // Native Flutter trên iOS / Android
     try {
-      // Đợi CBCentralManager của iOS khởi tạo xong (từ unknown sang on) tối đa 3s
-      final currentState = await FlutterBluePlus.adapterState
-          .where((s) => s == BluetoothAdapterState.on)
-          .first
-          .timeout(const Duration(seconds: 3), onTimeout: () => FlutterBluePlus.adapterStateNow);
+      await _scanResultSub?.cancel();
+      _scanResultSub = null;
+      if (FlutterBluePlus.isScanningNow) {
+        try {
+          await FlutterBluePlus.stopScan();
+          await Future.delayed(const Duration(milliseconds: 180));
+        } catch (_) {}
+      }
+      if (!mounted || mySession != _scanSessionId) return;
 
-      if (mounted) {
-        setState(() => _adapterState = currentState);
+      var currentState = FlutterBluePlus.adapterStateNow;
+      if (currentState == BluetoothAdapterState.unknown) {
+        currentState = await FlutterBluePlus.adapterState
+            .where((s) => s != BluetoothAdapterState.unknown)
+            .first
+            .timeout(const Duration(seconds: 3), onTimeout: () => FlutterBluePlus.adapterStateNow);
       }
 
+      if (!mounted || mySession != _scanSessionId) return;
+      setState(() => _adapterState = currentState);
+
       if (currentState == BluetoothAdapterState.on) {
-        if (FlutterBluePlus.isScanningNow) {
-          await FlutterBluePlus.stopScan();
-        }
-
-        _scanResultSub?.cancel();
-        _scanResultSub = FlutterBluePlus.scanResults.listen(_processNativeScanResults);
-        _processNativeScanResults(FlutterBluePlus.lastScanResults);
-
         await FlutterBluePlus.startScan(
-          timeout: const Duration(seconds: 15),
+          timeout: const Duration(seconds: 12),
+          continuousUpdates: true,
           androidUsesFineLocation: false,
         );
+
+        if (!mounted || mySession != _scanSessionId) return;
+        // Đăng ký lắng nghe SAU khi startScan reset buffer để không lấy lại kết quả quét cũ
+        _scanResultSub = FlutterBluePlus.scanResults.listen((results) {
+          if (mySession == _scanSessionId) {
+            _processNativeScanResults(results);
+          }
+        });
       } else {
         debugPrint("Bluetooth state is not ON: $currentState");
+        if (mounted && mySession == _scanSessionId) {
+          setState(() => _isScanning = false);
+        }
       }
     } catch (e) {
       debugPrint("Native startScan error: $e");
-    } finally {
-      // Dò thêm thiết bị qua Gateway / SoftAP Wi-Fi đồng thời
-      final devs = await _bleService.scanForHardwareDevices(triggerWebBle: false);
-      if (mounted) {
+      if (mounted && mySession == _scanSessionId) {
+        final lower = e.toString().toLowerCase();
+        String msg = "Không thể quét Bluetooth: $e";
+        if (lower.contains('permission')) {
+          msg = "Ứng dụng cần quyền Thiết bị ở gần (Bluetooth) để quét thiết bị. Hãy bấm 'Quét lại BLE' và chọn Cho phép.";
+        } else if (lower.contains('location')) {
+          msg = "Điện thoại yêu cầu bật Vị trí (GPS) để quét Bluetooth BLE. Hãy bật GPS rồi bấm 'Quét lại BLE'.";
+        }
         setState(() {
+          _bleErrorMessage = msg;
           _isScanning = false;
-          _mergeDevices(devs);
         });
       }
+    }
+
+    // Dò thêm thiết bị qua SoftAP/Backend (không nạp lại lastScanResults BLE cũ)
+    final softApDevs = await _bleService.scanForHardwareDevices(
+      triggerWebBle: false,
+      includeCachedBle: false,
+    );
+    if (mounted && mySession == _scanSessionId) {
+      setState(() {
+        _mergeDevices(softApDevs);
+        if (!FlutterBluePlus.isScanningNow) {
+          _isScanning = false;
+        }
+      });
     }
   }
 
@@ -232,7 +305,26 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       final bool isAustec = isRecognized || isTargetMatch;
       // Chấp nhận mọi thiết bị Austec/ESP32 hoặc thiết bị BLE có tên xung quanh
       if (isAustec || rawName.isNotEmpty) {
-        final devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
+        String devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
+        
+        // Tự động chuẩn hóa mã phần cứng Camera nếu hệ điều hành chỉ trả về địa chỉ MAC Bluetooth
+        if (matchedProfile.category == DeviceCategory.camera && devId.contains(':')) {
+          final cleanHex = devId.replaceAll(':', '').toUpperCase();
+          if (cleanHex.length == 12) {
+            try {
+              final prefix = cleanHex.substring(0, 10);
+              final lastByteVal = int.parse(cleanHex.substring(10, 12), radix: 16);
+              final staByteVal = (lastByteVal >= 2) ? (lastByteVal - 2) : lastByteVal;
+              final staHex = staByteVal.toRadixString(16).padLeft(2, '0').toUpperCase();
+              devId = "CAM$prefix$staHex";
+            } catch (_) {
+              devId = "CAM$cleanHex";
+            }
+          } else {
+            devId = "CAM$cleanHex";
+          }
+        }
+
         final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
         final newDev = DiscoveredHardwareBLE(
           hardwareId: devId,
@@ -262,8 +354,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (changed || list.length != _discoveredDevices.length) {
       setState(() {
         _discoveredDevices = list;
-        if (_selectedDevice == null && list.isNotEmpty) {
-          _selectedDevice = list.first;
+        if (_selectedDevice == null) {
+          final known = list.where((d) => d.profile.category != DeviceCategory.othersControl);
+          if (known.isNotEmpty) {
+            _selectedDevice = known.first;
+          }
         }
       });
     }
@@ -848,12 +943,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  onPressed: _isScanning ? null : _triggerScan,
+                  onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
                   icon: _isScanning
                       ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
                       : const Icon(Icons.refresh, size: 14, color: AppTheme.cyanAccent),
                   label: Text(
-                    _isScanning ? "Đang quét..." : "Quét Lại BLE",
+                    _isScanning ? "Đang quét (Quét lại)" : "Quét Lại BLE",
                     style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -908,6 +1003,33 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 ),
               ),
 
+            if (_bleErrorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.roseDanger.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.roseDanger),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.bluetooth_searching, color: AppTheme.roseDanger, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _bleErrorMessage!,
+                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
+                      child: const Text("Thử lại", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+
             if (_discoveredDevices.isEmpty)
               Container(
                 width: double.infinity,
@@ -924,8 +1046,27 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      "Mẹo: Hãy chắc chắn bo mạch ESP32 đã cấp nguồn. Nếu là thiết bị mới hoặc vừa reset (giữ nút 10 giây), bo mạch sẽ phát sóng liên tục.",
+                      "Mẹo: Hãy chắc chắn bo mạch ESP32 đã cấp nguồn. Với Camera vừa nạp/bật, đợi ~20 giây (hoặc giữ nút Reset 5 giây) để mạch phát sóng BLE.",
                       style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontStyle: FontStyle.italic),
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.cyanAccent,
+                          side: const BorderSide(color: AppTheme.cyanAccent),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
+                        icon: _isScanning
+                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
+                            : const Icon(Icons.bluetooth_searching_rounded, size: 16),
+                        label: Text(
+                          _isScanning ? "Đang quét BLE · Bấm để quét lại từ đầu" : "Quét Lại BLE Mới",
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     ),
                   ],
                 ),

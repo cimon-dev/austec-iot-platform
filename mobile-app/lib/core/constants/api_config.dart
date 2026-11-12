@@ -4,20 +4,105 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Quản lý tập trung địa chỉ API & WebSocket cho toàn bộ ứng dụng Mobile Austec IoT
 class ApiConfig {
   /// URL Backend Cloud đã deploy trên Render
-  /// Có thể override khi build/run: flutter run --dart-define=API_URL=https://...
-  static const String defaultCloudUrl = String.fromEnvironment(
-    'API_URL',
+  /// Có thể truyền từ .env lúc build: flutter build apk --dart-define=CLOUD_BACKEND_URL=... (hoặc API_URL=...)
+  static const String _cloudFromApiUrl = String.fromEnvironment('API_URL');
+  static const String _cloudFromEnv = String.fromEnvironment(
+    'CLOUD_BACKEND_URL',
     defaultValue: 'https://austec-backend.onrender.com',
+  );
+  static String get defaultCloudUrl =>
+      _cloudFromApiUrl.isNotEmpty ? _cloudFromApiUrl : _cloudFromEnv;
+
+  /// URL Backend Local đọc từ .env lúc build (--dart-define=LOCAL_BACKEND_URL=http://<SERVER_HOST>:4000)
+  /// Để rỗng nếu không build kèm .env (không fix cứng IP LAN trong mã nguồn)
+  static const String defaultLocalUrl = String.fromEnvironment(
+    'LOCAL_BACKEND_URL',
+    defaultValue: '',
+  );
+
+  /// Cấu hình MediaMTX đọc từ .env lúc build (phục vụ chế độ Hybrid: API ở Render, Stream qua MediaMTX LAN/VPS)
+  static const String defaultMediaMtxHost = String.fromEnvironment(
+    'MEDIAMTX_HOST',
+    defaultValue: '',
+  );
+  static const String defaultMediaMtxWebRtcPort = String.fromEnvironment(
+    'STREAM_SERVER_PORT_WEBRTC',
+    defaultValue: '8889',
+  );
+  static const String defaultMediaMtxRtspPort = String.fromEnvironment(
+    'STREAM_SERVER_PORT_RTSP',
+    defaultValue: '8554',
+  );
+  static const String defaultMediaMtxHlsPort = String.fromEnvironment(
+    'STREAM_SERVER_PORT_HLS',
+    defaultValue: '8888',
   );
 
   /// Cho phép cấu hình URL/IP máy chủ tùy chọn lưu trên máy (lưu trong SharedPreferences)
   static String? customServerHost;
 
-  /// Nạp URL máy chủ đã lưu từ SharedPreferences
+  /// Ghi nhớ địa chỉ Local LAN nhập gần nhất để chuyển nhanh lại khi đổi Wi-Fi mà không cần build lại APK
+  static String? lastLocalServerHost;
+
+  /// Cho phép cấu hình riêng IP/Domain MediaMTX mà không cần đổi Backend khỏi Render Cloud
+  static String? customMediaMtxHost;
+
+  /// Nạp URL máy chủ & MediaMTX đã lưu từ SharedPreferences
   static Future<void> loadCustomHost() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       customServerHost = prefs.getString('custom_server_host');
+      lastLocalServerHost = prefs.getString('last_local_server_host');
+      customMediaMtxHost = prefs.getString('custom_mediamtx_host');
+    } catch (_) {}
+  }
+
+  /// Trả về URL Local ưu tiên (từ lần nhập gần nhất, hoặc từ .env lúc build nếu chưa từng nhập tay)
+  static String? get preferredLocalUrl {
+    if (lastLocalServerHost != null && lastLocalServerHost!.trim().isNotEmpty) {
+      return formatBaseUrl(lastLocalServerHost!);
+    }
+    if (defaultLocalUrl.trim().isNotEmpty) {
+      return formatBaseUrl(defaultLocalUrl);
+    }
+    return null;
+  }
+
+  /// Chuẩn hóa MediaMTX WebRTC base URL (mặc định http://<host>:8889)
+  static String formatMediaMtxWebRtcBaseUrl(String input) {
+    final raw = input.trim().replaceAll(RegExp(r'/+$'), '');
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+    if (raw.contains(':')) {
+      return 'http://$raw';
+    }
+    return 'http://$raw:$defaultMediaMtxWebRtcPort';
+  }
+
+  /// Host MediaMTX dùng riêng khi ở chế độ Hybrid (API Render + MediaMTX Local/VPS) hoặc khi người dùng nhập tay
+  static String? get resolvedMediaMtxBaseUrl {
+    final custom = customMediaMtxHost?.trim() ?? '';
+    if (custom.isNotEmpty) {
+      return formatMediaMtxWebRtcBaseUrl(custom);
+    }
+    if (isUsingCloud && defaultMediaMtxHost.trim().isNotEmpty) {
+      return formatMediaMtxWebRtcBaseUrl(defaultMediaMtxHost);
+    }
+    return null;
+  }
+
+  /// Lưu hoặc xóa host MediaMTX tùy chỉnh trên máy
+  static Future<void> setCustomMediaMtxHost(String? host) async {
+    final cleaned = host?.trim();
+    customMediaMtxHost = (cleaned == null || cleaned.isEmpty) ? null : cleaned;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (customMediaMtxHost != null) {
+        await prefs.setString('custom_mediamtx_host', customMediaMtxHost!);
+      } else {
+        await prefs.remove('custom_mediamtx_host');
+      }
     } catch (_) {}
   }
 
@@ -29,6 +114,10 @@ class ApiConfig {
       customServerHost = null;
     } else {
       customServerHost = cleaned;
+      final formatted = formatBaseUrl(cleaned).toLowerCase();
+      if (!formatted.startsWith('https://') && !formatted.contains('onrender.com')) {
+        lastLocalServerHost = formatBaseUrl(cleaned);
+      }
     }
 
     try {
@@ -37,6 +126,9 @@ class ApiConfig {
         await prefs.setString('custom_server_host', customServerHost!);
       } else {
         await prefs.remove('custom_server_host');
+      }
+      if (lastLocalServerHost != null && lastLocalServerHost!.isNotEmpty) {
+        await prefs.setString('last_local_server_host', lastLocalServerHost!);
       }
     } catch (_) {}
   }
@@ -115,7 +207,11 @@ class ApiConfig {
 
   /// Nhãn hiển thị trạng thái kết nối
   static String get connectionBadgeText {
-    if (isUsingCloud) return 'Render Cloud';
-    return 'Máy chủ riêng';
+    final baseLabel = isUsingCloud ? 'Render Cloud' : 'Máy chủ riêng';
+    final media = resolvedMediaMtxBaseUrl;
+    if (isUsingCloud && media != null) {
+      return '$baseLabel + MediaMTX (${media.replaceFirst(RegExp(r'^https?://'), '')})';
+    }
+    return baseLabel;
   }
 }

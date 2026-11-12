@@ -500,10 +500,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            "Máy chủ [${ApiConfig.connectionBadgeText}]: ${ApiConfig.baseUrl}",
-                            style: const TextStyle(
-                                fontSize: 10, color: AppTheme.textMuted),
+                          Flexible(
+                            child: Text(
+                              "Máy chủ [${ApiConfig.connectionBadgeText}]: ${ApiConfig.baseUrl}",
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 10, color: AppTheme.textMuted),
+                            ),
                           ),
                         ],
                       ),
@@ -522,6 +525,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final controller = TextEditingController(
       text: ApiConfig.customServerHost ?? ApiConfig.baseUrl,
     );
+    final mediaMtxController = TextEditingController(
+      text: ApiConfig.customMediaMtxHost ?? ApiConfig.defaultMediaMtxHost,
+    );
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -531,49 +537,117 @@ class _LoginScreenState extends State<LoginScreen> {
             Icon(Icons.cloud_sync_rounded,
                 color: AppTheme.cyanAccent, size: 20),
             SizedBox(width: 8),
-            Text("Cấu hình Máy chủ Backend",
+            Text("Cấu hình Máy chủ & MediaMTX",
                 style: TextStyle(color: Colors.white, fontSize: 16)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "URL Backend Render đã deploy hoặc IP Localhost / LAN:",
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: "vd: https://austec-backend.onrender.com",
-                hintStyle: const TextStyle(color: AppTheme.textMuted),
-                filled: true,
-                fillColor: AppTheme.background,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "1. URL Backend (Đăng nhập, Thiết bị, MQTT):",
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.cloud_outlined,
-                      size: 14, color: AppTheme.cyanAccent),
-                  label: const Text("Render Cloud (Mặc định)",
-                      style: TextStyle(fontSize: 11, color: Colors.white)),
-                  backgroundColor: AppTheme.cardBorder,
-                  onPressed: () {
-                    controller.text = ApiConfig.defaultCloudUrl;
-                  },
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "vd: https://austec-backend.onrender.com",
+                  hintStyle: const TextStyle(color: AppTheme.textMuted),
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border:
+                      OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.cloud_outlined,
+                        size: 14, color: AppTheme.cyanAccent),
+                    label: const Text("Render Cloud (Mặc định)",
+                        style: TextStyle(fontSize: 11, color: Colors.white)),
+                    backgroundColor: AppTheme.cardBorder,
+                    onPressed: () {
+                      controller.text = ApiConfig.defaultCloudUrl;
+                    },
+                  ),
+                  if (ApiConfig.preferredLocalUrl != null)
+                    ActionChip(
+                      avatar: const Icon(Icons.lan_outlined,
+                          size: 14, color: AppTheme.emeraldSuccess),
+                      label: Text(
+                        "Local (${ApiConfig.preferredLocalUrl!.replaceFirst(RegExp(r'^https?://'), '')})",
+                        style: const TextStyle(fontSize: 11, color: Colors.white),
+                      ),
+                      backgroundColor: AppTheme.cardBorder,
+                      onPressed: () {
+                        controller.text = ApiConfig.preferredLocalUrl!;
+                      },
+                    ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "2. MediaMTX Host (Riêng luồng Camera WebRTC :8889):",
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                "Giữ Backend ở Render Cloud + nhập IP máy chạy MediaMTX để chỉ xem camera qua local.",
+                style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: mediaMtxController,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: "Để trống = hỏi Backend; vd: 192.168.100.3",
+                  hintStyle: const TextStyle(color: AppTheme.textMuted),
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  border:
+                      OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (ApiConfig.defaultMediaMtxHost.isNotEmpty)
+                    ActionChip(
+                      avatar: const Icon(Icons.videocam_outlined,
+                          size: 14, color: AppTheme.emeraldSuccess),
+                      label: Text(
+                        "Theo .env (${ApiConfig.defaultMediaMtxHost})",
+                        style: const TextStyle(fontSize: 11, color: Colors.white),
+                      ),
+                      backgroundColor: AppTheme.cardBorder,
+                      onPressed: () {
+                        mediaMtxController.text = ApiConfig.defaultMediaMtxHost;
+                      },
+                    ),
+                  ActionChip(
+                    avatar: const Icon(Icons.clear_rounded,
+                        size: 14, color: AppTheme.textSecondary),
+                    label: const Text("Hỏi Backend",
+                        style: TextStyle(fontSize: 11, color: Colors.white)),
+                    backgroundColor: AppTheme.cardBorder,
+                    onPressed: () {
+                      mediaMtxController.clear();
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -584,10 +658,11 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () async {
               await ApiConfig.setCustomHost(null);
+              await ApiConfig.setCustomMediaMtxHost(null);
               if (mounted) setState(() {});
               Navigator.of(ctx).pop();
             },
-            child: const Text("Dùng mặc định Cloud",
+            child: const Text("Mặc định Cloud",
                 style: TextStyle(color: AppTheme.cyanAccent)),
           ),
           ElevatedButton(
@@ -596,6 +671,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 foregroundColor: Colors.black),
             onPressed: () async {
               await ApiConfig.setCustomHost(controller.text);
+              await ApiConfig.setCustomMediaMtxHost(mediaMtxController.text);
               if (mounted) setState(() {});
               Navigator.of(ctx).pop();
             },

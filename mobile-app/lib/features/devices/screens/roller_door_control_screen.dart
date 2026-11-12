@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/constants/app_theme.dart';
-import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
+import '../widgets/camera_webrtc_player.dart';
 
 class RollerDoorControlScreen extends StatefulWidget {
   final DeviceItem device;
@@ -30,8 +30,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
   // Quản lý Camera giám sát liên kết với cửa cuốn
   String? _linkedCameraHwId;
-  Timer? _doorCamSnapshotTimer;
-  int _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
 
   late AnimationController _pulseController;
 
@@ -61,13 +59,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     _linkedCameraHwId = _device.currentProperties['linked_camera_id']?.toString();
     if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
       _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_START");
-      _doorCamSnapshotTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-        if (mounted) {
-          setState(() {
-            _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
-          });
-        }
-      });
     }
 
     _pulseController = AnimationController(
@@ -80,7 +71,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   void dispose() {
     _deviceUpdateSub?.cancel();
     _travelTimer?.cancel();
-    _doorCamSnapshotTimer?.cancel();
     _pulseController.dispose();
 
     if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
@@ -947,24 +937,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.videocam_rounded, color: textCol, size: 40),
-                            const SizedBox(height: 6),
-                            const Text(
-                              "Đang kết nối luồng camera cửa cuốn...",
-                              style: TextStyle(color: Colors.white70, fontSize: 11),
-                            ),
-                          ],
-                        ),
+                    if (_linkedCameraHwId != null)
+                      CameraWebRtcPlayer(
+                        hardwareId: _linkedCameraHwId!,
+                        isActive: true,
                       ),
-                    ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -1245,15 +1222,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     _gateway.updateDeviceProperties(_device.hardwareId, {'linked_camera_id': cam.hardwareId});
     _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
 
-    _doorCamSnapshotTimer?.cancel();
-    _doorCamSnapshotTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-      if (mounted) {
-        setState(() {
-          _doorCamSnapshotKey = DateTime.now().millisecondsSinceEpoch;
-        });
-      }
-    });
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("Đã liên kết camera '${cam.name}' với cửa cuốn này thành công!"),
@@ -1303,8 +1271,6 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_STOP");
     }
 
-    _doorCamSnapshotTimer?.cancel();
-
     setState(() {
       _linkedCameraHwId = null;
       _device.currentProperties.remove('linked_camera_id');
@@ -1350,14 +1316,12 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   maxScale: 6.0,
                   panEnabled: true,
                   scaleEnabled: true,
-                  child: Image.network(
-                    "${ApiConfig.baseUrl}/api/devices/$_linkedCameraHwId/camera/snapshot?t=$_doorCamSnapshotKey",
-                    fit: BoxFit.contain,
-                    gaplessPlayback: true,
-                    errorBuilder: (context, error, stackTrace) => const Center(
-                      child: Text("Đang kết nối camera...", style: TextStyle(color: Colors.white70)),
-                    ),
-                  ),
+                  child: _linkedCameraHwId == null
+                      ? const SizedBox.shrink()
+                      : CameraWebRtcPlayer(
+                          hardwareId: _linkedCameraHwId!,
+                          isActive: true,
+                        ),
                 ),
               ),
             ),

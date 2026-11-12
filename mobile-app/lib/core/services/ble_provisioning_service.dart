@@ -65,11 +65,15 @@ class BleProvisioningService {
   BleProvisioningService._internal();
 
   /// Dò tìm sóng Bluetooth BLE & Phần cứng thực tế xung quanh (Tự động liên tục & độ nhạy cao)
-  Future<List<DiscoveredHardwareBLE>> scanForHardwareDevices({String? targetHardwareId, bool triggerWebBle = false}) async {
+  Future<List<DiscoveredHardwareBLE>> scanForHardwareDevices({
+    String? targetHardwareId,
+    bool triggerWebBle = false,
+    bool includeCachedBle = true,
+  }) async {
     final List<DiscoveredHardwareBLE> discovered = [];
 
     // 0. Quét sóng Bluetooth Native phần cứng (Dành cho iPhone iOS & Android thực tế)
-    if (!kIsWeb) {
+    if (!kIsWeb && includeCachedBle) {
       try {
         final results = FlutterBluePlus.lastScanResults;
         for (final r in results) {
@@ -88,7 +92,26 @@ class BleProvisioningService {
                  r.device.remoteId.str.toLowerCase() == targetHardwareId.trim().toLowerCase());
 
             if (isRecognized || isTargetMatch || rawName.isNotEmpty) {
-              final devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : r.device.remoteId.str);
+              String devId = rawName.isNotEmpty ? rawName : (targetHardwareId?.isNotEmpty == true ? targetHardwareId! : r.device.remoteId.str);
+              
+              // Tự động chuẩn hóa mã phần cứng Camera nếu hệ điều hành chỉ trả về địa chỉ MAC Bluetooth
+              if (matchedProfile.category == DeviceCategory.camera && devId.contains(':')) {
+                final cleanHex = devId.replaceAll(':', '').toUpperCase();
+                if (cleanHex.length == 12) {
+                  try {
+                    final prefix = cleanHex.substring(0, 10);
+                    final lastByteVal = int.parse(cleanHex.substring(10, 12), radix: 16);
+                    final staByteVal = (lastByteVal >= 2) ? (lastByteVal - 2) : lastByteVal;
+                    final staHex = staByteVal.toRadixString(16).padLeft(2, '0').toUpperCase();
+                    devId = "CAM$prefix$staHex";
+                  } catch (_) {
+                    devId = "CAM$cleanHex";
+                  }
+                } else {
+                  devId = "CAM$cleanHex";
+                }
+              }
+
               final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
               if (!exists) {
                 discovered.add(DiscoveredHardwareBLE(
@@ -497,11 +520,12 @@ class BleProvisioningService {
 
                 StreamSubscription? notifySub;
                 Completer<bool> wifiCheckCompleter = Completer();
+                bool bleNotifyAck = false;
 
                 if (notifyChar != null && notifyChar.properties.notify) {
                   try {
                     await notifyChar.setNotifyValue(true);
-                    notifySub = notifyChar.lastValueStream.listen((val) {
+                    notifySub = notifyChar.onValueReceived.listen((val) {
                       final str = utf8.decode(val, allowMalformed: true);
                       debugPrint("BLE Notification from ESP32: $str");
                       if (str.contains("WIFI_FAIL") || str.contains("FAIL")) {
@@ -512,6 +536,7 @@ class BleProvisioningService {
                                  str.contains("OK") ||
                                  str.contains("SUCCESS") ||
                                  (targetDevice.hardwareId.isNotEmpty && str.toUpperCase().contains(targetDevice.hardwareId.toUpperCase()))) {
+                        bleNotifyAck = true;
                         if (!wifiCheckCompleter.isCompleted) wifiCheckCompleter.complete(true);
                       }
                     });
@@ -520,28 +545,44 @@ class BleProvisioningService {
                   }
                 }
 
-                // Ghi dữ liệu nạp Wi-Fi trực tiếp vào RX Characteristic (chuẩn commit d52f6cd)
+                // Dùng tham số timeout nội bộ (10s) của flutter_blue_plus để giải phóng _Mutex đúng cách
+                // vì firmware Cửa cuốn / Camera có delay(1000-3000ms) rồi ESP.restart() trước/trong khi BLE supervision timeout kết thúc
                 final bool withoutResponse = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
                 await Future.delayed(const Duration(milliseconds: 150));
                 try {
-                  await rxChar.write(utf8.encode(payloadString), withoutResponse: withoutResponse).timeout(const Duration(seconds: 4));
+                  await rxChar.write(
+                    utf8.encode(payloadString),
+                    withoutResponse: withoutResponse,
+                    timeout: 10,
+                  );
                 } catch (writeErr) {
                   final errStr = writeErr.toString().toLowerCase();
-                  if (errStr.contains('disconnected') || errStr.contains('disconnect')) {
-                    // Bo mạch ESP32 sau khi nhận chuỗi cấu hình mạng đã gọi ESP.restart()
-                    // làm ngắt kết nối BLE đột ngột. Đây là hành vi nạp thành công chuẩn của firmware!
-                    debugPrint("ESP32 đã tiếp nhận cấu hình và tự khởi động lại (ngắt kết nối BLE dự kiến): $writeErr");
-                    bleSuccess = true;
+                  if (bleNotifyAck ||
+                      isWifiCheckFailed ||
+                      devToConnect.isDisconnected ||
+                      errStr.contains('disconnected') ||
+                      errStr.contains('disconnect')) {
+                    // ESP32 đã phản hồi Notify hoặc tự ESP.restart() ngắt kết nối BLE sau khi nhận cấu hình
+                    debugPrint("ESP32 đã tiếp nhận cấu hình (notifyAck=$bleNotifyAck, disconnected=${devToConnect.isDisconnected}): $writeErr");
+                    if (!isWifiCheckFailed) bleSuccess = true;
                   } else {
                     debugPrint("Lần 1 ghi lỗi ($writeErr), thử ghi lại với lệnh ghi cơ bản...");
-                    await Future.delayed(const Duration(milliseconds: 200));
+                    await Future.delayed(const Duration(milliseconds: 250));
                     try {
-                      await rxChar.write(utf8.encode(payloadString)).timeout(const Duration(seconds: 4));
+                      await rxChar.write(
+                        utf8.encode(payloadString),
+                        withoutResponse: false,
+                        timeout: 8,
+                      );
                     } catch (err2) {
                       final errStr2 = err2.toString().toLowerCase();
-                      if (errStr2.contains('disconnected') || errStr2.contains('disconnect')) {
-                        debugPrint("ESP32 đã tiếp nhận cấu hình và tự khởi động lại: $err2");
-                        bleSuccess = true;
+                      if (bleNotifyAck ||
+                          isWifiCheckFailed ||
+                          devToConnect.isDisconnected ||
+                          errStr2.contains('disconnected') ||
+                          errStr2.contains('disconnect')) {
+                        debugPrint("ESP32 đã tiếp nhận cấu hình ở lần thử 2 (notifyAck=$bleNotifyAck): $err2");
+                        if (!isWifiCheckFailed) bleSuccess = true;
                       } else {
                         rethrow;
                       }
