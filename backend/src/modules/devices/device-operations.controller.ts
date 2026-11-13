@@ -612,6 +612,12 @@ export class DeviceOperationsController {
             [hardwareId]
           );
           await this.client.query(`UPDATE device_inventory SET status = 'IN_WAREHOUSE' WHERE LOWER(hardware_id) = LOWER($1)`, [hardwareId]);
+
+          // Tự động gửi lệnh Factory Reset xuống thiết bị qua MQTT để mạch tự xóa Flash và mở lại BLE ghép nối
+          try {
+            await this.mqttGateway?.publishMessage(`devices/${hardwareId}/camera/cmd`, 'RESET_FACTORY');
+            await this.mqttGateway?.publishMessage(`austec/${hardwareId}/cmd`, 'RESET_FACTORY');
+          } catch (_) {}
         }
 
         this.wss?.clients?.forEach((c: any) => {
