@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
-import '../../cskh/cskh.dart';
+import '../../chat/models/conversation_item.dart';
+import '../../chat/screens/chat_room_screen.dart';
+import '../../cskh/domain/entities/chat_device_item.dart';
 import '../widgets/camera_webrtc_player.dart';
+import 'camera_landscape_fullscreen_viewer.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 
@@ -82,6 +86,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     }
   }
 
+  void _openCameraFullscreen() async {
+    final switchedDev = await Navigator.of(context).push<DeviceItem>(
+      MaterialPageRoute(
+        builder: (ctx) => CameraLandscapeFullscreenViewer(
+          initialDevice: _device,
+          gateway: _gateway,
+        ),
+      ),
+    );
+    if (switchedDev != null && switchedDev.hardwareId != _device.hardwareId && mounted) {
+      setState(() {
+        _device = switchedDev;
+        _streamReloadNonce++;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +139,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 );
               },
             ),
-          // 2. Icon CSKH (Mở trực tiếp CskhChatScreen, KHÔNG BỌC Scaffold kép)
+          // 2. Icon CSKH (Mở trực tiếp ChatRoomScreen phòng CSKH thật)
           IconButton(
             icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 22),
             tooltip: "Chat CSKH về thiết bị này",
@@ -130,9 +151,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 modelName: widget.device.modelName,
                 categoryTag: widget.device.badgeText.isNotEmpty ? widget.device.badgeText : "AUSTEC",
               );
+              final cskhConv = ConversationItem(
+                id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
+                type: 'CSKH',
+                title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
+                avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+                lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
+              );
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => CskhChatScreen(
+                  builder: (context) => ChatRoomScreen(
+                    conversation: cskhConv,
                     initialDevice: chatDev,
                     initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${widget.device.name} (HWID: ${widget.device.hardwareId}).",
                   ),
@@ -156,31 +185,33 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       ),
       body: Stack(
         children: [
-          // Background Watermark Công Ty AUSTEC (độ mờ đục vừa phải ~0.14)
+          // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình)
           Positioned.fill(
             child: Opacity(
-              opacity: 0.14,
+              opacity: 0.16,
               child: Image.asset(
                 'assets/austec_banner_new.png',
+                width: double.infinity,
+                height: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          // Nội dung hiển thị gói gọn không cần cuộn
+          // Nội dung hiển thị
           SafeArea(
             child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo & Slogan AUSTEC 2026 ngay dưới Header
+                  // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa, không nền trắng
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 8),
+                      padding: const EdgeInsets.only(top: 2, bottom: 12),
                       child: Image.asset(
                         'assets/austec_logo_2026.png',
-                        height: 26,
+                        height: 48,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -586,176 +617,308 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     );
   }
 
-  // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Chuẩn Solid, Cân Xứng 2 Bên, Tối Giản)
-  // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Trang 5 PDF: Nhấn biểu tượng công tắc để Bật/Tắt - ON: Màu đỏ, OFF: Màu xanh)
+  // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Mặt ổ cắm điện thực tế + Công tắc gạt cơ học ON/OFF)
   Widget _buildLightSwitchDetailedControls() {
     final isOn = _device.isRelayOn;
     final switchColor = isOn ? const Color(0xFFEF4444) : const Color(0xFF10B981); // ON: Đỏ (Cấp điện), OFF: Xanh (Ngắt an toàn) theo Trang 5 PDF
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFF141924),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: switchColor.withValues(alpha: 0.5),
+          color: switchColor.withValues(alpha: 0.45),
           width: 1.2,
         ),
       ),
       child: Column(
         children: [
-          // Dòng hiển thị trạng thái và toggle cân xứng 2 bên
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: switchColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: switchColor.withValues(alpha: 0.25),
-                width: 1.0,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: switchColor.withValues(alpha: 0.18),
-                      ),
-                      child: Icon(
-                        isOn ? Icons.power_settings_new_rounded : Icons.power_off_rounded,
-                        color: switchColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isOn ? "TRẠNG THÁI ON (CÔNG TẮC ĐỎ)" : "TRẠNG THÁI OFF (CÔNG TẮC XANH)",
-                          style: TextStyle(
-                            color: switchColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          isOn ? "Đang cấp nguồn điện" : "Đã ngắt nguồn điện an toàn",
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Transform.scale(
-                  scale: 1.15,
-                  child: Switch(
-                    value: isOn,
-                    activeThumbColor: Colors.white,
-                    activeTrackColor: const Color(0xFFEF4444),
-                    inactiveThumbColor: Colors.white,
-                    inactiveTrackColor: const Color(0xFF10B981),
-                    onChanged: (val) {
-                      _triggerAction(val ? "TURN_ON" : "TURN_OFF");
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 22),
-
-          // BIỂU TƯỢNG CÔNG TẮC LỚN (Nhấn trực tiếp để Bật/Tắt - Theo Trang 5 PDF: ON Đỏ, OFF Xanh)
+          // MẶT Ổ CẮM ĐIỆN VỚI CÔNG TẮC GẠT BÊN CẠNH
           GestureDetector(
             onTap: () => _triggerAction(isOn ? "TURN_OFF" : "TURN_ON"),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 110,
-              height: 110,
+            child: Container(
+              width: double.infinity,
+              height: 180,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: switchColor.withValues(alpha: 0.14),
-                border: Border.all(color: switchColor, width: 3.0),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1E2536), Color(0xFF111520)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF2C394F), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: switchColor.withValues(alpha: 0.22),
-                    blurRadius: 16,
-                    spreadRadius: 2,
+                    color: Colors.black.withValues(alpha: 0.5),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
                   ),
                 ],
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.power_settings_new_rounded,
-                      color: switchColor,
-                      size: 44,
+              child: Stack(
+                children: [
+                  // 4 Ốc vít bo góc
+                  Positioned(top: 2, left: 2, child: _buildPlateScrew()),
+                  Positioned(top: 2, right: 2, child: _buildPlateScrew()),
+                  Positioned(bottom: 2, left: 2, child: _buildPlateScrew()),
+                  Positioned(bottom: 2, right: 2, child: _buildPlateScrew()),
+
+                  // Bên trái: Lỗ cắm điện; Bên phải: Công tắc gạt
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        // BÊN TRÁI: HÌNH DÁNG Ổ CẮM 3 CHẤU TIÊU CHUẨN
+                        Expanded(
+                          flex: 5,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F131D),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFF253043), width: 1.2),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  "AUSTEC POWER",
+                                  style: TextStyle(
+                                    color: Color(0xFF6B7280),
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                // Lỗ cắm tròn trung tâm
+                                Container(
+                                  width: 68,
+                                  height: 68,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF0A0D14),
+                                    border: Border.all(color: const Color(0xFF1F2937), width: 2),
+                                  ),
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Chấu tiếp địa phía trên
+                                      Positioned(
+                                        top: 9,
+                                        child: Container(
+                                          width: 7,
+                                          height: 9,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF4B5563),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                      ),
+                                      // 2 lỗ cắm chính tròn
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Container(
+                                            width: 11,
+                                            height: 11,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 20),
+                                          Container(
+                                            width: 11,
+                                            height: 11,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      // Chấu tiếp địa phía dưới
+                                      Positioned(
+                                        bottom: 9,
+                                        child: Container(
+                                          width: 7,
+                                          height: 9,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF4B5563),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  "16A • 250V~",
+                                  style: TextStyle(color: Color(0xFF4B5563), fontSize: 7.5, fontFamily: "monospace"),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 14),
+
+                        // BÊN PHẢI: CÔNG TẮC GẠT (ROCKER SWITCH ĐỔI MÀU THEO TRẠNG THÁI)
+                        Expanded(
+                          flex: 4,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0F131D),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: switchColor.withValues(alpha: 0.6),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Thân công tắc gạt 2 nấc
+                                Container(
+                                  width: 58,
+                                  height: 84,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF161B26),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFF2B364A), width: 1.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: switchColor.withValues(alpha: 0.25),
+                                        blurRadius: 8,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      // Nấc ON (nằm phía trên)
+                                      Expanded(
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          decoration: BoxDecoration(
+                                            color: isOn ? switchColor : const Color(0xFF1E2638),
+                                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                                            border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.4))),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              "ON",
+                                              style: TextStyle(
+                                                color: isOn ? Colors.white : const Color(0xFF6B7280),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      // Nấc OFF (nằm phía dưới)
+                                      Expanded(
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 200),
+                                          decoration: BoxDecoration(
+                                            color: !isOn ? switchColor : const Color(0xFF1E2638),
+                                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              "OFF",
+                                              style: TextStyle(
+                                                color: !isOn ? Colors.white : const Color(0xFF6B7280),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w900,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                // Đèn LED trạng thái
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: switchColor,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: switchColor,
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      isOn ? "ON" : "OFF",
-                      style: TextStyle(
-                        color: switchColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            "Nhấn trực tiếp vào biểu tượng để Bật/Tắt công tắc",
-            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
-          ),
-          const SizedBox(height: 18),
 
-          // 2 nút BẬT và TẮT chuẩn hóa
+          const SizedBox(height: 14),
+
+          // DÒNG TRẠNG THÁI & HƯỚNG DẪN
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444), // ON: Đỏ
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.power_settings_new_rounded, size: 18),
-                  label: const Text("BẬT (CẤP ĐIỆN)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  onPressed: () => _triggerAction("TURN_ON"),
-                ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: switchColor),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981), // OFF: Xanh
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.power_off_rounded, size: 18),
-                  label: const Text("TẮT (NGẮT ĐIỆN)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  onPressed: () => _triggerAction("TURN_OFF"),
+              const SizedBox(width: 8),
+              Text(
+                isOn ? "ĐANG CẤP NGUỒN ĐIỆN (BẬT)" : "ĐÃ NGẮT NGUỒN ĐIỆN AN TOÀN (TẮT)",
+                style: TextStyle(
+                  color: switchColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 4),
+          const Text(
+            "Chạm vào công tắc gạt để Bật / Tắt nguồn điện",
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlateScrew() {
+    return Container(
+      width: 7,
+      height: 7,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF2C384F),
+        border: Border.all(color: const Color(0xFF4B5563), width: 0.8),
+      ),
+      child: Center(
+        child: Container(
+          width: 3.5,
+          height: 1,
+          color: const Color(0xFF9CA3AF),
+        ),
       ),
     );
   }
@@ -797,6 +960,23 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(6)),
                       child: const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: InkWell(
+                      onTap: _openCameraFullscreen,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.75),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.7)),
+                        ),
+                        child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 20),
+                      ),
                     ),
                   ),
                 ],

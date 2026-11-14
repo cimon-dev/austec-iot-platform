@@ -171,17 +171,6 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
               style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(width: 12),
-
-          // Icon kết nối & Đồng hồ
-          const Icon(Icons.wifi, color: Colors.white70, size: 15),
-          const SizedBox(width: 6),
-          const Icon(Icons.bluetooth, color: Colors.white70, size: 15),
-          const SizedBox(width: 8),
-          const Text(
-            "13:45",
-            style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: "monospace"),
-          ),
         ],
       ),
     );
@@ -279,7 +268,7 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
       children: [
         Text(title, style: const TextStyle(color: Color(0xFF8E99B0), fontSize: 9.5, fontWeight: FontWeight.bold)),
         const SizedBox(height: 1),
-        Text(val, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900, fontFamily: "monospace")),
+        Text(val, style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.w900)),
         Text(sub, style: const TextStyle(color: Color(0xFF6B768E), fontSize: 8.5)),
       ],
     );
@@ -334,12 +323,11 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                   color: isWarn ? AppTheme.amberWarning : Colors.white,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w900,
-                  fontFamily: "monospace",
                 ),
               ),
               Text(
                 "${a.toStringAsFixed(2)}A  ${r.toStringAsFixed(3)}Ω",
-                style: const TextStyle(color: Color(0xFF6B768E), fontSize: 8, fontFamily: "monospace"),
+                style: const TextStyle(color: Color(0xFF6B768E), fontSize: 8.5, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -655,8 +643,8 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                 _buildStepperItem("Thấp áp phục hồi", _uvRecover, "V", (v) => setState(() => _uvRecover = v), 0.05),
                 _buildStepperItem("Lệch áp cân bằng", _balanceDelta, "V", (v) => setState(() => _balanceDelta = v), 0.005),
                 Container(
-                  width: 140,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  width: 175,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFF161B26),
                     borderRadius: BorderRadius.circular(6),
@@ -665,11 +653,21 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text("Cân bằng chủ động", style: TextStyle(color: Color(0xFF8E99B0), fontSize: 9)),
-                      Switch(
-                        value: _activeBalance,
-                        activeThumbColor: AppTheme.cyanAccent,
-                        onChanged: (val) => setState(() => _activeBalance = val),
+                      const Expanded(
+                        child: Text(
+                          "Cân bằng chủ động",
+                          style: TextStyle(color: Color(0xFF8E99B0), fontSize: 9.5, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Transform.scale(
+                        scale: 0.75,
+                        child: Switch(
+                          value: _activeBalance,
+                          activeThumbColor: AppTheme.cyanAccent,
+                          onChanged: (val) => setState(() => _activeBalance = val),
+                        ),
                       ),
                     ],
                   ),
@@ -878,13 +876,13 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
       ),
       child: Row(
         children: [
-          _buildNavTabButton(0, "[16 Cell]", Icons.grid_view_rounded),
+          _buildNavTabButton(0, "16 Cell", Icons.grid_view_rounded),
           const SizedBox(width: 8),
-          _buildNavTabButton(1, "[Biểu đồ]", Icons.bar_chart_rounded),
+          _buildNavTabButton(1, "Biểu đồ", Icons.bar_chart_rounded),
           const SizedBox(width: 8),
-          _buildNavTabButton(2, "[Sự cố]", Icons.warning_amber_rounded),
+          _buildNavTabButton(2, "Sự cố", Icons.warning_amber_rounded),
           const SizedBox(width: 8),
-          _buildNavTabButton(3, "[Cài đặt]", Icons.settings_outlined),
+          _buildNavTabButton(3, "Cài đặt", Icons.settings_outlined),
         ],
       ),
     );

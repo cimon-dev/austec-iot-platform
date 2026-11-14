@@ -2,11 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
+import '../../chat/models/conversation_item.dart';
+import '../../chat/screens/chat_room_screen.dart';
+import '../../cskh/domain/entities/chat_device_item.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
-import '../../cskh/screens/cskh_chat_screen.dart';
-import '../../cskh/domain/entities/chat_device_item.dart';
 
 class SmartMetterDetailScreen extends StatefulWidget {
   final DeviceItem device;
@@ -189,7 +191,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               );
             },
           ),
-          // 4. Icon CSKH
+          // 4. Icon CSKH (Mở trực tiếp ChatRoomScreen phòng CSKH thật)
           IconButton(
             icon: const Icon(Icons.headset_mic_outlined, color: AppTheme.cyanAccent, size: 20),
             tooltip: "Hỗ trợ CSKH",
@@ -201,9 +203,17 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                 modelName: _device.modelName,
                 categoryTag: "CÔNG TƠ ĐIỆN",
               );
+              final cskhConv = ConversationItem(
+                id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
+                type: 'CSKH',
+                title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
+                avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+                lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
+              );
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => CskhChatScreen(
+                  builder: (context) => ChatRoomScreen(
+                    conversation: cskhConv,
                     initialDevice: chatDev,
                     initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về Công tơ điện tử ${_device.name} (ID: ${_device.hardwareId}).",
                   ),
@@ -222,6 +232,8 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               opacity: isDark ? 0.16 : 0.08,
               child: Image.asset(
                 "assets/austec_banner_new.png",
+                width: double.infinity,
+                height: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
@@ -233,15 +245,14 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Column(
                 children: [
-                  // 1. LOGO & SLOGAN 2026 (Theo AUSTEC - 2026.pdf)
-                  SizedBox(
-                    height: 38,
-                    child: Image.asset(
-                      "assets/austec_logo_2026.png",
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Text(
-                        "AUSTEC - Smart Technology for Modern Spaces",
-                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                  // 1. LOGO & SLOGAN 2026 to rõ, căn giữa, không nền trắng
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 10),
+                      child: Image.asset(
+                        "assets/austec_logo_2026.png",
+                        height: 48,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),

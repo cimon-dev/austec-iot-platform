@@ -60,6 +60,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
       for (final hwId in _activeStreamingCameras) {
         _gateway.sendCommand(hardwareId: hwId, action: "STREAM_STOP");
       }
+      CameraWebRtcPlayer.clearAllCache();
     }
     super.dispose();
   }
@@ -171,107 +172,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     }
   }
 
-  void _showRenameDialog(DeviceItem device) {
-    final controller = TextEditingController(text: device.name);
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
-        title: Text(
-          AppTheme.t("rename_device"),
-          style: TextStyle(color: AppTheme.isDarkMode ? Colors.white : Colors.black),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: TextStyle(color: AppTheme.isDarkMode ? Colors.white : Colors.black),
-          decoration: InputDecoration(
-            labelText: "Tên thiết bị mới",
-            labelStyle: const TextStyle(color: AppTheme.cyanAccent),
-            enabledBorder: OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.isDarkMode ? AppTheme.cardBorder : Colors.grey[300]!),
-            ),
-            focusedBorder: const OutlineInputBorder(
-              borderSide: BorderSide(color: AppTheme.cyanAccent),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(AppTheme.t("cancel")),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
-            onPressed: () async {
-              if (controller.text.trim().isNotEmpty) {
-                final newName = controller.text.trim();
-                Navigator.of(ctx).pop();
-                final ok = await _gateway.updateDeviceName(device.hardwareId, newName);
-                if (mounted) {
-                  setState(() {});
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(ok ? "Đã cập nhật tên thiết bị thành công!" : "Đã cập nhật tên thiết bị."),
-                      backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
-                    ),
-                  );
-                }
-              }
-            },
-            child: Text(AppTheme.t("save")),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteDialog(DeviceItem device) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
-        title: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
-            const SizedBox(width: 8),
-            Text(
-              AppTheme.t("delete_device"),
-              style: TextStyle(color: AppTheme.isDarkMode ? Colors.white : Colors.black),
-            ),
-          ],
-        ),
-        content: Text(
-          "Bạn có chắc muốn xóa thiết bị '${device.name}' (${device.hardwareId}) khỏi tài khoản?",
-          style: TextStyle(color: AppTheme.isDarkMode ? AppTheme.textSecondary : Colors.grey[700]),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(AppTheme.t("cancel")),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimsonDanger, foregroundColor: Colors.white),
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final ok = await _gateway.unpairDevice(device.hardwareId);
-              if (mounted) {
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(ok ? "Đã hủy liên kết và xóa thiết bị thành công!" : "Đã gỡ thiết bị khỏi danh sách."),
-                    backgroundColor: AppTheme.crimsonDanger,
-                  ),
-                );
-              }
-            },
-            child: Text(AppTheme.t("delete_device")),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _navigateToDetail(DeviceItem device) {
     if (device.category == DeviceCategory.rollerDoor) {
       Navigator.of(context).push(
@@ -304,99 +204,146 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
   }
 
   void _showZoomDialog(DeviceItem device) {
+    final camList = _pagedCameras.isNotEmpty ? _pagedCameras : _gateway.getDevicesByCategory(DeviceCategory.camera);
+    final initialIdx = camList.indexWhere((c) => c.hardwareId == device.hardwareId);
+    int activeIdx = initialIdx >= 0 ? initialIdx : 0;
+    final PageController pageController = PageController(initialPage: activeIdx);
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: double.infinity,
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.78),
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.cyanAccent, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.cyanAccent.withValues(alpha: 0.35),
-                    blurRadius: 24,
-                    spreadRadius: 2,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          final currentCam = camList.isNotEmpty && activeIdx < camList.length ? camList[activeIdx] : device;
+
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: double.infinity,
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.78),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.cyanAccent, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.cyanAccent.withValues(alpha: 0.35),
+                        blurRadius: 24,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 6.0,
-                  panEnabled: true,
-                  scaleEnabled: true,
-                  child: CameraWebRtcPlayer(
-                    hardwareId: device.hardwareId,
-                    isActive: true,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: camList.isNotEmpty
+                        ? PageView.builder(
+                            controller: pageController,
+                            itemCount: camList.length,
+                            onPageChanged: (newIdx) {
+                              setDialogState(() {
+                                activeIdx = newIdx;
+                              });
+                            },
+                            itemBuilder: (pCtx, pIdx) {
+                              return InteractiveViewer(
+                                minScale: 1.0,
+                                maxScale: 6.0,
+                                panEnabled: true,
+                                scaleEnabled: true,
+                                child: CameraWebRtcPlayer(
+                                  hardwareId: camList[pIdx].hardwareId,
+                                  isActive: true,
+                                ),
+                              );
+                            },
+                          )
+                        : InteractiveViewer(
+                            minScale: 1.0,
+                            maxScale: 6.0,
+                            panEnabled: true,
+                            scaleEnabled: true,
+                            child: CameraWebRtcPlayer(
+                              hardwareId: device.hardwareId,
+                              isActive: true,
+                            ),
+                          ),
                   ),
                 ),
-              ),
-            ),
-            // Header overlay
-            Positioned(
-              top: 14,
-              left: 16,
-              right: 16,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                // Header overlay (co giãn linh hoạt, không tràn màn hình)
+                Positioned(
+                  top: 14,
+                  left: 14,
+                  right: 14,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.emeraldSuccess),
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  "${currentCam.name}${camList.length > 1 ? ' (${activeIdx + 1}/${camList.length})' : ''}",
+                                  style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Text(
+                                "• 1x - 6x",
+                                style: TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                ),
+                // Tip overlay (hướng dẫn vuốt đổi camera)
+                Positioned(
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5)),
+                      color: Colors.black.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white24),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.emeraldSuccess),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          "${device.name} • Thu phóng 1x - 6x",
-                          style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
-                        ),
-                      ],
+                    child: Text(
+                      camList.length > 1
+                          ? "Vuốt sang trái / phải để đổi camera • Chụm 2 ngón tay để phóng to"
+                          : "Chụm / Mở 2 ngón tay để phóng to và di chuyển để soi chi tiết",
+                      style: const TextStyle(color: Colors.white70, fontSize: 10.5),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 22),
-                    style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-            ),
-            // Tip overlay
-            Positioned(
-              bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
                 ),
-                child: const Text(
-                  "Chụm / Mở 2 ngón tay để phóng to và di chuyển để soi chi tiết",
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -642,67 +589,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert_rounded,
-                  color: isDark ? AppTheme.textSecondary : Colors.grey[600],
-                  size: 17,
-                ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                color: isDark ? AppTheme.surfaceDark : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                onSelected: (val) {
-                  if (val == 'rename') _showRenameDialog(device);
-                  if (val == 'delete') _showDeleteDialog(device);
-                  if (val == 'details') _navigateToDetail(device);
-                  if (val == 'settings') _navigateToSettings(device);
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'details',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.brandBlue),
-                        const SizedBox(width: 8),
-                        Text("Xem chi tiết", style: TextStyle(color: textCol, fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'settings',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.settings_outlined, size: 16, color: AppTheme.cyanAccent),
-                        const SizedBox(width: 8),
-                        Text("Cài đặt", style: TextStyle(color: textCol, fontSize: 13)),
-                      ],
-                    ),
-                  ),
-                  if (device.canConfig)
-                    PopupMenuItem(
-                      value: 'rename',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.edit_outlined, size: 16, color: AppTheme.cyanAccent),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  if (device.isOwner)
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline, size: 16, color: AppTheme.crimsonDanger),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
             ],
           ),
 
@@ -913,39 +799,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                   ],
                 ),
-              ),
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: isDark ? AppTheme.textSecondary : Colors.grey[700], size: 20),
-                color: isDark ? AppTheme.surfaceDark : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onSelected: (val) {
-                  if (val == 'rename') _showRenameDialog(device);
-                  if (val == 'delete') _showDeleteDialog(device);
-                },
-                itemBuilder: (context) => [
-                  if (device.canConfig)
-                    PopupMenuItem(
-                      value: 'rename',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.edit_outlined, size: 18, color: AppTheme.cyanAccent),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
-                        ],
-                      ),
-                    ),
-                  if (device.isOwner)
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
-                        ],
-                      ),
-                    ),
-                ],
               ),
             ],
           ),
@@ -1202,48 +1055,6 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     ),
                   ],
                 ),
-              ),
-
-              // 3-dots popup menu (Đổi tên, Xóa thiết bị)
-              PopupMenuButton<String>(
-                icon: Icon(
-                  Icons.more_vert,
-                  color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
-                  size: 20,
-                ),
-                color: isDark ? AppTheme.surfaceDark : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onSelected: (value) {
-                  if (value == 'rename') {
-                    _showRenameDialog(device);
-                  } else if (value == 'delete') {
-                    _showDeleteDialog(device);
-                  }
-                },
-                itemBuilder: (context) => [
-                  if (device.canConfig)
-                    PopupMenuItem(
-                      value: 'rename',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_outlined, size: 18, color: isDark ? Colors.white : Colors.black87),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("rename_device"), style: TextStyle(color: textCol)),
-                        ],
-                      ),
-                    ),
-                  if (device.isOwner)
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.delete_outline, size: 18, color: AppTheme.crimsonDanger),
-                          const SizedBox(width: 8),
-                          Text(AppTheme.t("delete_device"), style: const TextStyle(color: AppTheme.crimsonDanger)),
-                        ],
-                      ),
-                    ),
-                ],
               ),
             ],
           ),

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
+import '../../chat/screens/chat_room_screen.dart';
+import '../../chat/models/conversation_item.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 import '../widgets/camera_webrtc_player.dart';
-import '../../cskh/screens/cskh_chat_screen.dart';
 import '../../cskh/domain/entities/chat_device_item.dart';
 
 class RollerDoorControlScreen extends StatefulWidget {
@@ -237,7 +239,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               );
             },
           ),
-          // Icon CSKH hỗ trợ trực tuyến
+          // Icon CSKH hỗ trợ trực tuyến (Mở màn chat CSKH thật)
           IconButton(
             icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 22),
             tooltip: "Hỗ trợ CSKH",
@@ -249,9 +251,17 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 modelName: _device.modelName,
                 categoryTag: _device.badgeText.isNotEmpty ? _device.badgeText : "AUSTEC",
               );
+              final cskhConv = ConversationItem(
+                id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
+                type: 'CSKH',
+                title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
+                avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+                lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
+              );
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (context) => CskhChatScreen(
+                  builder: (context) => ChatRoomScreen(
+                    conversation: cskhConv,
                     initialDevice: chatDev,
                     initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${_device.name} (HWID: ${_device.hardwareId}).",
                   ),
@@ -275,35 +285,39 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       ),
       body: Stack(
         children: [
-          // 1. Background Watermark Công Ty AUSTEC mới (độ mờ đục vừa phải ~0.14)
+          // 1. Background Watermark Công Ty AUSTEC bao trùm toàn bộ màn hình
           Positioned.fill(
             child: Opacity(
-              opacity: isDark ? 0.14 : 0.08,
+              opacity: isDark ? 0.16 : 0.08,
               child: Image.asset(
                 'assets/austec_banner_new.png',
+                width: double.infinity,
+                height: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          // 2. Nội dung hiển thị gọn gàng trên 1 màn hình
+          // 2. Nội dung hiển thị gói gọn và cân đối
           SafeArea(
             child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Logo & Slogan AUSTEC 2026 ngay dưới Header
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2, bottom: 6),
-                    child: Image.asset(
-                      'assets/austec_logo_2026.png',
-                      height: 26,
-                      fit: BoxFit.contain,
+                  // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa và không có nền trắng
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2, bottom: 10),
+                      child: Image.asset(
+                        'assets/austec_logo_2026.png',
+                        height: 48,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
 
-                  // Banner Hướng Dẫn Ngoại Tuyến (rút gọn cực ngắn)
+                  // Banner Hướng Dẫn Ngoại Tuyến (rút gọn)
                   if (!_device.isOnline)
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
@@ -313,11 +327,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
-                          const SizedBox(width: 8),
-                          const Expanded(
+                          Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
                             child: Text(
                               "Ngoại tuyến Wi-Fi • Điều khiển trực tiếp qua Bluetooth BLE tầm gần",
                               style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
@@ -327,25 +341,15 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                       ),
                     ),
 
-                  // Khung mô phỏng nan cửa cuốn chuyển động
-                  _buildRollerDoorGraphic(cardBg, cardBorder),
-                  const SizedBox(height: 8),
-
-                  // Huy hiệu trạng thái thời gian thực
-                  _buildDoorStatusBadge(),
-                  const SizedBox(height: 8),
-
-                  // Nút Khóa an toàn trẻ em
-                  if (_device.canChildLock) ...[
-                    _buildLockButton(cardBg, cardBorder),
-                    const SizedBox(height: 8),
-                  ],
-
-                  // 3 Nút Bấm Lớn Trực Quan: MỞ - DỪNG - ĐÓNG
-                  _buildVisualControlButtons(),
+                  // 1. Khối cửa cuốn dài ra, bên dưới chứa 3 button Mở, Dừng, Đóng (only icon, no text)
+                  _buildRollerDoorGraphicWithControls(cardBg, cardBorder),
                   const SizedBox(height: 10),
 
-                  // Camera Giám Sát Cửa Cuốn (Thu gọn vừa khít màn hình)
+                  // 2. Phía dưới là 2 khối (Vị trí, Khóa an toàn trẻ em) ngang dài bằng nhau
+                  _buildTwoEqualStatusBlocks(cardBg, cardBorder),
+                  const SizedBox(height: 10),
+
+                  // 3. Camera Giám Sát Cửa Cuốn
                   _buildDoorCameraSection(cardBg, cardBorder, textCol),
                 ],
               ),
@@ -356,18 +360,18 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     );
   }
 
-  // Khung mô phỏng nan cửa cuốn di chuyển dần dần theo %
-  Widget _buildRollerDoorGraphic(Color cardBg, Color cardBorder) {
+  // Khung mô phỏng nan cửa cuốn dài ra và chứa 3 nút Mở - Dừng - Đóng ở phía dưới
+  Widget _buildRollerDoorGraphicWithControls(Color cardBg, Color cardBorder) {
     final isDark = AppTheme.isDarkMode;
-    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     final closedFrac = (1.0 - (_currentPercent / 100.0)).clamp(0.0, 1.0);
+    final isLocked = _device.isChildLockActive;
 
     return Container(
       width: double.infinity,
-      height: 125,
+      height: 245,
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: cardBorder, width: 1.2),
       ),
       child: Stack(
@@ -375,8 +379,8 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           // Ray dẫn hướng 2 bên
           Positioned(
             left: 12,
-            top: 36,
-            bottom: 10,
+            top: 40,
+            bottom: 74,
             width: 8,
             child: Container(
               decoration: BoxDecoration(
@@ -387,8 +391,8 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           ),
           Positioned(
             right: 12,
-            top: 36,
-            bottom: 10,
+            top: 40,
+            bottom: 74,
             width: 8,
             child: Container(
               decoration: BoxDecoration(
@@ -429,12 +433,12 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ),
           ),
 
-          // Nan cửa cuốn chuyển động dần dần
+          // Nan cửa cuốn chuyển động
           Positioned(
             left: 22,
             right: 22,
-            top: 38,
-            bottom: 10,
+            top: 40,
+            bottom: 74,
             child: Stack(
               children: [
                 // Không gian bên trong nhà (khi mở hé thấy không gian)
@@ -444,7 +448,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
-                    child: Icon(Icons.home_outlined, size: 36, color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.1)),
+                    child: Icon(Icons.home_outlined, size: 40, color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.1)),
                   ),
                 ),
 
@@ -466,9 +470,9 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: List.generate(
-                        5,
+                        6,
                         (index) => Container(
-                          height: 2,
+                          height: 2.2,
                           margin: const EdgeInsets.symmetric(horizontal: 6),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
@@ -483,10 +487,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ),
           ),
 
-          // Huy hiệu hiển thị % mở
+          // Huy hiệu hiển thị % mở góc phải
           Positioned(
             right: 18,
-            bottom: 14,
+            bottom: 78,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
@@ -499,11 +503,63 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               ),
               child: Text(
                 "${_currentPercent.round()}%",
-                style: TextStyle(
-                  color: textCol,
-                  fontSize: 12.5,
+                style: const TextStyle(
+                  color: AppTheme.cyanAccent,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  fontFamily: "monospace",
+                ),
+              ),
+            ),
+          ),
+
+          // VÙNG 3 BUTTON ĐIỀU KHIỂN (MỞ, DỪNG, ĐÓNG) NẰM TRONG PHÍA DƯỚI KHỐI CỬA CUỐN (ONLY ICON, NO TEXT)
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 66,
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F141F) : const Color(0xFFF1F5F9),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                border: Border(top: BorderSide(color: cardBorder, width: 1.0)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Opacity(
+                opacity: isLocked ? 0.35 : 1.0,
+                child: IgnorePointer(
+                  ignoring: isLocked,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // 1. NÚT MỞ CỬA - MÀU XANH LÁ (ONLY ICON)
+                      _buildEmbeddedCircleBtn(
+                        icon: Icons.arrow_upward_rounded,
+                        isActive: _isOpening,
+                        actionColor: const Color(0xFF10B981),
+                        tooltip: "Mở cửa",
+                        onTap: _startOpenDoor,
+                      ),
+
+                      // 2. NÚT DỪNG LẠI - MÀU VÀNG (ONLY ICON)
+                      _buildEmbeddedCircleBtn(
+                        icon: Icons.stop_rounded,
+                        isActive: _isStopped && !_isOpening && !_isClosing,
+                        actionColor: const Color(0xFFF59E0B),
+                        tooltip: "Dừng cửa",
+                        onTap: _stopDoor,
+                      ),
+
+                      // 3. NÚT ĐÓNG CỬA - MÀU XANH LAM (ONLY ICON)
+                      _buildEmbeddedCircleBtn(
+                        icon: Icons.arrow_downward_rounded,
+                        isActive: _isClosing,
+                        actionColor: const Color(0xFF2563EB),
+                        tooltip: "Đóng cửa",
+                        onTap: _startCloseDoor,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -513,259 +569,199 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     );
   }
 
-  // Huy hiệu trạng thái động (Có màu biểu tượng rõ ràng)
-  Widget _buildDoorStatusBadge() {
+  Widget _buildEmbeddedCircleBtn({
+    required IconData icon,
+    required bool isActive,
+    required Color actionColor,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
     final isDark = AppTheme.isDarkMode;
-    String text;
-    IconData icon;
-    Color statusColor;
 
-    if (_device.isChildLockActive) {
-      text = "CỬA ĐANG KHÓA AN TOÀN TRẺ EM";
-      icon = Icons.lock_rounded;
-      statusColor = const Color(0xFFEF4444);
-    } else if (_isOpening) {
-      text = "CỬA ĐANG MỞ LÊN DẦN DẦN... (${_currentPercent.round()}%)";
-      icon = Icons.arrow_upward_rounded;
-      statusColor = const Color(0xFF10B981);
-    } else if (_isClosing) {
-      text = "CỬA ĐANG HẠ XUỐNG DẦN DẦN... (${_currentPercent.round()}%)";
-      icon = Icons.arrow_downward_rounded;
-      statusColor = const Color(0xFF2563EB);
-    } else if (_currentPercent >= 98) {
-      text = "CỬA ĐANG MỞ HOÀN TOÀN (100%)";
-      icon = Icons.check_circle_outline_rounded;
-      statusColor = const Color(0xFF10B981);
-    } else if (_currentPercent <= 2) {
-      text = "CỬA ĐÃ ĐÓNG KÍN AN TOÀN (0%)";
-      icon = Icons.door_front_door_outlined;
-      statusColor = const Color(0xFF2563EB);
-    } else {
-      text = "CỬA ĐANG DỪNG Ở VỊ TRÍ ${_currentPercent.round()}%";
-      icon = Icons.pause_circle_outline_rounded;
-      statusColor = const Color(0xFFF59E0B);
-    }
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        final pulseScale = isActive ? 1.0 + _pulseController.value * 0.05 : 1.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: isDark ? 0.16 : 0.08),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: statusColor.withValues(alpha: isDark ? 0.45 : 0.35), width: 1.2),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: statusColor, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(color: statusColor, fontSize: 12.5, fontWeight: FontWeight.bold),
+        return Transform.scale(
+          scale: pulseScale,
+          child: Tooltip(
+            message: tooltip,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(25),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? actionColor
+                      : actionColor.withValues(alpha: isDark ? 0.16 : 0.10),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isActive ? actionColor : actionColor.withValues(alpha: isDark ? 0.6 : 0.4),
+                    width: isActive ? 2.0 : 1.2,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: isActive ? Colors.white : actionColor,
+                  size: 26,
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  // Nút Khóa An Toàn Trẻ Em - MÀU ĐỎ NỔI BẬT
-  Widget _buildLockButton(Color cardBg, Color cardBorder) {
+  // 2 KHỐI NGANG DÀI BẰNG NHAU: VỊ TRÍ & KHÓA AN TOÀN TRẺ EM
+  Widget _buildTwoEqualStatusBlocks(Color cardBg, Color cardBorder) {
     final isDark = AppTheme.isDarkMode;
     final isLocked = _device.isChildLockActive;
     const lockColor = Color(0xFFEF4444);
 
-    return InkWell(
-      onTap: _toggleLock,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: BoxDecoration(
-          color: isLocked
-              ? lockColor.withValues(alpha: isDark ? 0.22 : 0.12)
-              : (isDark ? const Color(0xFF18181B) : Colors.white),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isLocked ? lockColor : lockColor.withValues(alpha: 0.45),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
-              color: lockColor,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              isLocked ? "ĐANG KHÓA CỬA AN TOÀN (BẤM ĐỂ MỞ)" : "KHÓA AN TOÀN TRẺ EM",
-              style: const TextStyle(
-                color: lockColor,
-                fontSize: 12.5,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+    String posDesc = "Đang dừng";
+    Color posColor = const Color(0xFF10B981);
+    IconData posIcon = Icons.door_sliding_outlined;
 
-  // 3 Nút Bấm Lớn Trực Quan: MỞ (Xanh lá) - DỪNG (Vàng) - ĐÓNG (Xanh lam)
-  Widget _buildVisualControlButtons() {
-    if (!_device.canPerformControl) {
-      final isDark = AppTheme.isDarkMode;
-      final isScheduleLimit = !_device.isWithinAllowedSchedule;
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: isDark ? 0.12 : 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.35),
-            width: 1.2,
+    if (_isOpening) {
+      posDesc = "Đang mở...";
+      posColor = const Color(0xFF10B981);
+      posIcon = Icons.arrow_upward_rounded;
+    } else if (_isClosing) {
+      posDesc = "Đang đóng...";
+      posColor = const Color(0xFF2563EB);
+      posIcon = Icons.arrow_downward_rounded;
+    } else if (_currentPercent >= 98) {
+      posDesc = "Mở 100%";
+      posColor = const Color(0xFF10B981);
+      posIcon = Icons.check_circle_outline_rounded;
+    } else if (_currentPercent <= 2) {
+      posDesc = "Đã đóng kín";
+      posColor = const Color(0xFF2563EB);
+      posIcon = Icons.door_front_door_outlined;
+    } else {
+      posDesc = "Vị trí ${_currentPercent.round()}%";
+      posColor = const Color(0xFFF59E0B);
+      posIcon = Icons.pause_circle_outline_rounded;
+    }
+
+    return Row(
+      children: [
+        // 1. KHỐI VỊ TRÍ CỬA
+        Expanded(
+          child: Container(
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: cardBorder, width: 1.2),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: posColor.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(posIcon, color: posColor, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        "VỊ TRÍ CỬA",
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 9.5, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 1),
+                      Text(
+                        "${_currentPercent.round()}%",
+                        style: TextStyle(color: posColor, fontSize: 16, fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        posDesc,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white70, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
+
+        const SizedBox(width: 10),
+
+        // 2. KHỐI KHÓA AN TOÀN TRẺ EM
+        Expanded(
+          child: InkWell(
+            onTap: _toggleLock,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: (isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444)).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
+                color: isLocked ? lockColor.withValues(alpha: isDark ? 0.18 : 0.1) : cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isLocked ? lockColor : cardBorder,
+                  width: isLocked ? 1.5 : 1.2,
+                ),
               ),
-              child: Icon(
-                isScheduleLimit ? Icons.schedule_rounded : Icons.lock_outline_rounded,
-                color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Text(
-                    isScheduleLimit ? "Ngoài khung giờ được phép điều khiển" : "Quyền điều khiển đã bị tạm khóa",
-                    style: TextStyle(
-                      color: isScheduleLimit ? AppTheme.amberWarning : const Color(0xFFEF4444),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: (isLocked ? lockColor : Colors.white24).withValues(alpha: 0.16),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      color: isLocked ? lockColor : Colors.white70,
+                      size: 20,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    isScheduleLimit
-                        ? "Chủ nhà chỉ cho phép điều khiển trong khung giờ ${_device.accessStartTime} - ${_device.accessEndTime}."
-                        : "Tài khoản của bạn là thành viên phụ và chưa được chủ nhà cấp quyền mở/đóng cửa.",
-                    style: TextStyle(
-                      color: isDark ? Colors.white70 : Colors.black87,
-                      fontSize: 11.5,
-                      height: 1.3,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          "KHÓA TRẺ EM",
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 9.5, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          isLocked ? "ĐANG KHÓA" : "MỞ KHÓA",
+                          style: TextStyle(
+                            color: isLocked ? lockColor : const Color(0xFF10B981),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          isLocked ? "Bấm mở khóa" : "Bấm để khóa",
+                          style: const TextStyle(color: Colors.white60, fontSize: 10),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      );
-    }
-
-    final isLocked = _device.isChildLockActive;
-
-    return Opacity(
-      opacity: isLocked ? 0.35 : 1.0,
-      child: IgnorePointer(
-        ignoring: isLocked,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            // 1. NÚT MỞ CỬA - MÀU XANH LÁ
-            _buildActiveActionButton(
-              label: _isOpening ? "ĐANG MỞ..." : AppTheme.t("open"),
-              icon: Icons.arrow_upward_rounded,
-              isActive: _isOpening,
-              actionColor: const Color(0xFF10B981),
-              onTap: _startOpenDoor,
-            ),
-
-            // 2. NÚT DỪNG LẠI - MÀU VÀNG
-            _buildActiveActionButton(
-              label: AppTheme.t("stop"),
-              icon: Icons.stop_rounded,
-              isActive: _isStopped && !_isOpening && !_isClosing,
-              actionColor: const Color(0xFFF59E0B),
-              onTap: _stopDoor,
-            ),
-
-            // 3. NÚT ĐÓNG CỬA - MÀU XANH LAM
-            _buildActiveActionButton(
-              label: _isClosing ? "ĐANG ĐÓNG..." : AppTheme.t("close"),
-              icon: Icons.arrow_downward_rounded,
-              isActive: _isClosing,
-              actionColor: const Color(0xFF2563EB),
-              onTap: _startCloseDoor,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActiveActionButton({
-    required String label,
-    required IconData icon,
-    required bool isActive,
-    required Color actionColor,
-    required VoidCallback onTap,
-  }) {
-    final isDark = AppTheme.isDarkMode;
-
-    return Column(
-      children: [
-        AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, child) {
-            final pulseScale = isActive ? 1.0 + _pulseController.value * 0.04 : 1.0;
-
-            return Transform.scale(
-              scale: pulseScale,
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(32),
-                child: Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? actionColor
-                        : actionColor.withValues(alpha: isDark ? 0.14 : 0.08),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isActive ? actionColor : actionColor.withValues(alpha: isDark ? 0.5 : 0.35),
-                      width: isActive ? 2.0 : 1.2,
-                    ),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isActive ? Colors.white : actionColor,
-                    size: 26,
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            color: actionColor,
-            fontSize: 11.5,
-            fontWeight: FontWeight.bold,
           ),
         ),
       ],

@@ -5,6 +5,8 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/auth_service.dart';
+import '../../chat/models/conversation_item.dart';
+import '../../chat/screens/chat_room_screen.dart';
 import '../../cskh/cskh.dart';
 
 class NativeShopScreen extends StatefulWidget {
@@ -187,25 +189,19 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
         imageUrl: product.imagePath,
         specs: product.specs,
       );
+      final cskhConv = ConversationItem(
+        id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
+        type: 'CSKH',
+        title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+        lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
+      );
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (context) => Scaffold(
-            backgroundColor: AppTheme.background,
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              title: Text("Tư vấn: ${product.name}", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            ),
-            body: SafeArea(
-              child: CskhChatScreen(
-                initialDevice: chatDev,
-                initialPrompt: "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.",
-              ),
-            ),
+          builder: (context) => ChatRoomScreen(
+            conversation: cskhConv,
+            initialDevice: chatDev,
+            initialPrompt: "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.",
           ),
         ),
       );

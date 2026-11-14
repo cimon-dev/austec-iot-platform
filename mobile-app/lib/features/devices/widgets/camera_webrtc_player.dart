@@ -8,8 +8,9 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/network/api_client.dart';
 
 /// Widget phát luồng video thật từ MediaMTX WebRTC (WHEP HTTP page :8889/live/<hwId>).
-/// Nguyên tắc: KHÔNG fallback sang snapshot hay dữ liệu giả. Nếu backend hoặc MediaMTX
-/// không kết nối được, hiển thị thẳng lỗi thật để dễ chẩn đoán (Wi-Fi/Firewall/IP).
+/// Tối ưu state: Lưu cache WebViewController theo hardwareId để khi bấm phóng to hoặc
+/// xem chi tiết không phải kết nối lại từ đầu.
+/// Tự động ẩn thông báo lỗi kỹ thuật thô của MediaMTX (stream not found) và thay bằng loading tinh tế.
 class CameraWebRtcPlayer extends StatefulWidget {
   final String hardwareId;
   final bool isActive;
@@ -24,6 +25,19 @@ class CameraWebRtcPlayer extends StatefulWidget {
     this.onStreamInfoLoaded,
   });
 
+  static final Map<String, WebViewController> _cachedControllers = {};
+  static final Map<String, bool> _cachedVideoReady = {};
+
+  static void clearCacheFor(String hardwareId) {
+    _cachedControllers.remove(hardwareId);
+    _cachedVideoReady.remove(hardwareId);
+  }
+
+  static void clearAllCache() {
+    _cachedControllers.clear();
+    _cachedVideoReady.clear();
+  }
+
   @override
   State<CameraWebRtcPlayer> createState() => _CameraWebRtcPlayerState();
 }
@@ -31,13 +45,14 @@ class CameraWebRtcPlayer extends StatefulWidget {
 class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
   WebViewController? _controller;
   bool _isLoading = false;
+  bool _isVideoReady = false;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     if (widget.isActive) {
-      _resolveAndLoadStream();
+      _checkCacheOrLoadStream();
     }
   }
 
@@ -50,6 +65,7 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
         setState(() {
           _controller = null;
           _isLoading = false;
+          _isVideoReady = false;
           _errorMessage = null;
         });
       }
@@ -60,20 +76,39 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
         oldWidget.hardwareId != widget.hardwareId ||
         oldWidget.reloadNonce != widget.reloadNonce;
     if (shouldReload) {
-      _resolveAndLoadStream();
+      if (oldWidget.reloadNonce != widget.reloadNonce) {
+        CameraWebRtcPlayer.clearCacheFor(widget.hardwareId);
+      }
+      _checkCacheOrLoadStream();
     }
+  }
+
+  void _checkCacheOrLoadStream() {
+    final cached = CameraWebRtcPlayer._cachedControllers[widget.hardwareId];
+    if (cached != null) {
+      setState(() {
+        _controller = cached;
+        _isVideoReady = CameraWebRtcPlayer._cachedVideoReady[widget.hardwareId] ?? false;
+        _isLoading = !_isVideoReady;
+        _errorMessage = null;
+      });
+      return;
+    }
+
+    _resolveAndLoadStream();
   }
 
   Future<void> _resolveAndLoadStream() async {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
+      _isVideoReady = false;
       _errorMessage = null;
     });
 
     String rawWebRtcUrl = '';
 
-    // Chế độ Hybrid: App dùng Backend Render cho Auth/Devices/MQTT, riêng luồng Camera đi thẳng MediaMTX (từ cấu hình tay hoặc .env)
+    // Chế độ Hybrid: App dùng Backend Render cho Auth/Devices/MQTT, riêng luồng Camera đi thẳng MediaMTX
     final directMediaBase = ApiConfig.resolvedMediaMtxBaseUrl;
     if (directMediaBase != null) {
       rawWebRtcUrl = '$directMediaBase/live/${widget.hardwareId}';
@@ -150,9 +185,22 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
       return;
     }
 
-    final controller = WebViewController()
+    late final WebViewController controller;
+    controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      ..addJavaScriptChannel(
+        'AustecStreamChannel',
+        onMessageReceived: (JavaScriptMessage msg) {
+          if (msg.message == 'PLAYING' && mounted) {
+            CameraWebRtcPlayer._cachedVideoReady[widget.hardwareId] = true;
+            setState(() {
+              _isVideoReady = true;
+              _isLoading = false;
+            });
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
@@ -162,14 +210,44 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
               _errorMessage = null;
             });
           },
-          onPageFinished: (_) {
+          onPageFinished: (url) {
             if (!mounted) return;
-            setState(() {
-              _isLoading = false;
-            });
+            // Tiêm CSS ẩn triệt để text báo lỗi của MediaMTX (stream not found, retry...)
+            // Đồng thời kích hoạt script giám sát phát video thực tế
+            controller.runJavaScript("""
+              (function() {
+                try {
+                  const style = document.createElement('style');
+                  style.innerHTML = `
+                    body, html { background: #000000 !important; color: transparent !important; margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; }
+                    div, p, span, h1, h2, h3 { color: transparent !important; user-select: none !important; }
+                    video { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; }
+                  `;
+                  document.head.appendChild(style);
+
+                  function checkVideoPlaying() {
+                    const v = document.querySelector('video');
+                    if (v) {
+                      v.addEventListener('playing', function() {
+                        if (window.AustecStreamChannel) {
+                          window.AustecStreamChannel.postMessage('PLAYING');
+                        }
+                      });
+                      if (v.readyState >= 2 && v.currentTime > 0) {
+                        if (window.AustecStreamChannel) {
+                          window.AustecStreamChannel.postMessage('PLAYING');
+                        }
+                        return;
+                      }
+                    }
+                    setTimeout(checkVideoPlaying, 350);
+                  }
+                  checkVideoPlaying();
+                } catch(e) {}
+              })();
+            """);
           },
           onWebResourceError: (WebResourceError error) {
-            // Chỉ báo lỗi nếu chính trang player WebRTC (:8889) không mở được
             if (error.isForMainFrame != true || !mounted) return;
             setState(() {
               _isLoading = false;
@@ -183,7 +261,6 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
                 reqUri.host == playerUri.host &&
                 reqUri.port == playerUri.port &&
                 reqUri.path == playerUri.path;
-            // Không chặn subresource 404 (/whep) vì trang MediaMTX tự retry mỗi 2s khi chờ camera đẩy RTSP lên
             if (!isMainDoc || !mounted) return;
             final code = error.response?.statusCode ?? 0;
             if (code >= 400) {
@@ -203,6 +280,8 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
 
     await controller.loadRequest(playerUri);
     if (!mounted || !widget.isActive) return;
+
+    CameraWebRtcPlayer._cachedControllers[widget.hardwareId] = controller;
     setState(() {
       _controller = controller;
     });
@@ -221,7 +300,7 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
             Icon(Icons.videocam_off_rounded, color: Colors.white38, size: 36),
             SizedBox(height: 8),
             Text(
-              'Camera đang tạm dừng (mã 14)',
+              'Camera đang tạm dừng',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.white60, fontSize: 12),
             ),
@@ -238,16 +317,19 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, color: AppTheme.roseDanger, size: 34),
+            const Icon(Icons.error_outline_rounded, color: AppTheme.amberWarning, size: 32),
             const SizedBox(height: 8),
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+              style: const TextStyle(color: Colors.white70, fontSize: 11),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: _resolveAndLoadStream,
+              onPressed: () {
+                CameraWebRtcPlayer.clearCacheFor(widget.hardwareId);
+                _resolveAndLoadStream();
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.cyanAccent,
                 side: const BorderSide(color: AppTheme.cyanAccent),
@@ -268,11 +350,15 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
-            SizedBox(height: 10),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+            ),
+            SizedBox(height: 8),
             Text(
-              'Đang kết nối MediaMTX WebRTC...',
-              style: TextStyle(color: Colors.white54, fontSize: 11.5),
+              'Đang kết nối camera...',
+              style: TextStyle(color: Colors.white60, fontSize: 11),
             ),
           ],
         ),
@@ -283,11 +369,26 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
       fit: StackFit.expand,
       children: [
         WebViewWidget(controller: _controller!),
-        if (_isLoading)
+        // Lớp che loading tinh tế: Chỉ biến mất khi khung hình video thực tế đã xuất hiện
+        if (!_isVideoReady || _isLoading)
           Container(
-            color: Colors.black54,
+            color: Colors.black,
             alignment: Alignment.center,
-            child: const CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
+            child: const Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(strokeWidth: 2.2, color: AppTheme.cyanAccent),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Đang tải luồng camera...',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
           ),
       ],
     );
