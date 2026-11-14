@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Check } from "lucide-react";
-import { BlackboxLogEntry } from "../types";
+import { BlackboxLogEntry, formatDateTimeVN, getCommandDisplayInfo } from "../types";
 
 interface BlackboxDetailPanelProps {
   selectedLog: BlackboxLogEntry | null;
@@ -30,6 +30,8 @@ export const BlackboxDetailPanel: React.FC<BlackboxDetailPanelProps> = ({
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const cmdInfo = getCommandDisplayInfo(selectedLog);
 
   return (
     <div className="flex flex-col h-full overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
@@ -103,11 +105,15 @@ export const BlackboxDetailPanel: React.FC<BlackboxDetailPanelProps> = ({
           </span>
           <div className="flex justify-between">
             <span className="text-slate-500 font-sans">App gửi lệnh (T1):</span>
-            <span className="text-slate-800 dark:text-slate-200">{selectedLog.timestamp}</span>
+            <span className="text-slate-800 dark:text-slate-200" title={selectedLog.timestamp}>
+              {formatDateTimeVN(selectedLog.timestamp)}
+            </span>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500 font-sans">Thiết bị ACK (T2):</span>
-            <span className="text-emerald-600 dark:text-emerald-400">{selectedLog.ackTimestamp || "Chưa phản hồi"}</span>
+            <span className="text-emerald-600 dark:text-emerald-400" title={selectedLog.ackTimestamp}>
+              {selectedLog.ackTimestamp ? formatDateTimeVN(selectedLog.ackTimestamp) : "Chưa phản hồi"}
+            </span>
           </div>
           <div className="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1 font-bold">
             <span className="text-slate-600 dark:text-slate-400 font-sans">Thời gian khứ hồi:</span>
@@ -134,10 +140,59 @@ export const BlackboxDetailPanel: React.FC<BlackboxDetailPanelProps> = ({
           </div>
         </div>
 
+        {/* Command & Hardware Transmission Packet Info */}
+        <div className="p-2.5 rounded-lg bg-cyan-950/20 dark:bg-cyan-950/40 border border-cyan-800/40 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider">
+              Thông Tin Gói Tin Điều Khiển
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30">
+              {cmdInfo.codeText}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div>
+              <span className="text-slate-500 block text-[10px]">Lệnh thực thi:</span>
+              <span className="font-bold text-slate-900 dark:text-white">{cmdInfo.label}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px]">Mã phần cứng (Action Code):</span>
+              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                {selectedLog.payload?.actionCode ? `Mã '${selectedLog.payload.actionCode}'` : cmdInfo.codeText}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px]">Nhóm thiết bị:</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {selectedLog.payload?.category || (selectedLog.hardwareId.includes("DOOR") ? "Cửa cuốn Austec" : selectedLog.hardwareId.includes("SOC") || selectedLog.hardwareId.includes("OCAM") ? "Ổ cắm thông minh" : "Thiết bị IoT Austec")}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px]">Kênh truyền dẫn:</span>
+              <span className="font-mono text-cyan-600 dark:text-cyan-300">
+                {selectedLog.payload?.transmissionChannel || "MQTT Broker Cloud"}
+              </span>
+            </div>
+          </div>
+
+          {selectedLog.payload?.mqttTopic && (
+            <div className="pt-1.5 border-t border-cyan-800/20 text-[11px]">
+              <span className="text-slate-500 block text-[10px]">Topic MQTT:</span>
+              <span className="font-mono text-slate-700 dark:text-slate-300 break-all select-all font-semibold">
+                {selectedLog.payload.mqttTopic}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Command Payload */}
         <div className="space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Gói Tin Lệnh (Payload)</span>
-          <pre className="p-2 rounded-lg bg-slate-900 text-cyan-300 font-mono text-[10px] border border-slate-800 overflow-x-auto">
+          <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <span>Chi Tiết Gói Tin Gốc (Raw JSON Payload)</span>
+            <span className="font-mono text-[9px] text-slate-400">Đầy đủ tham số gửi lên</span>
+          </div>
+          <pre className="p-2.5 rounded-lg bg-slate-900 text-cyan-300 font-mono text-[10px] border border-slate-800 overflow-x-auto max-h-[220px]">
             {JSON.stringify(selectedLog.payload, null, 2)}
           </pre>
         </div>

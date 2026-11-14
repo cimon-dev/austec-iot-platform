@@ -20,7 +20,11 @@ export const QueryBlackboxLogsSchema = z.object({
   hardwareId: z.string().optional(),
   actionType: z.string().optional(),
   ackStatus: z.string().optional(),
-  limit: z.coerce.number().int().positive().optional().default(100),
+  role: z.string().optional(),
+  category: z.string().optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
+  limit: z.coerce.number().int().positive().optional().default(300),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });
 

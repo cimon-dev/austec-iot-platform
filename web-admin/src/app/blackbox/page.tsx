@@ -24,6 +24,10 @@ export default function BlackboxPage() {
   const [logs, setLogs] = useState<BlackboxLogEntry[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchHardwareId, setSearchHardwareId] = useState("");
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [selectedCommandType, setSelectedCommandType] = useState<string>("ALL");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
   const [selectedLog, setSelectedLog] = useState<BlackboxLogEntry | null>(null);
@@ -34,7 +38,14 @@ export default function BlackboxPage() {
   const fetchLogs = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const data = await blackboxService.getLogs({ limit: 200 });
+      const params: any = { limit: 300 };
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
+      if (selectedCategory !== "ALL") params.category = selectedCategory;
+      if (selectedCommandType !== "ALL") params.actionType = selectedCommandType;
+      if (selectedRole !== "ALL") params.role = selectedRole;
+
+      const data = await blackboxService.getLogs(params);
       if (data.logs && Array.isArray(data.logs)) {
         const mapped: BlackboxLogEntry[] = data.logs.map((l: any) => ({
           id: l.id || `BBX-${Math.floor(100000 + Math.random() * 900000)}`,
@@ -63,7 +74,7 @@ export default function BlackboxPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, []);
+  }, [fromDate, toDate, selectedCategory, selectedCommandType, selectedRole]);
 
   useEffect(() => {
     fetchLogs();
@@ -93,13 +104,68 @@ export default function BlackboxPage() {
         (log.clientIp || "").includes(searchHardwareId);
       const matchStatus = selectedStatus === "ALL" || log.status === selectedStatus;
       const matchRole = selectedRole === "ALL" || log.userRole === selectedRole;
-      return matchSearch && matchStatus && matchRole;
+
+      // Nhóm thiết bị (Category)
+      let matchCategory = true;
+      if (selectedCategory !== "ALL") {
+        const pCat = (log.payload?.category || "").toUpperCase();
+        const hw = (log.hardwareId || "").toUpperCase();
+        const cmd = (log.commandType || "").toUpperCase();
+        if (selectedCategory === "ROLLER_DOOR") {
+          matchCategory =
+            pCat === "ROLLER_DOOR" ||
+            hw.includes("DOOR") ||
+            hw.includes("ROLL") ||
+            ["OPEN", "CLOSE", "STOP", "CHILD_LOCK", "RF_SETUP", "RF_CLEAR"].includes(cmd);
+        } else if (selectedCategory === "SOCKET") {
+          matchCategory =
+            pCat === "SOCKET" ||
+            hw.includes("SOC") ||
+            hw.includes("OCAM") ||
+            ["TURN_ON", "TURN_OFF", "ON", "OFF"].includes(cmd);
+        } else if (selectedCategory === "CAMERA") {
+          matchCategory = pCat === "CAMERA" || hw.includes("CAM") || cmd.includes("STREAM");
+        }
+      }
+
+      // Loại lệnh (Command Type)
+      let matchCommand = true;
+      if (selectedCommandType !== "ALL") {
+        const cmd = (log.commandType || "").toUpperCase();
+        const pCmd = (log.payload?.command || "").toUpperCase();
+        matchCommand = cmd === selectedCommandType || pCmd === selectedCommandType;
+      }
+
+      // Khoảng ngày (Date Range)
+      let matchFromDate = true;
+      if (fromDate) {
+        const logDate = new Date(log.timestamp);
+        const fDate = new Date(fromDate + "T00:00:00.000");
+        matchFromDate = !isNaN(logDate.getTime()) ? logDate >= fDate : true;
+      }
+
+      let matchToDate = true;
+      if (toDate) {
+        const logDate = new Date(log.timestamp);
+        const tDate = new Date(toDate + "T23:59:59.999");
+        matchToDate = !isNaN(logDate.getTime()) ? logDate <= tDate : true;
+      }
+
+      return (
+        matchSearch &&
+        matchStatus &&
+        matchRole &&
+        matchCategory &&
+        matchCommand &&
+        matchFromDate &&
+        matchToDate
+      );
     });
-  }, [logs, searchHardwareId, selectedStatus, selectedRole]);
+  }, [logs, searchHardwareId, selectedStatus, selectedRole, selectedCategory, selectedCommandType, fromDate, toDate]);
 
   useEffect(() => {
     setLogPage(1);
-  }, [searchHardwareId, selectedStatus, selectedRole]);
+  }, [searchHardwareId, selectedStatus, selectedRole, selectedCategory, selectedCommandType, fromDate, toDate]);
 
   const paginatedLogs = useMemo(() => {
     const start = (logPage - 1) * logPageSize;
@@ -128,6 +194,14 @@ export default function BlackboxPage() {
         language={language}
         searchHardwareId={searchHardwareId}
         onSearchChange={setSearchHardwareId}
+        fromDate={fromDate}
+        onFromDateChange={setFromDate}
+        toDate={toDate}
+        onToDateChange={setToDate}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        selectedCommandType={selectedCommandType}
+        onCommandTypeChange={setSelectedCommandType}
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
         selectedRole={selectedRole}
@@ -136,6 +210,10 @@ export default function BlackboxPage() {
           setSearchHardwareId("");
           setSelectedStatus("ALL");
           setSelectedRole("ALL");
+          setSelectedCategory("ALL");
+          setSelectedCommandType("ALL");
+          setFromDate("");
+          setToDate("");
         }}
       />
 

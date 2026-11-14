@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Clock, CheckCircle2, AlertTriangle } from "lucide-react";
-import { BlackboxLogEntry } from "../types";
+import { BlackboxLogEntry, formatDateTimeVN, getCommandDisplayInfo } from "../types";
 import { Pagination } from "@/components/Pagination";
 
 interface BlackboxTableProps {
@@ -39,6 +39,7 @@ export const BlackboxTable: React.FC<BlackboxTableProps> = ({
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
         {logs.map((log) => {
           const isSelected = selectedLogId === log.id;
+          const cmdInfo = getCommandDisplayInfo(log);
           return (
             <div
               key={log.id}
@@ -50,15 +51,20 @@ export const BlackboxTable: React.FC<BlackboxTableProps> = ({
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono shrink-0 ${
-                    log.status === "ACKNOWLEDGED"
-                      ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                      : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                  }`}
-                >
-                  {log.commandType}
-                </span>
+                <div className="flex flex-col items-start gap-1 shrink-0">
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                      log.status === "ACKNOWLEDGED"
+                        ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                        : "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                    }`}
+                  >
+                    {cmdInfo.label}
+                  </span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-cyan-700 dark:text-cyan-400 border border-slate-200 dark:border-slate-700">
+                    Gói: {cmdInfo.codeText}
+                  </span>
+                </div>
 
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -96,7 +102,9 @@ export const BlackboxTable: React.FC<BlackboxTableProps> = ({
                     <AlertTriangle className="w-3 h-3 text-amber-500" />
                   )}
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono mt-0.5">{log.timestamp}</div>
+                <div className="text-[10px] text-slate-400 font-mono mt-0.5" title={log.timestamp}>
+                  {formatDateTimeVN(log.timestamp)}
+                </div>
               </div>
             </div>
           );

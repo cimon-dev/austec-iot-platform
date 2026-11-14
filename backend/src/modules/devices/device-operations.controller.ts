@@ -900,9 +900,45 @@ export class DeviceOperationsController {
           );
         }
 
-        // Ghi nhật ký vận hành thực tế vào blackbox_logs
+        // Ghi nhật ký vận hành thực tế đầy đủ gói tin vào blackbox_logs
         const actorName = targetUser.fullName || targetUser.email || 'Chủ nhà';
         const actorRole = targetUser.role || 'CUSTOMER';
+
+        const actionCode = isSocket
+          ? (command === 'TURN_ON' || command === 'ON' || command === '13' || command === '1' ? '13'
+             : command === 'TURN_OFF' || command === 'OFF' || command === '14' || command === '0' ? '14'
+             : command === 'STOP' || command === '3' ? '3'
+             : command === 'RF_SETUP' || command === '11' ? '11'
+             : command === 'RF_CLEAR' || command === '12' ? '12' : command)
+          : isCam
+            ? (command === 'STREAM_START' || command === '13' ? '13'
+               : command === 'STREAM_STOP' || command === '14' ? '14' : command)
+            : (command === 'OPEN' || command === '1' ? '1'
+               : command === 'CLOSE' || command === '2' ? '2'
+               : command === 'STOP' || command === '3' ? '3'
+               : command === 'RF_SETUP' || command === '11' ? '11'
+               : command === 'RF_CLEAR' || command === '12' ? '12' : command);
+
+        const mqttTopic = isSocket || (!isCam)
+          ? `USR-330967/${hardwareId}/sub/action`
+          : `devices/${hardwareId}/camera/cmd`;
+
+        const richPayload = {
+          command: command,
+          actionCode: String(actionCode),
+          category: isSocket ? 'SOCKET' : isCam ? 'CAMERA' : 'ROLLER_DOOR',
+          mqttTopic: mqttTopic,
+          transmissionChannel: 'MQTT_GATEWAY',
+          parameters: params || {},
+          executedAt: new Date().toISOString(),
+          actor: {
+            id: targetUser.id,
+            name: actorName,
+            role: actorRole,
+            ip: req.ip || '127.0.0.1',
+          },
+        };
+
         await this.client.query(
           `INSERT INTO blackbox_logs (hardware_id, actor_id, actor_role, actor_name, actor_ip, action_type, payload_sent, ack_status, latency_ms, crypto_signature, created_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACK_OK', 38.5, $8, NOW()::text)`,
@@ -913,7 +949,7 @@ export class DeviceOperationsController {
             actorName,
             req.ip || '127.0.0.1',
             command,
-            JSON.stringify(params || {}),
+            JSON.stringify(richPayload),
             `SIG-HW-${hardwareId.replace(/-/g, '').slice(-4)}-${Date.now().toString().slice(-6)}`
           ]
         );

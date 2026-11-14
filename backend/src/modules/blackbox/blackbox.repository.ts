@@ -141,9 +141,30 @@ export class BlackboxRepository {
         sql += ` AND b.ack_status = $${idx++}`;
         params.push(query.ackStatus);
       }
+      if (query.role && query.role !== 'ALL') {
+        sql += ` AND b.actor_role = $${idx++}`;
+        params.push(query.role);
+      }
+      if (query.category && query.category !== 'ALL') {
+        if (query.category === 'SOCKET') {
+          sql += ` AND (b.hardware_id ILIKE '%OCAM%' OR b.hardware_id ILIKE '%SOCKET%')`;
+        } else if (query.category === 'CAMERA') {
+          sql += ` AND (b.hardware_id ILIKE '%CAM%' AND b.hardware_id NOT ILIKE '%OCAM%')`;
+        } else if (query.category === 'ROLLER_DOOR') {
+          sql += ` AND (b.hardware_id ILIKE '%amtuong%' OR b.hardware_id ILIKE '%DOOR%' OR b.hardware_id ILIKE '%AT-DOOR%')`;
+        }
+      }
+      if (query.fromDate) {
+        sql += ` AND (b.created_at::timestamptz >= $${idx++}::timestamptz)`;
+        params.push(query.fromDate);
+      }
+      if (query.toDate) {
+        sql += ` AND (b.created_at::timestamptz <= $${idx++}::timestamptz)`;
+        params.push(query.toDate);
+      }
 
       sql += ` ORDER BY b.id DESC LIMIT $${idx++} OFFSET $${idx++}`;
-      params.push(query.limit || 100, query.offset || 0);
+      params.push(query.limit || 300, query.offset || 0);
 
       const res = await this.client.query(sql, params);
       if (res.rows && res.rows.length > 0) {
@@ -158,14 +179,62 @@ export class BlackboxRepository {
 
   private mapRowToEntity(r: any): BlackboxLogEntity {
     const timeIso = r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString();
+
+    let rawPayload = r.payload;
+    if (typeof rawPayload === 'string') {
+      try { rawPayload = JSON.parse(rawPayload); } catch (_) {}
+    }
+    if (!rawPayload || typeof rawPayload !== 'object') {
+      rawPayload = {};
+    }
+
+    const hwUpper = (r.hardware_id || '').toUpperCase();
+    const isSocket = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET');
+    const isCam = !isSocket && (hwUpper.startsWith('CAM') || hwUpper.includes('CAMERA'));
+    const category = isSocket ? 'SOCKET' : isCam ? 'CAMERA' : 'ROLLER_DOOR';
+
+    const cmd = rawPayload.command || r.action_type || 'OPEN';
+    const actionCode = rawPayload.actionCode || (
+      isSocket
+        ? (cmd === 'TURN_ON' || cmd === 'ON' || cmd === '13' || cmd === '1' ? '13'
+           : cmd === 'TURN_OFF' || cmd === 'OFF' || cmd === '14' || cmd === '0' ? '14'
+           : cmd === 'STOP' || cmd === '3' ? '3'
+           : cmd === 'RF_SETUP' || cmd === '11' ? '11'
+           : cmd === 'RF_CLEAR' || cmd === '12' ? '12' : cmd)
+        : isCam
+          ? (cmd === 'STREAM_START' || cmd === '13' ? '13'
+             : cmd === 'STREAM_STOP' || cmd === '14' ? '14' : cmd)
+          : (cmd === 'OPEN' || cmd === '1' ? '1'
+             : cmd === 'CLOSE' || cmd === '2' ? '2'
+             : cmd === 'STOP' || cmd === '3' ? '3'
+             : cmd === 'RF_SETUP' || cmd === '11' ? '11'
+             : cmd === 'RF_CLEAR' || cmd === '12' ? '12' : cmd)
+    );
+
+    const mqttTopic = rawPayload.mqttTopic || (
+      isSocket || (!isCam)
+        ? `USR-330967/${r.hardware_id}/sub/action`
+        : `devices/${r.hardware_id}/camera/cmd`
+    );
+
+    const enrichedPayload = {
+      command: cmd,
+      actionCode: String(actionCode),
+      category,
+      mqttTopic,
+      transmissionChannel: rawPayload.transmissionChannel || 'MQTT_GATEWAY',
+      parameters: rawPayload.parameters || (typeof rawPayload === 'object' ? rawPayload : {}),
+      ...rawPayload,
+    };
+
     return {
       id: r.id,
       hardwareId: r.hardware_id,
-      modelName: r.model_name || 'Austec Titadoor A900 Super',
+      modelName: r.model_name || (isSocket ? 'Ổ Cắm Thông Minh Austec' : isCam ? 'AI Camera 360 Austec' : 'Austec Turbo Roller'),
       actionType: r.action_type,
       commandType: r.action_type,
-      payload: r.payload || {},
-      payloadSent: r.payload || {},
+      payload: enrichedPayload,
+      payloadSent: enrichedPayload,
       actorId: r.actor_id,
       userId: r.actor_id,
       actorEmail: r.actor_email,
