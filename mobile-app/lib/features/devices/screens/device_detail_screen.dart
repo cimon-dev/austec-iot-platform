@@ -184,70 +184,84 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: Stack(
-        children: [
-          // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ mép trên tới đáy)
-          Positioned.fill(
-            child: Image.asset(
-              'assets/austec_banner_new.png',
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          // Lớp phủ tối nhẹ để thẻ và thông tin nổi bật sắc nét
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withValues(alpha: 0.74),
-            ),
-          ),
-          // Nội dung hiển thị
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa, không nền trắng
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 12),
-                      child: Image.asset(
-                        'assets/austec_logo_2026.png',
-                        height: 48,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-
-                  // Thẻ Thông Tin Tổng Quan & Bảo Hành Điện Tử
-                  _buildWarrantyAndStatusCard(),
-                  const SizedBox(height: 12),
-
-                  // Bảng Điều Khiển Chuyên Sâu Tùy Theo Danh Mục (ẨN KHI KHÔNG CÓ QUYỀN ĐIỀU KHIỂN)
-                  if (_device.canPerformControl) ...[
-                    if (_device.category == DeviceCategory.rollerDoor)
-                      _buildRollerDoorDetailedControls()
-                    else if (_device.category == DeviceCategory.lightSwitch)
-                      _buildLightSwitchDetailedControls()
-                    else if (_device.category == DeviceCategory.camera)
-                      _buildCameraDetailedControls()
-                    else if (_device.category == DeviceCategory.environment)
-                      _buildSensorDetailedControls()
-                    else if (_device.category == DeviceCategory.energyManage)
-                      _buildUpsDetailedControls()
-                    else
-                      _buildLockDetailedControls(),
-                  ] else ...[
-                    _buildRestrictedPermissionBanner(),
-                  ],
-                ],
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ mép trên tới đáy)
+            Positioned.fill(
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
               ),
             ),
-          ),
-        ],
+            // Lớp phủ tối nhẹ để thẻ và thông tin nổi bật sắc nét
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.74),
+              ),
+            ),
+            // Nội dung hiển thị
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa, không nền trắng
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2, bottom: 12),
+                                child: Image.asset(
+                                  'assets/austec_logo_2026.png',
+                                  height: 48,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+
+                            // Thẻ Thông Tin Tổng Quan & Bảo Hành Điện Tử
+                            _buildWarrantyAndStatusCard(),
+                            const SizedBox(height: 12),
+
+                            // Bảng Điều Khiển Chuyên Sâu Tùy Theo Danh Mục (ẨN KHI KHÔNG CÓ QUYỀN ĐIỀU KHIỂN)
+                            if (_device.canPerformControl) ...[
+                              if (_device.category == DeviceCategory.rollerDoor)
+                                _buildRollerDoorDetailedControls()
+                              else if (_device.category == DeviceCategory.lightSwitch)
+                                _buildLightSwitchDetailedControls()
+                              else if (_device.category == DeviceCategory.camera)
+                                _buildCameraDetailedControls()
+                              else if (_device.category == DeviceCategory.environment)
+                                _buildSensorDetailedControls()
+                              else if (_device.category == DeviceCategory.energyManage)
+                                _buildUpsDetailedControls()
+                              else
+                                _buildLockDetailedControls(),
+                            ] else ...[
+                              _buildRestrictedPermissionBanner(),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -284,82 +284,96 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           const SizedBox(width: 4),
         ],
       ),
-      body: Stack(
-        children: [
-          // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
-          Positioned.fill(
-            child: Image.asset(
-              'assets/austec_banner_new.png',
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
-            ),
-          ),
-          // 2. Nội dung hiển thị gói gọn và cân đối
-          SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa và không có nền trắng
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 10),
-                      child: Image.asset(
-                        'assets/austec_logo_2026.png',
-                        height: 48,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-
-                  // Banner Hướng Dẫn Ngoại Tuyến (rút gọn)
-                  if (!_device.isOnline)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.amberWarning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              "Ngoại tuyến Wi-Fi • Điều khiển trực tiếp qua Bluetooth BLE tầm gần",
-                              style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // 1. Khối cửa cuốn dài ra, bên dưới chứa 3 button Mở, Dừng, Đóng (only icon, no text)
-                  _buildRollerDoorGraphicWithControls(cardBg, cardBorder),
-                  const SizedBox(height: 10),
-
-                  // 2. Phía dưới là 2 khối (Vị trí, Khóa an toàn trẻ em) ngang dài bằng nhau
-                  _buildTwoEqualStatusBlocks(cardBg, cardBorder),
-                  const SizedBox(height: 10),
-
-                  // 3. Camera Giám Sát Cửa Cuốn
-                  _buildDoorCameraSection(cardBg, cardBorder, textCol),
-                ],
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
+            Positioned.fill(
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
               ),
             ),
-          ),
-        ],
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
+              ),
+            ),
+            // 2. Nội dung hiển thị gói gọn và cân đối
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa và không có nền trắng
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 2, bottom: 10),
+                                child: Image.asset(
+                                  'assets/austec_logo_2026.png',
+                                  height: 48,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+
+                            // Banner Hướng Dẫn Ngoại Tuyến (rút gọn)
+                            if (!_device.isOnline)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Ngoại tuyến Wi-Fi • Điều khiển trực tiếp qua Bluetooth BLE tầm gần",
+                                        style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // 1. Khối cửa cuốn dài ra, bên dưới chứa 3 button Mở, Dừng, Đóng (only icon, no text)
+                            _buildRollerDoorGraphicWithControls(cardBg, cardBorder),
+                            const SizedBox(height: 10),
+
+                            // 2. Phía dưới là 2 khối (Vị trí, Khóa an toàn trẻ em) ngang dài bằng nhau
+                            _buildTwoEqualStatusBlocks(cardBg, cardBorder),
+                            const SizedBox(height: 10),
+
+                            // 3. Camera Giám Sát Cửa Cuốn
+                            _buildDoorCameraSection(cardBg, cardBorder, textCol),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

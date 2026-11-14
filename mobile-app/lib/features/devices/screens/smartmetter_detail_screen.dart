@@ -225,54 +225,57 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: Stack(
-        children: [
-          // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
-          Positioned.fill(
-            child: Image.asset(
-              "assets/austec_banner_new.png",
-              width: double.infinity,
-              height: double.infinity,
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
-            ),
-          ),
-
-          // NỘI DUNG CHÍNH (GÓI GỌN TRỌN VẸN TRONG 1 MÀN HÌNH KHÔNG CUỘN)
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                children: [
-                  // 1. LOGO & SLOGAN 2026 to rõ, căn giữa, không nền trắng
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 2, bottom: 10),
-                      child: Image.asset(
-                        "assets/austec_logo_2026.png",
-                        height: 48,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // 2. KHUNG NỘI DUNG ĐIỀU KHIỂN CHÍNH
-                  Expanded(
-                    child: _isMeterOn
-                        ? _buildMeterDisplay(isDark, textCol)
-                        : _buildMeterOffState(),
-                  ),
-                ],
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
+            Positioned.fill(
+              child: Image.asset(
+                "assets/austec_banner_new.png",
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
               ),
             ),
-          ),
-        ],
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
+              ),
+            ),
+
+            // NỘI DUNG CHÍNH (GÓI GỌN TRỌN VẸN TRONG 1 MÀN HÌNH KHÔNG CUỘN)
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Column(
+                  children: [
+                    // 1. LOGO & SLOGAN 2026 to rõ, căn giữa, không nền trắng
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 10),
+                        child: Image.asset(
+                          "assets/austec_logo_2026.png",
+                          height: 48,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // 2. KHUNG NỘI DUNG ĐIỀU KHIỂN CHÍNH
+                    Expanded(
+                      child: _isMeterOn
+                          ? _buildMeterDisplay(isDark, textCol)
+                          : _buildMeterOffState(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
