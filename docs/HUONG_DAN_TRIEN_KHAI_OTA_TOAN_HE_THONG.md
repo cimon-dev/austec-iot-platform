@@ -123,3 +123,4 @@ Khi bạn bắt đầu bấm máy triển khai tính năng OTA, hệ thống s�
 | **Cửa cuốn Austec** | **Khả thi 100%** | Giữ nguyên ESP32 / ESP32-C3 hiện tại | Dễ | Có thể làm bất cứ lúc nào |
 | **Camera AI-Thinker** | **Không khuyến nghị** | Thiếu bộ nhớ Flash 4MB, IRAM quá tải | Rất rủi ro | Không nên làm trên bản này |
 | **Camera ESP32-S3** | **Khả thi 100%** | Nâng cấp lên module ESP32-S3 Flash 8MB/16MB | Chuẩn mực | Triển khai đồng bộ cùng đợt nâng cấp phần cứng Camera |
+

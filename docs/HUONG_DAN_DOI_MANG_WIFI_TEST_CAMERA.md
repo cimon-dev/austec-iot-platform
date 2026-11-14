@@ -54,3 +54,4 @@ Khi mới bắt mạng Wi-Fi mới, Windows thường mặc định chặn các 
   ```powershell
   docker logs --tail 30 -f austec_mediamtx
   ```
+

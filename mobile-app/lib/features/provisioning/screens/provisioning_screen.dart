@@ -923,505 +923,248 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text("Ghép Nối Thiết Bị IoT", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text("Ghép Nối Thiết Bị IoT", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // BLE Devices Discovered List
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text("THIẾT BỊ BLE TÌM THẤY", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. THIẾT BỊ BLUETOOTH TÌM THẤY
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("THIẾT BỊ TÌM THẤY", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      visualDensity: VisualDensity.compact,
+                      backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
+                    icon: _isScanning
+                        ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
+                        : const Icon(Icons.refresh, size: 14, color: AppTheme.cyanAccent),
+                    label: Text(
+                      _isScanning ? "Đang quét..." : "Quét lại",
+                      style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
-                  icon: _isScanning
-                      ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
-                      : const Icon(Icons.refresh, size: 14, color: AppTheme.cyanAccent),
-                  label: Text(
-                    _isScanning ? "Đang quét (Quét lại)" : "Quét Lại BLE",
-                    style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              if (_discoveredDevices.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141924),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFF26324A)),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Banner cảnh báo trạng thái Bluetooth trên điện thoại
-            if (!kIsWeb && _adapterState == BluetoothAdapterState.off)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.amberWarning.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.amberWarning),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.bluetooth_disabled, color: AppTheme.amberWarning, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Bluetooth trên điện thoại đang TẮT. Vui lòng bật Bluetooth trong phần Cài đặt máy (không chỉ vuốt Control Center).",
-                        style: TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (!kIsWeb && _adapterState == BluetoothAdapterState.unauthorized)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.roseDanger.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.roseDanger),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.security, color: AppTheme.roseDanger, size: 20),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Ứng dụng chưa được cấp quyền Bluetooth. Vui lòng vào Cài đặt -> Austec -> Bật quyền Bluetooth.",
-                        style: TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (_bleErrorMessage != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.roseDanger.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppTheme.roseDanger),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.bluetooth_searching, color: AppTheme.roseDanger, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _bleErrorMessage!,
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
-                      child: const Text("Thử lại", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              ),
-
-            if (_discoveredDevices.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: AppTheme.glassBox(radius: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isScanning
-                          ? "Đang dò tìm sóng Bluetooth thiết bị Austec gần bạn..."
-                          : "Chưa bắt được sóng Bluetooth nào gần bạn.",
-                      style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      "Mẹo: Hãy chắc chắn bo mạch ESP32 đã cấp nguồn. Với Camera vừa nạp/bật, đợi ~20 giây (hoặc giữ nút Reset 5 giây) để mạch phát sóng BLE.",
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontStyle: FontStyle.italic),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.cyanAccent,
-                          side: const BorderSide(color: AppTheme.cyanAccent),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
-                        icon: _isScanning
-                            ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
-                            : const Icon(Icons.bluetooth_searching_rounded, size: 16),
-                        label: Text(
-                          _isScanning ? "Đang quét BLE · Bấm để quét lại từ đầu" : "Quét Lại BLE Mới",
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.cyanAccent, size: 18),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _bleErrorMessage ?? (_isScanning ? "Đang tìm thiết bị gần bạn..." : "Chưa tìm thấy thiết bị nào. Hãy kiểm tra nguồn điện thiết bị."),
+                          style: TextStyle(color: _bleErrorMessage != null ? AppTheme.roseDanger : Colors.white70, fontSize: 11),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              )
-            else
-              Column(
-                children: _discoveredDevices.map((dev) {
-                  final isSelected = _selectedDevice?.hardwareId == dev.hardwareId;
-                  final accent = dev.profile.accentColor;
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? accent.withValues(alpha: 0.15) : AppTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isSelected ? accent : AppTheme.cardBorder),
-                    ),
-                    child: ListTile(
-                      dense: true,
-                      leading: Container(
-                        width: 36,
-                        height: 36,
+                    ],
+                  ),
+                )
+              else
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 110),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: _discoveredDevices.map((dev) {
+                      final isSelected = _selectedDevice?.hardwareId == dev.hardwareId;
+                      final accent = dev.profile.accentColor;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 6),
                         decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: accent.withValues(alpha: 0.3)),
+                          color: isSelected ? accent.withValues(alpha: 0.15) : const Color(0xFF141924),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: isSelected ? accent : const Color(0xFF26324A)),
                         ),
-                        child: Icon(dev.profile.icon, color: accent, size: 20),
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              dev.modelName,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: accent.withValues(alpha: 0.45)),
-                            ),
-                            child: Text(
-                              dev.category == DeviceCategory.camera
-                                  ? "CAMERA"
-                                  : dev.category == DeviceCategory.rollerDoor
-                                      ? "CỬA CUỐN"
-                                      : dev.category == DeviceCategory.lightSwitch
-                                          ? "Ổ CẮM"
-                                          : dev.category == DeviceCategory.othersControl
-                                              ? (dev.profile.defaultModelCode == "SMART_LOCK_MASARU" ? "KHÓA THÔNG MINH" : "CHƯA ĐĂNG KÝ")
-                                              : dev.category == DeviceCategory.energyManage
-                                                  ? "LƯU ĐIỆN"
-                                                  : "THIẾT BỊ",
-                              style: TextStyle(
-                                color: accent,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      subtitle: Text(
-                        "ID: ${dev.hardwareId} • Sóng: ${dev.rssi} dBm",
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
-                      ),
-                      trailing: isSelected ? Icon(Icons.check_circle, color: accent, size: 20) : null,
-                      onTap: () => setState(() => _selectedDevice = dev),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-            const SizedBox(height: 18),
-
-            // Wi-Fi Configuration Card
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "CẤU HÌNH MẠNG WI-FI 2.4GHZ",
-                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                        child: ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                          leading: Icon(dev.profile.icon, color: accent, size: 20),
+                          title: Text(dev.modelName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white)),
+                          subtitle: Text("ID: ${dev.hardwareId}", style: const TextStyle(fontSize: 10, color: AppTheme.cyanAccent, fontFamily: "monospace")),
+                          trailing: isSelected ? Icon(Icons.check_circle, color: accent, size: 18) : null,
+                          onTap: () => setState(() => _selectedDevice = dev),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                InkWell(
-                  onTap: _isScanningWifi
-                      ? null
-                      : () => _detectCurrentWifi(showFeedback: true),
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
-                    ),
+
+              const SizedBox(height: 12),
+
+              // 2. CẤU HÌNH WI-FI 2.4GHZ (Gọn Gàng)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("CẤU HÌNH MẠNG WI-FI", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  InkWell(
+                    onTap: _isScanningWifi ? null : () => _detectCurrentWifi(showFeedback: true),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _isScanningWifi
-                            ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
-                            : const Icon(Icons.wifi_find_rounded, color: AppTheme.cyanAccent, size: 14),
+                            ? const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
+                            : const Icon(Icons.wifi_find_rounded, color: AppTheme.cyanAccent, size: 13),
                         const SizedBox(width: 4),
-                        const Text(
-                          "Lấy Wi-Fi Máy",
-                          style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
+                        const Text("Lấy Wi-Fi máy", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+                ],
+              ),
+              const SizedBox(height: 6),
 
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: AppTheme.glassBox(radius: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Gợi ý nhanh các mạng Wi-Fi đã bắt được hoặc lưu trước đó
-                  if (_availableNetworks.isNotEmpty || _currentWifiSsid.isNotEmpty) ...[
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          if (_currentWifiSsid.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 6, bottom: 8),
-                              child: ActionChip(
-                                avatar: const Icon(Icons.wifi_rounded, size: 14, color: AppTheme.emeraldSuccess),
-                                label: Text(
-                                  "Đang bắt: $_currentWifiSsid",
-                                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                                ),
-                                backgroundColor: AppTheme.emeraldSuccess.withValues(alpha: 0.18),
-                                side: BorderSide(color: AppTheme.emeraldSuccess.withValues(alpha: 0.5)),
-                                onPressed: () {
-                                  setState(() {
-                                    _ssidController.text = _currentWifiSsid;
-                                  });
-                                },
-                              ),
-                            ),
-                          ..._availableNetworks
-                              .where((n) => n != _currentWifiSsid && n.trim().isNotEmpty)
-                              .take(4)
-                              .map((net) => Padding(
-                                    padding: const EdgeInsets.only(right: 6, bottom: 8),
-                                    child: ActionChip(
-                                      avatar: const Icon(Icons.wifi, size: 13, color: AppTheme.cyanAccent),
-                                      label: Text(net, style: const TextStyle(fontSize: 11, color: Colors.white70)),
-                                      backgroundColor: AppTheme.cardBorder,
-                                      onPressed: () {
-                                        setState(() {
-                                          _ssidController.text = net;
-                                        });
-                                      },
-                                    ),
-                                  )),
-                        ],
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141924),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF26324A)),
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _ssidController,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: "Tên mạng Wi-Fi (SSID)",
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.wifi_rounded, color: AppTheme.cyanAccent, size: 18),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent, size: 20),
+                          onPressed: _openWifiPickerSheet,
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: "Mật khẩu Wi-Fi",
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.cyanAccent, size: 18),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 18, color: AppTheme.textMuted),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        ),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ],
-
-                  TextField(
-                    controller: _ssidController,
-                    readOnly: false,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: InputDecoration(
-                      labelText: "Tên mạng Wi-Fi (SSID)",
-                      hintText: "Nhập hoặc chọn tên mạng Wi-Fi",
-                      prefixIcon: const Icon(Icons.wifi_rounded, color: AppTheme.cyanAccent, size: 20),
-                      suffixIcon: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (_ssidController.text.isNotEmpty)
-                            IconButton(
-                              icon: const Icon(Icons.clear, size: 16, color: AppTheme.textMuted),
-                              onPressed: () => setState(() => _ssidController.clear()),
-                            ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent),
-                            tooltip: "Xem tất cả mạng Wi-Fi",
-                            onPressed: _openWifiPickerSheet,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "💡 Bạn có thể nhập trực tiếp tên Wi-Fi bằng bàn phím hoặc nhấn vào gợi ý mạng ở trên.",
-                    style: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontStyle: FontStyle.italic),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: "Mật khẩu Wi-Fi",
-                      hintText: "Nhập mật khẩu Wi-Fi",
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                          size: 20,
-                          color: AppTheme.textMuted,
-                        ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            // Vị trí lắp đặt thiết bị
-            const Text("VỊ TRÍ / KHU VỰC LẮP ĐẶT", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: AppTheme.glassBox(radius: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: _locationController,
-                    decoration: const InputDecoration(
-                      labelText: "Vị trí lắp đặt",
-                      prefixIcon: Icon(Icons.meeting_room_outlined, color: AppTheme.cyanAccent, size: 20),
-                      hintText: "Nhập vị trí lắp đặt",
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Divider(color: AppTheme.cardBorder, height: 1),
-                  const SizedBox(height: 14),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "TỌA ĐỘ GPS (BẢN ĐỒ DASHBOARD)",
-                        style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold),
-                      ),
-                      InkWell(
-                        onTap: _isGettingLocation
-                            ? null
-                            : () => _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: true),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.4)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _isGettingLocation
-                                  ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
-                                  : const Icon(Icons.my_location, color: AppTheme.cyanAccent, size: 14),
-                              const SizedBox(width: 4),
-                              const Text(
-                                "Lấy GPS",
-                                style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _addressController,
-                    readOnly: true,
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
-                    decoration: InputDecoration(
-                      labelText: "Địa chỉ lắp đặt (Tự động GPS)",
-                      prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 20),
-                      hintText: _isGettingLocation ? "Đang tự động xác định địa chỉ..." : "Địa chỉ tự động từ GPS",
-                      suffixIcon: _isGettingLocation
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent),
-                              ),
-                            )
-                          : const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _latController,
-                          readOnly: true,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: InputDecoration(
-                            labelText: "Vĩ độ (Latitude)",
-                            prefixIcon: const Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: _isGettingLocation ? "Đang lấy..." : "Tự động GPS",
-                            suffixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _lngController,
-                          readOnly: true,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
-                          decoration: InputDecoration(
-                            labelText: "Kinh độ (Longitude)",
-                            prefixIcon: const Icon(Icons.explore_outlined, color: AppTheme.cyanAccent, size: 18),
-                            hintText: _isGettingLocation ? "Đang lấy..." : "Tự động GPS",
-                            suffixIcon: const Icon(Icons.lock_outline, color: AppTheme.textMuted, size: 16),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // Start Provisioning Button
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.brandBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: _runProvisioningPipeline,
-                icon: const Icon(Icons.bolt, size: 20),
-                label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 12),
+
+              // 3. VỊ TRÍ & TỌA ĐỘ GPS (Gộp Gọn)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("VỊ TRÍ & TỌA ĐỘ LẮP ĐẶT", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  InkWell(
+                    onTap: _isGettingLocation ? null : () => _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: true),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isGettingLocation
+                            ? const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
+                            : const Icon(Icons.my_location, color: AppTheme.cyanAccent, size: 13),
+                        const SizedBox(width: 4),
+                        const Text("Lấy GPS", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141924),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF26324A)),
+                ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _locationController,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      decoration: InputDecoration(
+                        labelText: "Khu vực lắp đặt (ví dụ: Cửa chính, Phòng khách)",
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.meeting_room_outlined, color: AppTheme.cyanAccent, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _addressController,
+                      readOnly: true,
+                      style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                      decoration: InputDecoration(
+                        labelText: "Địa chỉ GPS tự động",
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // 4. NÚT BẮT ĐẦU GHÉP NỐI
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
+                  ),
+                  onPressed: _runProvisioningPipeline,
+                  icon: const Icon(Icons.bolt, size: 18),
+                  label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

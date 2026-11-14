@@ -82,6 +82,23 @@ class _CskhChatScreenState extends State<CskhChatScreen> {
       final bool hasActive = data['hasActiveConversation'] == true;
       if (data['success'] == true && data['messages'] is List && hasActive) {
         _loadTicketData(data['ticket'] ?? {'messages': data['messages']});
+      } else if (widget.initialDevice != null) {
+        final now = DateTime.now();
+        final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+        final greeting = widget.initialPrompt ?? "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${widget.initialDevice!.deviceName} (HWID: ${widget.initialDevice!.hardwareId}).";
+        setState(() {
+          _messages.clear();
+          _messages.addAll([
+            ChatMessage(sender: "user", text: greeting, time: timeStr, selectedDevice: widget.initialDevice),
+            ChatMessage(
+              sender: "cskh",
+              text: "Dạ em chào Quý khách! Kỹ thuật viên Austec đã tiếp nhận yêu cầu hỗ trợ thiết bị ${widget.initialDevice!.deviceName}. Em có thể hỗ trợ gì cho Quý khách ạ?",
+              time: timeStr,
+            ),
+          ]);
+          _hasActiveConversation = true;
+          _isLoading = false;
+        });
       } else {
         setState(() {
           _messages.clear();

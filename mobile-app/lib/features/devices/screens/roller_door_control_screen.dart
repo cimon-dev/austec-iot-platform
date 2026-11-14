@@ -7,6 +7,8 @@ import '../../provisioning/screens/provisioning_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 import '../widgets/camera_webrtc_player.dart';
+import '../../cskh/screens/cskh_chat_screen.dart';
+import '../../cskh/domain/entities/chat_device_item.dart';
 
 class RollerDoorControlScreen extends StatefulWidget {
   final DeviceItem device;
@@ -225,19 +227,42 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         ),
         centerTitle: true,
         actions: [
-          if (_device.canViewHistory)
-            IconButton(
-              icon: Icon(Icons.history_rounded, color: textCol, size: 24),
-              tooltip: "Lịch sử điều khiển",
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
-                );
-              },
-            ),
+          // Icon Xem lịch sử đặt bên trái Icon CSKH
+          IconButton(
+            icon: Icon(Icons.history_rounded, color: textCol, size: 22),
+            tooltip: "Lịch sử điều khiển",
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
+              );
+            },
+          ),
+          // Icon CSKH hỗ trợ trực tuyến
+          IconButton(
+            icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 22),
+            tooltip: "Hỗ trợ CSKH",
+            onPressed: () {
+              final chatDev = ChatDeviceItem(
+                isOwned: true,
+                hardwareId: _device.hardwareId,
+                deviceName: _device.name,
+                modelName: _device.modelName,
+                categoryTag: _device.badgeText.isNotEmpty ? _device.badgeText : "AUSTEC",
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => CskhChatScreen(
+                    initialDevice: chatDev,
+                    initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${_device.name} (HWID: ${_device.hardwareId}).",
+                  ),
+                ),
+              );
+            },
+          ),
+          // Icon Cài đặt tham số
           if (_device.canConfig)
             IconButton(
-              icon: Icon(Icons.settings_outlined, color: textCol, size: 24),
+              icon: Icon(Icons.settings_outlined, color: textCol, size: 22),
               tooltip: "Cài đặt thiết bị",
               onPressed: () {
                 Navigator.of(context).push(
@@ -245,114 +270,88 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                 );
               },
             ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Banner Hướng Dẫn Ngoại Tuyến (Offline Proximity BLE Guide)
-              if (!_device.isOnline)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.amberWarning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.4)),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(7),
-                        decoration: BoxDecoration(
-                          color: AppTheme.amberWarning.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.amberWarning, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              "Thiết bị đang Ngoại tuyến Wi-Fi",
-                              style: TextStyle(
-                                color: AppTheme.amberWarning,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              "Vui lòng đến gần hộp điều khiển (phạm vi < 10 - 15m) và bật Bluetooth trên điện thoại. Bạn vẫn có thể Mở/Đóng/Dừng cửa trực tiếp qua sóng BLE ngoại tuyến.",
-                              style: TextStyle(
-                                color: isDark ? Colors.white.withValues(alpha: 0.85) : Colors.black87,
-                                fontSize: 11.5,
-                                height: 1.35,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 30,
-                              child: OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: AppTheme.amberWarning),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                icon: const Icon(Icons.wifi_password, size: 14, color: AppTheme.amberWarning),
-                                label: const Text(
-                                  "Cấu Hình Lại Mạng Wi-Fi (Nạp lại BLE)",
-                                  style: TextStyle(fontSize: 11, color: AppTheme.amberWarning, fontWeight: FontWeight.bold),
-                                ),
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              // 1. TRỰC QUAN HÓA CỬA CUỐN CHUYỂN ĐỘNG DẦN DẦN (Nan cửa cuốn di chuyển mượt)
-              _buildRollerDoorGraphic(cardBg, cardBorder),
-              const SizedBox(height: 16),
-
-              // 2. HUY HIỆU TRẠNG THÁI THỜI GIAN THỰC
-              _buildDoorStatusBadge(),
-              const SizedBox(height: 18),
-
-              // 3. NÚT KHÓA AN TOÀN TRẺ EM
-              if (_device.canChildLock) ...[
-                _buildLockButton(cardBg, cardBorder),
-                const SizedBox(height: 22),
-              ],
-
-              // 4. 3 NÚT BẤM LỚN TRỰC QUAN TRẠNG THÁI: MỞ - DỪNG - ĐÓNG
-              _buildVisualControlButtons(),
-              const SizedBox(height: 20),
-
-              // 5. THẺ THÔNG SỐ VẬN HÀNH ĐỒNG BỘ
-              _buildOperationalCard(cardBg, cardBorder, textCol),
-              const SizedBox(height: 20),
-
-              // 6. CAMERA GIÁM SÁT CỬA CUỐN (THÊM / GỠ CAMERA THEO DÕI & CHECK KHÓA)
-              _buildDoorCameraSection(cardBg, cardBorder, textCol),
-              const SizedBox(height: 24),
-            ],
+      body: Stack(
+        children: [
+          // 1. Background Watermark Công Ty AUSTEC mới (độ mờ đục vừa phải ~0.14)
+          Positioned.fill(
+            child: Opacity(
+              opacity: isDark ? 0.14 : 0.08,
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
-        ),
+          // 2. Nội dung hiển thị gọn gàng trên 1 màn hình
+          SafeArea(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Logo & Slogan AUSTEC 2026 ngay dưới Header
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, bottom: 6),
+                    child: Image.asset(
+                      'assets/austec_logo_2026.png',
+                      height: 26,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                  // Banner Hướng Dẫn Ngoại Tuyến (rút gọn cực ngắn)
+                  if (!_device.isOnline)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.amberWarning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              "Ngoại tuyến Wi-Fi • Điều khiển trực tiếp qua Bluetooth BLE tầm gần",
+                              style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  // Khung mô phỏng nan cửa cuốn chuyển động
+                  _buildRollerDoorGraphic(cardBg, cardBorder),
+                  const SizedBox(height: 8),
+
+                  // Huy hiệu trạng thái thời gian thực
+                  _buildDoorStatusBadge(),
+                  const SizedBox(height: 8),
+
+                  // Nút Khóa an toàn trẻ em
+                  if (_device.canChildLock) ...[
+                    _buildLockButton(cardBg, cardBorder),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // 3 Nút Bấm Lớn Trực Quan: MỞ - DỪNG - ĐÓNG
+                  _buildVisualControlButtons(),
+                  const SizedBox(height: 10),
+
+                  // Camera Giám Sát Cửa Cuốn (Thu gọn vừa khít màn hình)
+                  _buildDoorCameraSection(cardBg, cardBorder, textCol),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -361,32 +360,24 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   Widget _buildRollerDoorGraphic(Color cardBg, Color cardBorder) {
     final isDark = AppTheme.isDarkMode;
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
-    // Tỷ lệ đóng kín: 0% mở = closedFrac 1.0 (phủ kín); 100% mở = closedFrac 0.0 (cuộn hết lên trên)
     final closedFrac = (1.0 - (_currentPercent / 100.0)).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
-      height: 250,
+      height: 125,
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: cardBorder, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
-            blurRadius: 16,
-            spreadRadius: 1,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cardBorder, width: 1.2),
       ),
       child: Stack(
         children: [
           // Ray dẫn hướng 2 bên
           Positioned(
-            left: 18,
-            top: 44,
-            bottom: 16,
-            width: 10,
+            left: 12,
+            top: 36,
+            bottom: 10,
+            width: 8,
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
@@ -395,10 +386,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ),
           ),
           Positioned(
-            right: 18,
-            top: 44,
-            bottom: 16,
-            width: 10,
+            right: 12,
+            top: 36,
+            bottom: 10,
+            width: 8,
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
@@ -409,27 +400,27 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
           // Hộp lô cuốn phía trên
           Positioned(
-            left: 14,
-            right: 14,
-            top: 10,
-            height: 38,
+            left: 10,
+            right: 10,
+            top: 8,
+            height: 28,
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.bolt, color: isDark ? Colors.white70 : Colors.black87, size: 14),
-                  const SizedBox(width: 6),
+                  Icon(Icons.bolt, color: isDark ? Colors.white70 : Colors.black87, size: 13),
+                  const SizedBox(width: 5),
                   Text(
-                    "AUSTEC TURBO ROLLER SYSTEM",
+                    "AUSTEC TURBO ROLLER",
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.black,
-                      fontSize: 10,
-                      letterSpacing: 1.5,
+                      fontSize: 9.5,
+                      letterSpacing: 1.2,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -440,10 +431,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
           // Nan cửa cuốn chuyển động dần dần
           Positioned(
-            left: 28,
-            right: 28,
-            top: 48,
-            bottom: 16,
+            left: 22,
+            right: 22,
+            top: 38,
+            bottom: 10,
             child: Stack(
               children: [
                 // Không gian bên trong nhà (khi mở hé thấy không gian)
@@ -453,17 +444,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.home_outlined, size: 54, color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.1)),
-                        const SizedBox(height: 4),
-                        Text(
-                          "KHÔNG GIAN TRONG NHÀ",
-                          style: TextStyle(color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.25), fontSize: 9, letterSpacing: 1),
-                        ),
-                      ],
-                    ),
+                    child: Icon(Icons.home_outlined, size: 36, color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.1)),
                   ),
                 ),
 
@@ -478,20 +459,20 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                       border: Border(
                         bottom: BorderSide(
                           color: isDark ? Colors.white : Colors.black,
-                          width: 3.5,
+                          width: 2.5,
                         ),
                       ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: List.generate(
-                        7,
+                        5,
                         (index) => Container(
-                          height: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          height: 2,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: BorderRadius.circular(1),
                           ),
                         ),
                       ),
@@ -502,25 +483,25 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ),
           ),
 
-          // Huy hiệu hiển thị % mở trực quan số lớn ở góc phải
+          // Huy hiệu hiển thị % mở
           Positioned(
-            right: 24,
-            bottom: 24,
+            right: 18,
+            bottom: 14,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: isDark ? Colors.black.withValues(alpha: 0.85) : Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7),
-                  width: 1.2,
+                  width: 1.0,
                 ),
               ),
               child: Text(
                 "${_currentPercent.round()}%",
                 style: TextStyle(
                   color: textCol,
-                  fontSize: 15,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.bold,
                   fontFamily: "monospace",
                 ),
@@ -754,10 +735,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               scale: pulseScale,
               child: InkWell(
                 onTap: onTap,
-                borderRadius: BorderRadius.circular(42),
+                borderRadius: BorderRadius.circular(32),
                 child: Container(
-                  width: 76,
-                  height: 76,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: isActive
                         ? actionColor
@@ -765,77 +746,29 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: isActive ? actionColor : actionColor.withValues(alpha: isDark ? 0.5 : 0.35),
-                      width: isActive ? 2.5 : 1.5,
+                      width: isActive ? 2.0 : 1.2,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: actionColor.withValues(alpha: isActive ? (isDark ? 0.45 : 0.3) : 0.08),
-                        blurRadius: isActive ? 14 : 6,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
                   ),
                   child: Icon(
                     icon,
                     color: isActive ? Colors.white : actionColor,
-                    size: 34,
+                    size: 26,
                   ),
                 ),
               ),
             );
           },
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           label,
           style: TextStyle(
             color: actionColor,
-            fontSize: 12.5,
+            fontSize: 11.5,
             fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
           ),
         ),
       ],
-    );
-  }
-
-  // Thẻ thông số vận hành
-  Widget _buildOperationalCard(Color cardBg, Color cardBorder, Color textCol) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cardBorder),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Mã phần cứng: ${_device.hardwareId}",
-                style: TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
-              ),
-              Text(
-                "IP: ${_device.deviceIp}",
-                style: TextStyle(color: textCol, fontSize: 11.5, fontFamily: "monospace"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Divider(color: AppTheme.cardBorder, height: 1),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Timeout mở: ${_device.openTimeoutSeconds}s", style: TextStyle(color: textCol, fontSize: 11.5)),
-              Text("Timeout đóng: ${_device.closeTimeoutSeconds}s", style: TextStyle(color: textCol, fontSize: 11.5)),
-              Text("Remote RF: ${_device.rfRemoteCount} chiếc", style: TextStyle(color: textCol, fontSize: 11.5)),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -889,10 +822,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                     children: [
                       Text(
                         camName,
-                        style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
                       ),
                       const Text(
-                        "Camera hướng góc cửa cuốn • Check khóa",
+                        "Góc quan sát cửa cuốn",
                         style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
                       ),
                     ],
@@ -920,15 +853,15 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
           // Khung xem video camera chiếu vào cửa cuốn (hỗ trợ bấm vào để phóng to)
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             child: InkWell(
               onTap: () => _showDoorCameraZoomDialog(camName),
               child: Container(
-                height: 180,
+                height: 110,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.black,

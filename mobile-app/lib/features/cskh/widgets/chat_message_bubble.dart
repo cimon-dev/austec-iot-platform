@@ -25,27 +25,36 @@ class ChatMessageBubble extends StatelessWidget {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.82),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.76,
+        ),
         decoration: BoxDecoration(
-          color: isMe ? AppTheme.blueAccent : AppTheme.surfaceGlass,
-          borderRadius: BorderRadius.circular(16),
+          color: isMe ? const Color(0xFF2563EB) : const Color(0xFF27272A),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(14),
+            topRight: const Radius.circular(14),
+            bottomLeft: Radius.circular(isMe ? 14 : 3),
+            bottomRight: Radius.circular(isMe ? 3 : 14),
+          ),
           border: Border.all(
-            color: isMe ? AppTheme.cyanAccent.withValues(alpha: 0.3) : AppTheme.cardBorder,
+            color: isMe ? const Color(0xFF3B82F6) : const Color(0xFF3F3F46),
+            width: 1.0,
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Attached Device Badge in bubble
             if (message.selectedDevice != null) ...[
               Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isMe ? Colors.white.withValues(alpha: 0.12) : AppTheme.cyanAccent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
+                  color: isMe ? Colors.white.withValues(alpha: 0.15) : AppTheme.cyanAccent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: isMe ? Colors.white24 : AppTheme.cyanAccent.withValues(alpha: 0.3),
                   ),
@@ -56,15 +65,15 @@ class ChatMessageBubble extends StatelessWidget {
                     Icon(
                       message.selectedDevice!.isOwned ? Icons.verified : Icons.shopping_bag_outlined,
                       color: isMe ? Colors.white : AppTheme.cyanAccent,
-                      size: 14,
+                      size: 13,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     Flexible(
                       child: Text(
                         "${message.selectedDevice!.deviceName} (${message.selectedDevice!.isOwned ? 'Đã sở hữu' : 'Tư vấn mới'})",
                         style: TextStyle(
                           color: isMe ? Colors.white : AppTheme.cyanAccent,
-                          fontSize: 10.5,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
@@ -79,7 +88,7 @@ class ChatMessageBubble extends StatelessWidget {
             // Attached Images in bubble
             if (message.attachmentUrls.isNotEmpty) ...[
               Container(
-                margin: const EdgeInsets.only(bottom: 8),
+                margin: const EdgeInsets.only(bottom: 6),
                 child: Wrap(
                   spacing: 6,
                   runSpacing: 6,
@@ -87,10 +96,10 @@ class ChatMessageBubble extends StatelessWidget {
                     return GestureDetector(
                       onTap: () => onZoomImage?.call(imgUrl),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                         child: Container(
-                          width: 140,
-                          height: 100,
+                          width: 130,
+                          height: 90,
                           color: Colors.black26,
                           child: Image.network(
                             imgUrl,
@@ -107,18 +116,22 @@ class ChatMessageBubble extends StatelessWidget {
 
             Text(
               message.text,
-              style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.4),
+              softWrap: true,
+              style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.35),
             ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                message.time,
-                style: TextStyle(
-                  color: isMe ? Colors.white70 : AppTheme.textMuted,
-                  fontSize: 9.5,
+            const SizedBox(height: 3),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  message.time,
+                  style: TextStyle(
+                    color: isMe ? Colors.white60 : Colors.white54,
+                    fontSize: 9.5,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

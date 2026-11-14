@@ -186,3 +186,4 @@ Khi bạn mang laptop sang mạng Wi-Fi khác (quán cà phê, công ty, nhà kh
 5. **Lưu ý Tường lửa Windows Defender:**
    * Khi vừa bắt mạng Wi-Fi mới, Windows thường đặt ở chế độ **Public Network** (sẽ chặn các kết nối từ điện thoại và camera vào Docker).
    * Vào **Windows Settings -> Network & internet -> Wi-Fi -> Nhấp vào tên Wi-Fi** -> Chọn **Private network** để mở thông toàn bộ luồng.
+

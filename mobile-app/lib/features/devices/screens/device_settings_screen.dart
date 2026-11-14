@@ -328,6 +328,17 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
     final iconCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
+    final isRollerDoor = widget.device.category == DeviceCategory.rollerDoor;
+    final isWallDoor = isRollerDoor && (
+      widget.device.hardwareId.toLowerCase().contains('amtuong') ||
+      widget.device.hardwareId.toLowerCase().contains('eco') ||
+      widget.device.modelCode.toLowerCase().contains('eco')
+    );
+    final hasRfRemote = isRollerDoor && !isWallDoor;
+    final isSmartMetter = widget.device.category == DeviceCategory.energyManage ||
+      widget.device.modelCode.contains('SmartMetter') ||
+      widget.device.hardwareId.contains('SmartMetter');
+
     return Scaffold(
       backgroundColor: bgCol,
       appBar: AppBar(
@@ -413,38 +424,93 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             ),
             const SizedBox(height: 20),
 
-            // CARD 2: CÀI ĐẶT THỜI GIAN TIMEOUT (CALIBRATION)
-            _buildSectionHeader("HIỆU CHUẨN THỜI GIAN HÀNH TRÌNH"),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: _cardBox(isDark),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Timeout Mở
-                  _buildTimeoutStepper(
-                    title: "Thời gian MỞ CỬA (Giây)",
-                    value: _openTimeout,
-                    quickOptions: [15, 20, 23, 30],
-                    color: AppTheme.brandBlue,
-                    onChanged: (val) => setState(() => _openTimeout = val),
-                  ),
-                  const SizedBox(height: 16),
-                  Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
-                  const SizedBox(height: 16),
+            // CARD 2: CÀI ĐẶT THỜI GIAN TIMEOUT (CHỈ DÀNH CHO CỬA CUỐN)
+            if (isRollerDoor) ...[
+              _buildSectionHeader("HIỆU CHUẨN THỜI GIAN HÀNH TRÌNH"),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: _cardBox(isDark),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Timeout Mở
+                    _buildTimeoutStepper(
+                      title: "Thời gian MỞ CỬA (Giây)",
+                      value: _openTimeout,
+                      quickOptions: [15, 20, 23, 30],
+                      color: AppTheme.brandBlue,
+                      onChanged: (val) => setState(() => _openTimeout = val),
+                    ),
+                    const SizedBox(height: 16),
+                    Divider(color: isDark ? const Color(0xFF26324A) : AppTheme.lightBorder, height: 1),
+                    const SizedBox(height: 16),
 
-                  // Timeout Đóng
-                  _buildTimeoutStepper(
-                    title: "Thời gian ĐÓNG CỬA (Giây)",
-                    value: _closeTimeout,
-                    quickOptions: [15, 20, 25, 30],
-                    color: AppTheme.brandBlue,
-                    onChanged: (val) => setState(() => _closeTimeout = val),
-                  ),
-                ],
+                    // Timeout Đóng
+                    _buildTimeoutStepper(
+                      title: "Thời gian ĐÓNG CỬA (Giây)",
+                      value: _closeTimeout,
+                      quickOptions: [15, 20, 25, 30],
+                      color: AppTheme.brandBlue,
+                      onChanged: (val) => setState(() => _closeTimeout = val),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
+              const SizedBox(height: 20),
+            ],
+
+            // CÀI ĐẶT RIÊNG CHO CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT
+            if (isSmartMetter) ...[
+              _buildSectionHeader("CÀI ĐẶT CÔNG SUẤT VÀ BẢO VỆ ĐIỆN TỬ"),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: _cardBox(isDark),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("Giới hạn công suất ngắt điện", style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.brandBlue.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            "${(_dynamicPropValues['power_limit_w'] ?? 4500)} W",
+                            style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Slider(
+                      value: ((_dynamicPropValues['power_limit_w'] as num?)?.toDouble() ?? 4500.0).clamp(1000.0, 10000.0),
+                      min: 1000.0,
+                      max: 10000.0,
+                      divisions: 18,
+                      activeColor: AppTheme.cyanAccent,
+                      inactiveColor: isDark ? const Color(0xFF26324A) : Colors.grey[300],
+                      onChanged: (val) {
+                        setState(() => _dynamicPropValues['power_limit_w'] = val.round());
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(color: isDark ? const Color(0xFF26324A) : AppTheme.lightBorder, height: 1),
+                    const SizedBox(height: 10),
+                    _buildMetaRow("Ngưỡng cắt điện áp cao (Mã 13)", "260 VAC", isCode: true),
+                    const SizedBox(height: 8),
+                    _buildMetaRow("Ngưỡng cắt điện áp thấp (Mã 14)", "170 VAC", isCode: true),
+                    const SizedBox(height: 8),
+                    _buildMetaRow("Dòng rò ngắt chống giật (Mã 12)", "30 mA", isCode: true),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // CARD 3: LỊCH TRÌNH TỰ ĐỘNG
             _buildSectionHeader("LỊCH TRÌNH TỰ ĐỘNG"),
@@ -643,30 +709,32 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               decoration: _cardBox(isDark),
               child: Column(
                 children: [
-                  ListTile(
-                    leading: Icon(Icons.radio_button_checked, color: iconCol, size: 22),
-                    title: Text("Tay cầm điều khiển RF", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppTheme.brandBlue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
+                  if (hasRfRemote) ...[
+                    ListTile(
+                      leading: Icon(Icons.radio_button_checked, color: iconCol, size: 22),
+                      title: Text("Tay cầm điều khiển RF", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              "${widget.device.rfRemoteCount} remote",
+                              style: const TextStyle(color: AppTheme.brandBlue, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          child: Text(
-                            "${widget.device.rfRemoteCount} remote",
-                            style: const TextStyle(color: AppTheme.brandBlue, fontSize: 11, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
-                      ],
+                          const SizedBox(width: 6),
+                          Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+                        ],
+                      ),
+                      onTap: _openRfRemoteSheet,
                     ),
-                    onTap: _openRfRemoteSheet,
-                  ),
-                  Divider(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, height: 1),
+                    Divider(color: isDark ? const Color(0xFF26324A) : AppTheme.lightBorder, height: 1),
+                  ],
                   ListTile(
                     leading: Icon(Icons.group_outlined, color: iconCol, size: 22),
                     title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
@@ -966,16 +1034,9 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   BoxDecoration _cardBox(bool isDark) {
     return BoxDecoration(
-      color: isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-          blurRadius: 10,
-          offset: const Offset(0, 3),
-        ),
-      ],
+      color: isDark ? const Color(0xFF141924) : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0), width: 1.2),
     );
   }
 

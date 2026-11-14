@@ -496,14 +496,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // TRANG ĐIỀU KHIỂN: Nền là assets/background1.png (trước đây là nền Nhà của tôi) và Hero Header tích hợp trên assets/header.png
+  // TRANG ĐIỀU KHIỂN: Nền mới là assets/austec_banner_new.png (từ AUSTEC BANNER.pdf)
   Widget _buildControlPageWithBackground(bool isDark) {
     return Stack(
       children: [
-        // 1. NỀN DỰ ÁN CỦA TOÀN BỘ TRANG ĐIỀU KHIỂN (assets/background1.png)
+        // 1. NỀN DỰ ÁN CỦA TOÀN BỘ TRANG ĐIỀU KHIỂN (assets/austec_banner_new.png)
         Positioned.fill(
           child: Image.asset(
-            "assets/background1.png",
+            "assets/austec_banner_new.png",
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
               return Container(color: isDark ? AppTheme.background : AppTheme.lightBackground);

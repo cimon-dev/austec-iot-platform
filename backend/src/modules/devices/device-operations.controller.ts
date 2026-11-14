@@ -160,8 +160,8 @@ export class DeviceOperationsController {
             const warrantyCode = `EW-${(r.hardware_id || '').replace(/-/g, '').toUpperCase()}-24M`;
 
             const hwUpper = (r.hardware_id || '').toUpperCase();
-            const isCamDev = hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA');
-            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.includes('OCAM');
+            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.startsWith('SMARTSW');
+            const isCamDev = !isSocketDev && (hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA') || hwUpper.includes('OV2640'));
 
             const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : 'Cửa cuốn';
             const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
@@ -215,21 +215,24 @@ export class DeviceOperationsController {
           const category = (req.query.category as string || '').toLowerCase().trim();
           let filtered = devices;
           if (category === 'camera') {
-            filtered = devices.filter(d =>
-              (d.deviceType || '').toLowerCase().includes('cam') ||
-              (d.hardwareId || '').toLowerCase().includes('cam') ||
-              (d.modelCode || '').toLowerCase().includes('cam') ||
-              (d.name || '').toLowerCase().includes('cam')
-            );
+            filtered = devices.filter(d => {
+              const hw = (d.hardwareId || '').toUpperCase();
+              if (hw.startsWith('OCAM') || hw.includes('SOCKET') || hw.startsWith('SMARTSW')) return false;
+              return d.category === 'camera' ||
+                (d.deviceType || '').toLowerCase() === 'camera' ||
+                hw.startsWith('CAM') || hw.includes('ESP32-CAM') || hw.includes('CAMERA');
+            });
           } else if (category === 'lightswitch' || category === 'socket') {
-            filtered = devices.filter(d =>
-              (d.deviceType || '').toLowerCase().includes('công tắc') ||
-              (d.deviceType || '').toLowerCase().includes('ổ cắm') ||
-              (d.hardwareId || '').toLowerCase().includes('ocam') ||
-              (d.modelCode || '').toLowerCase().includes('socket') ||
-              (d.name || '').toLowerCase().includes('ổ cắm') ||
-              (d.name || '').toLowerCase().includes('công tắc')
-            );
+            filtered = devices.filter(d => {
+              const hw = (d.hardwareId || '').toUpperCase();
+              return d.category === 'lightSwitch' ||
+                hw.startsWith('OCAM') || hw.includes('SOCKET') || hw.startsWith('SMARTSW') ||
+                (d.deviceType || '').toLowerCase().includes('công tắc') ||
+                (d.deviceType || '').toLowerCase().includes('ổ cắm') ||
+                (d.modelCode || '').toLowerCase().includes('socket') ||
+                (d.name || '').toLowerCase().includes('ổ cắm') ||
+                (d.name || '').toLowerCase().includes('công tắc');
+            });
           }
 
           const total = filtered.length;

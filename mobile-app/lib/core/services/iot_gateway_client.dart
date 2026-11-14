@@ -191,20 +191,147 @@ class IoTGatewayClient {
     }
   }
 
+  static final DeviceItem _mockSmartMetter = _createMockSmartMetter();
+  static final DeviceItem _mockBms = _createMockBms();
+
+  static DeviceItem _createMockSmartMetter() {
+    return DeviceItem(
+      id: "mock_smartmetter_1",
+      hardwareId: "SmartMetter_A834",
+      name: "Công tơ điện tử chống giật",
+      modelName: "SmartMetter Pro",
+      modelCode: "SmartMetter",
+      category: DeviceCategory.energyManage,
+      roomName: "Tủ điện tổng",
+      badgeText: "CHỐNG GIẬT",
+      deviceNumber: "834",
+      isOnline: true,
+      warrantyUntil: "2029-12-31",
+      warrantyCode: "EW-METER-834",
+      userRole: FamilyRole.owner,
+      canControl: true,
+      canViewHistory: true,
+      canChildLock: true,
+      canConfig: true,
+      ownerName: "Chủ nhà",
+      currentProperties: {
+        'kwh': 123.45,
+        'voltage_v': 220.5,
+        'current_a': 12.4,
+        'power_kw': 2.73,
+        'power_status': 'ON',
+        'is_meter_on': true,
+        'power_limit_w': 4500,
+        'relay_cut': false,
+      },
+    );
+  }
+
+  static DeviceItem _createMockBms() {
+    return DeviceItem(
+      id: "mock_bms_1",
+      hardwareId: "BMS_52V150AH",
+      name: "Hệ thống Pin BMS Lithium",
+      modelName: "Austec Smart BMS 16S",
+      modelCode: "BMS_16S_150A",
+      category: DeviceCategory.dataAnalytics,
+      roomName: "Phòng kỹ thuật",
+      badgeText: "16S 150A",
+      deviceNumber: "150",
+      isOnline: true,
+      warrantyUntil: "2029-06-30",
+      warrantyCode: "EW-BMS-150A",
+      userRole: FamilyRole.owner,
+      canControl: true,
+      canViewHistory: true,
+      canChildLock: false,
+      canConfig: true,
+      ownerName: "Chủ nhà",
+      currentProperties: {
+        'soc_percent': 95,
+        'capacity_current_ah': 142.5,
+        'capacity_total_ah': 150.0,
+        'status_tag': 'ĐANG XẢ',
+        'total_voltage': 52.8,
+        'avg_cell_voltage': 3.30,
+        'current_a': -68.5,
+        'current_limit_a': 150.0,
+        'power_kw': 3.62,
+        'temp_c': 34.5,
+        'delta_v': 0.012,
+        'cell_count': 16,
+        'cells': [
+          {'cell': 1, 'v': 3.301, 'a': -0.39, 'r': 3.559, 'status': 'NORMAL'},
+          {'cell': 2, 'v': 3.301, 'a': -0.35, 'r': 3.594, 'status': 'NORMAL'},
+          {'cell': 3, 'v': 3.301, 'a': -0.38, 'r': 3.596, 'status': 'NORMAL'},
+          {'cell': 4, 'v': 3.301, 'a': -0.28, 'r': 3.466, 'status': 'NORMAL'},
+          {'cell': 5, 'v': 3.301, 'a': -0.80, 'r': 3.582, 'status': 'NORMAL'},
+          {'cell': 6, 'v': 3.301, 'a': -0.35, 'r': 3.471, 'status': 'WARN'},
+          {'cell': 7, 'v': 3.301, 'a': -0.35, 'r': 3.592, 'status': 'NORMAL'},
+          {'cell': 8, 'v': 3.301, 'a': -0.60, 'r': 3.343, 'status': 'NORMAL'},
+          {'cell': 9, 'v': 3.301, 'a': -1.65, 'r': 1.35, 'status': 'NORMAL'},
+          {'cell': 10, 'v': 3.301, 'a': -0.35, 'r': 3.535, 'status': 'NORMAL'},
+          {'cell': 11, 'v': 3.301, 'a': -0.38, 'r': 3.596, 'status': 'NORMAL'},
+          {'cell': 12, 'v': 3.301, 'a': -0.75, 'r': 3.532, 'status': 'WARN'},
+          {'cell': 13, 'v': 3.301, 'a': -0.28, 'r': 3.466, 'status': 'NORMAL'},
+          {'cell': 14, 'v': 3.301, 'a': -0.38, 'r': 3.559, 'status': 'NORMAL'},
+          {'cell': 15, 'v': 3.301, 'a': -1.88, 'r': 1.38, 'status': 'NORMAL'},
+          {'cell': 16, 'v': 3.301, 'a': 0.66, 'r': 3.272, 'status': 'NORMAL'},
+        ],
+        'faults': [
+          {'time': '13:42:10', 'code': 'ERR_04', 'desc': 'Quá dòng xả (Discharge Overcurrent: -68.5A)', 'level': 'Nghiêm trọng', 'status': 'Đang lỗi'},
+          {'time': '13:38:05', 'code': 'WARN_02', 'desc': 'Quá áp Cell 8 (Cell 8 Overvoltage: 3.650V)', 'level': 'Cảnh báo', 'status': 'Đang lỗi'},
+          {'time': '13:15:22', 'code': 'WARN_05', 'desc': 'Chênh lệch điện áp cao (Delta V > 0.050V)', 'level': 'Cảnh báo', 'status': 'Đang lỗi'},
+          {'time': '10:20:00', 'code': 'ERR_01', 'desc': 'Nhiệt độ MOS cao (High MOS Temp: 65.0°C)', 'level': 'Nghiêm trọng', 'status': 'Đã khắc phục'},
+        ],
+      },
+    );
+  }
+
   List<DeviceItem> getDevicesByCategory(DeviceCategory category) {
-    return _devices.where((d) => d.category == category).toList();
+    final realDevices = _devices.where((d) => d.category == category).toList();
+
+    // 100% REAL DATA cho các nhóm đã có thiết bị/BE (Cửa cuốn, Ổ cắm, Camera)
+    if (category == DeviceCategory.rollerDoor ||
+        category == DeviceCategory.lightSwitch ||
+        category == DeviceCategory.camera) {
+      return realDevices;
+    }
+
+    // Với các thiết bị mới chưa xử lý: Mock đúng 1 thiết bị duy nhất trên Mobile để hiển thị giao diện
+    if (category == DeviceCategory.energyManage) {
+      if (realDevices.isNotEmpty) return realDevices;
+      return [_mockSmartMetter];
+    }
+    if (category == DeviceCategory.dataAnalytics) {
+      if (realDevices.isNotEmpty) return realDevices;
+      return [_mockBms];
+    }
+
+    return realDevices;
   }
 
   DeviceItem? findByHardwareId(String hardwareId) {
     try {
       final norm = hardwareId.trim().toLowerCase();
       final cleanNorm = norm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
+
+      if (norm.contains('smartmetter') || cleanNorm.contains('smartmetter')) {
+        return _mockSmartMetter;
+      }
+      if (norm.contains('bms') || cleanNorm.contains('bms')) {
+        return _mockBms;
+      }
+
       return _devices.firstWhere((d) {
         final dNorm = d.hardwareId.trim().toLowerCase();
         final dClean = dNorm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
         return dNorm == norm || dClean == cleanNorm || dNorm.endsWith(cleanNorm) || norm.endsWith(dClean);
       });
     } catch (_) {
+      final norm = hardwareId.trim().toLowerCase();
+      if (norm.contains('smartmetter')) return _mockSmartMetter;
+      if (norm.contains('bms')) return _mockBms;
       return null;
     }
   }
@@ -488,13 +615,17 @@ class IoTGatewayClient {
     final lowerType = typeStr.toLowerCase().trim();
     final upperModel = rawModelCode.toUpperCase().trim();
 
-    // 1. Phân loại theo tiền tố Hardware ID (Ưu tiên số 1 vì Hardware ID gắn cứng với chip firmware)
-    if (upperHwId.startsWith('OCAM') || upperHwId.contains('SOCKET') || upperHwId.contains('OCAM')) {
+    // 1. Phân loại theo tiền tố Hardware ID (Chuẩn hóa chính xác theo phần cứng Austec)
+    if (upperHwId.startsWith('OCAM') || upperHwId.startsWith('SMARTSW') || upperHwId.contains('SOCKET') || upperHwId.contains('OCAM')) {
       cat = DeviceCategory.lightSwitch;
-    } else if (upperHwId.startsWith('CAM') || upperHwId.contains('CAMERA') || upperHwId.contains('ESP32-CAM') || upperHwId.contains('OV2640')) {
+    } else if ((upperHwId.startsWith('CAM') || upperHwId.contains('CAMERA') || upperHwId.contains('ESP32-CAM') || upperHwId.contains('OV2640')) && !upperHwId.contains('OCAM') && !upperHwId.contains('SOCKET')) {
       cat = DeviceCategory.camera;
-    } else if (upperHwId.startsWith('AMTUONG') || upperHwId.startsWith('AT-DOOR') || upperHwId.startsWith('DOOR') || upperHwId.contains('AMTUONG')) {
+    } else if (upperHwId.startsWith('WIFRFTT') || upperHwId.startsWith('WIFRF_ECO') || upperHwId.startsWith('WIFRF') || upperHwId.startsWith('AMTUONG') || upperHwId.startsWith('AT-DOOR') || upperHwId.startsWith('DOOR') || upperHwId.contains('AMTUONG')) {
       cat = DeviceCategory.rollerDoor;
+    } else if (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER')) {
+      cat = DeviceCategory.energyManage;
+    } else if (upperHwId.startsWith('BMS')) {
+      cat = DeviceCategory.dataAnalytics;
     } else if (upperHwId.startsWith('LOCK') || upperHwId.contains('MASARU')) {
       cat = DeviceCategory.othersControl;
     } else if (upperHwId.startsWith('UPS') || upperHwId.startsWith('ENERGY')) {
@@ -506,17 +637,23 @@ class IoTGatewayClient {
       cat = DeviceCategory.camera;
     } else if (explicitCat == 'rollerdoor' || explicitCat == 'door') {
       cat = DeviceCategory.rollerDoor;
-    } else if (explicitCat == 'energymanage') {
+    } else if (explicitCat == 'energymanage' || explicitCat == 'energy' || explicitCat == 'meter') {
       cat = DeviceCategory.energyManage;
+    } else if (explicitCat == 'dataanalytics' || explicitCat == 'bms') {
+      cat = DeviceCategory.dataAnalytics;
     } else if (explicitCat == 'environment') {
       cat = DeviceCategory.environment;
     // 3. Phân loại theo deviceType / model / name
-    } else if (lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc')) {
+    } else if (lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || upperModel.startsWith('OCAM') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc')) {
       cat = DeviceCategory.lightSwitch;
-    } else if (lowerType.contains('camera') || upperModel.contains('CAM') || lowerName.contains('camera')) {
+    } else if ((lowerType.contains('camera') || upperModel.startsWith('CAM') || upperModel.contains('CAMERA') || lowerName.contains('camera')) && !upperModel.contains('OCAM') && !lowerName.contains('ổ cắm') && !lowerName.contains('công tắc')) {
       cat = DeviceCategory.camera;
     } else if (lowerType.contains('cửa') || upperModel.contains('DOOR') || lowerName.contains('cửa')) {
       cat = DeviceCategory.rollerDoor;
+    } else if (lowerType.contains('công tơ') || upperModel.contains('METTER') || upperModel.contains('METER') || lowerName.contains('công tơ')) {
+      cat = DeviceCategory.energyManage;
+    } else if (lowerType.contains('bms') || upperModel.contains('BMS') || lowerName.contains('bms')) {
+      cat = DeviceCategory.dataAnalytics;
     } else if (lowerType.contains('khóa') || upperModel.contains('LOCK') || lowerName.contains('khóa')) {
       cat = DeviceCategory.othersControl;
     } else if (lowerType.contains('điện') || lowerType.contains('năng lượng') || upperModel.contains('UPS')) {

@@ -7,6 +7,8 @@ import 'device_detail_screen.dart';
 import 'device_settings_screen.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'roller_door_control_screen.dart';
+import 'bms_landscape_screen.dart';
+import 'smartmetter_detail_screen.dart';
 import '../widgets/camera_webrtc_player.dart';
 
 class CategoryDeviceListSheet extends StatefulWidget {
@@ -274,6 +276,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     if (device.category == DeviceCategory.rollerDoor) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: device)),
+      ).then((_) => setState(() {}));
+    } else if (device.category == DeviceCategory.dataAnalytics || device.modelCode.contains('BMS') || device.hardwareId.contains('BMS')) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device)),
+      ).then((_) => setState(() {}));
+    } else if (device.category == DeviceCategory.energyManage || device.modelCode.contains('SmartMetter') || device.hardwareId.contains('SmartMetter')) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => SmartMetterDetailScreen(device: device)),
       ).then((_) => setState(() {}));
     } else {
       Navigator.of(context).push(
@@ -545,7 +555,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                               crossAxisCount: 2,
                               crossAxisSpacing: 10,
                               mainAxisSpacing: 10,
-                              childAspectRatio: 1.32,
+                              childAspectRatio: 1.05,
                             ),
                             itemCount: devices.length,
                             itemBuilder: (context, index) {
@@ -585,6 +595,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                             return _buildCameraDeviceCard(dev, isDark, textCol);
                           } else if (isSwitchCategory || dev.category == DeviceCategory.lightSwitch) {
                             return _buildLightSwitchBlock(dev, isDark, textCol);
+                          } else if (dev.category == DeviceCategory.dataAnalytics || dev.modelCode.contains('BMS') || dev.hardwareId.contains('BMS')) {
+                            return _buildBmsPreviewCard(dev, isDark, textCol);
+                          } else if (dev.category == DeviceCategory.energyManage || dev.modelCode.contains('SmartMetter') || dev.hardwareId.contains('SmartMetter')) {
+                            return _buildSmartMetterPreviewCard(dev, isDark, textCol);
                           }
                           return _buildDeviceCard(dev, isDark, textCol);
                         },
@@ -595,134 +609,73 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  // 1. Khối Giao Diện Công Tắc Dạng Chữ Nhật Ngang (1 Dòng 2 Thiết Bị)
+  // 1. Khối Giao Diện Công Tắc Dạng Chữ Nhật Ngang (Cân đối 2 bên, có Chi tiết & Cài đặt)
   Widget _buildLightSwitchBlock(DeviceItem device, bool isDark, Color textCol) {
     final isOn = device.isRelayOn;
-    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
-    final cardBorder = isOn
-        ? AppTheme.cyanAccent.withValues(alpha: 0.65)
-        : (isDark ? AppTheme.cardBorder : AppTheme.lightBorder);
+    final cardBg = isDark ? const Color(0xFF141924) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: cardBorder, width: isOn ? 1.5 : 1.1),
-        boxShadow: [
-          BoxShadow(
-            color: isOn
-                ? AppTheme.cyanAccent.withValues(alpha: isDark ? 0.2 : 0.08)
-                : Colors.black.withValues(alpha: isDark ? 0.12 : 0.03),
-            blurRadius: isOn ? 10 : 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isOn ? AppTheme.cyanAccent : cardBorder, width: 1.2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Phần trên: Dòng 1 (Tên thiết bị) + Dòng 2 (Nút Bật/Tắt) ở bên trái, nút 3 chấm ở góc phải
+          // Dòng 1: Tên thiết bị + Nút 3 chấm
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Dòng 1: Tên thiết bị (hiển thị đầy đủ, không bị cắt cụt)
-                    Text(
-                      device.name,
-                      style: TextStyle(
-                        color: textCol,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-
-                    // Dòng 2: Nút bật tắt kích thước lớn, thao tác rõ ràng
-                    if (device.canPerformControl)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Transform.scale(
-                              scale: 1.15,
-                              alignment: Alignment.centerLeft,
-                              child: Switch(
-                                value: isOn,
-                                activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
-                                activeThumbColor: AppTheme.cyanAccent,
-                                inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
-                                inactiveThumbColor: Colors.grey,
-                                onChanged: _isProcessing
-                                    ? null
-                                    : (newVal) {
-                                        setState(() {
-                                          device.isRelayOn = newVal;
-                                        });
-                                        _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
-                                      },
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              isOn ? "BẬT" : "TẮT",
-                              style: TextStyle(
-                                color: isOn ? AppTheme.cyanAccent : Colors.grey,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.lock_outline_rounded, color: Colors.grey, size: 14),
-                            const SizedBox(width: 3),
-                            Text("Bị khóa", style: TextStyle(color: Colors.grey[500], fontSize: 10)),
-                          ],
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  device.name,
+                  style: TextStyle(
+                    color: textCol,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-
-              // Bên phải: Nút 3 chấm đổi tên/xóa thiết bị
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_vert_rounded,
                   color: isDark ? AppTheme.textSecondary : Colors.grey[600],
-                  size: 18,
+                  size: 17,
                 ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 color: isDark ? AppTheme.surfaceDark : Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 onSelected: (val) {
                   if (val == 'rename') _showRenameDialog(device);
                   if (val == 'delete') _showDeleteDialog(device);
                   if (val == 'details') _navigateToDetail(device);
+                  if (val == 'settings') _navigateToSettings(device);
                 },
                 itemBuilder: (context) => [
                   PopupMenuItem(
                     value: 'details',
                     child: Row(
                       children: [
-                        const Icon(Icons.tune_rounded, size: 16, color: AppTheme.brandBlue),
+                        const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.brandBlue),
                         const SizedBox(width: 8),
                         Text("Xem chi tiết", style: TextStyle(color: textCol, fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'settings',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.settings_outlined, size: 16, color: AppTheme.cyanAccent),
+                        const SizedBox(width: 8),
+                        Text("Cài đặt", style: TextStyle(color: textCol, fontSize: 13)),
                       ],
                     ),
                   ),
@@ -753,46 +706,86 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             ],
           ),
 
-          // Dòng 3: Nút Xem chi tiết giống hệt ở bên Doors (Primary Blue, icon tune & arrow)
-          SizedBox(
-            width: double.infinity,
-            height: 27,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.brandBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                elevation: 0,
-              ),
-              onPressed: () => _navigateToDetail(device),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    color: Colors.white,
-                    size: 13,
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    "Chi tiết",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(width: 3),
-                  Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white70,
-                    size: 9,
-                  ),
-                ],
+          // Dòng 2: Nút Switch và Trạng thái BẬT/TẮT cân xứng 2 bên
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: (isOn ? AppTheme.cyanAccent : Colors.grey).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: (isOn ? AppTheme.cyanAccent : Colors.grey).withValues(alpha: 0.25),
+                width: 0.8,
               ),
             ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  isOn ? "ĐANG BẬT" : "ĐANG TẮT",
+                  style: TextStyle(
+                    color: isOn ? AppTheme.cyanAccent : Colors.grey,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Transform.scale(
+                  scale: 0.88,
+                  child: Switch(
+                    value: isOn,
+                    activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
+                    activeThumbColor: AppTheme.cyanAccent,
+                    inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                    inactiveThumbColor: Colors.grey,
+                    onChanged: _isProcessing
+                        ? null
+                        : (newVal) {
+                            setState(() {
+                              device.isRelayOn = newVal;
+                            });
+                            _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                          },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Dòng 3: 2 Nút chuẩn [Chi tiết] và [Cài đặt]
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 28,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.brandBlue,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      elevation: 0,
+                    ),
+                    onPressed: () => _navigateToDetail(device),
+                    child: const Text("Chi tiết", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: SizedBox(
+                  height: 28,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                      side: BorderSide(color: isDark ? const Color(0xFF2E3B55) : Colors.grey[400]!),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    onPressed: () => _navigateToSettings(device),
+                    child: const Text("Cài đặt", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -801,28 +794,21 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
 
   // 2. Thẻ Hiển Thị Camera Sở Hữu (Hỗ Trợ Live Stream, Thu Phóng, Chi Tiết, Cài Đặt)
   Widget _buildCameraDeviceCard(DeviceItem device, bool isDark, Color textCol) {
-    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
-    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+    final cardBg = isDark ? const Color(0xFF141924) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _activeStreamingCameras.contains(device.hardwareId)
-              ? AppTheme.cyanAccent.withValues(alpha: 0.6)
+              ? AppTheme.cyanAccent
               : cardBorder,
-          width: 1.5,
+          width: 1.2,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.cyanAccent.withValues(alpha: isDark ? 0.12 : 0.04),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1059,25 +1045,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
 
           const SizedBox(height: 12),
 
-          // Hàng 3 nút điều khiển theo yêu cầu: Phóng to, Xem chi tiết, Cài đặt
+          // Hàng 2 nút điều khiển chuẩn hóa: Chi tiết & Cài đặt (bỏ nút phóng to vì đã có icon góc trên)
           Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                    foregroundColor: AppTheme.cyanAccent,
-                    side: const BorderSide(color: AppTheme.cyanAccent),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    elevation: 0,
-                  ),
-                  icon: const Icon(Icons.zoom_in_rounded, size: 16),
-                  label: const Text("Phóng to", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  onPressed: () => _showZoomDialog(device),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -1114,23 +1084,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
   }
 
   Widget _buildDeviceCard(DeviceItem device, bool isDark, Color textCol) {
-    final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
-    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+    final cardBg = isDark ? const Color(0xFF141924) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: cardBorder, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1438,28 +1401,20 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
 
           const SizedBox(height: 12),
 
-          // Nút Chuyển Vào Màn Hình Chi Tiết (Primary Blue)
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.brandBlue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                elevation: 0,
-              ),
-              onPressed: () => _navigateToDetail(device),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.tune_rounded,
-                    color: Colors.white,
-                    size: 16,
+          // Hàng 2 Nút Chuẩn Hóa: [Chi tiết] và [Cài đặt]
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    elevation: 0,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
+                  icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 16),
+                  label: Text(
                     AppTheme.t("details"),
                     style: const TextStyle(
                       color: Colors.white,
@@ -1467,15 +1422,30 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    color: Colors.white70,
-                    size: 12,
-                  ),
-                ],
+                  onPressed: () => _navigateToDetail(device),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    side: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[400]!),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.settings_outlined, size: 16),
+                  label: const Text(
+                    "Cài đặt",
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onPressed: () => _navigateToSettings(device),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1493,16 +1463,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  // 1. Cửa cuốn 4 preview buttons: KHÓA (Đỏ), MỞ (Xanh lá), DỪNG (Vàng), ĐÓNG (Xanh lam)
+  // 1. Cửa cuốn 4 preview buttons: KHÓA (Đỏ), MỞ (Xanh lá), DỪNG (Vàng), ĐÓNG (Xanh lam) - ONLY ICON TRÁNH DẤU 3 CHẤM
   Widget _buildRollerDoorPreviewButtons(DeviceItem device) {
     final isChildLock = device.isChildLockActive;
 
     return Row(
       children: [
-        // 1. Khóa an toàn trẻ em - MÀU ĐỎ
+        // 1. Khóa an toàn trẻ em - MÀU ĐỎ (ONLY ICON)
         Expanded(
-          child: _buildIndustrialDoorButton(
-            label: isChildLock ? "Đã khóa" : "Khóa",
+          child: _buildIndustrialDoorIconButton(
+            tooltip: isChildLock ? "Đã khóa an toàn" : "Khóa an toàn",
             icon: isChildLock ? Icons.lock_rounded : Icons.lock_outline_rounded,
             isActive: isChildLock,
             baseColor: const Color(0xFFEF4444),
@@ -1510,13 +1480,13 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             onTap: () => _executePreviewAction(device, "TOGGLE_CHILD_LOCK"),
           ),
         ),
-        const SizedBox(width: 6),
-        // 2. Mở cửa - MÀU XANH LÁ
+        const SizedBox(width: 8),
+        // 2. Mở cửa - MÀU XANH LÁ (ONLY ICON)
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
-            child: _buildIndustrialDoorButton(
-              label: "Mở cửa",
+            child: _buildIndustrialDoorIconButton(
+              tooltip: "Mở cửa",
               icon: Icons.arrow_upward_rounded,
               baseColor: const Color(0xFF10B981),
               isDisabled: isChildLock,
@@ -1524,13 +1494,13 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             ),
           ),
         ),
-        const SizedBox(width: 6),
-        // 3. Dừng - MÀU VÀNG
+        const SizedBox(width: 8),
+        // 3. Dừng - MÀU VÀNG (ONLY ICON)
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
-            child: _buildIndustrialDoorButton(
-              label: "Dừng",
+            child: _buildIndustrialDoorIconButton(
+              tooltip: "Dừng",
               icon: Icons.pause_rounded,
               baseColor: const Color(0xFFF59E0B),
               isDisabled: isChildLock,
@@ -1538,13 +1508,13 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
             ),
           ),
         ),
-        const SizedBox(width: 6),
-        // 4. Đóng cửa - MÀU XANH LAM
+        const SizedBox(width: 8),
+        // 4. Đóng cửa - MÀU XANH LAM (ONLY ICON)
         Expanded(
           child: Opacity(
             opacity: isChildLock ? 0.35 : 1.0,
-            child: _buildIndustrialDoorButton(
-              label: "Đóng cửa",
+            child: _buildIndustrialDoorIconButton(
+              tooltip: "Đóng cửa",
               icon: Icons.arrow_downward_rounded,
               baseColor: const Color(0xFF3B82F6),
               isDisabled: isChildLock,
@@ -1556,8 +1526,8 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     );
   }
 
-  Widget _buildIndustrialDoorButton({
-    required String label,
+  Widget _buildIndustrialDoorIconButton({
+    required String tooltip,
     required IconData icon,
     required VoidCallback onTap,
     bool isActive = false,
@@ -1569,40 +1539,26 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     final primaryColor = isActive ? (activeColor ?? baseColor ?? AppTheme.brandBlue) : (baseColor ?? AppTheme.brandBlue);
     final borderColor = isActive
         ? primaryColor
-        : primaryColor.withValues(alpha: isDark ? 0.45 : 0.35);
+        : primaryColor.withValues(alpha: isDark ? 0.5 : 0.35);
     final bgColor = isActive
-        ? primaryColor.withValues(alpha: 0.18)
-        : primaryColor.withValues(alpha: isDark ? 0.08 : 0.06);
+        ? primaryColor.withValues(alpha: 0.22)
+        : primaryColor.withValues(alpha: isDark ? 0.12 : 0.08);
 
-    return InkWell(
-      onTap: (_isProcessing || isDisabled) ? (isDisabled ? onTap : null) : onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: 1.1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: primaryColor, size: 15),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: primaryColor,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: (_isProcessing || isDisabled) ? (isDisabled ? onTap : null) : onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: 42,
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor, width: 1.2),
+          ),
+          child: Center(
+            child: Icon(icon, color: primaryColor, size: 22),
+          ),
         ),
       ),
     );
@@ -1747,6 +1703,352 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
           ),
         ],
       ),
+    );
+  }
+
+  // 3. BMS Lithium Preview Card (Chuẩn theo ảnh mẫu, 4 nút xoay ngang sang BmsLandscapeScreen)
+  Widget _buildBmsPreviewCard(DeviceItem device, bool isDark, Color textCol) {
+    final cardBg = isDark ? const Color(0xFF141924) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Logo/Title + ĐANG XẢ
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.emeraldSuccess.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.battery_charging_full_rounded, color: AppTheme.emeraldSuccess, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        device.name,
+                        style: TextStyle(color: textCol, fontSize: 14.5, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        device.hardwareId,
+                        style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontFamily: "monospace"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppTheme.cyanAccent),
+                ),
+                child: const Text(
+                  "ĐANG XẢ",
+                  style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Giữa: Vòng đo SOC + Thông số chính
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F131D) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                // Vòng SOC 95%
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppTheme.emeraldSuccess, width: 6),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          "95%",
+                          style: TextStyle(color: AppTheme.emeraldSuccess, fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          "SOC",
+                          style: TextStyle(color: AppTheme.amberWarning, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                // 4 thông số gọn gàng 2 cột
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBmsMiniStat("ĐIỆN ÁP TỔNG", "52.8 V", "16S | TB: 3.30V", isDark),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _buildBmsMiniStat("DÒNG ĐIỆN", "-68.5 A", "GH: 150A", isDark),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBmsMiniStat("CÔNG SUẤT", "3.62 kW", "142.5/150Ah", isDark),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _buildBmsMiniStat("NHIỆT & LỆCH", "34.5°C", "ΔV: 0.012V", isDark),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 4 nút chuẩn ảnh mẫu: [16 Cell], [Biểu đồ], [Sự cố], [Cài đặt]
+          Row(
+            children: [
+              Expanded(
+                child: _buildBmsTabLauncherButton("[16 Cell]", () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device, initialTab: 0)),
+                  ).then((_) => setState(() {}));
+                }),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildBmsTabLauncherButton("[Biểu đồ]", () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device, initialTab: 1)),
+                  ).then((_) => setState(() {}));
+                }),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildBmsTabLauncherButton("[Sự cố]", () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device, initialTab: 2)),
+                  ).then((_) => setState(() {}));
+                }),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _buildBmsTabLauncherButton("[Cài đặt]", () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device, initialTab: 3)),
+                  ).then((_) => setState(() {}));
+                }),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBmsMiniStat(String title, String value, String sub, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF141A26) : Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: isDark ? const Color(0xFF26324A) : const Color(0xFFCBD5E1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 8.5, fontWeight: FontWeight.bold)),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(sub, style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 8.5)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBmsTabLauncherButton(String label, VoidCallback onTap) {
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton(
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+          backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.12),
+          foregroundColor: const Color(0xFF00E5FF),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: onTap,
+        child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  // 4. SmartMetter Preview Card (Công tơ điện tử chống giật: LCD tóm tắt, Chi tiết, Cài đặt)
+  Widget _buildSmartMetterPreviewCard(DeviceItem device, bool isDark, Color textCol) {
+    final cardBg = isDark ? const Color(0xFF141924) : Colors.white;
+    final cardBorder = isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
+    final isOn = device.currentProperties['is_meter_on'] != false;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cardBorder, width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.bolt_rounded, color: AppTheme.amberWarning, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        device.name,
+                        style: TextStyle(color: textCol, fontSize: 14.5, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        device.hardwareId,
+                        style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontFamily: "monospace"),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isOn ? AppTheme.emeraldSuccess.withValues(alpha: 0.15) : AppTheme.crimsonDanger.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: isOn ? AppTheme.emeraldSuccess : AppTheme.crimsonDanger),
+                ),
+                child: Text(
+                  isOn ? "ĐANG CẤP ĐIỆN" : "ĐÃ NGẮT ĐIỆN",
+                  style: TextStyle(color: isOn ? AppTheme.emeraldSuccess : AppTheme.crimsonDanger, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // LCD Tóm tắt
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF081820),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFF1E3A4B)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildMetterStatItem("ĐIỆN NĂNG", "1,482.6", "kWh", const Color(0xFF38BDF8)),
+                _buildMetterStatItem("ĐIỆN ÁP", "221.8", "V", const Color(0xFF34D399)),
+                _buildMetterStatItem("DÒNG ĐIỆN", "18.4", "A", const Color(0xFFFBBF24)),
+                _buildMetterStatItem("CÔNG SUẤT", "4.08", "kW", const Color(0xFFF43F5E)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 2 Nút chuẩn [Chi tiết] và [Cài đặt]
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const Text("Chi tiết", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  onPressed: () => _navigateToDetail(device),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                    side: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[400]!),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: const Icon(Icons.settings_outlined, size: 16),
+                  label: const Text("Cài đặt", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  onPressed: () => _navigateToSettings(device),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetterStatItem(String label, String value, String unit, Color color) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(label, style: const TextStyle(color: Color(0xFF64748B), fontSize: 8.5, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 2),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(value, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace")),
+            const SizedBox(width: 2),
+            Text(unit, style: TextStyle(color: color.withValues(alpha: 0.7), fontSize: 8.5)),
+          ],
+        ),
+      ],
     );
   }
 }

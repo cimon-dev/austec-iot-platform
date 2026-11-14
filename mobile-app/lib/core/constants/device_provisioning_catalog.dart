@@ -83,6 +83,10 @@ class DeviceProvisioningProfile {
 
     // 2. Khớp theo Từ khóa tên thiết bị (amtuong*, ESP32-CAM*,...)
     if (lowerName.isNotEmpty) {
+      // Bảo đảm Camera không bao giờ nhận nhầm Ổ cắm (OCAM / SMARTSW)
+      if (category == DeviceCategory.camera && (lowerName.startsWith('ocam') || lowerName.contains('socket') || lowerName.startsWith('smartsw'))) {
+        return false;
+      }
       for (final kw in nameKeywords) {
         if (lowerName.contains(kw.toLowerCase())) {
           return true;
@@ -136,7 +140,7 @@ class DeviceProvisioningCatalog {
       "4fafc201-1fb5-459e-8fcc-c5c9c331914b", // UUID BLE trong code camera OV2640
       "4fafc201",
     ],
-    nameKeywords: ["esp32-cam", "camera", "cam", "cam_", "ov2640", "setup", "ble-cam"],
+    nameKeywords: ["esp32-cam", "camera", "cam_", "cam-", "ov2640", "setup", "ble-cam"],
     bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
     bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
     // Cú pháp nạp Camera: {ssid},{pass},{mqtt_ip}
