@@ -868,20 +868,20 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
   // ---------------------------------------------------------------------------
   Widget _buildBottomTabBar() {
     return Container(
-      height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: const BoxDecoration(
         color: Color(0xFF10131A),
-        border: Border(top: BorderSide(color: Color(0xFF222734), width: 1)),
+        border: Border(top: BorderSide(color: Color(0xFF222734), width: 1.2)),
       ),
       child: Row(
         children: [
           _buildNavTabButton(0, "16 Cell", Icons.grid_view_rounded),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           _buildNavTabButton(1, "Biểu đồ", Icons.bar_chart_rounded),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           _buildNavTabButton(2, "Sự cố", Icons.warning_amber_rounded),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           _buildNavTabButton(3, "Cài đặt", Icons.settings_outlined),
         ],
       ),
@@ -893,27 +893,41 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
     return Expanded(
       child: InkWell(
         onTap: () => setState(() => _activeTab = idx),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.brandBlue : const Color(0xFF181E2B),
-            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFF161C28),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? AppTheme.brandBlue : const Color(0xFF262D3D),
-              width: 1.1,
+              color: isSelected ? AppTheme.cyanAccent : const Color(0xFF2A3447),
+              width: isSelected ? 1.5 : 1.2,
             ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: AppTheme.cyanAccent.withValues(alpha: 0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: isSelected ? Colors.white : const Color(0xFF8E99B0), size: 14),
-              const SizedBox(width: 6),
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                size: 20,
+              ),
+              const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : const Color(0xFF8E99B0),
-                  fontSize: 11,
+                  color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                  fontSize: 14,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
                 ),
               ),
             ],

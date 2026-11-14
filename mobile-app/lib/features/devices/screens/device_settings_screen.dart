@@ -375,9 +375,11 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // CARD 1: THÔNG TIN THIẾT BỊ
@@ -801,12 +803,13 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 48),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildDynamicPropertiesCard(bool isDark, Color textCol) {
     final assigned = widget.device.assignedProperties;

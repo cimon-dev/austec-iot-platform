@@ -188,6 +188,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
     return Scaffold(
       backgroundColor: bgCol,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -285,16 +286,19 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       ),
       body: Stack(
         children: [
-          // 1. Background Watermark Công Ty AUSTEC bao trùm toàn bộ màn hình
+          // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
           Positioned.fill(
-            child: Opacity(
-              opacity: isDark ? 0.16 : 0.08,
-              child: Image.asset(
-                'assets/austec_banner_new.png',
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-              ),
+            child: Image.asset(
+              'assets/austec_banner_new.png',
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
             ),
           ),
           // 2. Nội dung hiển thị gói gọn và cân đối
@@ -798,36 +802,42 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         children: [
           // Tiêu đề & badge LIVE
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: cardBorder),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Icon(Icons.videocam_rounded, color: textCol, size: 20),
                     ),
-                    child: Icon(Icons.videocam_rounded, color: textCol, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        camName,
-                        style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            camName,
+                            style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Text(
+                            "Góc quan sát cửa cuốn",
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
+                          ),
+                        ],
                       ),
-                      const Text(
-                        "Góc quan sát cửa cuốn",
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 10.5),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -857,7 +867,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             child: InkWell(
               onTap: () => _showDoorCameraZoomDialog(camName),
               child: Container(
-                height: 110,
+                height: 165,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.black,
@@ -1256,25 +1266,29 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
             ),
             Positioned(
               top: 14,
-              left: 16,
-              right: 16,
+              left: 14,
+              right: 14,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Text(
-                      "$camName • Soi khóa cửa cuốn (1x - 6x)",
-                      style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.white24),
+                      ),
+                      child: Text(
+                        "$camName • Soi khóa cửa cuốn (1x - 6x)",
+                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                   IconButton(
-                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 22),
+                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 20),
                     style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),

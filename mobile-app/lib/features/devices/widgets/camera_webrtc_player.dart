@@ -25,17 +25,14 @@ class CameraWebRtcPlayer extends StatefulWidget {
     this.onStreamInfoLoaded,
   });
 
-  static final Map<String, WebViewController> _cachedControllers = {};
-  static final Map<String, bool> _cachedVideoReady = {};
+  static final Map<String, Map<String, dynamic>> _cachedStreamEndpoints = {};
 
   static void clearCacheFor(String hardwareId) {
-    _cachedControllers.remove(hardwareId);
-    _cachedVideoReady.remove(hardwareId);
+    _cachedStreamEndpoints.remove(hardwareId);
   }
 
   static void clearAllCache() {
-    _cachedControllers.clear();
-    _cachedVideoReady.clear();
+    _cachedStreamEndpoints.clear();
   }
 
   @override
@@ -52,8 +49,17 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
   void initState() {
     super.initState();
     if (widget.isActive) {
-      _checkCacheOrLoadStream();
+      _resolveAndLoadStream();
     }
+  }
+
+  @override
+  void dispose() {
+    try {
+      _controller?.loadRequest(Uri.parse('about:blank'));
+    } catch (_) {}
+    _controller = null;
+    super.dispose();
   }
 
   @override
@@ -62,6 +68,9 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
 
     if (!widget.isActive) {
       if (oldWidget.isActive) {
+        try {
+          _controller?.loadRequest(Uri.parse('about:blank'));
+        } catch (_) {}
         setState(() {
           _controller = null;
           _isLoading = false;
@@ -79,23 +88,8 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
       if (oldWidget.reloadNonce != widget.reloadNonce) {
         CameraWebRtcPlayer.clearCacheFor(widget.hardwareId);
       }
-      _checkCacheOrLoadStream();
+      _resolveAndLoadStream();
     }
-  }
-
-  void _checkCacheOrLoadStream() {
-    final cached = CameraWebRtcPlayer._cachedControllers[widget.hardwareId];
-    if (cached != null) {
-      setState(() {
-        _controller = cached;
-        _isVideoReady = CameraWebRtcPlayer._cachedVideoReady[widget.hardwareId] ?? false;
-        _isLoading = !_isVideoReady;
-        _errorMessage = null;
-      });
-      return;
-    }
-
-    _resolveAndLoadStream();
   }
 
   Future<void> _resolveAndLoadStream() async {
@@ -109,52 +103,60 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
     String rawWebRtcUrl = '';
 
     // Chế độ Hybrid: App dùng Backend Render cho Auth/Devices/MQTT, riêng luồng Camera đi thẳng MediaMTX
-    final directMediaBase = ApiConfig.resolvedMediaMtxBaseUrl;
-    if (directMediaBase != null) {
-      rawWebRtcUrl = '$directMediaBase/live/${widget.hardwareId}';
-      final directUri = Uri.tryParse(rawWebRtcUrl);
-      final mediaHost = directUri?.host ?? '';
-      widget.onStreamInfoLoaded?.call({
-        'success': true,
-        'hardwareId': widget.hardwareId,
-        'streamType': 'webrtc',
-        'mediaHost': mediaHost,
-        'endpoints': {
+    final cachedEndpoints = CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId];
+    if (cachedEndpoints != null && cachedEndpoints['webrtc'] != null) {
+      rawWebRtcUrl = cachedEndpoints['webrtc']?.toString().trim() ?? '';
+    } else {
+      final directMediaBase = ApiConfig.resolvedMediaMtxBaseUrl;
+      if (directMediaBase != null) {
+        rawWebRtcUrl = '$directMediaBase/live/${widget.hardwareId}';
+        final directUri = Uri.tryParse(rawWebRtcUrl);
+        final mediaHost = directUri?.host ?? '';
+        final epData = {
           'webrtc': rawWebRtcUrl,
           if (mediaHost.isNotEmpty) ...{
             'rtsp': 'rtsp://$mediaHost:${ApiConfig.defaultMediaMtxRtspPort}/live/${widget.hardwareId}',
             'hls': 'http://$mediaHost:${ApiConfig.defaultMediaMtxHlsPort}/live/${widget.hardwareId}/index.m3u8',
           },
-        },
-      });
-    } else {
-      final response = await ApiClient().get('/api/devices/${widget.hardwareId}/camera/stream');
-      if (!mounted || !widget.isActive) return;
-
-      if (!response.success || response.data is! Map) {
-        setState(() {
-          _isLoading = false;
-          _controller = null;
-          _errorMessage = response.message ??
-              'Backend trả về HTTP ${response.statusCode} khi lấy cấu hình WebRTC';
+        };
+        CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = epData;
+        widget.onStreamInfoLoaded?.call({
+          'success': true,
+          'hardwareId': widget.hardwareId,
+          'streamType': 'webrtc',
+          'mediaHost': mediaHost,
+          'endpoints': epData,
         });
-        return;
-      }
+      } else {
+        final response = await ApiClient().get('/api/devices/${widget.hardwareId}/camera/stream');
+        if (!mounted || !widget.isActive) return;
 
-      final data = Map<String, dynamic>.from(response.data as Map);
-      final rawEndpoints = data['endpoints'];
-      if (rawEndpoints is! Map) {
-        setState(() {
-          _isLoading = false;
-          _controller = null;
-          _errorMessage = 'Backend thiếu object endpoints trong /camera/stream';
-        });
-        return;
-      }
+        if (!response.success || response.data is! Map) {
+          setState(() {
+            _isLoading = false;
+            _controller = null;
+            _errorMessage = response.message ??
+                'Backend trả về HTTP ${response.statusCode} khi lấy cấu hình WebRTC';
+          });
+          return;
+        }
 
-      final endpoints = Map<String, dynamic>.from(rawEndpoints);
-      widget.onStreamInfoLoaded?.call(data);
-      rawWebRtcUrl = endpoints['webrtc']?.toString().trim() ?? '';
+        final data = Map<String, dynamic>.from(response.data as Map);
+        final rawEndpoints = data['endpoints'];
+        if (rawEndpoints is! Map) {
+          setState(() {
+            _isLoading = false;
+            _controller = null;
+            _errorMessage = 'Backend thiếu object endpoints trong /camera/stream';
+          });
+          return;
+        }
+
+        final endpoints = Map<String, dynamic>.from(rawEndpoints);
+        CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = endpoints;
+        widget.onStreamInfoLoaded?.call(data);
+        rawWebRtcUrl = endpoints['webrtc']?.toString().trim() ?? '';
+      }
     }
 
     final parsed = Uri.tryParse(rawWebRtcUrl);
@@ -193,7 +195,6 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
         'AustecStreamChannel',
         onMessageReceived: (JavaScriptMessage msg) {
           if (msg.message == 'PLAYING' && mounted) {
-            CameraWebRtcPlayer._cachedVideoReady[widget.hardwareId] = true;
             setState(() {
               _isVideoReady = true;
               _isLoading = false;
@@ -281,7 +282,6 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
     await controller.loadRequest(playerUri);
     if (!mounted || !widget.isActive) return;
 
-    CameraWebRtcPlayer._cachedControllers[widget.hardwareId] = controller;
     setState(() {
       _controller = controller;
     });

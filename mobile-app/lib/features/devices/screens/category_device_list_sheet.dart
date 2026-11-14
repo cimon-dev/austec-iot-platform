@@ -214,6 +214,8 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
       builder: (ctx) => StatefulBuilder(
         builder: (dialogCtx, setDialogState) {
           final currentCam = camList.isNotEmpty && activeIdx < camList.length ? camList[activeIdx] : device;
+          final isDark = AppTheme.isDarkMode;
+          final cardBorder = isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7);
 
           return Dialog(
             backgroundColor: Colors.transparent,
@@ -227,12 +229,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                   decoration: BoxDecoration(
                     color: Colors.black,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.cyanAccent, width: 2),
+                    border: Border.all(color: cardBorder, width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.cyanAccent.withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        spreadRadius: 2,
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 18,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -255,7 +257,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                                 scaleEnabled: true,
                                 child: CameraWebRtcPlayer(
                                   hardwareId: camList[pIdx].hardwareId,
-                                  isActive: true,
+                                  isActive: pIdx == activeIdx,
                                 ),
                               );
                             },

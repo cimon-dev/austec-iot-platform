@@ -134,6 +134,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
 
     return Scaffold(
       backgroundColor: bgCol,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -226,16 +227,19 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       ),
       body: Stack(
         children: [
-          // NỀN MỜ CÔNG TY (AUSTEC BANNER WATERMARK)
+          // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
           Positioned.fill(
-            child: Opacity(
-              opacity: isDark ? 0.16 : 0.08,
-              child: Image.asset(
-                "assets/austec_banner_new.png",
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-              ),
+            child: Image.asset(
+              "assets/austec_banner_new.png",
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
             ),
           ),
 

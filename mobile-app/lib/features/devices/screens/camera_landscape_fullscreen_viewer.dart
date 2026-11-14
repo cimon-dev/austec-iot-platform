@@ -101,7 +101,7 @@ class _CameraLandscapeFullscreenViewerState extends State<CameraLandscapeFullscr
                   maxScale: 6.0,
                   child: CameraWebRtcPlayer(
                     hardwareId: _cameras[idx].hardwareId,
-                    isActive: true,
+                    isActive: idx == _currentIndex,
                   ),
                 );
               },

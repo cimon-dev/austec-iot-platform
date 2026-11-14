@@ -107,6 +107,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -185,16 +186,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
       ),
       body: Stack(
         children: [
-          // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình)
+          // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ mép trên tới đáy)
           Positioned.fill(
-            child: Opacity(
-              opacity: 0.16,
-              child: Image.asset(
-                'assets/austec_banner_new.png',
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-              ),
+            child: Image.asset(
+              'assets/austec_banner_new.png',
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          // Lớp phủ tối nhẹ để thẻ và thông tin nổi bật sắc nét
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.74),
             ),
           ),
           // Nội dung hiển thị
@@ -620,7 +625,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Mặt ổ cắm điện thực tế + Công tắc gạt cơ học ON/OFF)
   Widget _buildLightSwitchDetailedControls() {
     final isOn = _device.isRelayOn;
-    final switchColor = isOn ? const Color(0xFFEF4444) : const Color(0xFF10B981); // ON: Đỏ (Cấp điện), OFF: Xanh (Ngắt an toàn) theo Trang 5 PDF
+    const onColor = Color(0xFF10B981); // ON: Xanh lá (Đang cấp điện)
+    const offColor = Color(0xFFEF4444); // OFF: Đỏ (Đã ngắt điện an toàn)
+    final switchColor = isOn ? onColor : offColor;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -803,7 +810,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                         child: AnimatedContainer(
                                           duration: const Duration(milliseconds: 200),
                                           decoration: BoxDecoration(
-                                            color: isOn ? switchColor : const Color(0xFF1E2638),
+                                            color: isOn ? onColor : const Color(0xFF1E2638),
                                             borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
                                             border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.4))),
                                           ),
@@ -824,7 +831,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                                         child: AnimatedContainer(
                                           duration: const Duration(milliseconds: 200),
                                           decoration: BoxDecoration(
-                                            color: !isOn ? switchColor : const Color(0xFF1E2638),
+                                            color: !isOn ? offColor : const Color(0xFF1E2638),
                                             borderRadius: const BorderRadius.vertical(bottom: Radius.circular(6)),
                                           ),
                                           child: Center(
