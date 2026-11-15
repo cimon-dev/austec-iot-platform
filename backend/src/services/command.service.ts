@@ -75,9 +75,20 @@ export class CommandService {
     const upperHwId = req.hardwareId.toUpperCase();
     const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
     const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
+    const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     let actionCode = req.command;
-    if (isSocket) {
+    if (isMeter) {
+      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === 'METER_POWER_ON' || req.command === '13' || req.command === '1') {
+        actionCode = '13';
+      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === 'METER_POWER_OFF' || req.command === '14' || req.command === '2') {
+        actionCode = '14';
+      } else if (req.command === 'RESET' || req.command === 'CLEAR_ALERT') {
+        actionCode = 'RESET';
+      } else if (req.command === 'DAILY_CLOSING' || req.command === '20') {
+        actionCode = '20';
+      }
+    } else if (isSocket) {
       if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1') {
         actionCode = '13'; // Khớp ocammoi: case 13 -> ocam.BAT()
       } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === '14' || req.command === '0') {
@@ -130,7 +141,19 @@ export class CommandService {
 
     // 3. Cập nhật trạng thái sau khi thực thi lệnh vào Hot Cache
     const updatedProperties = { ...(currentState?.currentProperties || {}) };
-    if (isSocket) {
+    if (isMeter) {
+      if (actionCode === '13') {
+        updatedProperties.is_meter_on = true;
+        updatedProperties.relay_status = 'ON';
+      } else if (actionCode === '14') {
+        updatedProperties.is_meter_on = false;
+        updatedProperties.relay_status = 'OFF';
+      } else if (actionCode === 'RESET') {
+        updatedProperties.alarm = null;
+        updatedProperties.is_meter_on = true;
+        updatedProperties.relay_status = 'ON';
+      }
+    } else if (isSocket) {
       if (actionCode === '13' || actionCode === '3') {
         updatedProperties.is_relay_on = true;
         updatedProperties.relay_state = 'ON';

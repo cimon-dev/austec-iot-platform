@@ -54,6 +54,7 @@ export class UsersService {
       fullName: userRecord.fullName,
       address: userRecord.address,
       province: userRecord.province,
+      avatarUrl: userRecord.avatarUrl,
       company: userRecord.company,
       department: userRecord.department,
       empID: userRecord.empID,
@@ -61,6 +62,39 @@ export class UsersService {
 
     const token = AuthService.signToken(payload as any);
     return { token, user: payload };
+  }
+
+  public async changePassword(userId: string, currentPass: string, newPass: string) {
+    if (!currentPass || !newPass) {
+      throw new Error('Vui lòng nhập đầy đủ mật khẩu hiện tại và mật khẩu mới');
+    }
+    if (newPass.length < 6) {
+      throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
+    }
+    if (currentPass === newPass) {
+      throw new Error('Mật khẩu mới không được trùng với mật khẩu hiện tại');
+    }
+    return this.repo.changePassword(userId, currentPass, newPass);
+  }
+
+  public async updateProfile(userId: string, data: { fullName?: string; phoneNumber?: string; address?: string; province?: string; avatarUrl?: string }) {
+    const updated = await this.repo.updateProfile(userId, data);
+    if (!updated) {
+      throw new Error('Không tìm thấy tài khoản người dùng');
+    }
+    return {
+      id: updated.id,
+      email: updated.email,
+      phoneNumber: updated.phoneNumber,
+      role: updated.role,
+      fullName: updated.fullName,
+      address: updated.address,
+      province: updated.province,
+      avatarUrl: updated.avatarUrl,
+      company: updated.company,
+      department: updated.department,
+      empID: updated.empID,
+    };
   }
 
   public async register(dto: RegisterDto) {

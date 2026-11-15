@@ -4,6 +4,7 @@ import '../../../core/services/auth_service.dart';
 import '../../cskh/screens/customer_support_tickets_screen.dart';
 import '../../devices/devices.dart';
 import '../../family_sharing/screens/family_sharing_screen.dart';
+import '../../profile/screens/user_profile_screen.dart';
 import '../../auth/auth.dart';
 
 class AppSettingsScreen extends StatefulWidget {
@@ -112,70 +113,97 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Thẻ Thông Tin Chủ Nhà / Hồ Sơ Quản Trị
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: _cardBox(isDark, cardBg, cardBorder),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                  ),
-                  child: Center(
-                    child: Icon(Icons.person_outline_rounded, color: iconCol, size: 24),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Builder(
+          // 1. Thẻ Thông Tin Chủ Nhà / Hồ Sơ Quản Trị (Ấn để xem & sửa thông tin cá nhân, đổi mật khẩu)
+          InkWell(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+              ).then((_) => setState(() {}));
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: _cardBox(isDark, cardBg, cardBorder),
+              child: Row(
+                children: [
+                  Builder(
                     builder: (context) {
                       final user = AuthService().currentUser;
-                      final userName = user?.fullName ?? "Nguyễn Văn An";
-                      final userPhone = user?.phoneNumber ?? "0912 345 678";
-                      final userLocation = user?.province ?? "Hà Nội";
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                userName,
-                                style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  "CHỦ NHÀ",
-                                  style: TextStyle(
-                                    color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            "$userPhone • $userLocation",
-                            style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 12),
-                          ),
-                        ],
+                      return Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.5), width: 1.5),
+                        ),
+                        child: ClipOval(
+                          child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                              ? Image.network(
+                                  user.avatarUrl!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Icon(Icons.person_outline_rounded, color: iconCol, size: 24),
+                                )
+                              : Icon(Icons.person_outline_rounded, color: iconCol, size: 24),
+                        ),
                       );
                     },
                   ),
-                ),
-              ],
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        final user = AuthService().currentUser;
+                        final userName = user?.fullName ?? "Nguyễn Văn An";
+                        final userPhone = user?.phoneNumber ?? "0912 345 678";
+                        final userLocation = user?.province ?? "Hà Nội";
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  userName,
+                                  style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    user?.role == 'ADMIN'
+                                        ? "QUẢN TRỊ"
+                                        : user?.role == 'CSKH'
+                                            ? "CSKH"
+                                            : "CHỦ NHÀ",
+                                    style: TextStyle(
+                                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              "$userPhone • $userLocation",
+                              style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 12),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios_rounded, color: iconCol, size: 14),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 18),

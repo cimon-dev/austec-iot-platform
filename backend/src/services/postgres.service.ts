@@ -102,6 +102,7 @@ export class PostgresService {
         password VARCHAR(255) NOT NULL DEFAULT 'Austec123!@#',
         address TEXT,
         province VARCHAR(100),
+        avatar_url TEXT,
         is_active BOOLEAN DEFAULT TRUE,
         registered_at VARCHAR(50),
         updated_at VARCHAR(50),
@@ -179,6 +180,7 @@ export class PostgresService {
         status VARCHAR(50) DEFAULT 'MANUFACTURED',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
       ALTER TABLE device_types ADD COLUMN IF NOT EXISTS default_properties JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE device_models ADD COLUMN IF NOT EXISTS properties_config JSONB DEFAULT '[]'::jsonb;
       ALTER TABLE device_inventory ADD COLUMN IF NOT EXISTS mac_address VARCHAR(50);

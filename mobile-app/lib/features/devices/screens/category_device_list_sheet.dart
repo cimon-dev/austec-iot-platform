@@ -40,7 +40,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     WidgetsBinding.instance.addObserver(this);
 
     _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
-      if (mounted) setState(() {});
+      if (mounted) {
+        _pagedCameras.removeWhere((c) => _gateway.findByHardwareId(c.hardwareId) == null);
+        setState(() {});
+      }
     });
 
     if (widget.categoryMeta.category == DeviceCategory.camera) {
@@ -172,35 +175,42 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
     }
   }
 
-  void _navigateToDetail(DeviceItem device) {
+  void _navigateToDetail(DeviceItem device) async {
+    Widget targetScreen;
     if (device.category == DeviceCategory.rollerDoor) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: device)),
-      ).then((_) => setState(() {}));
+      targetScreen = RollerDoorControlScreen(device: device);
     } else if (device.category == DeviceCategory.dataAnalytics || device.modelCode.contains('BMS') || device.hardwareId.contains('BMS')) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => BmsLandscapeScreen(device: device)),
-      ).then((_) => setState(() {}));
+      targetScreen = BmsLandscapeScreen(device: device);
     } else if (device.category == DeviceCategory.energyManage || device.modelCode.contains('SmartMetter') || device.hardwareId.contains('SmartMetter')) {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => SmartMetterDetailScreen(device: device)),
-      ).then((_) => setState(() {}));
+      targetScreen = SmartMetterDetailScreen(device: device);
     } else {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => DeviceDetailScreen(
-            device: device,
-            isAlreadyStreaming: _activeStreamingCameras.contains(device.hardwareId),
-          ),
-        ),
-      ).then((_) => setState(() {}));
+      targetScreen = DeviceDetailScreen(
+        device: device,
+        isAlreadyStreaming: _activeStreamingCameras.contains(device.hardwareId),
+      );
+    }
+
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => targetScreen),
+    );
+    if (mounted) {
+      if (result == true) {
+        _pagedCameras.removeWhere((c) => c.hardwareId.toLowerCase() == device.hardwareId.toLowerCase());
+      }
+      setState(() {});
     }
   }
 
-  void _navigateToSettings(DeviceItem device) {
-    Navigator.of(context).push(
+  void _navigateToSettings(DeviceItem device) async {
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: device)),
-    ).then((_) => setState(() {}));
+    );
+    if (mounted) {
+      if (result == true) {
+        _pagedCameras.removeWhere((c) => c.hardwareId.toLowerCase() == device.hardwareId.toLowerCase());
+      }
+      setState(() {});
+    }
   }
 
   void _showZoomDialog(DeviceItem device) {

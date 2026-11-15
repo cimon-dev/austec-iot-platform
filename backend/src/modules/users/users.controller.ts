@@ -36,6 +36,35 @@ export class UsersController {
     res.json({ success: true, user: req.user });
   }
 
+  @Post('/auth/change-password', authenticate)
+  public async changePassword(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { currentPassword, newPassword, confirmPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ success: false, error: 'Vui lòng cung cấp mật khẩu hiện tại và mật khẩu mới' });
+        return;
+      }
+      if (confirmPassword && newPassword !== confirmPassword) {
+        res.status(400).json({ success: false, error: 'Xác nhận mật khẩu mới không khớp' });
+        return;
+      }
+      await this.service.changePassword(req.user!.id, currentPassword, newPassword);
+      res.json({ success: true, message: 'Đổi mật khẩu thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
+  @Put('/auth/profile', authenticate)
+  public async updateProfile(req: AuthenticatedRequest, res: Response) {
+    try {
+      const updatedUser = await this.service.updateProfile(req.user!.id, req.body);
+      res.json({ success: true, user: updatedUser, message: 'Cập nhật thông tin thành công!' });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
   // ==========================================
   // STAFF MANAGEMENT
   // ==========================================

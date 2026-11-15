@@ -180,7 +180,31 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 4. KHÓA THÔNG MINH MASARU (Mẫu chuẩn bị mở rộng trong tương lai)
+  // 4. CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT AUSTEC (ESP32 BL0942 - smartmetter_copy.ino)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile smartMeterProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.energyManage,
+    defaultTitle: "Công Tơ Điện Tử Chống Giật",
+    defaultModelCode: "SMART_METER_PRO",
+    icon: Icons.electric_bolt_rounded,
+    accentColor: AppTheme.emeraldSuccess,
+    bleServiceUuids: [
+      "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
+      "4fafc201",
+    ],
+    nameKeywords: ["smartmetter", "smartmeter", "congto", "meter"],
+    bleRxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+    bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+    // Cú pháp nạp Công tơ: ssid,pass,brokerIp,brokerPort
+    buildBlePayload: (data) =>
+        "${data.ssid},${data.password},${data.brokerIp},${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/config?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&server=${Uri.encodeComponent(data.brokerIp)}&port=${data.brokerPort}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5. KHÓA THÔNG MINH MASARU (Mẫu chuẩn bị mở rộng trong tương lai)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartLockProfile = DeviceProvisioningProfile(
     category: DeviceCategory.othersControl,
@@ -199,13 +223,13 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 5. THIẾT BỊ BLE CHƯA ĐĂNG KÝ (GENERIC / UNREGISTERED) - KHÔNG DÙNG FALLBACK ÉP KIỂU!
+  // 6. THIẾT BỊ BLE CHƯA ĐĂNG KÝ (GENERIC / UNREGISTERED) - KHÔNG DÙNG FALLBACK ÉP KIỂU!
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile unregisteredDeviceProfile = DeviceProvisioningProfile(
     category: DeviceCategory.othersControl,
-    defaultTitle: "Thiết Bị BLE",
-    defaultModelCode: "GENERIC_BLE_DEVICE",
-    icon: Icons.bluetooth_searching_rounded,
+    defaultTitle: "Thiết Bị Khác",
+    defaultModelCode: "OTHER_CONTROL_DEVICE",
+    icon: Icons.device_unknown_rounded,
     accentColor: Colors.blueGrey,
     bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
     nameKeywords: [],
@@ -217,62 +241,62 @@ class DeviceProvisioningCatalog {
     ),
   );
 
-  /// Danh sách toàn bộ các Profile có trong hệ thống
+  /// Danh sách 4 thiết bị trọng tâm đã chốt
   static final List<DeviceProvisioningProfile> allProfiles = [
-    smartSocketProfile, // Ổ cắm thông minh OCAM (ocammoi)
-    cameraProfile,      // Camera An Ninh AI (espcam.pdf)
-    smartLockProfile,   // Khóa thông minh Masaru
-    rollerDoorProfile,  // Cửa cuốn Austec (amtuong / at-door)
+    rollerDoorProfile,  // 1. Cửa cuốn Austec (amtuong / at-door)
+    smartSocketProfile, // 2. Ổ cắm thông minh OCAM (ocammoi)
+    cameraProfile,      // 3. Camera An Ninh AI (espcam)
+    smartMeterProfile,  // 4. Công tơ điện tử chống giật (smartmetter)
   ];
 
-  /// Hàm tìm và khớp Profile CHÍNH XÁC - TUYỆT ĐỐI KHÔNG FALLBACK ÉP VỀ CỬA CUỐN
+  /// Hàm tìm và khớp Profile CHÍNH XÁC - TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4 LOẠI TRÊN
   static DeviceProvisioningProfile resolveProfile({
     required String rawName,
     List<String> advertisedUuids = const [],
   }) {
     final lowerName = rawName.toLowerCase().trim();
 
-    // 1. Khớp ưu tiên theo tiền tố Hardware ID hoặc từ khóa đặc thù (Độ chính xác cao nhất)
-    if (lowerName.startsWith("ocam") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
+    // 1. Công tơ điện tử chống giật: Bắt đầu bằng smartmetter hoặc smartmeter (smartmetter_copy.ino)
+    if (lowerName.startsWith("smartmetter") || lowerName.startsWith("smartmeter") || lowerName.contains("congto") || (lowerName.contains("meter") && !lowerName.contains("door"))) {
+      return smartMeterProfile;
+    }
+
+    // 2. Ổ cắm thông minh: Bắt đầu bằng ocam, smartsw, socket
+    if (lowerName.startsWith("ocam") || lowerName.startsWith("smartsw") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
       return smartSocketProfile;
     }
-    if (lowerName.startsWith("cam") || lowerName.contains("camera") || lowerName.contains("ov2640")) {
+
+    // 3. Camera an ninh AI: Bắt đầu bằng cam, esp32-cam, camera, ov2640 (loại trừ ocam)
+    if ((lowerName.startsWith("cam") || lowerName.contains("camera") || lowerName.contains("esp32-cam") || lowerName.contains("ov2640")) &&
+        !lowerName.startsWith("ocam") && !lowerName.contains("socket")) {
       return cameraProfile;
     }
-    if (lowerName.startsWith("lock") || lowerName.contains("masaru") || lowerName.contains("khoa")) {
-      return smartLockProfile;
-    }
-    if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door") || lowerName.contains("cuacuon")) {
+
+    // 4. Cửa cuốn thông minh: Bắt đầu bằng amtuong, at-door, cuacuon, door
+    if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door") || lowerName.contains("cuacuon") || (lowerName.startsWith("door") && !lowerName.contains("sensor"))) {
       return rollerDoorProfile;
     }
 
-    // 2. Khớp theo Service UUID đặc thù
+    // 5. Khớp Service UUID đặc thù NẾU có dấu hiệu rõ ràng
     if (advertisedUuids.isNotEmpty) {
       final normAdvUuids = advertisedUuids.map((u) => u.toLowerCase().replaceAll('-', '')).toList();
-      // Camera UUID: 4fafc201
       if (normAdvUuids.any((u) => u.contains("4fafc201"))) {
-        return cameraProfile;
+        if (lowerName.contains("meter") || lowerName.contains("metter")) return smartMeterProfile;
+        if (lowerName.contains("cam")) return cameraProfile;
       }
-      // Khóa UUID: 6e400001-lock
-      if (normAdvUuids.any((u) => u.contains("6e400001lock"))) {
-        return smartLockProfile;
-      }
-      // Nordic UART: Phân biệt Cửa cuốn hay Ổ cắm dựa vào tiền tố
       if (normAdvUuids.any((u) => u.contains("6e400001"))) {
         if (lowerName.startsWith("ocam")) return smartSocketProfile;
         if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door")) return rollerDoorProfile;
       }
     }
 
-    // 3. Khớp qua profile.matches cho các từ khóa phụ
-    for (final profile in allProfiles) {
-      if (profile.matches(rawName: rawName, advertisedUuids: advertisedUuids)) {
-        return profile;
-      }
+    // 6. Khóa thông minh Masaru (nếu có)
+    if (lowerName.startsWith("lock") || lowerName.contains("masaru") || lowerName.contains("khoa")) {
+      return smartLockProfile;
     }
 
-    // 4. TUYỆT ĐỐI KHÔNG DÙNG FALLBACK ÉP THÀNH CỬA CUỐN
-    // Nếu thiết bị chưa đăng ký trong Catalog -> trả về unregisteredDeviceProfile minh bạch
+    // 7. TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4 LOẠI TRÊN!
+    // Các thiết bị lạ tự động chuyển vào loại Other Control
     return unregisteredDeviceProfile;
   }
 }

@@ -175,10 +175,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             IconButton(
               icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 22),
               tooltip: "Cài đặt thiết bị",
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final deleted = await Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => DeviceSettingsScreen(device: _device)),
                 );
+                if (deleted == true && mounted) {
+                  Navigator.of(context).pop(true);
+                }
               },
             ),
           const SizedBox(width: 4),

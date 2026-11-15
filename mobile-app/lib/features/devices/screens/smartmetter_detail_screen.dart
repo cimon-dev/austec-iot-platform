@@ -29,20 +29,56 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   Timer? _longPressTimer;
   int _longPressSeconds = 0;
   bool _isHoldingOk = false;
+  StreamSubscription? _deviceUpdateSub;
 
   @override
   void initState() {
     super.initState();
     _device = widget.device;
-    _isMeterOn = _device.currentProperties['is_meter_on'] != false;
-    _powerLimitW = (_device.currentProperties['power_limit_w'] as num?)?.toInt() ?? 4500;
+    _syncProperties();
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
+      final updated = _gateway.findByHardwareId(_device.hardwareId);
+      if (updated != null && mounted) {
+        setState(() {
+          _device = updated;
+          _syncProperties();
+        });
+      }
+    });
   }
+
+  @override
+  void dispose() {
+    _deviceUpdateSub?.cancel();
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncProperties() {
+    final p = _device.currentProperties;
+    _isMeterOn = p['relay_status'] == 'ON' || (p['relay_status'] == null && p['is_meter_on'] != false);
+    final cfg = p['power_limit_w'] ?? p['p_warn_cfg'] ?? 4500;
+    _powerLimitW = (cfg is num) ? cfg.toInt() : 4500;
+  }
+
+  double get _voltage => (_device.currentProperties['voltage'] as num?)?.toDouble() ?? 220.5;
+  double get _current => (_device.currentProperties['current'] as num?)?.toDouble() ?? 0.0;
+  double get _power => (_device.currentProperties['power'] as num?)?.toDouble() ?? 0.0;
+  double get _totalKwh => (_device.currentProperties['total_kwh'] ?? _device.currentProperties['energy'] as num?)?.toDouble() ?? 0.0;
+  double get _dailyKwh => (_device.currentProperties['daily_kwh'] as num?)?.toDouble() ?? 0.0;
+  String? get _alarm => _device.currentProperties['alarm']?.toString();
 
   void _handleReset() {
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "RESET");
+    setState(() {
+      _device.currentProperties['alarm'] = null;
+      _device.currentProperties['relay_status'] = 'ON';
+      _device.currentProperties['is_meter_on'] = true;
+      _isMeterOn = true;
+    });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Đã gửi mã lệnh 0 (RESET) xuống phần cứng công tơ điện tử"),
+        content: Text("Đã gửi mã lệnh 0 (RESET): Xóa cảnh báo & đóng lại nguồn điện."),
         backgroundColor: AppTheme.brandBlue,
         behavior: SnackBarBehavior.floating,
       ),
@@ -56,9 +92,14 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     if (!_isSettingPower) {
       _device.currentProperties['power_limit_w'] = _powerLimitW;
       _gateway.updateDeviceProperties(_device.hardwareId, {'power_limit_w': _powerLimitW});
+      _gateway.sendCommand(
+        hardwareId: _device.hardwareId,
+        action: "CONFIG_POWER_LIMIT",
+        parameters: {'power_limit': _powerLimitW},
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Đã lưu ngưỡng công suất: $_powerLimitW W lên máy chủ và gửi xuống phần cứng"),
+          content: Text("Đã lưu giới hạn công suất: $_powerLimitW W xuống công tơ điện tử!"),
           backgroundColor: AppTheme.emeraldSuccess,
           behavior: SnackBarBehavior.floating,
         ),
@@ -100,11 +141,12 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       _isMeterOn = false;
       _isSettingPower = false;
       _device.currentProperties['is_meter_on'] = false;
+      _device.currentProperties['relay_status'] = 'OFF';
     });
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_OFF");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Đã giữ > 5s: Đã tắt công tơ điện tử, gửi mã lệnh 1 xuống phần cứng!"),
+        content: Text("Đã giữ > 5s: Đã ngắt rơ-le công tơ điện tử an toàn (Lệnh 14)!"),
         backgroundColor: AppTheme.crimsonDanger,
         behavior: SnackBarBehavior.floating,
       ),
@@ -115,11 +157,12 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     setState(() {
       _isMeterOn = true;
       _device.currentProperties['is_meter_on'] = true;
+      _device.currentProperties['relay_status'] = 'ON';
     });
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_ON");
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Đã bật công tơ điện tử, gửi mã lệnh 2 xuống phần cứng!"),
+        content: Text("Đã bật nguồn điện công tơ điện tử (Lệnh 13)!"),
         backgroundColor: AppTheme.emeraldSuccess,
         behavior: SnackBarBehavior.floating,
       ),
@@ -149,14 +192,14 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
             ),
             Text(
-              "${_device.roomName} • ${_device.hardwareId}",
+              "${_device.roomName.isNotEmpty ? '${_device.roomName} • ' : ''}${_device.hardwareId}",
               style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontFamily: "monospace"),
             ),
           ],
         ),
         centerTitle: true,
         actions: [
-          // 1. Icon Biểu đồ Dashboard tiêu thụ điện (riêng cho Công tơ điện tử)
+          // 1. Icon Biểu đồ Dashboard tiêu thụ điện
           IconButton(
             icon: const Icon(Icons.bar_chart_rounded, color: AppTheme.cyanAccent, size: 22),
             tooltip: "Biểu đồ tiêu thụ điện",
@@ -192,7 +235,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               );
             },
           ),
-          // 4. Icon CSKH (Mở trực tiếp ChatRoomScreen phòng CSKH thật)
+          // 4. Icon CSKH
           IconButton(
             icon: const Icon(Icons.headset_mic_outlined, color: AppTheme.cyanAccent, size: 20),
             tooltip: "Hỗ trợ CSKH",
@@ -229,7 +272,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // 1. Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ đỉnh tới đáy)
+            // 1. Background Watermark Công Ty AUSTEC
             Positioned.fill(
               child: Image.asset(
                 "assets/austec_banner_new.png",
@@ -239,9 +282,10 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                 alignment: Alignment.center,
               ),
             ),
+            // Lớp phủ tối sâu (88% dark / 78% light) giúp khối nổi bật rõ ràng, không bị chìm
             Positioned.fill(
               child: Container(
-                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.60),
+                color: Colors.black.withValues(alpha: isDark ? 0.88 : 0.78),
               ),
             ),
 
@@ -251,18 +295,55 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
-                    // 1. LOGO & SLOGAN 2026 to rõ, căn giữa, không nền trắng
+                    // 1. LOGO & SLOGAN 2026 to rõ, căn giữa
                     Center(
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 2, bottom: 10),
+                        padding: const EdgeInsets.only(top: 2, bottom: 8),
                         child: Image.asset(
                           "assets/austec_logo_2026.png",
-                          height: 48,
+                          height: 44,
                           fit: BoxFit.contain,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+
+                    // Cảnh báo nếu có sự cố rò điện hoặc quá dòng
+                    if (_alarm != null && _alarm!.isNotEmpty) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7F1D1D),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x66EF4444), blurRadius: 10, spreadRadius: 1),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "CẢNH BÁO: $_alarm - Đã ngắt rơ-le an toàn!",
+                                style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _handleReset,
+                              style: TextButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF991B1B),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                minimumSize: const Size(0, 24),
+                              ),
+                              child: const Text("RESET", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     // 2. KHUNG NỘI DUNG ĐIỀU KHIỂN CHÍNH
                     Expanded(
@@ -280,78 +361,102 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     );
   }
 
-  // Giao diện khi công tơ đang TẮT (Chỉ hiện duy nhất nút Bật)
+  // Giao diện khi công tơ đang TẮT
   Widget _buildMeterOffState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4), width: 2),
-            ),
-            child: const Icon(Icons.power_off_rounded, color: Color(0xFFEF4444), size: 48),
-          ),
-          const SizedBox(height: 18),
-          const Text(
-            "Thiết bị đang tắt",
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "Rơ-le công tơ đã ngắt toàn bộ phụ tải điện an toàn",
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: 220,
-            height: 48,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.emeraldSuccess,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1523),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF1E2D4A), width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black54, blurRadius: 20, offset: Offset(0, 8)),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFEF4444), width: 2),
               ),
-              icon: const Icon(Icons.power_settings_new_rounded),
-              label: const Text("Nhấn để bật thiết bị", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              onPressed: _turnOnMeter,
+              child: const Icon(Icons.power_off_rounded, color: Color(0xFFEF4444), size: 52),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            const Text(
+              "CÔNG TƠ ĐANG NGẮT NGUỒN",
+              style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Rơ-le công tơ đã ngắt toàn bộ phụ tải điện an toàn.",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 26),
+            SizedBox(
+              width: 230,
+              height: 48,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.emeraldSuccess,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 6,
+                ),
+                icon: const Icon(Icons.power_settings_new_rounded, size: 20),
+                label: const Text("BẬT LẠI CÔNG TƠ ĐIỆN", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                onPressed: _turnOnMeter,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   // Màn hình hiển thị LCD & Bàn phím điều khiển công tơ
   Widget _buildMeterDisplay(bool isDark, Color textCol) {
+    final kwhStr = _totalKwh > 0
+        ? _totalKwh.toStringAsFixed(2).padLeft(7, '0')
+        : "0000.00";
+    final vStr = "${_voltage.toStringAsFixed(1)} V";
+    final aStr = "${_current.toStringAsFixed(2)} A";
+    final pStr = "${_power.toStringAsFixed(0)} W";
+    final dayStr = "${_dailyKwh.toStringAsFixed(2)} kWh";
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Thân đồng hồ công tơ LCD
+        // Thân đồng hồ công tơ LCD: Màu nền đậm sâu, viền dập nổi sắc nét
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF141824),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF26324A), width: 1.5),
+            color: const Color(0xFF0D1322),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF1E2D4A), width: 2),
             boxShadow: const [
-              BoxShadow(color: Colors.black45, blurRadius: 12, offset: Offset(0, 4)),
+              BoxShadow(color: Colors.black87, blurRadius: 24, spreadRadius: 2, offset: Offset(0, 10)),
             ],
           ),
           child: Column(
             children: [
-              // Màn hình hiển thị LCD dạ quang kỹ thuật số
+              // Màn hình hiển thị LCD dạ quang kỹ thuật số (Màu kính LCD OLED đen sâu)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0A1926),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF1C3A5A), width: 1.5),
+                  color: const Color(0xFF030712),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.6), width: 2),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x330284C7), blurRadius: 14, spreadRadius: 1),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -361,10 +466,13 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
                       children: [
-                        const Text("kWh", style: TextStyle(color: Color(0xFF4ADE80), fontSize: 16, fontWeight: FontWeight.bold, fontFamily: "monospace")),
                         const Text(
-                          "0123.45",
-                          style: TextStyle(
+                          "kWh (TỔNG)",
+                          style: TextStyle(color: Color(0xFF4ADE80), fontSize: 13, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                        ),
+                        Text(
+                          kwhStr,
+                          style: const TextStyle(
                             color: Color(0xFF4ADE80),
                             fontSize: 32,
                             fontWeight: FontWeight.w900,
@@ -374,27 +482,61 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                         ),
                       ],
                     ),
-                    const Divider(color: Color(0xFF16324D), height: 16),
-                    // Dòng 2: Điện áp V
+                    const Divider(color: Color(0xFF162A45), height: 16, thickness: 1.2),
+                    // Dòng 2: Điện áp V & Công suất P
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("ĐIỆN ÁP", style: TextStyle(color: Color(0xFF67E8F9), fontSize: 11, fontWeight: FontWeight.bold)),
-                        const Text(
-                          "220.5 V",
-                          style: TextStyle(color: Color(0xFF67E8F9), fontSize: 24, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("ĐIỆN ÁP", style: TextStyle(color: Color(0xFF67E8F9), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(
+                              vStr,
+                              style: const TextStyle(color: Color(0xFF67E8F9), fontSize: 22, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text("CÔNG SUẤT", style: TextStyle(color: Color(0xFFFB923C), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(
+                              pStr,
+                              style: const TextStyle(color: Color(0xFFFB923C), fontSize: 22, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    // Dòng 3: Dòng điện A & Công suất
+                    const SizedBox(height: 8),
+                    // Dòng 3: Dòng điện A & Sản lượng ngày
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text("DÒNG TẢI", style: TextStyle(color: Color(0xFFFDE047), fontSize: 11, fontWeight: FontWeight.bold)),
-                        const Text(
-                          "12.4 A",
-                          style: TextStyle(color: Color(0xFFFDE047), fontSize: 24, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("DÒNG TẢI", style: TextStyle(color: Color(0xFFFDE047), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(
+                              aStr,
+                              style: const TextStyle(color: Color(0xFFFDE047), fontSize: 20, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            const Text("HÔM NAY", style: TextStyle(color: Color(0xFFA78BFA), fontSize: 10.5, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(
+                              dayStr,
+                              style: const TextStyle(color: Color(0xFFA78BFA), fontSize: 20, fontWeight: FontWeight.bold, fontFamily: "monospace"),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -408,9 +550,11 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildLedIndicator("POWER", Colors.green, true),
-                  const SizedBox(width: 32),
-                  _buildLedIndicator("STATUS", _isSettingPower ? Colors.amber : Colors.green, true),
+                  _buildLedIndicator("NGUỒN", const Color(0xFF22C55E), true),
+                  const SizedBox(width: 36),
+                  _buildLedIndicator("RƠ-LE", _isMeterOn ? const Color(0xFF22C55E) : const Color(0xFFEF4444), true),
+                  const SizedBox(width: 36),
+                  _buildLedIndicator("CÀI ĐẶT", _isSettingPower ? const Color(0xFFF59E0B) : const Color(0xFF334155), _isSettingPower),
                 ],
               ),
 
@@ -419,22 +563,22 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
               // Chế độ Cài đặt công suất hiển thị khi nhấn OK
               if (_isSettingPower) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: AppTheme.amberWarning.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.amberWarning),
+                    color: const Color(0xFF78350F).withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         "CÀI ĐẶT CÔNG SUẤT BẢO VỆ:",
-                        style: TextStyle(color: AppTheme.amberWarning, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: Color(0xFFFDE047), fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         "$_powerLimitW W",
-                        style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900, fontFamily: "monospace"),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, fontFamily: "monospace"),
                       ),
                     ],
                   ),
@@ -442,7 +586,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                 const SizedBox(height: 12),
               ],
 
-              // 4 Nút bấm vật lý: UP, DOWN, OK, RESET
+              // 4 Nút bấm vật lý: UP, DOWN, OK, RESET (Nền khối đậm, viền nổi, tương tác xúc giác)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -460,9 +604,9 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            "Nhấn OK 1 lần để cài công suất • Giữ OK > 5s để tắt công tơ • RESET gửi mã 0",
+            "Nhấn OK: Bật/Lưu cài công suất • Giữ OK > 5s: Tắt công tơ • RESET: Xóa cảnh báo & đóng điện",
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 10.5),
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
           ),
         ),
       ],
@@ -476,15 +620,15 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           width: 12,
           height: 12,
           decoration: BoxDecoration(
-            color: isOn ? color : Colors.grey[800],
+            color: isOn ? color : const Color(0xFF1E293B),
             shape: BoxShape.circle,
             boxShadow: isOn
-                ? [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 6, spreadRadius: 1)]
+                ? [BoxShadow(color: color.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 1)]
                 : null,
           ),
         ),
         const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Color(0xFF8E99B0), fontSize: 9.5, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -494,17 +638,21 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 65,
-        height: 44,
+        width: 68,
+        height: 46,
         decoration: BoxDecoration(
-          color: isDanger ? const Color(0xFF7F1D1D) : const Color(0xFF1E2638),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isDanger ? const Color(0xFFEF4444) : const Color(0xFF334155)),
+          color: isDanger ? const Color(0xFF991B1B) : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: isDanger ? const Color(0xFFEF4444) : const Color(0xFF475569), width: 1.5),
+          boxShadow: const [
+            BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2)),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 16),
+            Icon(icon, color: Colors.white, size: 17),
+            const SizedBox(height: 1),
             Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -521,17 +669,24 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         _isHoldingOk = false;
       },
       child: Container(
-        width: 65,
-        height: 44,
+        width: 68,
+        height: 46,
         decoration: BoxDecoration(
-          color: _isHoldingOk ? AppTheme.amberWarning : AppTheme.brandBlue,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white30),
+          color: _isHoldingOk ? const Color(0xFFD97706) : const Color(0xFF2563EB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _isHoldingOk ? const Color(0xFFFBBF24) : const Color(0xFF60A5FA),
+            width: 1.5,
+          ),
+          boxShadow: const [
+            BoxShadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 2)),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check, color: Colors.white, size: 16),
+            const Icon(Icons.check, color: Colors.white, size: 17),
+            const SizedBox(height: 1),
             Text(
               _isHoldingOk ? "> ${_longPressSeconds}s" : "OK",
               style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
@@ -542,4 +697,3 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     );
   }
 }
-

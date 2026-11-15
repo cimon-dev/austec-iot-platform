@@ -291,18 +291,15 @@ class IoTGatewayClient {
   List<DeviceItem> getDevicesByCategory(DeviceCategory category) {
     final realDevices = _devices.where((d) => d.category == category).toList();
 
-    // 100% REAL DATA cho các nhóm đã có thiết bị/BE (Cửa cuốn, Ổ cắm, Camera)
+    // 100% REAL DATA cho 4 chủng loại thiết bị chính thức (Cửa cuốn, Ổ cắm, Camera, Công tơ điện)
     if (category == DeviceCategory.rollerDoor ||
         category == DeviceCategory.lightSwitch ||
-        category == DeviceCategory.camera) {
+        category == DeviceCategory.camera ||
+        category == DeviceCategory.energyManage) {
       return realDevices;
     }
 
-    // Với các thiết bị mới chưa xử lý: Mock đúng 1 thiết bị duy nhất trên Mobile để hiển thị giao diện
-    if (category == DeviceCategory.energyManage) {
-      if (realDevices.isNotEmpty) return realDevices;
-      return [_mockSmartMetter];
-    }
+    // Với nhóm BMS Data Analytics:
     if (category == DeviceCategory.dataAnalytics) {
       if (realDevices.isNotEmpty) return realDevices;
       return [_mockBms];
@@ -316,6 +313,16 @@ class IoTGatewayClient {
       final norm = hardwareId.trim().toLowerCase();
       final cleanNorm = norm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
 
+      // 1. Luôn ưu tiên tìm kiếm trong danh sách thiết bị thật trong RAM
+      for (final d in _devices) {
+        final dNorm = d.hardwareId.trim().toLowerCase();
+        final dClean = dNorm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
+        if (dNorm == norm || dClean == cleanNorm || dNorm.endsWith(cleanNorm) || norm.endsWith(dClean)) {
+          return d;
+        }
+      }
+
+      // 2. Fallback mock cho thiết bị mẫu nếu không có thiết bị thật
       if (norm.contains('smartmetter') || cleanNorm.contains('smartmetter')) {
         return _mockSmartMetter;
       }
@@ -323,32 +330,51 @@ class IoTGatewayClient {
         return _mockBms;
       }
 
-      return _devices.firstWhere((d) {
-        final dNorm = d.hardwareId.trim().toLowerCase();
-        final dClean = dNorm.replaceAll('amtuong-', '').replaceAll('at-', '').replaceAll('-', '');
-        return dNorm == norm || dClean == cleanNorm || dNorm.endsWith(cleanNorm) || norm.endsWith(dClean);
-      });
+      return null;
     } catch (_) {
-      final norm = hardwareId.trim().toLowerCase();
-      if (norm.contains('smartmetter')) return _mockSmartMetter;
-      if (norm.contains('bms')) return _mockBms;
       return null;
     }
   }
 
-  static const String _cachedDevicesKey = 'austec_cached_user_devices';
+  String get _cachedDevicesKey => 'austec_cached_user_devices_${AuthService().currentUser?.id ?? "guest"}';
+
+  /// Xóa trắng danh sách thiết bị trong RAM khi đăng xuất / chuyển tài khoản
+  void clearAllDevices() {
+    _devices.clear();
+    _deviceUpdateStream.add(DeviceItem(
+      id: '__RESET__',
+      hardwareId: '__RESET__',
+      name: '',
+      modelName: '',
+      modelCode: '',
+      category: DeviceCategory.othersControl,
+      roomName: '',
+      badgeText: '',
+      deviceNumber: '',
+      isOnline: false,
+      warrantyUntil: '',
+      warrantyCode: '',
+      userRole: FamilyRole.guest,
+      canControl: false,
+      canViewHistory: false,
+      canChildLock: false,
+      canConfig: false,
+      ownerName: '',
+      currentProperties: {},
+    ));
+  }
 
   /// Lưu danh sách thiết bị vào bộ nhớ cục bộ máy (Offline Storage)
   Future<void> saveDevicesToLocalCache([List? rawList]) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (rawList != null && rawList.isNotEmpty) {
+      if (rawList != null) {
         await prefs.setString(_cachedDevicesKey, jsonEncode(rawList));
-        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${rawList.length} thiết bị vào Local Cache từ Raw List');
-      } else if (_devices.isNotEmpty) {
+        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${rawList.length} thiết bị vào Local Cache: $_cachedDevicesKey');
+      } else {
         final listToSave = _devices.map((d) => d.toMap()).toList();
         await prefs.setString(_cachedDevicesKey, jsonEncode(listToSave));
-        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${listToSave.length} thiết bị vào Local Cache từ _devices');
+        debugPrint('[IoTGatewayClient] 💾 Đã lưu ${listToSave.length} thiết bị vào Local Cache: $_cachedDevicesKey');
       }
     } catch (e) {
       debugPrint('[IoTGatewayClient] Lỗi lưu Local Cache: $e');
@@ -362,7 +388,7 @@ class IoTGatewayClient {
       final cachedJson = prefs.getString(_cachedDevicesKey);
       if (cachedJson != null && cachedJson.isNotEmpty) {
         final dynamic decoded = jsonDecode(cachedJson);
-        if (decoded is List && decoded.isNotEmpty) {
+        if (decoded is List) {
           _devices.clear();
           for (var d in decoded) {
             _devices.add(_parseDeviceFromJson(d));
@@ -370,7 +396,7 @@ class IoTGatewayClient {
           for (var d in _devices) {
             _deviceUpdateStream.add(d);
           }
-          debugPrint('[IoTGatewayClient] 📦 Nạp thành công ${_devices.length} thiết bị từ Local Cache (Offline Ready)');
+          debugPrint('[IoTGatewayClient] 📦 Nạp thành công ${_devices.length} thiết bị từ Local Cache: $_cachedDevicesKey');
         }
       }
     } catch (e) {
@@ -379,7 +405,7 @@ class IoTGatewayClient {
   }
 
   void addDevice(DeviceItem device) {
-    final idx = _devices.indexWhere((d) => d.hardwareId == device.hardwareId);
+    final idx = _devices.indexWhere((d) => d.hardwareId.toLowerCase() == device.hardwareId.toLowerCase());
     if (idx >= 0) {
       _devices[idx] = device;
     } else {
@@ -390,12 +416,19 @@ class IoTGatewayClient {
   }
 
   Future<void> removeDevice(String hardwareId) async {
-    _devices.removeWhere((d) => d.hardwareId == hardwareId);
+    final norm = hardwareId.trim().toLowerCase();
+    final removed = _devices.where((d) => d.hardwareId.trim().toLowerCase() == norm).toList();
+    _devices.removeWhere((d) => d.hardwareId.trim().toLowerCase() == norm);
     try {
       final prefs = await SharedPreferences.getInstance();
       final listToSave = _devices.map((d) => d.toMap()).toList();
       await prefs.setString(_cachedDevicesKey, jsonEncode(listToSave));
     } catch (_) {}
+    if (removed.isNotEmpty) {
+      _deviceUpdateStream.add(removed.first);
+    } else {
+      clearAllDevices();
+    }
   }
 
   void renameDevice(String hardwareId, String newName) {
@@ -546,10 +579,11 @@ class IoTGatewayClient {
             }
             syncSuccess = true;
           } else {
-            // Nếu Backend trả về mảng rỗng (hoặc khi mất kết nối nội bộ DB), giữ lại dữ liệu local cache
-            if (_devices.isEmpty) {
-              await loadDevicesFromLocalCache();
-            }
+            // Khi kết nối máy chủ thành công và tài khoản thực tế không có thiết bị: Xóa cache cũ để tránh rò rỉ thiết bị của tài khoản khác
+            _devices.clear();
+            await saveDevicesToLocalCache([]);
+            clearAllDevices();
+            syncSuccess = true;
           }
         }
       }
@@ -572,7 +606,7 @@ class IoTGatewayClient {
   /// Nạp danh sách camera phân trang theo yêu cầu (mỗi lượt 4-6 cái)
   Future<List<DeviceItem>> fetchCamerasPaged({int limit = 6, int offset = 0, String? token}) async {
     try {
-      final authToken = token ?? 'austec-customer-token';
+      final authToken = token ?? (AuthService().token ?? 'austec-customer-token');
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/my?category=camera&limit=$limit&offset=$offset'),
         headers: {'Authorization': 'Bearer $authToken'},
@@ -736,7 +770,7 @@ class IoTGatewayClient {
       roomName: (d['location'] ?? d['roomName'] ?? d['addressDisplay'] ??
           (d['installationAddress'] is Map
               ? d['installationAddress']['fullText']
-              : d['installationAddress']) ?? "Khu vực chính").toString(),
+              : d['installationAddress']) ?? "").toString(),
       installationAddress: (d['addressDisplay'] ??
           (d['installationAddress'] is Map
               ? d['installationAddress']['fullText']
@@ -819,11 +853,14 @@ class IoTGatewayClient {
     }
 
     // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
-    final isSocket = hardwareId.toUpperCase().startsWith("OCAM") || hardwareId.toUpperCase().contains("SOCKET");
+    final upperHwId = hardwareId.toUpperCase();
+    final isSocket = upperHwId.startsWith("OCAM") || upperHwId.contains("SOCKET");
     String resolvedSocketAction = action;
     if (action == "TOGGLE_RELAY") {
       resolvedSocketAction = (device != null && device.isRelayOn) ? "TURN_OFF" : "TURN_ON";
     }
+
+    final isMeter = upperHwId.contains("SMARTMETTER") || upperHwId.contains("SMARTMETER") || upperHwId.contains("METER");
 
     if (isSocket) {
       final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "13" || resolvedSocketAction == "1") ? "13"
@@ -836,7 +873,7 @@ class IoTGatewayClient {
         actionNumber: sAction,
         userId: device?.ownerId ?? AuthService().currentUser?.id,
       ));
-    } else {
+    } else if (!isMeter) {
       final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
           : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"
           : (action == "STOP_DOOR" || action == "STOP" || action == "3") ? "3"
@@ -1001,6 +1038,37 @@ class IoTGatewayClient {
         if (parameters?["days"] != null) {
           device.accessDays = List<bool>.from(parameters!["days"]);
         }
+      } else if (action == "METER_POWER_ON" || action == "METER_ON" || (action == "TURN_ON" && device.category == DeviceCategory.energyManage)) {
+        device.currentProperties['is_meter_on'] = true;
+        device.currentProperties['relay_status'] = 'ON';
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đã bật rơ-le công tơ điện tử (mã 13)",
+          cryptoSignature: cryptoSig,
+        );
+      } else if (action == "METER_POWER_OFF" || action == "METER_OFF" || (action == "TURN_OFF" && device.category == DeviceCategory.energyManage)) {
+        device.currentProperties['is_meter_on'] = false;
+        device.currentProperties['relay_status'] = 'OFF';
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đã ngắt rơ-le công tơ điện tử (mã 14)",
+          cryptoSignature: cryptoSig,
+        );
+      } else if (action == "RESET" && (device.category == DeviceCategory.energyManage || hardwareId.toLowerCase().contains("meter"))) {
+        device.currentProperties['alarm'] = null;
+        device.currentProperties['is_meter_on'] = true;
+        device.currentProperties['relay_status'] = 'ON';
+        _deviceUpdateStream.add(device);
+        return CommandResult(
+          success: true,
+          latencyMs: netLatency,
+          message: "Đã xóa cảnh báo và khôi phục rơ-le công tơ",
+          cryptoSignature: cryptoSig,
+        );
       } else if (action == "TOGGLE_RELAY" || action == "TURN_ON" || action == "TURN_OFF") {
         final bool turnOn = action == "TURN_ON" ? true : (action == "TURN_OFF" ? false : !device.isRelayOn);
         device.isRelayOn = turnOn;

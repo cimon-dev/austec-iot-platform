@@ -162,17 +162,19 @@ export class DeviceOperationsController {
             const hwUpper = (r.hardware_id || '').toUpperCase();
             const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.startsWith('SMARTSW');
             const isCamDev = !isSocketDev && (hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA') || hwUpper.includes('OV2640'));
+            const isMeterDev = !isSocketDev && !isCamDev && (hwUpper.startsWith('SMARTMETTER') || hwUpper.startsWith('SMARTMETER') || hwUpper.includes('METER') || hwUpper.includes('CONGTO'));
+            const isDoorDev = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF') || hwUpper.startsWith('AMTUONG') || hwUpper.startsWith('AT-DOOR') || hwUpper.startsWith('DOOR') || hwUpper.includes('AMTUONG'));
 
-            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : 'Cửa cuốn';
-            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
-            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU';
-            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : 'Cửa cuốn Austec';
+            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : isMeterDev ? 'Công tơ điện tử' : isDoorDev ? 'Cửa cuốn' : 'Thiết bị khác';
+            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm thông minh Austec' : isMeterDev ? 'Công tơ điện tử chống giật' : isDoorDev ? 'Austec Titadoor A900 Super' : 'Austec Smart Device';
+            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_ECO' : isMeterDev ? 'SMART_METER_PRO' : isDoorDev ? 'DOOR_GERMAN_ALU' : 'SMART_DEVICE';
+            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : isMeterDev ? `Công tơ ${r.hardware_id}` : isDoorDev ? 'Cửa cuốn Austec' : 'Thiết bị Austec';
 
-            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (r.device_type || defaultDevType));
-            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_ECO' : (isCamDev ? 'AI_CAMERA_360' : (r.model_code || defaultDevModelCode));
-            const resolvedModelName = isSocketDev ? 'Ổ cắm thông minh Austec' : (isCamDev ? 'AI Camera 360' : (r.model_name || defaultDevModelName));
+            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (isMeterDev ? 'Công tơ điện tử' : (isDoorDev ? 'Cửa cuốn' : (r.device_type || defaultDevType))));
+            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_ECO' : (isCamDev ? 'AI_CAMERA_360' : (isMeterDev ? 'SMART_METER_PRO' : (isDoorDev ? 'DOOR_GERMAN_ALU' : (r.model_code || defaultDevModelCode))));
+            const resolvedModelName = isSocketDev ? 'Ổ cắm thông minh Austec' : (isCamDev ? 'AI Camera 360' : (isMeterDev ? 'Công tơ điện tử chống giật' : (isDoorDev ? 'Austec Titadoor A900 Super' : (r.model_name || defaultDevModelName))));
             const finalDevName = r.custom_name || (r.model_name && !r.model_name.includes('A900') ? r.model_name : defaultDevName);
-            const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : 'rollerDoor');
+            const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : (isMeterDev ? 'energyManage' : (isDoorDev ? 'rollerDoor' : 'othersControl')));
 
             return {
               id: r.id,
@@ -327,12 +329,13 @@ export class DeviceOperationsController {
       const upperHwId = hardwareId.toUpperCase();
       const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
       const isCam = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
-      const defaultDeviceType = isCam ? 'Camera' : isSocket ? 'Ổ cắm' : 'Cửa cuốn';
-      const resolvedModelCode = isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : 'DOOR_GERMAN_ALU';
-      const resolvedModelName = isCam ? 'AI Camera 360' : isSocket ? 'Ổ cắm thông minh Austec' : 'Austec Titadoor A900 Super';
-      const category = isCam ? 'camera' : isSocket ? 'lightSwitch' : 'rollerDoor';
-      const finalName = customName || deviceName || (isCam ? `Camera ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : 'Cửa Cuốn Gia Đình');
-      const finalLocation = location || address || 'Nhà riêng';
+      const isMeter = !isSocket && !isCam && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
+      const defaultDeviceType = isCam ? 'Camera' : isSocket ? 'Ổ cắm' : isMeter ? 'Công tơ điện tử' : 'Cửa cuốn';
+      const resolvedModelCode = isCam ? 'AI_CAMERA_360' : isSocket ? 'SMART_SOCKET_ECO' : isMeter ? 'AUSTEC_SMART_METER' : 'DOOR_GERMAN_ALU';
+      const resolvedModelName = isCam ? 'AI Camera 360' : isSocket ? 'Ổ cắm thông minh Austec' : isMeter ? 'Công tơ điện tử chống giật Austec' : 'Austec Titadoor A900 Super';
+      const category = isCam ? 'camera' : isSocket ? 'lightSwitch' : isMeter ? 'energyManage' : 'rollerDoor';
+      const finalName = customName || deviceName || (isCam ? `Camera ${hardwareId}` : isSocket ? `Ổ cắm ${hardwareId}` : isMeter ? `Công tơ ${hardwareId}` : 'Cửa Cuốn Gia Đình');
+      const finalLocation = location || address || '';
       const finalLat = (lat != null && !isNaN(Number(lat))) ? Number(lat) : ((latitude != null && !isNaN(Number(latitude))) ? Number(latitude) : 21.028511);
       const finalLng = (lng != null && !isNaN(Number(lng))) ? Number(lng) : ((longitude != null && !isNaN(Number(longitude))) ? Number(longitude) : 105.854167);
 
@@ -581,21 +584,37 @@ export class DeviceOperationsController {
       }
 
       if (this.client.getConnected()) {
-        const permRes = await this.client.query(
-          `SELECT * FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND user_id = $2`,
-          [hardwareId, targetUser.id]
+        const devRes = await this.client.query(
+          `SELECT di.id, di.hardware_id, di.owner_id, di.owner_phone, dp.role
+           FROM device_instances di
+           LEFT JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id) AND (dp.user_id = $2 OR (dp.phone_number = $3 AND $3 != ''))
+           WHERE LOWER(di.hardware_id) = LOWER($1)
+           LIMIT 1`,
+          [hardwareId, targetUser.id, targetUser.phoneNumber || '']
         );
-        if (permRes.rows.length === 0 && targetUser.role !== 'ADMIN') {
-          res.status(403).json({ success: false, error: 'Bạn không có quyền gỡ bỏ thiết bị này' });
-          return;
-        }
 
-        const isOwner = permRes.rows[0]?.role === 'OWNER' || targetUser.role === 'ADMIN';
+        const devRow = devRes.rows[0];
+        const isOwner = targetUser.role === 'ADMIN' ||
+          devRow?.owner_id === targetUser.id ||
+          (devRow?.owner_phone && devRow?.owner_phone === targetUser.phoneNumber) ||
+          devRow?.role === 'OWNER';
+
+        if (devRes.rows.length === 0 && targetUser.role !== 'ADMIN') {
+          // Check if at least in permissions
+          const permCheck = await this.client.query(
+            `SELECT * FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND (user_id = $2 OR (phone_number = $3 AND $3 != ''))`,
+            [hardwareId, targetUser.id, targetUser.phoneNumber || '']
+          );
+          if (permCheck.rows.length === 0) {
+            res.status(403).json({ success: false, error: 'Bạn không có quyền gỡ bỏ thiết bị này' });
+            return;
+          }
+        }
 
         // Xóa quyền của user hiện tại
         await this.client.query(
-          `DELETE FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND user_id = $2`,
-          [hardwareId, targetUser.id]
+          `DELETE FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND (user_id = $2 OR (phone_number = $3 AND $3 != ''))`,
+          [hardwareId, targetUser.id, targetUser.phoneNumber || '']
         );
 
         if (isOwner) {
@@ -620,6 +639,7 @@ export class DeviceOperationsController {
           try {
             await this.mqttGateway?.publishMessage(`devices/${hardwareId}/camera/cmd`, 'RESET_FACTORY');
             await this.mqttGateway?.publishMessage(`austec/${hardwareId}/cmd`, 'RESET_FACTORY');
+            await this.mqttGateway?.publishMessage(`austec/${hardwareId}/command`, 'RESET');
           } catch (_) {}
         }
 
@@ -851,8 +871,22 @@ export class DeviceOperationsController {
       if (this.client.getConnected()) {
         const isCam = hardwareId.toUpperCase().startsWith('CAM');
         const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
+        const isMeter = hardwareId.toLowerCase().startsWith('smartmetter') || hardwareId.toLowerCase().startsWith('smartmeter') || hardwareId.toLowerCase().includes('meter') || hardwareId.toLowerCase().includes('congto');
 
-        if (isSocket || command === '3' || command === '4' || command === 'ON' || command === 'OFF' || command === 'TURN_ON' || command === 'TURN_OFF' || command === 'TOGGLE_RELAY') {
+        if (isMeter) {
+          const isTurnOn = command === '13' || command === '1' || command === 'ON' || command === 'METER_POWER_ON' || command === 'RESET';
+          const relayStatus = isTurnOn ? 'ON' : 'OFF';
+          await this.client.query(
+            `UPDATE device_instances 
+             SET current_properties = jsonb_set(
+                   jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{is_meter_on}', $1::jsonb),
+                   '{relay_status}', $2::jsonb
+                 ),
+                 last_heartbeat = NOW()
+             WHERE LOWER(hardware_id) = LOWER($3) OR hardware_id = $3`,
+            [JSON.stringify(isTurnOn), JSON.stringify(relayStatus), hardwareId]
+          );
+        } else if (isSocket || command === '3' || command === '4' || command === 'ON' || command === 'OFF' || command === 'TURN_ON' || command === 'TURN_OFF' || command === 'TOGGLE_RELAY') {
           let isRelayOn = command === '3' || command === 'ON' || command === 'TURN_ON' || command === '13';
           if (command === 'TOGGLE_RELAY') {
             const curRes = await this.client.query(`SELECT current_properties FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) OR hardware_id = $1 LIMIT 1`, [hardwareId]);

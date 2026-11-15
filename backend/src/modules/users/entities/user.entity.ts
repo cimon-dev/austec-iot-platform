@@ -12,6 +12,7 @@ export interface UserEntity {
   company?: string;
   address?: string;
   province?: string;
+  avatarUrl?: string;
   password?: string;
   isActive: boolean;
   registeredAt: string;

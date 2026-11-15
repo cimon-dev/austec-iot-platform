@@ -148,6 +148,80 @@ export class MqttGateway {
       return;
     }
 
+    // B.2. XỬ LÝ DỮ LIỆU CÔNG TƠ ĐIỆN TỬ: austec/{hwId}/telemetry, austec/{hwId}/alarm, austec/{hwId}/daily_report
+    if (topic.startsWith('austec/') && (topic.endsWith('/telemetry') || topic.endsWith('/alarm') || topic.endsWith('/daily_report'))) {
+      const parts = topic.split('/');
+      const hwId = parts[1];
+      const sub = parts[2];
+      try {
+        const json = JSON.parse(payload);
+        if (sub === 'telemetry') {
+          console.log(`[MQTT Gateway] ⚡ [${hwId}] Nhận dữ liệu Telemetry Công tơ: U=${json.voltage}V, I=${json.current}A, P=${json.power}W, Total=${json.total_kwh}kWh, Relay=${json.relay_status}`);
+          const isRelayOn = json.relay_status === 'ON';
+          const meterState = {
+            isOnline: true,
+            currentProperties: {
+              voltage: json.voltage,
+              current: json.current,
+              power: json.power,
+              total_kwh: json.total_kwh,
+              daily_kwh: json.daily_kwh,
+              relay_status: json.relay_status || 'ON',
+              is_meter_on: isRelayOn,
+              p_warn_cfg: json.p_warn_cfg,
+              i_warn_cfg: json.i_warn_cfg,
+              cf_pulses: json.cf_pulses,
+            },
+            lastHeartbeat: new Date().toISOString(),
+          };
+          await this.hotCache.setDeviceState(hwId, meterState);
+          await this.hotCache.setDeviceState(hwId.toLowerCase(), meterState);
+          await this.hotCache.setDeviceState(hwId.toUpperCase(), meterState);
+          try {
+            await this.postgresService?.query(
+              `UPDATE device_instances 
+               SET is_online = true, 
+                   current_properties = COALESCE(current_properties, '{}'::jsonb) || $1::jsonb,
+                   last_heartbeat = NOW()::text 
+               WHERE LOWER(hardware_id) = LOWER($2)`,
+              [JSON.stringify(meterState.currentProperties), hwId]
+            );
+          } catch (_) {}
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, meterState.currentProperties);
+          }
+          return;
+        } else if (sub === 'alarm') {
+          console.warn(`[MQTT Gateway] 🚨 [${hwId}] CẢNH BÁO CÔNG TƠ ĐIỆN TỬ: ${json.message}`);
+          const alarmState = {
+            currentProperties: {
+              alarm: json.message,
+              relay_status: 'OFF',
+              is_meter_on: false,
+              alarmAt: new Date().toISOString(),
+            },
+            lastHeartbeat: new Date().toISOString(),
+          };
+          await this.hotCache.setDeviceState(hwId, alarmState);
+          try {
+            await this.postgresService?.query(
+              `UPDATE device_instances 
+               SET current_properties = COALESCE(current_properties, '{}'::jsonb) || $1::jsonb,
+                   last_heartbeat = NOW()::text 
+               WHERE LOWER(hardware_id) = LOWER($2)`,
+              [JSON.stringify(alarmState.currentProperties), hwId]
+            );
+          } catch (_) {}
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, alarmState.currentProperties);
+          }
+          return;
+        }
+      } catch (err: any) {
+        console.warn(`[MQTT Gateway] Lỗi phân tích gói tin công tơ [${topic}]: ${err.message}`);
+      }
+    }
+
     // C. XỬ LÝ TRẠNG THÁI CỦA Ổ CẮM / RƠ-LE: {deviceName}/status & {deviceName}/response
     const slashCount = (topic.match(/\//g) || []).length;
     if (slashCount === 1) {
@@ -332,10 +406,16 @@ export class MqttGateway {
     const upperHwId = hwId.toUpperCase();
     const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
     const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
+    const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     const candidateTopics = new Set<string>();
 
-    if (isSocket) {
+    if (isMeter) {
+      candidateTopics.add(`austec/${hwId}/command`);
+      candidateTopics.add(`austec/${hwId.toLowerCase()}/command`);
+      candidateTopics.add(`austec/${hwId}/sub/action`);
+      candidateTopics.add(`${hwId}/command`);
+    } else if (isSocket) {
       // Ổ cắm theo chuẩn ocammoi lắng nghe tại {user}/{hwId}/sub/action (user cứng trong EEPROM là USR-330967)
       candidateTopics.add(`USR-330967/${hwId}/sub/action`);
       candidateTopics.add(`USR-330967/${hwId.toLowerCase()}/sub/action`);

@@ -162,7 +162,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     backgroundColor: AppTheme.crimsonDanger,
                   ),
                 );
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(true);
               }
             },
             child: const Text("Xác nhận Xóa"),
@@ -253,7 +253,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 height: 44,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.of(context).pop();
+                    Navigator.of(context).pop(true);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Đang ở chế độ ghép nối... Nhấn nút bất kỳ trên Remote mới."),

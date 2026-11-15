@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
-
 import '../constants/api_config.dart';
+import 'iot_gateway_client.dart';
 
 class AuthResult {
   final bool success;
@@ -79,6 +79,7 @@ class AuthService {
       if (res.statusCode == 200 && data['success'] == true) {
         final tokenStr = data['token']?.toString() ?? 'austec-customer-token';
         final userObj = UserModel.fromJson(data['user'] as Map<String, dynamic>, token: tokenStr);
+        IoTGatewayClient().clearAllDevices();
         await _saveSession(tokenStr, userObj);
         return AuthResult(success: true, message: data['message'] ?? 'Đăng nhập thành công!', user: userObj);
       } else {
@@ -209,6 +210,112 @@ class AuthService {
     return login(identifier: target, password: 'Austec123!@#');
   }
 
+  /// Đổi mật khẩu tài khoản
+  Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/api/auth/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_token ?? ""}',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'message': data['message'] ?? 'Đổi mật khẩu thành công!'};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Đổi mật khẩu thất bại!'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Lỗi kết nối máy chủ: $e'};
+    }
+  }
+
+  /// Cập nhật thông tin cá nhân
+  Future<Map<String, dynamic>> updateProfile({
+    String? fullName,
+    String? phoneNumber,
+    String? address,
+    String? province,
+    String? avatarUrl,
+  }) async {
+    try {
+      final res = await http.put(
+        Uri.parse('$_baseUrl/api/auth/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_token ?? ""}',
+        },
+        body: jsonEncode({
+          if (fullName != null) 'fullName': fullName,
+          if (phoneNumber != null) 'phoneNumber': phoneNumber,
+          if (address != null) 'address': address,
+          if (province != null) 'province': province,
+          if (avatarUrl != null) 'avatarUrl': avatarUrl,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200 && data['success'] == true) {
+        if (_currentUser != null) {
+          _currentUser = _currentUser!.copyWith(
+            fullName: fullName,
+            phoneNumber: phoneNumber,
+            address: address,
+            province: province,
+            avatarUrl: avatarUrl,
+          );
+          await _saveSession(_token!, _currentUser!);
+        }
+        return {'success': true, 'message': data['message'] ?? 'Cập nhật thành công!', 'user': _currentUser};
+      } else {
+        return {'success': false, 'error': data['error'] ?? 'Cập nhật thất bại!'};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Lỗi kết nối máy chủ: $e'};
+    }
+  }
+
+  /// Tải ảnh đại diện lên Cloudflare R2
+  Future<String?> uploadAvatar(List<int> fileBytes, String filename) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_baseUrl/api/upload/image'),
+      );
+      request.headers['Authorization'] = 'Bearer ${_token ?? ""}';
+      request.files.add(http.MultipartFile.fromBytes(
+        'file',
+        fileBytes,
+        filename: filename,
+      ));
+
+      final streamedRes = await request.send().timeout(const Duration(seconds: 25));
+      final res = await http.Response.fromStream(streamedRes);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['url'] != null) {
+          final newAvatarUrl = data['url'].toString();
+          await updateProfile(avatarUrl: newAvatarUrl);
+          return newAvatarUrl;
+        }
+      }
+    } catch (e) {
+      debugPrint('[AuthService] Lỗi upload avatar: $e');
+    }
+    return null;
+  }
+
   /// Đăng xuất tài khoản
   Future<void> logout() async {
     _currentUser = null;
@@ -217,9 +324,15 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(_tokenKey);
       await prefs.remove(_userKey);
+      final keys = prefs.getKeys().where((k) => k.startsWith('austec_cached_user_devices')).toList();
+      for (final k in keys) {
+        await prefs.remove(k);
+      }
+      await prefs.remove('austec_cached_user_devices');
     } catch (e) {
       debugPrint('[AuthService] Lưu ý khi xóa session: $e');
     }
+    IoTGatewayClient().clearAllDevices();
   }
 
   Future<void> _saveSession(String token, UserModel user) async {

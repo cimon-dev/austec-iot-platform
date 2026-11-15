@@ -127,11 +127,12 @@ if (-not $SkipDocker) {
 $pubWifi = Get-NetConnectionProfile -ErrorAction SilentlyContinue | Where-Object { $_.InterfaceAlias -like "*Wi-Fi*" -and $_.NetworkCategory -eq "Public" }
 if ($pubWifi) {
     Write-Host ""
-    Write-Host "[CẢNH BÁO FIREWALL] Wi-Fi '$($pubWifi.Name)' đang ở chế độ Public - Windows Defender có thể chặn ESP32/điện thoại truy cập MediaMTX & Backend!" -ForegroundColor Yellow
+    $wifiName = $pubWifi.Name
+    Write-Host "[CẢNH BÁO FIREWALL] Wi-Fi $wifiName đang ở chế độ Public - Windows Defender có thể chặn ESP32/điện thoại truy cập MediaMTX & Backend!" -ForegroundColor Yellow
     Write-Host "Hãy chuyển sang Private network trong Windows Settings -> Wi-Fi properties." -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "Xong! Nếu Backend Local (cổng $backendPort) đang chạy sẵn với IP cũ, hãy khởi động lại Backend để nạp .env mới." -ForegroundColor Cyan
-Write-Host "Với ESP32 đang online, khi bấm Xem Camera trên App, Backend sẽ tự đẩy 'rtsp:${mediaHost}:${rtspPort}' qua MQTT." -ForegroundColor Cyan
+Write-Host "Xong! Neu Backend Local dang chay san, hay khoi dong lai Backend de nap .env moi." -ForegroundColor Cyan
+Write-Host "Khi bam Xem Camera tren App, Backend se tu gui RTSP host ${mediaHost}:${rtspPort} qua MQTT xuong ESP32." -ForegroundColor Cyan
 

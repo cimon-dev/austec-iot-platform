@@ -182,9 +182,10 @@ export class UsersRepository {
            role_title = COALESCE($7, role_title),
            address = COALESCE($8, address),
            province = COALESCE($9, province),
-           is_active = COALESCE($10, is_active),
+           avatar_url = COALESCE($10, avatar_url),
+           is_active = COALESCE($11, is_active),
            updated_at = NOW()
-         WHERE id = $11 OR emp_id = $11`,
+         WHERE id = $12 OR emp_id = $12`,
         [
           updates.fullName ?? null,
           updates.email ? updates.email.trim().toLowerCase() : null,
@@ -195,6 +196,7 @@ export class UsersRepository {
           updates.roleTitle ?? null,
           updates.address ?? null,
           updates.province ?? null,
+          updates.avatarUrl ?? null,
           updates.isActive ?? null,
           id,
         ]
@@ -206,6 +208,60 @@ export class UsersRepository {
 
     this.onPersist?.();
     return user || null;
+  }
+
+  public async changePassword(userId: string, currentPass: string, newPass: string): Promise<boolean> {
+    const res = await this.client.query('SELECT password FROM public.users WHERE id = $1 LIMIT 1', [userId]);
+    if (res.rows.length === 0) {
+      throw new Error('Không tìm thấy tài khoản người dùng');
+    }
+    const currentDbPass = res.rows[0].password || 'Austec123!@#';
+    if (currentDbPass !== currentPass) {
+      throw new Error('Mật khẩu hiện tại không chính xác!');
+    }
+    await this.client.query('UPDATE public.users SET password = $1, updated_at = NOW() WHERE id = $2', [newPass, userId]);
+    const memUser = this.usersStore.find(u => u.id === userId);
+    if (memUser) {
+      memUser.password = newPass;
+    }
+    this.onPersist?.();
+    return true;
+  }
+
+  public async updateProfile(userId: string, data: { fullName?: string; phoneNumber?: string; address?: string; province?: string; avatarUrl?: string }): Promise<UserEntity | null> {
+    let user = this.findById(userId);
+    if (!user) {
+      user = (await this.findByIdAsync(userId)) || undefined;
+    }
+    if (user) {
+      if (data.fullName !== undefined) user.fullName = data.fullName;
+      if (data.phoneNumber !== undefined) user.phoneNumber = data.phoneNumber;
+      if (data.address !== undefined) user.address = data.address;
+      if (data.province !== undefined) user.province = data.province;
+      if (data.avatarUrl !== undefined) user.avatarUrl = data.avatarUrl;
+    }
+
+    await this.client.query(
+      `UPDATE public.users SET
+         full_name = COALESCE($1, full_name),
+         phone_number = COALESCE($2, phone_number),
+         address = COALESCE($3, address),
+         province = COALESCE($4, province),
+         avatar_url = COALESCE($5, avatar_url),
+         updated_at = NOW()
+       WHERE id = $6 OR emp_id = $6`,
+      [
+        data.fullName ?? null,
+        data.phoneNumber ?? null,
+        data.address ?? null,
+        data.province ?? null,
+        data.avatarUrl ?? null,
+        userId,
+      ]
+    );
+
+    this.onPersist?.();
+    return user || (await this.findByIdAsync(userId));
   }
 
   public async remove(id: string): Promise<boolean> {
@@ -416,6 +472,7 @@ export class UsersRepository {
       password: r.password,
       address: r.address || undefined,
       province: r.province || undefined,
+      avatarUrl: r.avatar_url || undefined,
       isActive: r.is_active ?? true,
       registeredAt: r.registered_at || new Date().toISOString(),
       updatedAt: r.updated_at || undefined,

@@ -116,7 +116,7 @@ class LiveScannerService {
       // Chuyển phần trăm sóng thành dBm (VD: 90% -> -40 dBm, 50% -> -70 dBm)
       const rssi = Math.round(-100 + (sigNum * 0.6));
 
-      if (lower.startsWith('cam_') || lower.startsWith('cam') || lower.includes('camera')) {
+      if (lower.startsWith('cam_') || lower.startsWith('cam') || lower.includes('camera') || lower.includes('esp32-cam')) {
         discovered.push({
           hardwareId: net.ssid,
           modelName: `Camera Thông Minh Austec (${net.ssid})`,

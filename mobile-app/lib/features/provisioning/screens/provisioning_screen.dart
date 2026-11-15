@@ -78,7 +78,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         setState(() => _adapterState = state);
         if (state == BluetoothAdapterState.on) {
           // Chỉ tự động quét khi bước xin quyền lần đầu đã hoàn tất và Bluetooth vừa bật lại
-          if (_permissionsReadyForBle && prevState != BluetoothAdapterState.on) {
+          if (_permissionsReadyForBle &&
+              prevState != BluetoothAdapterState.on) {
             _triggerScan(clearPrevious: true, forceRestart: true);
           }
         } else {
@@ -112,7 +113,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (!mounted) return;
 
     // Lấy tọa độ GPS & đọc tên Wi-Fi ngầm (không bật thêm dialog OS nữa vì vừa xử lý xong ở trên)
-    unawaited(_getCurrentGpsLocation(promptIfDenied: false, showSuccessSnackbar: false));
+    unawaited(_getCurrentGpsLocation(
+        promptIfDenied: false, showSuccessSnackbar: false));
 
     _permissionsReadyForBle = true;
 
@@ -146,7 +148,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     super.dispose();
   }
 
-  Future<void> _triggerScan({bool clearPrevious = true, bool forceRestart = true}) async {
+  Future<void> _triggerScan(
+      {bool clearPrevious = true, bool forceRestart = true}) async {
     if (!forceRestart && _isScanning) return;
     final int mySession = ++_scanSessionId;
 
@@ -195,7 +198,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         currentState = await FlutterBluePlus.adapterState
             .where((s) => s != BluetoothAdapterState.unknown)
             .first
-            .timeout(const Duration(seconds: 3), onTimeout: () => FlutterBluePlus.adapterStateNow);
+            .timeout(const Duration(seconds: 3),
+                onTimeout: () => FlutterBluePlus.adapterStateNow);
       }
 
       if (!mounted || mySession != _scanSessionId) return;
@@ -227,9 +231,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         final lower = e.toString().toLowerCase();
         String msg = "Không thể quét Bluetooth: $e";
         if (lower.contains('permission')) {
-          msg = "Ứng dụng cần quyền Thiết bị ở gần (Bluetooth) để quét thiết bị. Hãy bấm 'Quét lại BLE' và chọn Cho phép.";
+          msg =
+              "Ứng dụng cần quyền Thiết bị ở gần (Bluetooth) để quét thiết bị. Hãy bấm 'Quét lại BLE' và chọn Cho phép.";
         } else if (lower.contains('location')) {
-          msg = "Điện thoại yêu cầu bật Vị trí (GPS) để quét Bluetooth BLE. Hãy bật GPS rồi bấm 'Quét lại BLE'.";
+          msg =
+              "Điện thoại yêu cầu bật Vị trí (GPS) để quét Bluetooth BLE. Hãy bật GPS rồi bấm 'Quét lại BLE'.";
         }
         setState(() {
           _bleErrorMessage = msg;
@@ -255,13 +261,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
   void _mergeDevices(List<DiscoveredHardwareBLE> incoming) {
     for (final d in incoming) {
-      final idx = _discoveredDevices.indexWhere((x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase());
+      final idx = _discoveredDevices.indexWhere(
+          (x) => x.hardwareId.toLowerCase() == d.hardwareId.toLowerCase());
       if (idx >= 0) {
         _discoveredDevices[idx] = d;
       } else {
         _discoveredDevices.add(d);
       }
     }
+    // Ưu tiên hiển thị 4 thiết bị trọng tâm lên trên đầu: Cửa cuốn, Ổ cắm, Camera, Công tơ
+    _discoveredDevices.sort((a, b) {
+      final aOfficial = a.profile.category != DeviceCategory.othersControl;
+      final bOfficial = b.profile.category != DeviceCategory.othersControl;
+      if (aOfficial && !bOfficial) return -1;
+      if (!aOfficial && bOfficial) return 1;
+      return a.modelName.compareTo(b.modelName);
+    });
     if (_selectedDevice == null && _discoveredDevices.isNotEmpty) {
       _selectedDevice = _discoveredDevices.first;
     }
@@ -271,7 +286,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     _autoDiscoveryTimer?.cancel();
     _isScanning = true;
     _runSingleScanCycle();
-    _autoDiscoveryTimer = Timer.periodic(const Duration(milliseconds: 2500), (timer) {
+    _autoDiscoveryTimer =
+        Timer.periodic(const Duration(milliseconds: 2500), (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -290,32 +306,43 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
     for (final r in results) {
       final adv = r.advertisementData;
-      final rawName = (r.device.platformName.isNotEmpty ? r.device.platformName : adv.advName).trim();
-      final serviceUuids = adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
+      final rawName = (r.device.platformName.isNotEmpty
+              ? r.device.platformName
+              : adv.advName)
+          .trim();
+      final serviceUuids =
+          adv.serviceUuids.map((u) => u.toString().toLowerCase()).toList();
 
       final matchedProfile = DeviceProvisioningCatalog.resolveProfile(
         rawName: rawName,
         advertisedUuids: serviceUuids,
       );
-      final bool isRecognized = matchedProfile.matches(rawName: rawName, advertisedUuids: serviceUuids);
+      final bool isRecognized = matchedProfile.matches(
+          rawName: rawName, advertisedUuids: serviceUuids);
       final bool isTargetMatch = targetId.isNotEmpty &&
           (rawName.toLowerCase() == targetId.toLowerCase() ||
-           r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
+              r.device.remoteId.str.toLowerCase() == targetId.toLowerCase());
 
       final bool isAustec = isRecognized || isTargetMatch;
       // Chấp nhận mọi thiết bị Austec/ESP32 hoặc thiết bị BLE có tên xung quanh
       if (isAustec || rawName.isNotEmpty) {
-        String devId = rawName.isNotEmpty ? rawName : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
-        
+        String devId = rawName.isNotEmpty
+            ? rawName
+            : (targetId.isNotEmpty ? targetId : r.device.remoteId.str);
+
         // Tự động chuẩn hóa mã phần cứng Camera nếu hệ điều hành chỉ trả về địa chỉ MAC Bluetooth
-        if (matchedProfile.category == DeviceCategory.camera && devId.contains(':')) {
+        if (matchedProfile.category == DeviceCategory.camera &&
+            devId.contains(':')) {
           final cleanHex = devId.replaceAll(':', '').toUpperCase();
           if (cleanHex.length == 12) {
             try {
               final prefix = cleanHex.substring(0, 10);
-              final lastByteVal = int.parse(cleanHex.substring(10, 12), radix: 16);
-              final staByteVal = (lastByteVal >= 2) ? (lastByteVal - 2) : lastByteVal;
-              final staHex = staByteVal.toRadixString(16).padLeft(2, '0').toUpperCase();
+              final lastByteVal =
+                  int.parse(cleanHex.substring(10, 12), radix: 16);
+              final staByteVal =
+                  (lastByteVal >= 2) ? (lastByteVal - 2) : lastByteVal;
+              final staHex =
+                  staByteVal.toRadixString(16).padLeft(2, '0').toUpperCase();
               devId = "CAM$prefix$staHex";
             } catch (_) {
               devId = "CAM$cleanHex";
@@ -325,7 +352,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           }
         }
 
-        final idx = list.indexWhere((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
+        final idx = list.indexWhere(
+            (d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
         final newDev = DiscoveredHardwareBLE(
           hardwareId: devId,
           modelName: isRecognized
@@ -355,7 +383,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       setState(() {
         _discoveredDevices = list;
         if (_selectedDevice == null) {
-          final known = list.where((d) => d.profile.category != DeviceCategory.othersControl);
+          final known = list
+              .where((d) => d.profile.category != DeviceCategory.othersControl);
           if (known.isNotEmpty) {
             _selectedDevice = known.first;
           }
@@ -404,7 +433,9 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       if (rawSsid != null && rawSsid.isNotEmpty) {
         // iOS/Android thường bọc chuỗi SSID trong dấu ngoặc kép: "MyWiFi"
         final clean = rawSsid.replaceAll('"', '').trim();
-        if (clean.isNotEmpty && !clean.toLowerCase().contains('unknown') && clean != '0x') {
+        if (clean.isNotEmpty &&
+            !clean.toLowerCase().contains('unknown') &&
+            clean != '0x') {
           detectedSsid = clean;
           if (!detectedNetworks.contains(clean)) {
             detectedNetworks.insert(0, clean);
@@ -417,12 +448,18 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
     // 3. Quét bổ sung từ Backend API (nếu Backend có card Wi-Fi quét sóng)
     try {
-      final res = await http.get(Uri.parse('${ApiConfig.baseUrl}/api/wifi/current')).timeout(const Duration(seconds: 4));
+      final res = await http
+          .get(Uri.parse('${ApiConfig.baseUrl}/api/wifi/current'))
+          .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['success'] == true) {
           final serverSsid = (data['currentSsid'] ?? '').toString().trim();
-          final serverNetworks = (data['networks'] as List?)?.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList() ?? [];
+          final serverNetworks = (data['networks'] as List?)
+                  ?.map((e) => e.toString().trim())
+                  .where((s) => s.isNotEmpty)
+                  .toList() ??
+              [];
           final bIp = (data['brokerIp'] ?? '').toString();
           final bPort = (data['brokerPort'] as num?)?.toInt() ?? 1883;
 
@@ -462,7 +499,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         if (detectedSsid.isNotEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Đã nhận diện Wi-Fi máy đang kết nối: $detectedSsid"),
+              content:
+                  Text("Đã nhận diện Wi-Fi máy đang kết nối: $detectedSsid"),
               backgroundColor: AppTheme.emeraldSuccess,
               duration: const Duration(seconds: 3),
             ),
@@ -470,7 +508,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Chưa tự động đọc được tên Wi-Fi. Bạn hãy gõ trực tiếp tên Wi-Fi vào ô bên dưới."),
+              content: Text(
+                  "Chưa tự động đọc được tên Wi-Fi. Bạn hãy gõ trực tiếp tên Wi-Fi vào ô bên dưới."),
               backgroundColor: AppTheme.amberWarning,
               duration: Duration(seconds: 4),
             ),
@@ -481,10 +520,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
   }
 
   /// Lấy tọa độ GPS chính xác trực tiếp từ điện thoại của người dùng (Xin quyền OS chuẩn ngay khi mở)
-  Future<void> _getCurrentGpsLocation({bool promptIfDenied = true, bool showSuccessSnackbar = false}) async {
+  Future<void> _getCurrentGpsLocation(
+      {bool promptIfDenied = true, bool showSuccessSnackbar = false}) async {
     setState(() => _isGettingLocation = true);
     try {
-      final result = await getDeviceGpsLocation(requestPermissionIfDenied: promptIfDenied);
+      final result =
+          await getDeviceGpsLocation(requestPermissionIfDenied: promptIfDenied);
 
       if (result.success && result.coordinates != null && mounted) {
         final coords = result.coordinates!;
@@ -502,7 +543,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         if (showSuccessSnackbar) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text("Đã lấy tọa độ GPS vệ tinh điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"),
+              content: Text(
+                  "Đã lấy tọa độ GPS vệ tinh điện thoại: ${coords.lat.toStringAsFixed(5)}, ${coords.lng.toStringAsFixed(5)}"),
               backgroundColor: AppTheme.emeraldSuccess,
               duration: const Duration(seconds: 3),
             ),
@@ -513,11 +555,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
 
       if (promptIfDenied && mounted) {
         if (result.needsOpenSettings) {
-          _showLocationSettingsDialog(result.errorMessage ?? "Vui lòng bật định vị GPS trong Cài đặt của điện thoại để lấy tọa độ chính xác.");
+          _showLocationSettingsDialog(result.errorMessage ??
+              "Vui lòng bật định vị GPS trong Cài đặt của điện thoại để lấy tọa độ chính xác.");
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result.errorMessage ?? "Không thể lấy vị trí GPS! Hãy kiểm tra quyền vị trí trên máy."),
+              content: Text(result.errorMessage ??
+                  "Không thể lấy vị trí GPS! Hãy kiểm tra quyền vị trí trên máy."),
               backgroundColor: AppTheme.roseDanger,
               duration: const Duration(seconds: 4),
             ),
@@ -529,7 +573,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       if (promptIfDenied && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Không thể xác định vị trí hiện tại. Vui lòng thử lại!"),
+            content:
+                Text("Không thể xác định vị trí hiện tại. Vui lòng thử lại!"),
             backgroundColor: AppTheme.roseDanger,
             duration: Duration(seconds: 4),
           ),
@@ -551,30 +596,37 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         ),
         title: const Row(
           children: [
-            Icon(Icons.location_off_rounded, color: AppTheme.amberWarning, size: 24),
+            Icon(Icons.location_off_rounded,
+                color: AppTheme.amberWarning, size: 24),
             SizedBox(width: 10),
             Expanded(
               child: Text(
                 "Yêu Cầu Bật Định Vị GPS",
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],
         ),
         content: Text(
           message,
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
+          style: const TextStyle(
+              color: AppTheme.textSecondary, fontSize: 13, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Đóng", style: TextStyle(color: AppTheme.textMuted)),
+            child:
+                const Text("Đóng", style: TextStyle(color: AppTheme.textMuted)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.brandBlue,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               Navigator.pop(ctx);
@@ -587,7 +639,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 await Geolocator.openLocationSettings();
               }
             },
-            child: const Text("Mở Cài Đặt", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text("Mở Cài Đặt",
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -617,7 +670,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (_selectedDevice == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Vui lòng chọn thiết bị BLE cần ghép nối từ danh sách phía trên."),
+          content: Text(
+              "Vui lòng chọn thiết bị BLE cần ghép nối từ danh sách phía trên."),
           backgroundColor: AppTheme.roseDanger,
           duration: Duration(seconds: 3),
         ),
@@ -648,7 +702,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (upperSsid.contains('5G') || upperSsid.contains('5GHZ')) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Cảnh báo: Mạng Wi-Fi '$ssid' có vẻ là băng tần 5GHz. Bo mạch ESP32 chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz để ghép nối thành công."),
+          content: Text(
+              "Cảnh báo: Mạng Wi-Fi '$ssid' có vẻ là băng tần 5GHz. Bo mạch ESP32 chỉ hỗ trợ sóng 2.4GHz! Vui lòng chọn mạng Wi-Fi 2.4GHz để ghép nối thành công."),
           backgroundColor: AppTheme.amberWarning,
           duration: const Duration(seconds: 4),
         ),
@@ -657,10 +712,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
 
     // 2.2. Kiểm tra ký tự phân tách đặc biệt (tránh làm vỡ cú pháp nạp của bo mạch)
-    if (ssid.contains(',') || ssid.contains('/') || pass.contains(',') || pass.contains('/')) {
+    if (ssid.contains(',') ||
+        ssid.contains('/') ||
+        pass.contains(',') ||
+        pass.contains('/')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Tên Wi-Fi hoặc mật khẩu không được chứa dấu phẩy ',' hoặc gạch chéo '/' vì sẽ làm sai cú pháp phân tích của vi điều khiển ESP32."),
+          content: Text(
+              "Tên Wi-Fi hoặc mật khẩu không được chứa dấu phẩy ',' hoặc gạch chéo '/' vì sẽ làm sai cú pháp phân tích của vi điều khiển ESP32."),
           backgroundColor: AppTheme.roseDanger,
           duration: Duration(seconds: 4),
         ),
@@ -682,7 +741,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     if (pass.length < 8 || pass.length > 63) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự."),
+          content: Text(
+              "Mật khẩu Wi-Fi không hợp lệ! Chuẩn bảo mật WPA2 yêu cầu từ 8 đến 63 ký tự."),
           backgroundColor: AppTheme.roseDanger,
         ),
       );
@@ -690,7 +750,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
     }
 
     // 3.1. Kiểm tra tính hợp lệ & kết nối Wi-Fi TRƯỚC TẤT CẢ CÁC BƯỚC (Trước khi kết nối BLE với thiết bị)
-    final wifiPreCheck = await _bleService.checkWifiValidity(ssid: ssid, password: pass);
+    final wifiPreCheck =
+        await _bleService.checkWifiValidity(ssid: ssid, password: pass);
     if (wifiPreCheck != null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -704,33 +765,28 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       return;
     }
 
-    // 4. Kiểm tra vị trí lắp đặt
-    if (location.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Vui lòng nhập vị trí / khu vực lắp đặt (ví dụ: Cửa chính, Tầng 1, v.v.)."),
-          backgroundColor: AppTheme.roseDanger,
-        ),
-      );
-      return;
-    }
+    // 4. Vị trí lắp đặt: Tùy chọn (nếu trống sẽ lấy mặc định)
 
     // 5. Kiểm tra thông tin GPS bắt buộc
     if (address.isEmpty || latStr.isEmpty || lngStr.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Chưa có thông tin tọa độ GPS! Đang tự động xin quyền và lấy vị trí, vui lòng đợi trong giây lát..."),
+          content: Text(
+              "Chưa có thông tin tọa độ GPS! Đang tự động xin quyền và lấy vị trí, vui lòng đợi trong giây lát..."),
           backgroundColor: AppTheme.amberWarning,
           duration: Duration(seconds: 3),
         ),
       );
-      await _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: false);
+      await _getCurrentGpsLocation(
+          promptIfDenied: true, showSuccessSnackbar: false);
       // Kiểm tra lại sau khi thử lấy GPS
-      if (_latController.text.trim().isEmpty || _lngController.text.trim().isEmpty) {
+      if (_latController.text.trim().isEmpty ||
+          _lngController.text.trim().isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Không thể lấy tọa độ GPS! Vui lòng ấn nút 'Lấy GPS' hoặc bật định vị trên máy."),
+              content: Text(
+                  "Không thể lấy tọa độ GPS! Vui lòng ấn nút 'Lấy GPS' hoặc bật định vị trên máy."),
               backgroundColor: AppTheme.roseDanger,
               duration: Duration(seconds: 4),
             ),
@@ -745,14 +801,16 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       _isProvisioning = true;
       _provisioningProgress = 0.01;
       _targetProgress = 0.15;
-      _provisioningStep = "Giai đoạn 1/3: Đang kiểm tra tính hợp lệ & kết nối mạng Wi-Fi [$ssid]...";
+      _provisioningStep =
+          "Giai đoạn 1/3: Đang kiểm tra tính hợp lệ & kết nối mạng Wi-Fi [$ssid]...";
       _pairingResult = null;
     });
 
     StateSetter? dialogSetState;
 
     // Timer chạy mượt mà từng 1% một (0% -> 100%)
-    _progressSmoothTimer = Timer.periodic(const Duration(milliseconds: 32), (timer) {
+    _progressSmoothTimer =
+        Timer.periodic(const Duration(milliseconds: 32), (timer) {
       if (!mounted || !_isProvisioning) {
         timer.cancel();
         return;
@@ -769,12 +827,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       }
     });
 
-    final locationStr = _locationController.text.trim().isNotEmpty ? _locationController.text.trim() : "Khu vực chính";
-    final addressStr = _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : locationStr;
+    final locationStr = location;
+    final addressStr = _addressController.text.trim();
     final double lat = double.tryParse(_latController.text.trim()) ?? 21.028511;
-    final double lng = double.tryParse(_lngController.text.trim()) ?? 105.854167;
+    final double lng =
+        double.tryParse(_lngController.text.trim()) ?? 105.854167;
 
-    _bleService.provisionDevice(
+    _bleService
+        .provisionDevice(
       targetDevice: _selectedDevice!,
       wifiSsid: ssid,
       wifiPassword: pass,
@@ -795,7 +855,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
           dialogSetState?.call(() {});
         }
       },
-    ).then((result) async {
+    )
+        .then((result) async {
       if (mounted && _isProvisioning) {
         if (!result.success) {
           _progressSmoothTimer?.cancel();
@@ -892,7 +953,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text("Không tìm thấy thông tin thiết bị [$hwId] từ máy chủ CSDL."),
+                      content: Text(
+                          "Không tìm thấy thông tin thiết bị [$hwId] từ máy chủ CSDL."),
                       backgroundColor: AppTheme.roseDanger,
                     ),
                   );
@@ -903,11 +965,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               if (mounted) {
                 if (dev.category == DeviceCategory.rollerDoor) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => RollerDoorControlScreen(device: dev)),
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            RollerDoorControlScreen(device: dev)),
                   );
                 } else {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (context) => DeviceDetailScreen(device: dev)),
+                    MaterialPageRoute(
+                        builder: (context) => DeviceDetailScreen(device: dev)),
                   );
                 }
               }
@@ -926,10 +991,15 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new,
+              color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text("Ghép Nối Thiết Bị IoT", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text("Ghép Nối Thiết Bị IoT",
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: SafeArea(
@@ -943,21 +1013,37 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("THIẾT BỊ TÌM THẤY", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  const Text("THIẾT BỊ TÌM THẤY",
+                      style: TextStyle(
+                          color: AppTheme.cyanAccent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold)),
                   TextButton.icon(
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       visualDensity: VisualDensity.compact,
-                      backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      backgroundColor:
+                          AppTheme.cyanAccent.withValues(alpha: 0.12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
                     ),
-                    onPressed: () => _triggerScan(clearPrevious: true, forceRestart: true),
+                    onPressed: () =>
+                        _triggerScan(clearPrevious: true, forceRestart: true),
                     icon: _isScanning
-                        ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.cyanAccent))
-                        : const Icon(Icons.refresh, size: 14, color: AppTheme.cyanAccent),
+                        ? const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: AppTheme.cyanAccent))
+                        : const Icon(Icons.refresh,
+                            size: 14, color: AppTheme.cyanAccent),
                     label: Text(
                       _isScanning ? "Đang quét..." : "Quét lại",
-                      style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: AppTheme.cyanAccent,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -967,7 +1053,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               if (_discoveredDevices.isEmpty)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF141924),
                     borderRadius: BorderRadius.circular(10),
@@ -975,12 +1062,20 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.bluetooth_searching_rounded, color: AppTheme.cyanAccent, size: 18),
+                      const Icon(Icons.bluetooth_searching_rounded,
+                          color: AppTheme.cyanAccent, size: 18),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          _bleErrorMessage ?? (_isScanning ? "Đang tìm thiết bị gần bạn..." : "Chưa tìm thấy thiết bị nào. Hãy kiểm tra nguồn điện thiết bị."),
-                          style: TextStyle(color: _bleErrorMessage != null ? AppTheme.roseDanger : Colors.white70, fontSize: 11),
+                          _bleErrorMessage ??
+                              (_isScanning
+                                  ? "Đang tìm thiết bị gần bạn..."
+                                  : "Chưa tìm thấy thiết bị nào. Hãy kiểm tra nguồn điện thiết bị."),
+                          style: TextStyle(
+                              color: _bleErrorMessage != null
+                                  ? AppTheme.roseDanger
+                                  : Colors.white70,
+                              fontSize: 11),
                         ),
                       ),
                     ],
@@ -988,26 +1083,45 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 )
               else
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 110),
+                  constraints: const BoxConstraints(maxHeight: 240),
                   child: ListView(
                     shrinkWrap: true,
                     children: _discoveredDevices.map((dev) {
-                      final isSelected = _selectedDevice?.hardwareId == dev.hardwareId;
+                      final isSelected =
+                          _selectedDevice?.hardwareId == dev.hardwareId;
                       final accent = dev.profile.accentColor;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 6),
                         decoration: BoxDecoration(
-                          color: isSelected ? accent.withValues(alpha: 0.15) : const Color(0xFF141924),
+                          color: isSelected
+                              ? accent.withValues(alpha: 0.15)
+                              : const Color(0xFF141924),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isSelected ? accent : const Color(0xFF26324A)),
+                          border: Border.all(
+                              color: isSelected
+                                  ? accent
+                                  : const Color(0xFF26324A)),
                         ),
                         child: ListTile(
                           dense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-                          leading: Icon(dev.profile.icon, color: accent, size: 20),
-                          title: Text(dev.modelName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.white)),
-                          subtitle: Text("ID: ${dev.hardwareId}", style: const TextStyle(fontSize: 10, color: AppTheme.cyanAccent, fontFamily: "monospace")),
-                          trailing: isSelected ? Icon(Icons.check_circle, color: accent, size: 18) : null,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 0),
+                          leading:
+                              Icon(dev.profile.icon, color: accent, size: 20),
+                          title: Text(dev.modelName,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12.5,
+                                  color: Colors.white)),
+                          subtitle: Text("ID: ${dev.hardwareId}",
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppTheme.cyanAccent,
+                                  fontFamily: "monospace")),
+                          trailing: isSelected
+                              ? Icon(Icons.check_circle,
+                                  color: accent, size: 18)
+                              : null,
                           onTap: () => setState(() => _selectedDevice = dev),
                         ),
                       );
@@ -1021,17 +1135,33 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("CẤU HÌNH MẠNG WI-FI", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  const Text("CẤU HÌNH MẠNG WI-FI",
+                      style: TextStyle(
+                          color: AppTheme.cyanAccent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold)),
                   InkWell(
-                    onTap: _isScanningWifi ? null : () => _detectCurrentWifi(showFeedback: true),
+                    onTap: _isScanningWifi
+                        ? null
+                        : () => _detectCurrentWifi(showFeedback: true),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _isScanningWifi
-                            ? const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
-                            : const Icon(Icons.wifi_find_rounded, color: AppTheme.cyanAccent, size: 13),
+                            ? const SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: AppTheme.cyanAccent))
+                            : const Icon(Icons.wifi_find_rounded,
+                                color: AppTheme.cyanAccent, size: 13),
                         const SizedBox(width: 4),
-                        const Text("Lấy Wi-Fi máy", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                        const Text("Lấy Wi-Fi máy",
+                            style: TextStyle(
+                                color: AppTheme.cyanAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -1054,13 +1184,17 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                       decoration: InputDecoration(
                         labelText: "Tên mạng Wi-Fi (SSID)",
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        prefixIcon: const Icon(Icons.wifi_rounded, color: AppTheme.cyanAccent, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.wifi_rounded,
+                            color: AppTheme.cyanAccent, size: 18),
                         suffixIcon: IconButton(
-                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.cyanAccent, size: 20),
+                          icon: const Icon(Icons.arrow_drop_down,
+                              color: AppTheme.cyanAccent, size: 20),
                           onPressed: _openWifiPickerSheet,
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1071,13 +1205,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                       decoration: InputDecoration(
                         labelText: "Mật khẩu Wi-Fi",
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.cyanAccent, size: 18),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.lock_outline,
+                            color: AppTheme.cyanAccent, size: 18),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 18, color: AppTheme.textMuted),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              size: 18,
+                              color: AppTheme.textMuted),
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
                         ),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ],
@@ -1090,17 +1233,34 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("VỊ TRÍ & TỌA ĐỘ LẮP ĐẶT", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                  const Text("VỊ TRÍ & TỌA ĐỘ LẮP ĐẶT",
+                      style: TextStyle(
+                          color: AppTheme.cyanAccent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold)),
                   InkWell(
-                    onTap: _isGettingLocation ? null : () => _getCurrentGpsLocation(promptIfDenied: true, showSuccessSnackbar: true),
+                    onTap: _isGettingLocation
+                        ? null
+                        : () => _getCurrentGpsLocation(
+                            promptIfDenied: true, showSuccessSnackbar: true),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _isGettingLocation
-                            ? const SizedBox(width: 10, height: 10, child: CircularProgressIndicator(strokeWidth: 1.5, color: AppTheme.cyanAccent))
-                            : const Icon(Icons.my_location, color: AppTheme.cyanAccent, size: 13),
+                            ? const SizedBox(
+                                width: 10,
+                                height: 10,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: AppTheme.cyanAccent))
+                            : const Icon(Icons.my_location,
+                                color: AppTheme.cyanAccent, size: 13),
                         const SizedBox(width: 4),
-                        const Text("Lấy GPS", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                        const Text("Lấy GPS",
+                            style: TextStyle(
+                                color: AppTheme.cyanAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -1121,24 +1281,32 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                       controller: _locationController,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        labelText: "Khu vực lắp đặt (ví dụ: Cửa chính, Phòng khách)",
+                        labelText:
+                            "Khu vực lắp đặt (Tùy chọn - ví dụ: Cửa chính, Phòng khách)",
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        prefixIcon: const Icon(Icons.meeting_room_outlined, color: AppTheme.cyanAccent, size: 18),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.meeting_room_outlined,
+                            color: AppTheme.cyanAccent, size: 18),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _addressController,
                       readOnly: true,
-                      style: const TextStyle(color: Colors.white70, fontSize: 11.5),
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11.5),
                       decoration: InputDecoration(
                         labelText: "Địa chỉ GPS tự động",
                         isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.cyanAccent, size: 18),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        prefixIcon: const Icon(Icons.location_on_outlined,
+                            color: AppTheme.cyanAccent, size: 18),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
                   ],
@@ -1155,12 +1323,15 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.brandBlue,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                     elevation: 0,
                   ),
                   onPressed: _runProvisioningPipeline,
                   icon: const Icon(Icons.bolt, size: 18),
-                  label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ",
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 ),
               ),
             ],
