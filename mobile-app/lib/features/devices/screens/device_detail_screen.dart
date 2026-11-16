@@ -642,8 +642,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Mặt ổ cắm điện thực tế + Công tắc gạt cơ học ON/OFF)
   Widget _buildLightSwitchDetailedControls() {
     final isOn = _device.isRelayOn;
-    const onColor = Color(0xFF10B981); // ON: Xanh lá (Đang cấp điện)
-    const offColor = Color(0xFFEF4444); // OFF: Đỏ (Đã ngắt điện an toàn)
+    // Chuẩn kỹ thuật Austec theo PDF Trang 5: Trạng thái ON - Công tắc màu đỏ. Trạng thái OFF - Công tắc màu xanh.
+    const onColor = Color(0xFFEF4444); // ON: Đỏ (Đang đóng mạch điện)
+    const offColor = Color(0xFF10B981); // OFF: Xanh lá (Đã ngắt mạch an toàn)
     final switchColor = isOn ? onColor : offColor;
 
     return Container(

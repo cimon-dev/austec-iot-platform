@@ -14,6 +14,7 @@ import '../widgets/wifi_picker_sheet.dart';
 import '../widgets/pairing_progress_dialog.dart';
 import '../../devices/screens/roller_door_control_screen.dart';
 import '../../devices/screens/device_detail_screen.dart';
+import '../../devices/screens/smartmetter_detail_screen.dart';
 import '../../../core/services/device_location_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -968,6 +969,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     MaterialPageRoute(
                         builder: (context) =>
                             RollerDoorControlScreen(device: dev)),
+                  );
+                } else if (dev.category == DeviceCategory.energyManage ||
+                    dev.modelCode.contains("SmartMetter") ||
+                    dev.hardwareId.contains("SmartMetter")) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            SmartMetterDetailScreen(device: dev)),
                   );
                 } else {
                   Navigator.of(context).pushReplacement(

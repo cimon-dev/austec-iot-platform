@@ -116,33 +116,38 @@ export class DeviceOperationsController {
           ).catch(() => {});
         }
 
+        const userEmail = (targetUser.email || '').trim().toLowerCase();
+
         const query = `
           SELECT di.*,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN 'OWNER' ELSE COALESCE(dp.role, 'MEMBER') END) as user_role,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_control, true) END) as can_control,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_view_history, true) END) as can_view_history,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_child_lock, false) END) as can_child_lock,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_config, false) END) as can_config,
-                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN false ELSE COALESCE(dp.schedule_limit_active, false) END) as schedule_limit_active,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN 'OWNER' ELSE COALESCE(dp.role, 'MEMBER') END) as user_role,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_control, true) END) as can_control,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_view_history, true) END) as can_view_history,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_child_lock, false) END) as can_child_lock,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_config, false) END) as can_config,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_id = $4 AND $4 != '') OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN false ELSE COALESCE(dp.schedule_limit_active, false) END) as schedule_limit_active,
                  dp.access_start_time, dp.access_end_time, dp.access_days,
                  m.id as model_id, m.model_name, m.model_code, m.properties_config, m.image_url
           FROM device_instances di
           LEFT JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id) AND (
             dp.user_id = $1 OR 
+            (dp.user_id = $4 AND $4 != '') OR
             (dp.phone_number = $2 AND $2 != '') OR 
             (REPLACE(REPLACE(dp.phone_number, ' ', ''), '.', '') = $3 AND $3 != '')
           )
           LEFT JOIN device_inventory inv ON LOWER(inv.hardware_id) = LOWER(di.hardware_id)
           LEFT JOIN device_models m ON (m.id = inv.model_id OR LOWER(m.model_name) = LOWER(inv.model_name) OR LOWER(m.model_name) = LOWER(di.custom_name))
           WHERE dp.user_id = $1 OR 
+                (dp.user_id = $4 AND $4 != '') OR
                 (dp.phone_number = $2 AND $2 != '') OR 
                 (REPLACE(REPLACE(dp.phone_number, ' ', ''), '.', '') = $3 AND $3 != '') OR 
                 di.owner_id = $1 OR 
+                (di.owner_id = $4 AND $4 != '') OR
                 (di.owner_phone = $2 AND $2 != '') OR
                 (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '')
           ORDER BY di.created_at DESC
         `;
-        const result = await this.client.query(query, [targetUser.id, userPhone, cleanPhone]);
+        const result = await this.client.query(query, [targetUser.id, userPhone, cleanPhone, userEmail]);
 
         // Load từ điển thuộc tính động
         const propRes = await this.client.query(`SELECT * FROM device_properties ORDER BY id ASC`);
@@ -198,19 +203,22 @@ export class DeviceOperationsController {
             const warrantyCode = `EW-${(r.hardware_id || '').replace(/-/g, '').toUpperCase()}-24M`;
 
             const hwUpper = (r.hardware_id || '').toUpperCase();
-            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.startsWith('SMARTSW');
+            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.startsWith('SMARTSW') || hwUpper.includes('SMARTSW');
             const isCamDev = !isSocketDev && (hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA') || hwUpper.includes('OV2640'));
             const isMeterDev = !isSocketDev && !isCamDev && (hwUpper.startsWith('SMARTMETTER') || hwUpper.startsWith('SMARTMETER') || hwUpper.includes('METER') || hwUpper.includes('CONGTO'));
-            const isDoorDev = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF') || hwUpper.startsWith('AMTUONG') || hwUpper.startsWith('AT-DOOR') || hwUpper.startsWith('DOOR') || hwUpper.includes('AMTUONG'));
 
-            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : isMeterDev ? 'Công tơ điện tử' : isDoorDev ? 'Cửa cuốn' : 'Thiết bị khác';
-            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm thông minh Austec' : isMeterDev ? 'Công tơ điện tử chống giật' : isDoorDev ? 'Austec Titadoor A900 Super' : 'Austec Smart Device';
-            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_ECO' : isMeterDev ? 'SMART_METER_PRO' : isDoorDev ? 'DOOR_GERMAN_ALU' : 'SMART_DEVICE';
-            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : isMeterDev ? `Công tơ ${r.hardware_id}` : isDoorDev ? 'Cửa cuốn Austec' : 'Thiết bị Austec';
+            const isHubDoor = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRFTT') || hwUpper.includes('WIFRFTT') || hwUpper.startsWith('CUACUON') || hwUpper.startsWith('AT-DOOR'));
+            const isWallDoor = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF_ECO') || hwUpper.startsWith('WIFRFECO') || hwUpper.includes('ECO') || hwUpper.startsWith('AMTUONG') || hwUpper.includes('AMTUONG'));
+            const isDoorDev = isHubDoor || isWallDoor || (!isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF') || hwUpper.startsWith('DOOR') || hwUpper.includes('DOOR')));
 
-            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (isMeterDev ? 'Công tơ điện tử' : (isDoorDev ? 'Cửa cuốn' : (r.device_type || defaultDevType))));
-            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_ECO' : (isCamDev ? 'AI_CAMERA_360' : (isMeterDev ? 'SMART_METER_PRO' : (isDoorDev ? 'DOOR_GERMAN_ALU' : (r.model_code || defaultDevModelCode))));
-            const resolvedModelName = isSocketDev ? 'Ổ cắm thông minh Austec' : (isCamDev ? 'AI Camera 360' : (isMeterDev ? 'Công tơ điện tử chống giật' : (isDoorDev ? 'Austec Titadoor A900 Super' : (r.model_name || defaultDevModelName))));
+            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : isMeterDev ? 'Công tơ điện tử' : (isWallDoor ? 'Cửa cuốn âm tường' : (isHubDoor ? 'Cửa cuốn trung tâm' : (isDoorDev ? 'Cửa cuốn' : 'Thiết bị khác')));
+            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm công tắc thông minh' : isMeterDev ? 'Công tơ điện tử chống giật' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isHubDoor ? 'Cửa cuốn trung tâm Austec' : 'Austec Smart Device'));
+            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_SW' : isMeterDev ? 'SMART_METER_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isHubDoor ? 'DOOR_HUB_WIFRFTT' : 'DOOR_GERMAN_ALU'));
+            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : isMeterDev ? `Công tơ ${r.hardware_id}` : (isWallDoor ? 'Cửa cuốn âm tường' : 'Cửa cuốn trung tâm');
+
+            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (isMeterDev ? 'Công tơ điện tử' : (isWallDoor ? 'Cửa cuốn âm tường' : (isHubDoor ? 'Cửa cuốn trung tâm' : (isDoorDev ? 'Cửa cuốn' : (r.device_type || defaultDevType))))));
+            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_SW' : (isCamDev ? 'AI_CAMERA_360' : (isMeterDev ? 'SMART_METER_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isHubDoor ? 'DOOR_HUB_WIFRFTT' : (r.model_code || defaultDevModelCode)))));
+            const resolvedModelName = isSocketDev ? 'Ổ cắm công tắc thông minh' : (isCamDev ? 'AI Camera 360' : (isMeterDev ? 'Công tơ điện tử chống giật' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isHubDoor ? 'Cửa cuốn trung tâm Austec' : (r.model_name || defaultDevModelName)))));
             const finalDevName = r.custom_name || (r.model_name && !r.model_name.includes('A900') ? r.model_name : defaultDevName);
             const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : (isMeterDev ? 'energyManage' : (isDoorDev ? 'rollerDoor' : 'othersControl')));
 

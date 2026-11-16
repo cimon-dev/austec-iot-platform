@@ -282,12 +282,15 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
             IconButton(
               icon: Icon(Icons.settings_outlined, color: textCol, size: 20),
               tooltip: "Cài đặt tham số",
-              onPressed: () {
-                Navigator.of(context).push(
+              onPressed: () async {
+                final deleted = await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => DeviceSettingsScreen(device: _device),
                   ),
                 );
+                if (deleted == true && mounted) {
+                  Navigator.of(context).pop(true);
+                }
               },
             ),
           // 4. Icon CSKH

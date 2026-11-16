@@ -626,23 +626,47 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Transform.scale(
-                  scale: 0.88,
-                  child: Switch(
-                    value: isOn,
-                    activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
-                    activeThumbColor: AppTheme.cyanAccent,
-                    inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
-                    inactiveThumbColor: Colors.grey,
-                    onChanged: _isProcessing
-                        ? null
-                        : (newVal) {
-                            setState(() {
-                              device.isRelayOn = newVal;
-                            });
-                            _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
-                          },
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        device.isChildLockActive ? Icons.lock_rounded : Icons.lock_open_rounded,
+                        color: device.isChildLockActive ? AppTheme.roseDanger : Colors.grey,
+                        size: 18,
+                      ),
+                      tooltip: device.isChildLockActive ? "Đang khóa an toàn" : "Mở khóa an toàn",
+                      onPressed: _isProcessing
+                          ? null
+                          : () {
+                              setState(() {
+                                device.isChildLockActive = !device.isChildLockActive;
+                              });
+                              _executePreviewAction(device, "TOGGLE_CHILD_LOCK");
+                            },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    ),
+                    const SizedBox(width: 4),
+                    Transform.scale(
+                      scale: 0.88,
+                      child: Switch(
+                        value: isOn,
+                        activeTrackColor: AppTheme.cyanAccent.withValues(alpha: 0.45),
+                        activeThumbColor: AppTheme.cyanAccent,
+                        inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                        inactiveThumbColor: Colors.grey,
+                        onChanged: _isProcessing
+                            ? null
+                            : (newVal) {
+                                setState(() {
+                                  device.isRelayOn = newVal;
+                                });
+                                _executePreviewAction(device, newVal ? "TURN_ON" : "TURN_OFF");
+                              },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1023,7 +1047,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                             ),
                           ),
                           child: Text(
-                            "ÂM TƯỜNG",
+                            device.badgeText.isNotEmpty ? device.badgeText : (device.category == DeviceCategory.rollerDoor ? "AUSTEC" : "SMART"),
                             style: TextStyle(
                               color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF52525B),
                               fontSize: 9.5,
@@ -1034,7 +1058,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          device.hardwareId.replaceAll('amtuong', ''),
+                          device.hardwareId,
                           style: TextStyle(
                             color: isDark ? const Color(0xFFA1A1AA) : const Color(0xFF71717A),
                             fontSize: 11,
@@ -1813,6 +1837,81 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet> with 
                 _buildMetterStatItem("ĐIỆN ÁP", "221.8", "V", const Color(0xFF34D399)),
                 _buildMetterStatItem("DÒNG ĐIỆN", "18.4", "A", const Color(0xFFFBBF24)),
                 _buildMetterStatItem("CÔNG SUẤT", "4.08", "kW", const Color(0xFFF43F5E)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Điều khiển nhanh: Nút Bật/Tắt nguồn & Khóa an toàn (Chuẩn PDF Trang 7)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      isOn ? Icons.power_rounded : Icons.power_off_rounded,
+                      color: isOn ? AppTheme.emeraldSuccess : AppTheme.crimsonDanger,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isOn ? "NGUỒN: BẬT" : "NGUỒN: NGẮT",
+                      style: TextStyle(
+                        color: isOn ? AppTheme.emeraldSuccess : AppTheme.crimsonDanger,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        device.isChildLockActive ? Icons.lock_rounded : Icons.lock_open_rounded,
+                        color: device.isChildLockActive ? AppTheme.roseDanger : Colors.grey,
+                        size: 18,
+                      ),
+                      tooltip: device.isChildLockActive ? "Đang khóa an toàn" : "Mở khóa an toàn",
+                      onPressed: _isProcessing
+                          ? null
+                          : () {
+                              setState(() {
+                                device.isChildLockActive = !device.isChildLockActive;
+                              });
+                              _executePreviewAction(device, "TOGGLE_CHILD_LOCK");
+                            },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    ),
+                    const SizedBox(width: 6),
+                    Transform.scale(
+                      scale: 0.85,
+                      child: Switch(
+                        value: isOn,
+                        activeTrackColor: AppTheme.emeraldSuccess.withValues(alpha: 0.45),
+                        activeThumbColor: AppTheme.emeraldSuccess,
+                        inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+                        inactiveThumbColor: Colors.grey,
+                        onChanged: _isProcessing
+                            ? null
+                            : (newVal) {
+                                setState(() {
+                                  device.currentProperties['relay_status'] = newVal ? 'ON' : 'OFF';
+                                  device.currentProperties['is_meter_on'] = newVal;
+                                });
+                                _executePreviewAction(device, newVal ? "METER_POWER_ON" : "METER_POWER_OFF");
+                              },
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),

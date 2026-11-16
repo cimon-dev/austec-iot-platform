@@ -40,13 +40,17 @@ export class CommandService {
     // 1. Kiểm tra thiết bị có đang online không trong Hot Cache (< 0.1ms)
     const currentState = await this.hotCache.getDeviceState(req.hardwareId);
     if (!currentState || !currentState.isOnline) {
-      // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*, CAM_*, OCAM*)
+      // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*, CAM_*, OCAM*, WIFRF*, SMARTSW*, SMARTMETTER*)
       const isHardwareDevice = req.hardwareId.toLowerCase().startsWith('amtuong') ||
                                req.hardwareId.toLowerCase().startsWith('austec') ||
                                req.hardwareId.toLowerCase().startsWith('esp') ||
                                req.hardwareId.toLowerCase().startsWith('cam') ||
                                req.hardwareId.toLowerCase().startsWith('ocam') ||
                                req.hardwareId.toLowerCase().includes('socket') ||
+                               req.hardwareId.toLowerCase().startsWith('wifrf') ||
+                               req.hardwareId.toLowerCase().startsWith('smartsw') ||
+                               req.hardwareId.toLowerCase().startsWith('smartmetter') ||
+                               req.hardwareId.toLowerCase().startsWith('smartmeter') ||
                                req.hardwareId.startsWith('AT-');
       if (!isHardwareDevice) {
         const latencyMs = Math.round(performance.now() - startTime);
@@ -73,20 +77,23 @@ export class CommandService {
 
     // 2. Phân loại thiết bị & Ánh xạ mã lệnh phần cứng (Ưu tiên kiểm tra ổ cắm trước để tránh ocam chứa chữ cam)
     const upperHwId = req.hardwareId.toUpperCase();
-    const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
+    const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.startsWith('SMARTSW') || upperHwId.includes('SMARTSW');
     const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
     const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     let actionCode = req.command;
     if (isMeter) {
-      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === 'METER_POWER_ON' || req.command === '13' || req.command === '1') {
+      if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === 'METER_POWER_ON' || req.command === '13') {
         actionCode = '13';
-      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === 'METER_POWER_OFF' || req.command === '14' || req.command === '2') {
+      } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === 'METER_POWER_OFF' || req.command === '14') {
         actionCode = '14';
-      } else if (req.command === 'RESET' || req.command === 'CLEAR_ALERT') {
-        actionCode = 'RESET';
-      } else if (req.command === 'DAILY_CLOSING' || req.command === '20') {
+      } else if (req.command === 'RESET' || req.command === 'CLEAR_ALERT' || req.command === '0') {
+        actionCode = '0';
+      } else if (req.command === 'DAILY_CLOSING' || req.command === '20' || req.command === '3') {
         actionCode = '20';
+      } else if (req.command === 'CONFIG_POWER_LIMIT' || (req.params && req.params.power_limit !== undefined)) {
+        const pLimit = Number(req.params?.power_limit) || 5000;
+        actionCode = JSON.stringify({ power_limit: pLimit });
       }
     } else if (isSocket) {
       if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === '13' || req.command === '1') {
@@ -102,6 +109,13 @@ export class CommandService {
       } else if (req.command === 'TOGGLE_RELAY') {
         const isCurrentlyOn = currentState?.currentProperties?.is_relay_on === true || currentState?.currentProperties?.relay_state === 'ON';
         actionCode = isCurrentlyOn ? '14' : '13';
+      } else if (req.command === 'LOCK' || req.command === 'CHILD_LOCK_ON') {
+        actionCode = 'LOCK';
+      } else if (req.command === 'UNLOCK' || req.command === 'CHILD_LOCK_OFF') {
+        actionCode = 'UNLOCK';
+      } else if (req.command === 'TOGGLE_CHILD_LOCK') {
+        const isCurrentlyLocked = currentState?.currentProperties?.is_child_lock === true;
+        actionCode = isCurrentlyLocked ? 'UNLOCK' : 'LOCK';
       }
     } else if (isCamera) {
       if (req.command === 'STREAM_START' || req.command === 'START_STREAM' || req.command === '13' || req.command === 'TAKE_SNAPSHOT') {
@@ -148,10 +162,12 @@ export class CommandService {
       } else if (actionCode === '14') {
         updatedProperties.is_meter_on = false;
         updatedProperties.relay_status = 'OFF';
-      } else if (actionCode === 'RESET') {
+      } else if (actionCode === '0' || actionCode === 'RESET') {
         updatedProperties.alarm = null;
         updatedProperties.is_meter_on = true;
         updatedProperties.relay_status = 'ON';
+      } else if (req.command === 'CONFIG_POWER_LIMIT' && req.params?.power_limit) {
+        updatedProperties.power_limit_w = req.params.power_limit;
       }
     } else if (isSocket) {
       if (actionCode === '13' || actionCode === '3') {
@@ -160,6 +176,12 @@ export class CommandService {
       } else if (actionCode === '14' || actionCode === '4') {
         updatedProperties.is_relay_on = false;
         updatedProperties.relay_state = 'OFF';
+      } else if (actionCode === 'LOCK') {
+        updatedProperties.is_child_lock = true;
+        updatedProperties.is_locked = true;
+      } else if (actionCode === 'UNLOCK') {
+        updatedProperties.is_child_lock = false;
+        updatedProperties.is_locked = false;
       }
     } else if (isCamera) {
       if (actionCode === '13') {

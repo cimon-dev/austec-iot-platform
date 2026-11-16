@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/iot_gateway_client.dart';
 import '../../devices/screens/orbital_hub_screen.dart';
 import 'register_screen.dart';
 import '../../../core/services/app_update_service.dart';
@@ -74,6 +75,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (res.success) {
+      // Xóa sạch bộ nhớ thiết bị cũ và nạp thiết bị mới của đúng tài khoản vừa đăng nhập
+      IoTGatewayClient().clearAllDevices();
+      await IoTGatewayClient().fetchDevicesFromBackend(token: res.user?.token);
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(res.message ?? "Đăng nhập thành công!"),
@@ -101,6 +107,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (res.success) {
+      // Xóa sạch bộ nhớ thiết bị cũ và nạp thiết bị mới của đúng tài khoản
+      IoTGatewayClient().clearAllDevices();
+      await IoTGatewayClient().fetchDevicesFromBackend(token: res.user?.token);
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Xác thực Sinh trắc học FaceID thành công!"),

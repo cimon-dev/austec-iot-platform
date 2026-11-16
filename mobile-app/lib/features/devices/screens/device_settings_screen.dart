@@ -75,6 +75,16 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   }
 
   Future<void> _saveSettings() async {
+    if (!widget.device.canConfig) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Tài khoản của bạn là thành viên phụ và chưa được cấp quyền chỉnh sửa cấu hình."),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     if (_isSaving) return;
     setState(() => _isSaving = true);
 
@@ -387,6 +397,29 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
           child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!widget.device.canConfig)
+              Container(
+                margin: const EdgeInsets.only(bottom: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.4)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_clock_rounded, color: AppTheme.amberWarning, size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Bạn đang xem ở chế độ thành viên (Chỉ đọc). Chỉ chủ sở hữu hoặc tài khoản được cấp quyền cấu hình mới có thể thay đổi tham số.",
+                        style: TextStyle(color: Colors.white, fontSize: 11.5, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // CARD 1: THÔNG TIN THIẾT BỊ
             _buildSectionHeader("THÔNG TIN THIẾT BỊ"),
             Container(
@@ -421,11 +454,11 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   const SizedBox(height: 14),
                   _buildMetaRow("Mã phần cứng (Hardware ID)", widget.device.hardwareId, isCode: true),
                   const SizedBox(height: 10),
-                  _buildMetaRow("Dòng thiết bị", widget.device.categoryDisplayName),
+                  _buildMetaRow("Loại thiết bị", widget.device.modelName.isNotEmpty ? widget.device.modelName : widget.device.categoryDisplayName),
                   const SizedBox(height: 10),
-                  _buildMetaRow("Địa chỉ IP nội bộ", widget.device.deviceIp, isCode: true),
+                  _buildMetaRow("Chủ sở hữu thiết bị", widget.device.ownerName.isNotEmpty ? widget.device.ownerName : "Chủ sở hữu"),
                   const SizedBox(height: 10),
-                  _buildMetaRow("Trạng thái kết nối", widget.device.isOnline ? "Trực tuyến (Online)" : "Ngoại tuyến", isStatus: true),
+                  _buildMetaRow("Trạng thái kết nối", widget.device.isOnline ? "Trực tuyến (Online)" : "Ngoại tuyến (BLE khả dụng)", isStatus: true),
                 ],
               ),
             ),

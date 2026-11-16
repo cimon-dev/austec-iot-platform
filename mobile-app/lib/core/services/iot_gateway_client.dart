@@ -336,11 +336,14 @@ class IoTGatewayClient {
     }
   }
 
+  String? _lastLoadedUserId;
+
   String get _cachedDevicesKey => 'austec_cached_user_devices_${AuthService().currentUser?.id ?? "guest"}';
 
   /// Xóa trắng danh sách thiết bị trong RAM khi đăng xuất / chuyển tài khoản
   void clearAllDevices() {
     _devices.clear();
+    _lastLoadedUserId = null;
     _deviceUpdateStream.add(DeviceItem(
       id: '__RESET__',
       hardwareId: '__RESET__',
@@ -384,6 +387,12 @@ class IoTGatewayClient {
   /// Nạp danh sách thiết bị lưu cục bộ (Local Offline Cache)
   Future<void> loadDevicesFromLocalCache() async {
     try {
+      final currentUserId = AuthService().currentUser?.id ?? "guest";
+      if (_lastLoadedUserId != null && _lastLoadedUserId != currentUserId) {
+        _devices.clear();
+      }
+      _lastLoadedUserId = currentUserId;
+
       final prefs = await SharedPreferences.getInstance();
       final cachedJson = prefs.getString(_cachedDevicesKey);
       if (cachedJson != null && cachedJson.isNotEmpty) {
@@ -547,6 +556,12 @@ class IoTGatewayClient {
 
   /// Nạp danh sách thiết bị thật từ Backend theo quyền sở hữu của người dùng hiện tại
   Future<void> fetchDevicesFromBackend({String? token}) async {
+    final currentUserId = AuthService().currentUser?.id ?? "guest";
+    if (_lastLoadedUserId != null && _lastLoadedUserId != currentUserId) {
+      _devices.clear();
+    }
+    _lastLoadedUserId = currentUserId;
+
     // 1. Luôn đảm bảo nạp từ Local Cache nếu trong RAM chưa có thiết bị
     if (_devices.isEmpty) {
       await loadDevicesFromLocalCache();
@@ -649,21 +664,27 @@ class IoTGatewayClient {
     final lowerType = typeStr.toLowerCase().trim();
     final upperModel = rawModelCode.toUpperCase().trim();
 
-    // 1. Phân loại theo tiền tố Hardware ID (Chuẩn hóa chính xác theo phần cứng Austec)
-    if (upperHwId.startsWith('OCAM') || upperHwId.startsWith('SMARTSW') || upperHwId.contains('SOCKET') || upperHwId.contains('OCAM')) {
+    final bool isHubDoor = upperHwId.startsWith('WIFRFTT') || upperHwId.startsWith('CUACUON') || upperHwId.startsWith('AT-DOOR');
+    final bool isWallDoor = upperHwId.startsWith('WIFRF_ECO') || upperHwId.startsWith('WIFRFECO') || upperHwId.startsWith('AMTUONG') || upperHwId.contains('AMTUONG') || (upperHwId.startsWith('WIFRF') && upperHwId.contains('ECO'));
+    final bool isAnyDoor = isHubDoor || isWallDoor || upperHwId.startsWith('WIFRF') || upperHwId.startsWith('DOOR') || lowerType.contains('cửa') || upperModel.contains('DOOR') || lowerName.contains('cửa');
+
+    final bool isSmartSw = upperHwId.startsWith('SMARTSW') || hwId.contains('SmartSW') || upperHwId.startsWith('OCAM') || upperHwId.contains('SOCKET') || lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc');
+
+    final bool isSmartMeter = upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || lowerName.contains('smartmetter') || lowerName.contains('smartmeter') || upperHwId.contains('CONGTO') || lowerType.contains('công tơ') || upperModel.contains('METER') || lowerName.contains('công tơ');
+
+    final bool isCam = !isSmartSw && !isSmartMeter && (upperHwId.startsWith('CAM') || upperHwId.contains('CAMERA') || upperHwId.contains('ESP32-CAM') || upperHwId.contains('OV2640') || lowerType.contains('camera') || upperModel.startsWith('CAM') || lowerName.contains('camera'));
+
+    // 1. Phân loại theo tiền tố Hardware ID & đặc trưng kỹ thuật Austec
+    if (isSmartSw) {
       cat = DeviceCategory.lightSwitch;
-    } else if ((upperHwId.startsWith('CAM') || upperHwId.contains('CAMERA') || upperHwId.contains('ESP32-CAM') || upperHwId.contains('OV2640')) && !upperHwId.contains('OCAM') && !upperHwId.contains('SOCKET')) {
+    } else if (isCam) {
       cat = DeviceCategory.camera;
-    } else if (upperHwId.startsWith('WIFRFTT') || upperHwId.startsWith('WIFRF_ECO') || upperHwId.startsWith('WIFRF') || upperHwId.startsWith('AMTUONG') || upperHwId.startsWith('AT-DOOR') || upperHwId.startsWith('DOOR') || upperHwId.contains('AMTUONG')) {
+    } else if (isSmartMeter) {
+      cat = DeviceCategory.energyManage;
+    } else if (isAnyDoor) {
       cat = DeviceCategory.rollerDoor;
-    } else if (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER')) {
-      cat = DeviceCategory.energyManage;
-    } else if (upperHwId.startsWith('BMS')) {
+    } else if (upperHwId.startsWith('BMS') || lowerType.contains('bms')) {
       cat = DeviceCategory.dataAnalytics;
-    } else if (upperHwId.startsWith('LOCK') || upperHwId.contains('MASARU')) {
-      cat = DeviceCategory.othersControl;
-    } else if (upperHwId.startsWith('UPS') || upperHwId.startsWith('ENERGY')) {
-      cat = DeviceCategory.energyManage;
     // 2. Explicit Category nếu được server/cache trả về rõ ràng
     } else if (explicitCat == 'lightswitch' || explicitCat == 'socket') {
       cat = DeviceCategory.lightSwitch;
@@ -677,38 +698,21 @@ class IoTGatewayClient {
       cat = DeviceCategory.dataAnalytics;
     } else if (explicitCat == 'environment') {
       cat = DeviceCategory.environment;
-    // 3. Phân loại theo deviceType / model / name
-    } else if (lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || upperModel.startsWith('OCAM') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc')) {
-      cat = DeviceCategory.lightSwitch;
-    } else if ((lowerType.contains('camera') || upperModel.startsWith('CAM') || upperModel.contains('CAMERA') || lowerName.contains('camera')) && !upperModel.contains('OCAM') && !lowerName.contains('ổ cắm') && !lowerName.contains('công tắc')) {
-      cat = DeviceCategory.camera;
-    } else if (lowerType.contains('cửa') || upperModel.contains('DOOR') || lowerName.contains('cửa')) {
-      cat = DeviceCategory.rollerDoor;
-    } else if (lowerType.contains('công tơ') || upperModel.contains('METTER') || upperModel.contains('METER') || lowerName.contains('công tơ')) {
-      cat = DeviceCategory.energyManage;
-    } else if (lowerType.contains('bms') || upperModel.contains('BMS') || lowerName.contains('bms')) {
-      cat = DeviceCategory.dataAnalytics;
-    } else if (lowerType.contains('khóa') || upperModel.contains('LOCK') || lowerName.contains('khóa')) {
-      cat = DeviceCategory.othersControl;
-    } else if (lowerType.contains('điện') || lowerType.contains('năng lượng') || upperModel.contains('UPS')) {
-      cat = DeviceCategory.energyManage;
-    } else if (lowerType.contains('biến') || lowerType.contains('môi trường') || upperModel.contains('SENSOR')) {
-      cat = DeviceCategory.environment;
-    } else if (lowerType.contains('phân tích') || upperModel.contains('ANALYTICS')) {
-      cat = DeviceCategory.dataAnalytics;
     } else {
       cat = DeviceCategory.othersControl; // Thiết bị chưa phân loại vào OTHERS CONTROL, tuyệt đối không gán bừa Cửa cuốn!
     }
 
     final modelName = rawModelName.isNotEmpty ? rawModelName : (
-      cat == DeviceCategory.lightSwitch ? 'Ổ cắm thông minh Austec' :
+      cat == DeviceCategory.lightSwitch ? 'Ổ cắm công tắc thông minh Austec' :
       cat == DeviceCategory.camera ? 'AI Camera 360' :
-      cat == DeviceCategory.rollerDoor ? 'Austec Titadoor A900 Super' : 'Austec Smart Device'
+      cat == DeviceCategory.energyManage ? 'Công tơ điện tử chống giật' :
+      cat == DeviceCategory.rollerDoor ? (isWallDoor ? 'Cửa cuốn âm tường Austec' : 'Cửa cuốn trung tâm Austec') : 'Austec Smart Device'
     );
     final modelCode = rawModelCode.isNotEmpty ? rawModelCode : (
-      cat == DeviceCategory.lightSwitch ? 'SMART_SOCKET_ECO' :
+      cat == DeviceCategory.lightSwitch ? 'SMART_SOCKET_SW' :
       cat == DeviceCategory.camera ? 'AI_CAMERA_360' :
-      cat == DeviceCategory.rollerDoor ? 'DOOR_GERMAN_ALU' : 'SMART_DEVICE'
+      cat == DeviceCategory.energyManage ? 'SMART_METER_PRO' :
+      cat == DeviceCategory.rollerDoor ? (isWallDoor ? 'DOOR_INWALL_ECO' : 'DOOR_HUB_WIFRFTT') : 'OTHER_CONTROL_DEVICE'
     );
 
     final props = d['currentProperties'] is Map ? Map<String, dynamic>.from(d['currentProperties']) : <String, dynamic>{};
@@ -765,7 +769,15 @@ class IoTGatewayClient {
       category: cat,
       currentProperties: props,
       assignedProperties: assignedProps,
-      badgeText: cat == DeviceCategory.rollerDoor ? "AUSTEC" : cat == DeviceCategory.camera ? "CAMERA" : cat == DeviceCategory.lightSwitch ? (upperHwId.contains("OCAM") || upperHwId.contains("SOCKET") ? "Ổ CẮM" : "CÔNG TẮC") : "SMART",
+      badgeText: cat == DeviceCategory.rollerDoor
+          ? (isWallDoor ? "ÂM TƯỜNG" : "TRUNG TÂM")
+          : cat == DeviceCategory.camera
+              ? "CAMERA"
+              : cat == DeviceCategory.lightSwitch
+                  ? (upperHwId.contains("OCAM") || upperHwId.contains("SOCKET") || upperHwId.startsWith("SMARTSW") ? "Ổ CẮM" : "CÔNG TẮC")
+                  : cat == DeviceCategory.energyManage
+                      ? "CÔNG TƠ ĐIỆN"
+                      : "SMART",
       deviceNumber: hwId.length > 3 ? hwId.substring(hwId.length - 3) : "001",
       roomName: (d['location'] ?? d['roomName'] ?? d['addressDisplay'] ??
           (d['installationAddress'] is Map

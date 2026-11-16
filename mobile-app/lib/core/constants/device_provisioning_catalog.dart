@@ -103,19 +103,19 @@ class DeviceProvisioningProfile {
 /// lập trình viên chỉ cần thêm 1 Profile vào danh sách này, không cần sửa đổi giao diện!
 class DeviceProvisioningCatalog {
   // ---------------------------------------------------------------------------
-  // 1. CỬA CUỐN THÔNG MINH AUSTEC (ESP32-C3) - Thiết bị trọng tâm đang test phần cứng
+  // 1. CỬA CUỐN TRUNG TÂM AUSTEC (WIFRFTT + MAC) - Có phần thêm tay cầm RF
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile rollerDoorProfile = DeviceProvisioningProfile(
     category: DeviceCategory.rollerDoor,
-    defaultTitle: "Cửa Cuốn Austec",
-    defaultModelCode: "DOOR_GERMAN_ALU",
+    defaultTitle: "Cửa Cuốn Trung Tâm",
+    defaultModelCode: "DOOR_HUB_WIFRFTT",
     icon: Icons.roller_shades_rounded,
     accentColor: AppTheme.cyanAccent,
     bleServiceUuids: [
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Chuẩn Nordic UART Service
       "6e400001",
     ],
-    nameKeywords: ["amtuong", "cuacuon", "austec", "door", "roller", "at-door"],
+    nameKeywords: ["wifrftt", "cuacuon", "austec", "door", "roller", "at-door"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     // Cú pháp nạp Cửa cuốn: onboard/{ssid}/{pass}/{userId}/{brokerIp}/{port}
@@ -128,37 +128,35 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 2. CAMERA AN NINH AI (AI-Thinker ESP32-CAM OV2640)
+  // 2. CỬA CUỐN ÂM TƯỜNG AUSTEC (WIFRF_ECO + MAC) - Cùng nhóm Doors màu cam, KHÔNG CÓ tay cầm RF
   // ---------------------------------------------------------------------------
-  static final DeviceProvisioningProfile cameraProfile = DeviceProvisioningProfile(
-    category: DeviceCategory.camera,
-    defaultTitle: "Camera An Ninh",
-    defaultModelCode: "AI_CAMERA_360",
-    icon: Icons.videocam_rounded,
-    accentColor: AppTheme.purpleAccent,
+  static final DeviceProvisioningProfile wallDoorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.rollerDoor,
+    defaultTitle: "Cửa Cuốn Âm Tường",
+    defaultModelCode: "DOOR_INWALL_ECO",
+    icon: Icons.roller_shades_closed_rounded,
+    accentColor: AppTheme.amberWarning,
     bleServiceUuids: [
-      "4fafc201-1fb5-459e-8fcc-c5c9c331914b", // UUID BLE trong code camera OV2640
-      "4fafc201",
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "6e400001",
     ],
-    nameKeywords: ["esp32-cam", "camera", "cam_", "cam-", "ov2640", "setup", "ble-cam"],
-    bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
-    bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
-    // Cú pháp nạp Camera: {ssid},{pass},{mqtt_ip}
+    nameKeywords: ["wifrf_eco", "wifrfeco", "wifrf", "amtuong", "inwall"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     buildBlePayload: (data) =>
-        "${data.ssid},${data.password},${data.brokerIp}",
-    // Cú pháp nạp SoftAP: POST http://192.168.4.1/save?ssid=...&pass=...&mqtt=...
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
-      'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
     ),
   );
 
   // ---------------------------------------------------------------------------
-  // 3. Ổ CẮM THÔNG MINH AUSTEC (ESP32 Relay - OCAM từ ocammoi)
+  // 3. Ổ CẮM CÔNG TẮC THÔNG MINH AUSTEC (SmartSW + MAC / OCAM)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartSocketProfile = DeviceProvisioningProfile(
     category: DeviceCategory.lightSwitch,
-    defaultTitle: "Ổ Cắm Thông Minh Austec",
-    defaultModelCode: "SMART_SOCKET_ECO",
+    defaultTitle: "Ổ Cắm Công Tắc Thông Minh",
+    defaultModelCode: "SMART_SOCKET_SW",
     icon: Icons.power_rounded,
     accentColor: AppTheme.amberWarning,
     bleServiceUuids: [
@@ -167,20 +165,41 @@ class DeviceProvisioningCatalog {
       "4faac861",
       "6e400001",
     ],
-    nameKeywords: ["ocam", "socket", "ocamping"],
+    nameKeywords: ["smartsw", "smart_sw", "ocam", "socket", "ocamping"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
-    // Cú pháp nạp Ổ cắm qua BLE: Khớp 100% cú pháp onboard của ocammoi (bluetooth.h)
     buildBlePayload: (data) =>
         "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
-    // Cú pháp nạp SoftAP: Khớp Web_Server.h của ocammoi
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
       'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
     ),
   );
 
   // ---------------------------------------------------------------------------
-  // 4. CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT AUSTEC (ESP32 BL0942 - smartmetter_copy.ino)
+  // 4. CAMERA AN NINH AI (AI-Thinker ESP32-CAM OV2640)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile cameraProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.camera,
+    defaultTitle: "Camera An Ninh AI",
+    defaultModelCode: "AI_CAMERA_360",
+    icon: Icons.videocam_rounded,
+    accentColor: AppTheme.purpleAccent,
+    bleServiceUuids: [
+      "4fafc201-1fb5-459e-8fcc-c5c9c331914b", // UUID BLE trong code camera OV2640
+      "4fafc201",
+    ],
+    nameKeywords: ["esp32-cam", "camera", "cam_", "cam-", "ov2640", "ezviz", "dahua", "hikvision"],
+    bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
+    bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
+    buildBlePayload: (data) =>
+        "${data.ssid},${data.password},${data.brokerIp}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5. CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT AUSTEC (SmartMetter + MAC - smartmetter_copy.ino)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartMeterProfile = DeviceProvisioningProfile(
     category: DeviceCategory.energyManage,
@@ -195,30 +214,10 @@ class DeviceProvisioningCatalog {
     nameKeywords: ["smartmetter", "smartmeter", "congto", "meter"],
     bleRxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
     bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
-    // Cú pháp nạp Công tơ: ssid,pass,brokerIp,brokerPort
     buildBlePayload: (data) =>
         "${data.ssid},${data.password},${data.brokerIp},${data.brokerPort}",
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
       'http://$apHost/config?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&server=${Uri.encodeComponent(data.brokerIp)}&port=${data.brokerPort}',
-    ),
-  );
-
-  // ---------------------------------------------------------------------------
-  // 5. KHÓA THÔNG MINH MASARU (Mẫu chuẩn bị mở rộng trong tương lai)
-  // ---------------------------------------------------------------------------
-  static final DeviceProvisioningProfile smartLockProfile = DeviceProvisioningProfile(
-    category: DeviceCategory.othersControl,
-    defaultTitle: "Khóa Thông Minh Masaru",
-    defaultModelCode: "SMART_LOCK_MASARU",
-    icon: Icons.lock_rounded,
-    accentColor: AppTheme.amberWarning,
-    bleServiceUuids: ["6e400001-lock"],
-    nameKeywords: ["masaru", "lock", "khoa"],
-    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
-    buildBlePayload: (data) =>
-        "lock_onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}",
-    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
-      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
     ),
   );
 
@@ -241,43 +240,51 @@ class DeviceProvisioningCatalog {
     ),
   );
 
-  /// Danh sách 4 thiết bị trọng tâm đã chốt
+  /// Danh sách thiết bị trọng tâm đang hoạt động thực tế
   static final List<DeviceProvisioningProfile> allProfiles = [
-    rollerDoorProfile,  // 1. Cửa cuốn Austec (amtuong / at-door)
-    smartSocketProfile, // 2. Ổ cắm thông minh OCAM (ocammoi)
-    cameraProfile,      // 3. Camera An Ninh AI (espcam)
-    smartMeterProfile,  // 4. Công tơ điện tử chống giật (smartmetter)
+    rollerDoorProfile,  // 1. Cửa cuốn trung tâm (WIFRFTT)
+    wallDoorProfile,    // 2. Cửa cuốn âm tường (WIFRF_ECO / amtuong)
+    smartSocketProfile, // 3. Ổ cắm công tắc thông minh (SmartSW / OCAM)
+    cameraProfile,      // 4. Camera An Ninh AI (ESP32-CAM)
+    smartMeterProfile,  // 5. Công tơ điện tử chống giật (SmartMetter)
   ];
 
-  /// Hàm tìm và khớp Profile CHÍNH XÁC - TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4 LOẠI TRÊN
+  /// Hàm tìm và khớp Profile CHÍNH XÁC THEO TÀI LIỆU KỸ THUẬT AUSTEC
+  /// Tuyệt đối không fallback ép kiểu về các loại trên đối với thiết bị lạ!
   static DeviceProvisioningProfile resolveProfile({
     required String rawName,
     List<String> advertisedUuids = const [],
   }) {
     final lowerName = rawName.toLowerCase().trim();
+    final upperName = rawName.toUpperCase().trim();
 
-    // 1. Công tơ điện tử chống giật: Bắt đầu bằng smartmetter hoặc smartmeter (smartmetter_copy.ino)
-    if (lowerName.startsWith("smartmetter") || lowerName.startsWith("smartmeter") || lowerName.contains("congto") || (lowerName.contains("meter") && !lowerName.contains("door"))) {
+    // 1. Công tơ điện tử chống giật: Bắt đầu bằng SmartMetter / smartmeter / congto
+    if (upperName.startsWith("SMARTMETTER") || upperName.startsWith("SMARTMETER") || lowerName.contains("congto") || (lowerName.contains("meter") && !lowerName.contains("door"))) {
       return smartMeterProfile;
     }
 
-    // 2. Ổ cắm thông minh: Bắt đầu bằng ocam, smartsw, socket
-    if (lowerName.startsWith("ocam") || lowerName.startsWith("smartsw") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
+    // 2. Ổ cắm công tắc thông minh: Bắt cả case chữ in hoa và thường: SmartSW, SMARTSW, smartsw, OCAM, socket
+    if (upperName.startsWith("SMARTSW") || rawName.contains("SmartSW") || upperName.startsWith("OCAM") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
       return smartSocketProfile;
     }
 
-    // 3. Camera an ninh AI: Bắt đầu bằng cam, esp32-cam, camera, ov2640 (loại trừ ocam)
+    // 3. Camera an ninh AI: Bắt đầu bằng cam, esp32-cam, camera, ov2640 (loại trừ ocam, smartsw, socket)
     if ((lowerName.startsWith("cam") || lowerName.contains("camera") || lowerName.contains("esp32-cam") || lowerName.contains("ov2640")) &&
-        !lowerName.startsWith("ocam") && !lowerName.contains("socket")) {
+        !upperName.startsWith("OCAM") && !upperName.startsWith("SMARTSW") && !lowerName.contains("socket")) {
       return cameraProfile;
     }
 
-    // 4. Cửa cuốn thông minh: Bắt đầu bằng amtuong, at-door, cuacuon, door
-    if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door") || lowerName.contains("cuacuon") || (lowerName.startsWith("door") && !lowerName.contains("sensor"))) {
+    // 4. Cửa cuốn âm tường: Bắt đầu bằng WIFRF_ECO, WIFRFECO, amtuong, inwall
+    if (upperName.startsWith("WIFRF_ECO") || upperName.startsWith("WIFRFECO") || lowerName.startsWith("amtuong") || lowerName.contains("inwall") || (upperName.startsWith("WIFRF") && upperName.contains("ECO"))) {
+      return wallDoorProfile;
+    }
+
+    // 5. Cửa cuốn trung tâm: Bắt đầu bằng WIFRFTT, cuacuon, at-door, door
+    if (upperName.startsWith("WIFRFTT") || lowerName.startsWith("cuacuon") || lowerName.startsWith("at-door") || (lowerName.startsWith("door") && !lowerName.contains("sensor"))) {
       return rollerDoorProfile;
     }
 
-    // 5. Khớp Service UUID đặc thù NẾU có dấu hiệu rõ ràng
+    // 6. Khớp Service UUID đặc thù NẾU có dấu hiệu rõ ràng
     if (advertisedUuids.isNotEmpty) {
       final normAdvUuids = advertisedUuids.map((u) => u.toLowerCase().replaceAll('-', '')).toList();
       if (normAdvUuids.any((u) => u.contains("4fafc201"))) {
@@ -285,17 +292,13 @@ class DeviceProvisioningCatalog {
         if (lowerName.contains("cam")) return cameraProfile;
       }
       if (normAdvUuids.any((u) => u.contains("6e400001"))) {
-        if (lowerName.startsWith("ocam")) return smartSocketProfile;
-        if (lowerName.startsWith("amtuong") || lowerName.startsWith("at-door")) return rollerDoorProfile;
+        if (upperName.startsWith("SMARTSW") || upperName.startsWith("OCAM")) return smartSocketProfile;
+        if (upperName.startsWith("WIFRF_ECO") || lowerName.startsWith("amtuong")) return wallDoorProfile;
+        if (upperName.startsWith("WIFRFTT") || lowerName.startsWith("cuacuon") || lowerName.startsWith("at-door")) return rollerDoorProfile;
       }
     }
 
-    // 6. Khóa thông minh Masaru (nếu có)
-    if (lowerName.startsWith("lock") || lowerName.contains("masaru") || lowerName.contains("khoa")) {
-      return smartLockProfile;
-    }
-
-    // 7. TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4 LOẠI TRÊN!
+    // 7. TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4/5 LOẠI TRÊN!
     // Các thiết bị lạ tự động chuyển vào loại Other Control
     return unregisteredDeviceProfile;
   }
