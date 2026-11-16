@@ -102,6 +102,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
           });
 
           await _service.addMember(_selectedDevice!.hardwareId, newMember);
+          _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -141,6 +142,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
           }
 
           await _service.updateMember(_selectedDevice!.hardwareId, updated);
+          _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(

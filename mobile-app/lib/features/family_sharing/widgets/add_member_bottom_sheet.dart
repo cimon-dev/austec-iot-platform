@@ -34,6 +34,7 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
   String _accessEndTime = "18:00";
 
   String? _selectedSuggestionName;
+  String? _selectedSuggestionUserId;
 
   @override
   void dispose() {
@@ -55,6 +56,7 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
       _accessStartTime = sug.accessStartTime;
       _accessEndTime = sug.accessEndTime;
       _selectedSuggestionName = sug.memberName;
+      _selectedSuggestionUserId = sug.userId;
     });
   }
 
@@ -64,7 +66,7 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
     final newMember = MemberPermission(
       id: "PERM-${DateTime.now().millisecondsSinceEpoch}",
       hardwareId: widget.device.hardwareId,
-      userId: "USER-${DateTime.now().millisecondsSinceEpoch}",
+      userId: _selectedSuggestionUserId ?? "",
       memberName: _nameController.text.trim(),
       phoneNumber: _phoneController.text.trim(),
       role: _selectedRole,

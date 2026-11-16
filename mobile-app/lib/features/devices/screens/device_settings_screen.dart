@@ -130,15 +130,20 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.isDarkMode ? AppTheme.surfaceDark : Colors.white,
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
-            SizedBox(width: 8),
-            Text("Hủy ghép nối thiết bị", style: TextStyle(color: AppTheme.crimsonDanger, fontSize: 16, fontWeight: FontWeight.bold)),
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.crimsonDanger),
+            const SizedBox(width: 8),
+            Text(
+              widget.device.userRole == FamilyRole.owner ? "Hủy ghép nối thiết bị" : "Gỡ thiết bị khỏi danh sách",
+              style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ],
         ),
         content: Text(
-          "Bạn có chắc muốn xóa và hủy ghép nối thiết bị '${widget.device.name}' (${widget.device.hardwareId}) khỏi tài khoản?",
+          widget.device.userRole == FamilyRole.owner
+              ? "Bạn có chắc muốn xóa và hủy ghép nối thiết bị '${widget.device.name}' (${widget.device.hardwareId}) khỏi tài khoản?"
+              : "Bạn có chắc muốn gỡ thiết bị '${widget.device.name}' (${widget.device.hardwareId}) khỏi danh sách của bạn?",
           style: TextStyle(color: AppTheme.isDarkMode ? AppTheme.textSecondary : Colors.grey[700]),
         ),
         actions: [
@@ -737,19 +742,20 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     ),
                     Divider(color: isDark ? const Color(0xFF26324A) : AppTheme.lightBorder, height: 1),
                   ],
-                  ListTile(
-                    leading: Icon(Icons.group_outlined, color: iconCol, size: 22),
-                    title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
-                    onTap: () {
-                      Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => FamilySharingScreen(
-                          initialDevice: widget.device,
-                          initialHardwareId: widget.device.hardwareId,
-                        ),
-                      ));
-                    },
-                  ),
+                  if (widget.device.userRole == FamilyRole.owner)
+                    ListTile(
+                      leading: Icon(Icons.group_outlined, color: iconCol, size: 22),
+                      title: Text("Phân quyền thành viên", style: TextStyle(color: textCol, fontWeight: FontWeight.w600, fontSize: 14)),
+                      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary),
+                      onTap: () {
+                        Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => FamilySharingScreen(
+                            initialDevice: widget.device,
+                            initialHardwareId: widget.device.hardwareId,
+                          ),
+                        ));
+                      },
+                    ),
                 ],
               ),
             ),
@@ -794,7 +800,11 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                 onPressed: _isDeleting ? null : _showUnpairDialog,
                 icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.crimsonDanger, size: 20),
                 label: Text(
-                  _isDeleting ? "ĐANG GỠ BỎ..." : "HỦY GHÉP NỐI & XÓA THIẾT BỊ",
+                  _isDeleting
+                      ? "ĐANG GỠ BỎ..."
+                      : (widget.device.userRole == FamilyRole.owner
+                          ? "HỦY GHÉP NỐI & XÓA THIẾT BỊ"
+                          : "GỠ THIẾT BỊ KHỎI TÀI KHOẢN"),
                   style: const TextStyle(color: AppTheme.crimsonDanger, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                 ),
                 style: OutlinedButton.styleFrom(

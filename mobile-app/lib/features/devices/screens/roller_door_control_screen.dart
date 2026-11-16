@@ -85,7 +85,20 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
   }
 
   // 1. MỞ CỬA DẦN DẦN (Đồng bộ ngầm toàn hệ thống)
-  void _startOpenDoor() {
+  void _startOpenDoor() async {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (_device.isChildLockActive) {
       _showLockedWarning();
       return;
@@ -97,12 +110,39 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       _isStopped = false;
     });
 
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "OPEN_DOOR");
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "OPEN_DOOR");
+    if (!res.success && mounted) {
+      setState(() {
+        _isOpening = false;
+        _isStopped = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message.isNotEmpty ? res.message : "Thao tác mở cửa không thành công"),
+          backgroundColor: AppTheme.roseDanger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     _notifyBleIfOffline("mở cửa");
   }
 
   // 2. ĐÓNG CỬA DẦN DẦN (Đồng bộ ngầm toàn hệ thống)
-  void _startCloseDoor() {
+  void _startCloseDoor() async {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     if (_device.isChildLockActive) {
       _showLockedWarning();
       return;
@@ -114,12 +154,39 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       _isStopped = false;
     });
 
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "CLOSE_DOOR");
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "CLOSE_DOOR");
+    if (!res.success && mounted) {
+      setState(() {
+        _isClosing = false;
+        _isStopped = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message.isNotEmpty ? res.message : "Thao tác đóng cửa không thành công"),
+          backgroundColor: AppTheme.roseDanger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     _notifyBleIfOffline("đóng cửa");
   }
 
   // 3. DỪNG CỬA NGAY TẠI VỊ TRÍ HIỆN TẠI (Immediate STOP)
-  void _stopDoor() {
+  void _stopDoor() async {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isOpening = false;
       _isClosing = false;
@@ -127,19 +194,50 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
       _device.positionPercent = _currentPercent.round();
     });
 
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STOP_DOOR");
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STOP_DOOR");
+    if (!res.success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message.isNotEmpty ? res.message : "Thao tác dừng cửa không thành công"),
+          backgroundColor: AppTheme.roseDanger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     _notifyBleIfOffline("dừng cửa");
   }
 
   // 4. BẬT / TẮT KHÓA AN TOÀN TRẺ EM
-  void _toggleLock() {
+  void _toggleLock() async {
+    if (!_device.canChildLock) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Bạn không có quyền bật/tắt Khóa an toàn trẻ em"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isOpening = false;
       _isClosing = false;
       _isStopped = true;
     });
 
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "TOGGLE_CHILD_LOCK");
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "TOGGLE_CHILD_LOCK");
+    if (!res.success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message.isNotEmpty ? res.message : "Không thể thay đổi Khóa trẻ em"),
+          backgroundColor: AppTheme.roseDanger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     _notifyBleIfOffline("chuyển khóa an toàn");
   }
 

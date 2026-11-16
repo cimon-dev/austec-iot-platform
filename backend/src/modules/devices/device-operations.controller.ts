@@ -88,23 +88,61 @@ export class DeviceOperationsController {
           WHERE (LOWER(hardware_id) LIKE 'cam%' OR LOWER(hardware_id) LIKE '%esp32-cam%') AND (device_type != 'Camera' OR device_type IS NULL)
         `).catch(() => {});
 
+        // 1. Đồng bộ số điện thoại / email của targetUser nếu chưa có trong token
+        let userPhone = (targetUser.phoneNumber || '').trim();
+        let cleanPhone = userPhone.replace(/[\s.-]/g, '');
+        if ((!userPhone || !cleanPhone) && targetUser.id) {
+          try {
+            const uRow = await this.client.query('SELECT phone_number, email FROM users WHERE id = $1', [targetUser.id]);
+            if (uRow.rows.length > 0) {
+              userPhone = (uRow.rows[0].phone_number || '').trim();
+              cleanPhone = userPhone.replace(/[\s.-]/g, '');
+              targetUser.phoneNumber = userPhone;
+              targetUser.email = uRow.rows[0].email || targetUser.email;
+            }
+          } catch (_) {}
+        }
+
+        // 2. Tự động liên kết các bản ghi phân quyền trước đó (khi chủ nhà cấp bằng SĐT trước khi thành viên đăng ký tài khoản)
+        if (cleanPhone) {
+          await this.client.query(
+            `UPDATE device_permissions 
+             SET user_id = $1, updated_at = NOW()::text 
+             WHERE user_id LIKE 'USR-%' AND (
+               phone_number = $2 OR 
+               REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $3
+             )`,
+            [targetUser.id, userPhone, cleanPhone]
+          ).catch(() => {});
+        }
+
         const query = `
-          SELECT di.*, COALESCE(dp.role, 'OWNER') as user_role,
-                 COALESCE(dp.can_control, true) as can_control,
-                 COALESCE(dp.can_view_history, true) as can_view_history,
-                 COALESCE(dp.can_child_lock, true) as can_child_lock,
-                 COALESCE(dp.can_config, true) as can_config,
-                 COALESCE(dp.schedule_limit_active, false) as schedule_limit_active,
+          SELECT di.*,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN 'OWNER' ELSE COALESCE(dp.role, 'MEMBER') END) as user_role,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_control, true) END) as can_control,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_view_history, true) END) as can_view_history,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_child_lock, false) END) as can_child_lock,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN true ELSE COALESCE(dp.can_config, false) END) as can_config,
+                 (CASE WHEN di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '') OR (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '') THEN false ELSE COALESCE(dp.schedule_limit_active, false) END) as schedule_limit_active,
                  dp.access_start_time, dp.access_end_time, dp.access_days,
                  m.id as model_id, m.model_name, m.model_code, m.properties_config, m.image_url
           FROM device_instances di
-          LEFT JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id) AND (dp.user_id = $1 OR (dp.phone_number = $2 AND $2 != ''))
+          LEFT JOIN device_permissions dp ON LOWER(dp.hardware_id) = LOWER(di.hardware_id) AND (
+            dp.user_id = $1 OR 
+            (dp.phone_number = $2 AND $2 != '') OR 
+            (REPLACE(REPLACE(dp.phone_number, ' ', ''), '.', '') = $3 AND $3 != '')
+          )
           LEFT JOIN device_inventory inv ON LOWER(inv.hardware_id) = LOWER(di.hardware_id)
           LEFT JOIN device_models m ON (m.id = inv.model_id OR LOWER(m.model_name) = LOWER(inv.model_name) OR LOWER(m.model_name) = LOWER(di.custom_name))
-          WHERE dp.user_id = $1 OR (dp.phone_number = $2 AND $2 != '') OR di.owner_id = $1 OR (di.owner_phone = $2 AND $2 != '')
+          WHERE dp.user_id = $1 OR 
+                (dp.phone_number = $2 AND $2 != '') OR 
+                (REPLACE(REPLACE(dp.phone_number, ' ', ''), '.', '') = $3 AND $3 != '') OR 
+                di.owner_id = $1 OR 
+                (di.owner_phone = $2 AND $2 != '') OR
+                (REPLACE(REPLACE(di.owner_phone, ' ', ''), '.', '') = $3 AND $3 != '')
           ORDER BY di.created_at DESC
         `;
-        const result = await this.client.query(query, [targetUser.id, targetUser.phoneNumber || '']);
+        const result = await this.client.query(query, [targetUser.id, userPhone, cleanPhone]);
 
         // Load từ điển thuộc tính động
         const propRes = await this.client.query(`SELECT * FROM device_properties ORDER BY id ASC`);
@@ -176,6 +214,7 @@ export class DeviceOperationsController {
             const finalDevName = r.custom_name || (r.model_name && !r.model_name.includes('A900') ? r.model_name : defaultDevName);
             const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : (isMeterDev ? 'energyManage' : (isDoorDev ? 'rollerDoor' : 'othersControl')));
 
+            const isOwner = r.user_role === 'OWNER';
             return {
               id: r.id,
               hardwareId: r.hardware_id,
@@ -191,11 +230,11 @@ export class DeviceOperationsController {
               isOnline: isOnline,
               roleInHome: r.user_role || 'OWNER',
               userRole: r.user_role || 'OWNER',
-              canControl: r.can_control !== false,
-              canViewHistory: r.can_view_history !== false,
-              canChildLock: Boolean(r.can_child_lock),
-              canConfig: Boolean(r.can_config),
-              scheduleLimitActive: Boolean(r.schedule_limit_active),
+              canControl: isOwner ? true : (r.can_control !== false),
+              canViewHistory: isOwner ? true : (r.can_view_history !== false),
+              canChildLock: isOwner ? true : Boolean(r.can_child_lock),
+              canConfig: isOwner ? true : Boolean(r.can_config),
+              scheduleLimitActive: isOwner ? false : Boolean(r.schedule_limit_active),
               accessStartTime: r.access_start_time || '00:00',
               accessEndTime: r.access_end_time || '23:59',
               accessDays: r.access_days,
@@ -776,9 +815,17 @@ export class DeviceOperationsController {
             } catch (_) {}
           }
 
+          const rawPhone = (targetUser.phoneNumber || '').trim();
+          const cleanPhone = rawPhone.replace(/[\s.-]/g, '');
+
           const permRes = await this.client.query(
-            `SELECT * FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1) AND (user_id = $2 OR (phone_number = $3 AND $3 != ''))`,
-            [hardwareId, targetUser.id, targetUser.phoneNumber || '']
+            `SELECT * FROM device_permissions 
+             WHERE LOWER(hardware_id) = LOWER($1) AND (
+               user_id = $2 OR 
+               (phone_number = $3 AND $3 != '') OR 
+               (REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $4 AND $4 != '')
+             )`,
+            [hardwareId, targetUser.id, rawPhone, cleanPhone]
           );
 
           if (permRes.rows.length === 0) {
@@ -787,13 +834,14 @@ export class DeviceOperationsController {
               `SELECT * FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) AND (
                 owner_id = $2 OR 
                 (owner_phone = $3 AND $3 != '') OR 
+                (REPLACE(REPLACE(owner_phone, ' ', ''), '.', '') = $4 AND $4 != '') OR 
                 owner_id = 'USR-330967' OR 
                 owner_id = '00000000-0000-0000-0000-000000000001' OR 
                 $2 = 'USR-330967' OR 
                 $2 = '00000000-0000-0000-0000-000000000001' OR
                 owner_id IS NULL
               )`,
-              [hardwareId, targetUser.id, targetUser.phoneNumber || '']
+              [hardwareId, targetUser.id, rawPhone, cleanPhone]
             );
             if (instRes.rows.length === 0) {
               res.status(403).json({
@@ -1526,22 +1574,41 @@ export class DeviceOperationsController {
       }
 
       if (this.client.getConnected()) {
+        const cleanPhone = (phoneNumber || '').replace(/[\s.-]/g, '');
         let targetUserId = userId;
-        if (!targetUserId && phoneNumber) {
+        // Nếu userId rỗng hoặc là client ID tạm (USER-...), hoặc có số điện thoại:
+        // Luôn ưu tiên tra cứu ID người dùng thật trong bảng users!
+        if (!targetUserId || targetUserId.startsWith('USER-') || targetUserId.startsWith('USR-MB-')) {
           const uRes = await this.client.query(
-            `SELECT id FROM users WHERE phone_number = $1 OR REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $2 LIMIT 1`,
-            [phoneNumber, phoneNumber.replace(/[\s.-]/g, '')]
+            `SELECT id, full_name, phone_number, email FROM users 
+             WHERE (phone_number = $1 AND $1 != '') 
+                OR (REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $2 AND $2 != '') 
+                OR (LOWER(email) = LOWER($1) AND $1 != '')
+             LIMIT 1`,
+            [phoneNumber || '', cleanPhone]
           );
           if (uRes.rows.length > 0) {
             targetUserId = uRes.rows[0].id;
+          } else {
+            targetUserId = `USR-MB-${cleanPhone.slice(-6) || Date.now().toString().slice(-6)}`;
           }
-        }
-        if (!targetUserId) {
-          targetUserId = `USR-MB-${Date.now().toString().slice(-6)}`;
         }
 
         const hwStr = String(hardwareId);
-        const permId = `PERM-${hwStr.replace(/-/g, '').slice(-6)}-${targetUserId.slice(-6)}`;
+        // Kiểm tra xem đã có bản ghi phân quyền trước đó cho thiết bị này chưa
+        const checkExisting = await this.client.query(
+          `SELECT id FROM device_permissions 
+           WHERE LOWER(hardware_id) = LOWER($1) AND (
+             user_id = $2 OR 
+             (phone_number = $3 AND $3 != '') OR 
+             (REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $4 AND $4 != '')
+           ) LIMIT 1`,
+          [hardwareId, targetUserId, phoneNumber || '', cleanPhone]
+        );
+        const permId = checkExisting.rows.length > 0
+          ? checkExisting.rows[0].id
+          : `PERM-${hwStr.replace(/-/g, '').slice(-6)}-${targetUserId.slice(-6)}`;
+
         const now = new Date().toISOString();
         const daysJson = JSON.stringify(accessDays || [true, true, true, true, true, true, false]);
 

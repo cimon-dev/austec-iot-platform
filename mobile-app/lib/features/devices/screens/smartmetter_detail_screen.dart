@@ -69,6 +69,19 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   String? get _alarm => _device.currentProperties['alarm']?.toString();
 
   void _handleReset() {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "RESET");
     setState(() {
       _device.currentProperties['alarm'] = null;
@@ -86,6 +99,17 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   }
 
   void _handleTogglePowerSetting() {
+    if (!_device.canConfig) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Bạn không có quyền thay đổi thông số cấu hình công tơ điện"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isSettingPower = !_isSettingPower;
     });
@@ -108,13 +132,26 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   }
 
   void _adjustPower(int delta) {
-    if (!_isSettingPower) return;
+    if (!_isSettingPower || !_device.canConfig) return;
     setState(() {
       _powerLimitW = (_powerLimitW + delta).clamp(500, 15000);
     });
   }
 
   void _startHoldingOk() {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     _longPressSeconds = 0;
     _isHoldingOk = true;
     _longPressTimer?.cancel();
@@ -137,6 +174,8 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   }
 
   void _turnOffMeter() {
+    if (!_device.canPerformControl) return;
+
     setState(() {
       _isMeterOn = false;
       _isSettingPower = false;
@@ -154,6 +193,19 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   }
 
   void _turnOnMeter() {
+    if (!_device.canPerformControl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!_device.canControl
+              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isMeterOn = true;
       _device.currentProperties['is_meter_on'] = true;
@@ -200,41 +252,44 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         centerTitle: true,
         actions: [
           // 1. Icon Biểu đồ Dashboard tiêu thụ điện
-          IconButton(
-            icon: const Icon(Icons.bar_chart_rounded, color: AppTheme.cyanAccent, size: 22),
-            tooltip: "Biểu đồ tiêu thụ điện",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DeviceHistoryScreen(device: _device, initialTabIndex: 0),
-                ),
-              );
-            },
-          ),
+          if (_device.canViewHistory)
+            IconButton(
+              icon: const Icon(Icons.bar_chart_rounded, color: AppTheme.cyanAccent, size: 22),
+              tooltip: "Biểu đồ tiêu thụ điện",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => DeviceHistoryScreen(device: _device, initialTabIndex: 0),
+                  ),
+                );
+              },
+            ),
           // 2. Icon Xem Lịch sử sự cố
-          IconButton(
-            icon: Icon(Icons.history_rounded, color: textCol, size: 22),
-            tooltip: "Lịch sử sự cố",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DeviceHistoryScreen(device: _device, initialTabIndex: 1),
-                ),
-              );
-            },
-          ),
+          if (_device.canViewHistory)
+            IconButton(
+              icon: Icon(Icons.history_rounded, color: textCol, size: 22),
+              tooltip: "Lịch sử sự cố",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => DeviceHistoryScreen(device: _device, initialTabIndex: 1),
+                  ),
+                );
+              },
+            ),
           // 3. Icon Cài đặt tham số
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: textCol, size: 20),
-            tooltip: "Cài đặt tham số",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => DeviceSettingsScreen(device: _device),
-                ),
-              );
-            },
-          ),
+          if (_device.canConfig)
+            IconButton(
+              icon: Icon(Icons.settings_outlined, color: textCol, size: 20),
+              tooltip: "Cài đặt tham số",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => DeviceSettingsScreen(device: _device),
+                  ),
+                );
+              },
+            ),
           // 4. Icon CSKH
           IconButton(
             icon: const Icon(Icons.headset_mic_outlined, color: AppTheme.cyanAccent, size: 20),
