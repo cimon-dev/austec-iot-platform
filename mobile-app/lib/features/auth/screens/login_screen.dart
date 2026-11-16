@@ -3,6 +3,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/services/auth_service.dart';
 import '../../devices/screens/orbital_hub_screen.dart';
 import 'register_screen.dart';
+import '../../../core/services/app_update_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +24,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     _loadLastIdentifier();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          AppUpdateService().checkForUpdatesAndPrompt(context);
+        }
+      });
+    });
   }
 
   Future<void> _loadLastIdentifier() async {

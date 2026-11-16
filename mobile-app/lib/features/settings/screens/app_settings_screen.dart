@@ -6,6 +6,7 @@ import '../../devices/devices.dart';
 import '../../family_sharing/screens/family_sharing_screen.dart';
 import '../../profile/screens/user_profile_screen.dart';
 import '../../auth/auth.dart';
+import '../../../core/services/app_update_service.dart';
 
 class AppSettingsScreen extends StatefulWidget {
   final VoidCallback onThemeChanged;
@@ -452,15 +453,28 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 ),
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
-                  icon: Icons.info_outline_rounded,
-                  title: "Phiên bản ứng dụng",
-                  onTap: () {},
+                  icon: Icons.system_update_rounded,
+                  title: "Kiểm tra bản cập nhật",
+                  onTap: () {
+                    AppUpdateService().checkForUpdatesAndPrompt(context, manualTrigger: true);
+                  },
                   isDark: isDark,
                   textCol: textCol,
-                  iconCol: iconCol,
-                  trailing: Text(
-                    "v2.4.1",
-                    style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary, fontSize: 12, fontWeight: FontWeight.w600),
+                  iconCol: AppTheme.brandBlue,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "v2.1.0",
+                        style: TextStyle(
+                          color: isDark ? AppTheme.cyanAccent : AppTheme.lightTextSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppTheme.brandBlue),
+                    ],
                   ),
                 ),
               ],

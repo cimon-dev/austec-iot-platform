@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import {
   LegacyDataMigrator,
   DynamicSchemaEngine,
@@ -75,6 +76,18 @@ export function createApp() {
 
   // Static files & Media upload
   app.use('/uploads', express.static(path.resolve(process.cwd(), 'public/uploads')));
+
+  // Phục vụ tải trực tiếp file APK cho tính năng In-App OTA Update
+  const publicDownloads = path.resolve(process.cwd(), 'public/downloads');
+  if (!fs.existsSync(publicDownloads)) {
+    try { fs.mkdirSync(publicDownloads, { recursive: true }); } catch (_) {}
+  }
+  app.use('/downloads', express.static(publicDownloads));
+
+  const rootDistApk = path.resolve(process.cwd(), '../dist-apk');
+  if (fs.existsSync(rootDistApk)) {
+    app.use('/downloads', express.static(rootDistApk));
+  }
 
 
   const server = http.createServer(app);

@@ -243,6 +243,16 @@ try {
     Copy-Item $SourceApk $ArchivedPath -Force
     Copy-Item $SourceApk $LatestPath -Force
 
+    # Tự động đồng bộ sang backend/public/downloads để phục vụ In-App OTA Update trực tiếp từ máy chủ
+    $BackendDownloadsDir = Join-Path $ScriptDir "backend\public\downloads"
+    if (Test-Path (Join-Path $ScriptDir "backend")) {
+        if (-not (Test-Path $BackendDownloadsDir)) {
+            New-Item -ItemType Directory -Path $BackendDownloadsDir -Force | Out-Null
+        }
+        Copy-Item $SourceApk (Join-Path $BackendDownloadsDir "Austec_IoT_latest.apk") -Force
+        Copy-Item $SourceApk (Join-Path $BackendDownloadsDir $VersionOnlyName) -Force
+    }
+
     $ApkItem = Get-Item $VersionOnlyPath
     $SizeMB = [math]::Round($ApkItem.Length / 1MB, 2)
 

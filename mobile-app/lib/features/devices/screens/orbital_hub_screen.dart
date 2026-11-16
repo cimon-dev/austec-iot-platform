@@ -11,6 +11,7 @@ import '../../provisioning/screens/provisioning_screen.dart';
 import '../../settings/screens/app_settings_screen.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/app_update_service.dart';
 
 class OrbitalHubScreen extends StatefulWidget {
   const OrbitalHubScreen({super.key});
@@ -99,6 +100,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     // Nạp danh sách thiết bị thật của người dùng từ Backend API (kèm offline fallback)
     _gateway.fetchDevicesFromBackend(token: AuthService().token).then((_) {
       if (mounted) setState(() {});
+    });
+
+    // Tự động kiểm tra bản cập nhật mới và hiển thị popup tải OTA nếu có
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          AppUpdateService().checkForUpdatesAndPrompt(context);
+        }
+      });
     });
   }
 
