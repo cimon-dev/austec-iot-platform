@@ -1,5 +1,14 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$Host.UI.RawUI.WindowTitle = "Austec IoT - Build Release APK Android"
+﻿param(
+    [switch]$Auto = $false,
+    [string]$Version = "",
+    [int]$BuildNumber = 0,
+    [switch]$NoPause = $false
+)
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+if ($Host.UI -and $Host.UI.RawUI) {
+    $Host.UI.RawUI.WindowTitle = "Austec IoT - Build Release APK Android"
+}
 
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host "                 AUSTEC IOT PLATFORM - BUILD APK" -ForegroundColor Cyan
@@ -18,7 +27,7 @@ if (-not $FlutterCmd) {
     Write-Host "[LỖI] Không tìm thấy lệnh 'flutter' trong biến môi trường PATH!" -ForegroundColor Red
     Write-Host "Vui lòng kiểm tra lại cài đặt Flutter SDK trên máy tính." -ForegroundColor Yellow
     Write-Host ""
-    Read-Host "Nhấn Enter để thoát..."
+    if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
     exit 1
 }
 
@@ -26,14 +35,14 @@ if (-not $FlutterCmd) {
 if (-not (Test-Path $MobileAppDir)) {
     Write-Host "[LỖI] Không tìm thấy thư mục: $MobileAppDir" -ForegroundColor Red
     Write-Host ""
-    Read-Host "Nhấn Enter để thoát..."
+    if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
     exit 1
 }
 
 if (-not (Test-Path $PubspecPath)) {
     Write-Host "[LỖI] Không tìm thấy file: $PubspecPath" -ForegroundColor Red
     Write-Host ""
-    Read-Host "Nhấn Enter để thoát..."
+    if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
     exit 1
 }
 
@@ -51,6 +60,19 @@ if ($VersionMatch.Success) {
     }
 }
 
+# Tính toán phiên bản tự động tăng +0.1 (tăng minor version)
+# Ví dụ: 2.0.0 -> 2.1.0, 2.1.0 -> 2.2.0, 2.0 -> 2.1
+$VerParts = $CurrentVerName.Split('.')
+$Major = 1
+$Minor = 0
+$Patch = 0
+
+if ($VerParts.Count -ge 1) { [int]::TryParse($VerParts[0], [ref]$Major) | Out-Null }
+if ($VerParts.Count -ge 2) { [int]::TryParse($VerParts[1], [ref]$Minor) | Out-Null }
+if ($VerParts.Count -ge 3) { [int]::TryParse($VerParts[2], [ref]$Patch) | Out-Null }
+
+$NextMinor = $Minor + 1
+$NextVerName = if ($VerParts.Count -ge 3) { "$Major.$NextMinor.$Patch" } else { "$Major.$NextMinor" }
 $NextVerCode = $CurrentVerCode + 1
 $DateStamp = Get-Date -Format "yyyyMMdd_HHmm"
 
@@ -61,49 +83,64 @@ Write-Host "(Mã Build Code: " -NoNewline -ForegroundColor White
 Write-Host "$CurrentVerCode" -ForegroundColor Yellow -NoNewline
 Write-Host ")" -ForegroundColor White
 Write-Host "------------------------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host " [1] Tự động tăng mã Build (+1 -> Build $NextVerCode) để Android cho phép Cập nhật đè (Mặc định)" -ForegroundColor Green
-Write-Host " [2] Giữ nguyên phiên bản hiện tại ($CurrentVerName+$CurrentVerCode)" -ForegroundColor White
-Write-Host " [3] Nhập phiên bản mới tùy ý (Ví dụ: 2.0.1, 2.1.0...)" -ForegroundColor Yellow
+Write-Host " [1] Tự động tăng phiên bản (+0.1 -> v$NextVerName, Build $NextVerCode) (Mặc định)" -ForegroundColor Green
+Write-Host " [2] Giữ nguyên phiên bản hiện tại (v$CurrentVerName, Build $CurrentVerCode)" -ForegroundColor White
+Write-Host " [3] Nhập phiên bản mới tùy ý (Ví dụ: 2.1.0, 2.2.0...)" -ForegroundColor Yellow
 Write-Host "------------------------------------------------------------------------" -ForegroundColor DarkGray
 
-$Choice = Read-Host "Chọn [1, 2, 3] (Nhấn Enter để chọn mặc định [1])"
-if ([string]::IsNullOrWhiteSpace($Choice)) {
-    $Choice = "1"
-}
-
-$TargetVerName = $CurrentVerName
+$TargetVerName = $NextVerName
 $TargetVerCode = $NextVerCode
 
-switch ($Choice) {
-    "1" {
-        $TargetVerName = $CurrentVerName
-        $TargetVerCode = $NextVerCode
-        $NewPubspec = [regex]::Replace($PubspecContent, 'version:\s*[^\r\n]+', "version: $TargetVerName+$TargetVerCode")
-        [System.IO.File]::WriteAllText($PubspecPath, $NewPubspec, [System.Text.Encoding]::UTF8)
-        Write-Host "-> Đã cập nhật pubspec.yaml: $TargetVerName+$TargetVerCode" -ForegroundColor Green
+if ($Version -and $BuildNumber -gt 0) {
+    $TargetVerName = $Version
+    $TargetVerCode = $BuildNumber
+    Write-Host "-> Sử dụng tham số dòng lệnh: v$TargetVerName (Build $TargetVerCode)" -ForegroundColor Cyan
+} elseif ($Auto) {
+    $TargetVerName = $NextVerName
+    $TargetVerCode = $NextVerCode
+    Write-Host "-> Tự động nâng cấp: v$TargetVerName (Build $TargetVerCode)" -ForegroundColor Green
+} else {
+    try {
+        $Choice = Read-Host "Chọn [1, 2, 3] (Nhấn Enter để chọn mặc định [1])"
+    } catch {
+        $Choice = "1"
     }
-    "2" {
-        $TargetVerName = $CurrentVerName
-        $TargetVerCode = $CurrentVerCode
-        Write-Host "-> Giữ nguyên phiên bản: $TargetVerName+$TargetVerCode" -ForegroundColor Cyan
+    if ([string]::IsNullOrWhiteSpace($Choice)) {
+        $Choice = "1"
     }
-    "3" {
-        $InputName = Read-Host "Nhập tên phiên bản mới (vd: 2.0.1, để trống lấy $CurrentVerName)"
-        if ([string]::IsNullOrWhiteSpace($InputName)) { $InputName = $CurrentVerName }
-        
-        $InputCode = Read-Host "Nhập mã build code số nguyên (vd: $NextVerCode, để trống lấy $NextVerCode)"
-        if ([string]::IsNullOrWhiteSpace($InputCode)) { $InputCode = $NextVerCode }
-        
-        $TargetVerName = $InputName
-        $TargetVerCode = [int]$InputCode
-        $NewPubspec = [regex]::Replace($PubspecContent, 'version:\s*[^\r\n]+', "version: $TargetVerName+$TargetVerCode")
-        [System.IO.File]::WriteAllText($PubspecPath, $NewPubspec, [System.Text.Encoding]::UTF8)
-        Write-Host "-> Đã cập nhật pubspec.yaml: $TargetVerName+$TargetVerCode" -ForegroundColor Green
+
+    switch ($Choice) {
+        "1" {
+            $TargetVerName = $NextVerName
+            $TargetVerCode = $NextVerCode
+        }
+        "2" {
+            $TargetVerName = $CurrentVerName
+            $TargetVerCode = $CurrentVerCode
+            Write-Host "-> Giữ nguyên phiên bản: v$TargetVerName+$TargetVerCode" -ForegroundColor Cyan
+        }
+        "3" {
+            $InputName = Read-Host "Nhập tên phiên bản mới (vd: $NextVerName, để trống lấy $NextVerName)"
+            if ([string]::IsNullOrWhiteSpace($InputName)) { $InputName = $NextVerName }
+            
+            $InputCode = Read-Host "Nhập mã build code số nguyên (vd: $NextVerCode, để trống lấy $NextVerCode)"
+            if ([string]::IsNullOrWhiteSpace($InputCode)) { $InputCode = $NextVerCode }
+            
+            $TargetVerName = $InputName
+            $TargetVerCode = [int]$InputCode
+        }
+        Default {
+            $TargetVerName = $NextVerName
+            $TargetVerCode = $NextVerCode
+        }
     }
-    Default {
-        $TargetVerName = $CurrentVerName
-        $TargetVerCode = $NextVerCode
-    }
+}
+
+# Cập nhật pubspec.yaml nếu phiên bản thay đổi
+if ($TargetVerName -ne $CurrentVerName -or $TargetVerCode -ne $CurrentVerCode) {
+    $NewPubspec = [regex]::Replace($PubspecContent, 'version:\s*[^\r\n]+', "version: $TargetVerName+$TargetVerCode")
+    [System.IO.File]::WriteAllText($PubspecPath, $NewPubspec, [System.Text.Encoding]::UTF8)
+    Write-Host "-> Đã cập nhật pubspec.yaml: $TargetVerName+$TargetVerCode" -ForegroundColor Green
 }
 
 Write-Host ""
@@ -114,7 +151,7 @@ try {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "[LỖI] 'flutter pub get' thất bại!" -ForegroundColor Red
         Pop-Location
-        Read-Host "Nhấn Enter để thoát..."
+        if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
         exit $LASTEXITCODE
     }
 
@@ -169,7 +206,7 @@ try {
         Write-Host ""
         Write-Host "[LỖI] Biên dịch APK thất bại! Vui lòng xem thông báo lỗi chi tiết ở trên." -ForegroundColor Red
         Pop-Location
-        Read-Host "Nhấn Enter để thoát..."
+        if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
         exit $LASTEXITCODE
     }
 
@@ -177,7 +214,7 @@ try {
     if (-not (Test-Path $SourceApk)) {
         Write-Host "[LỖI] Không tìm thấy file APK đầu ra tại: $SourceApk" -ForegroundColor Red
         Pop-Location
-        Read-Host "Nhấn Enter để thoát..."
+        if (-not $NoPause) { Read-Host "Nhấn Enter để thoát..." }
         exit 1
     }
 
@@ -186,14 +223,27 @@ try {
         New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
     }
 
-    $VersionedName = "Austec_IoT_v${TargetVerName}_b${TargetVerCode}_${DateStamp}.apk"
-    $VersionedApkPath = Join-Path $DistDir $VersionedName
-    $LatestApkPath = Join-Path $DistDir "Austec_IoT_latest.apk"
+    $TargetParts = $TargetVerName.Split('.')
+    $TargetMajorMinor = if ($TargetParts.Count -ge 2) { "$($TargetParts[0]).$($TargetParts[1])" } else { $TargetVerName }
 
-    Copy-Item $SourceApk $VersionedApkPath -Force
-    Copy-Item $SourceApk $LatestApkPath -Force
+    # Đặt tên ứng dụng theo dạng: Tên + Version (ví dụ Austec_IoT_v2.1.apk hoặc Austec_IoT_v2.1.0.apk)
+    $VersionOnlyName = "Austec_IoT_v${TargetVerName}.apk"
+    $ShortVersionName = "Austec_IoT_v${TargetMajorMinor}.apk"
+    $ArchivedName = "Austec_IoT_v${TargetVerName}_b${TargetVerCode}_${DateStamp}.apk"
+    $LatestName = "Austec_IoT_latest.apk"
 
-    $ApkItem = Get-Item $VersionedApkPath
+    $VersionOnlyPath = Join-Path $DistDir $VersionOnlyName
+    $ShortVersionPath = Join-Path $DistDir $ShortVersionName
+    $ArchivedPath = Join-Path $DistDir $ArchivedName
+    $LatestPath = Join-Path $DistDir $LatestName
+
+    # Sao chép các bản APK vào dist-apk
+    Copy-Item $SourceApk $VersionOnlyPath -Force
+    Copy-Item $SourceApk $ShortVersionPath -Force
+    Copy-Item $SourceApk $ArchivedPath -Force
+    Copy-Item $SourceApk $LatestPath -Force
+
+    $ApkItem = Get-Item $VersionOnlyPath
     $SizeMB = [math]::Round($ApkItem.Length / 1MB, 2)
 
     Write-Host ""
@@ -204,23 +254,36 @@ try {
     Write-Host "Phiên bản: v$TargetVerName (Build Code: $TargetVerCode)" -ForegroundColor Yellow
     Write-Host "Kích thước: $SizeMB MB" -ForegroundColor White
     Write-Host ""
-    Write-Host "1. File APK có gắn Version & Thời gian (để lưu trữ theo dõi):" -ForegroundColor Cyan
-    Write-Host "   -> $VersionedApkPath" -ForegroundColor White
+    Write-Host "1. File APK chuẩn tên + phiên bản:" -ForegroundColor Cyan
+    Write-Host "   -> $VersionOnlyPath" -ForegroundColor White
+    if ($VersionOnlyName -ne $ShortVersionName) {
+        Write-Host "   -> $ShortVersionPath" -ForegroundColor White
+    }
     Write-Host ""
-    Write-Host "2. File APK bản mới nhất (tiện copy nhanh để gửi khách):" -ForegroundColor Cyan
-    Write-Host "   -> $LatestApkPath" -ForegroundColor White
+    Write-Host "2. File APK bản mới nhất (Austec_IoT_latest.apk):" -ForegroundColor Cyan
+    Write-Host "   -> $LatestPath" -ForegroundColor White
+    Write-Host ""
+    Write-Host "3. File APK lưu trữ lịch sử build:" -ForegroundColor Cyan
+    Write-Host "   -> $ArchivedPath" -ForegroundColor White
     Write-Host ""
     Write-Host "Lưu ý cho người dùng Android:" -ForegroundColor Yellow
     Write-Host " - Do mã Build Code đã được tăng lên ($TargetVerCode), khách hàng đang dùng app cũ" -ForegroundColor Gray
     Write-Host "   chỉ cần mở file APK và chọn 'Cập nhật' (Update), KHÔNG cần phải gỡ app ra." -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Đang mở thư mục chứa file APK trong File Explorer..." -ForegroundColor Gray
 
-    Start-Process explorer.exe "/select,`"$VersionedApkPath`""
+    if (-not $NoPause -and [Environment]::UserInteractive) {
+        try {
+            Start-Process explorer.exe "/select,`"$VersionOnlyPath`""
+        } catch {}
+    }
 }
 finally {
     Pop-Location
 }
 
 Write-Host ""
-Read-Host "Nhấn Enter để hoàn tất..."
+if (-not $NoPause) {
+    try {
+        Read-Host "Nhấn Enter để hoàn tất..."
+    } catch {}
+}
