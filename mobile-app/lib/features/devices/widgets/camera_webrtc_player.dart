@@ -226,24 +226,53 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
                   `;
                   document.head.appendChild(style);
 
-                  function checkVideoPlaying() {
+                  let lastTime = -1;
+                  let stallCount = 0;
+                  let attached = false;
+
+                  function monitorVideo() {
                     const v = document.querySelector('video');
-                    if (v) {
+                    if (v && !attached) {
+                      attached = true;
                       v.addEventListener('playing', function() {
                         if (window.AustecStreamChannel) {
                           window.AustecStreamChannel.postMessage('PLAYING');
                         }
+                        stallCount = 0;
                       });
+                      v.addEventListener('waiting', function() {
+                        if (window.AustecStreamChannel) {
+                          window.AustecStreamChannel.postMessage('BUFFERING');
+                        }
+                      });
+                      v.addEventListener('stalled', function() {
+                        if (window.AustecStreamChannel) {
+                          window.AustecStreamChannel.postMessage('STALLED');
+                        }
+                      });
+                    }
+
+                    if (v) {
                       if (v.readyState >= 2 && v.currentTime > 0) {
                         if (window.AustecStreamChannel) {
                           window.AustecStreamChannel.postMessage('PLAYING');
                         }
-                        return;
+                      }
+                      // Tự động nhận diện dừng hình/mất track (stalled/freezing) quá 3.5s và reload WHEP tức thì
+                      if (v.currentTime === lastTime && !v.paused && v.readyState >= 2) {
+                        stallCount++;
+                        if (stallCount >= 7) { // 7 * 500ms = 3.5s
+                          stallCount = 0;
+                          location.reload();
+                        }
+                      } else {
+                        lastTime = v.currentTime;
+                        stallCount = 0;
                       }
                     }
-                    setTimeout(checkVideoPlaying, 350);
+                    setTimeout(monitorVideo, 500);
                   }
-                  checkVideoPlaying();
+                  monitorVideo();
                 } catch(e) {}
               })();
             """);

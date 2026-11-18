@@ -61,7 +61,7 @@ bool parseJpegBuffer(const uint8_t* buf, size_t totalLen, JpegParsedInfo* out);
 // --- CẤU HÌNH ĐỒNG BỘ TỪ FILE .env (Tự cập nhật khi chạy .\scripts\sync-env.ps1) ---
 // [LOCAL TEST / VPS]: Giá trị mặc định lúc biên dịch lấy từ austec-iot-platform/.env.
 // Khi đổi Wi-Fi hoặc chuyển lên VPS, Backend sẽ tự gửi IP/Domain mới trong .env xuống qua MQTT (không cần nạp lại mạch nếu đã online).
-#define MEDIAMTX_HOST        "192.168.100.3"
+#define MEDIAMTX_HOST        "103.82.39.109"
 #define MEDIAMTX_PORT        8554
 #define MEDIAMTX_PATH_PREFIX "/raw/" // Đẩy luồng MJPEG RTSP vào /raw/<device_name>, MediaMTX chuyển mã H.264 sang /live/<device_name>
 #define DEFAULT_MQTT_HOST    "broker.emqx.io"
@@ -116,12 +116,12 @@ bool initCameraHardware() {
     config.pin_vsync = VSYNC_GPIO_NUM; config.pin_href = HREF_GPIO_NUM;
     config.pin_sccb_sda = SIOD_GPIO_NUM; config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM; config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 10000000; // 10MHz: Triệt tiêu hoàn toàn nhiễu RF bức xạ vào anten Wi-Fi AI-Thinker và chống tràn DMA
+    config.xclk_freq_hz = 20000000; // 20MHz chuẩn OV2640 cho tốc độ quét 15-20 FPS mượt mà
     config.frame_size = FRAMESIZE_VGA; // Đúng chuẩn VGA 640x480 đồng bộ kích thước DMA
     config.pixel_format = PIXFORMAT_JPEG;
-    config.grab_mode = CAMERA_GRAB_WHEN_EMPTY; // Ổn định tuyệt đối theo chuẩn driver esp32-camera
+    config.grab_mode = CAMERA_GRAB_LATEST; // Luôn lấy khung hình mới nhất, triệt tiêu độ trễ DMA
     config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.jpeg_quality = 18; // Nén nhẹ ~10-14KB/frame để Wi-Fi truyền cực nhanh không nghẽn TCP
+    config.jpeg_quality = 21; // Tối ưu dung lượng ~7-9KB/frame, truyền TCP tức thì không nghẽn Wi-Fi
     config.fb_count = 2; // Double buffer chuẩn của esp32-camera
     config.jpeg_buffer_size = 0;
     
@@ -133,7 +133,7 @@ bool initCameraHardware() {
 
     sensor_t *s = esp_camera_sensor_get();
     if (s) {
-        s->set_quality(s, 18);
+        s->set_quality(s, 21);
     }
 
     // Chờ cảm biến ổn định xung VSYNC sau khi chuyển sang độ phân giải VGA
@@ -663,7 +663,7 @@ void handleRTSPAndSDLogging() {
         static int pushFailCount = 0;
         if (!pushed) {
             pushFailCount++;
-            if (!rtspClient.connected() || pushFailCount >= 5) {
+            if (!rtspClient.connected() || pushFailCount >= 8) {
                 Serial.printf("[RTSP ERROR]: Mất kết nối MediaMTX (lỗi %d lần liên tiếp). Đóng phiên để kết nối lại...\n", pushFailCount);
                 stopRtspPushSession();
                 pushFailCount = 0;

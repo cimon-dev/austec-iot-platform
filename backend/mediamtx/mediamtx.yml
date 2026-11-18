@@ -30,7 +30,7 @@ paths:
   # Kênh gốc ESP32-CAM OV2640 đẩy RTSP MJPEG lên (rtsp://<MEDIAMTX_HOST>:8554/raw/<hardwareId>)
   # Tự động dùng FFmpeg chuyển mã MJPEG -> H.264 Low-Latency sang live/<hardwareId> để chạy WebRTC/HLS/RTSP
   "~^raw/(.+)$":
-    runOnAvailable: 'ffmpeg -loglevel warning -rtsp_transport tcp -use_wallclock_as_timestamps 1 -fflags +nobuffer+genpts+discardcorrupt -flags low_delay -analyzeduration 1000000 -probesize 100000 -thread_queue_size 512 -i rtsp://127.0.0.1:8554/$MTX_PATH -an -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -r 15 -g 30 -b:v 800k -maxrate 1200k -bufsize 600k -pkt_size 1300 -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:8554/live/$G1'
+    runOnAvailable: 'ffmpeg -loglevel warning -rtsp_transport tcp -use_wallclock_as_timestamps 1 -fflags +nobuffer+genpts+discardcorrupt -flags low_delay -analyzeduration 100000 -probesize 32768 -thread_queue_size 1024 -i rtsp://127.0.0.1:8554/$MTX_PATH -an -c:v libx264 -preset ultrafast -tune zerolatency -pix_fmt yuv420p -r 15 -g 12 -keyint_min 6 -b:v 650k -maxrate 900k -bufsize 300k -pkt_size 1300 -f rtsp -rtsp_transport tcp rtsp://127.0.0.1:8554/live/$G1'
     runOnAvailableRestart: true
 
   # Kênh chuẩn sau chuyển mã để Mobile App / Web / VLC xem tại live/<hardwareId>
