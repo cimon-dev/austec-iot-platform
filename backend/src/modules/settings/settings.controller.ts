@@ -43,8 +43,8 @@ export class SettingsController {
   @Get('/app/version')
   public async getAppVersion(req: Request, res: Response) {
     try {
-      const latestVersion = process.env.APP_LATEST_VERSION || '2.5.1';
-      const buildCode = parseInt(process.env.APP_BUILD_CODE || '18', 10);
+      const latestVersion = process.env.APP_LATEST_VERSION || '2.5.2';
+      const buildCode = parseInt(process.env.APP_BUILD_CODE || '19', 10);
       const minRequiredVersion = process.env.APP_MIN_VERSION || '2.0.0';
       const minRequiredBuild = parseInt(process.env.APP_MIN_BUILD || '10', 10);
       const forceUpdate = process.env.APP_FORCE_UPDATE === 'true';
@@ -57,7 +57,7 @@ export class SettingsController {
       const apkUrl = process.env.APP_APK_URL || `${baseUrl}/api/system/download-apk`;
 
       const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        'Bản cập nhật v2.5.1:\n• Ảnh quảng bá Hub hiển thị tối đa chiều ngang và co giãn trọn vẹn theo tỷ lệ\n• Nút thêm thiết bị và thanh công cụ Hub tối ưu chống tràn mép trên mọi dòng máy\n• Nâng cao vùng thả đóng nút CSKH nổi trên Android\n• Bỏ viền bao quanh thanh điều hướng đáy (Bottom Nav), giao diện liền mạch hiện đại\n• Lịch trình tự động cho phép chọn Lặp lại hàng tuần hoặc Chỉ tuần này, chọn nhanh tất cả hoặc từng ngày\n• Cảnh báo ngoài khung giờ điều khiển trực tiếp trên danh sách xem trước thiết bị\n• Thông báo thân thiện, ngắn gọn và dễ hiểu\n• Giao diện ghép nối thiết bị phân bố thoáng đãng và trực quan';
+        'Bản cập nhật v2.5.2:\n• Tối ưu kích thước ảnh banner Hub (chiều cao khoảng 3/4, cover full khung) thoáng đãng, không che khuất các cụm điều khiển bên dưới\n• Nút thêm thiết bị và thanh công cụ Hub chống tràn mép trên mọi dòng máy\n• Nâng cao vùng thả đóng nút CSKH nổi trên Android\n• Bỏ viền bao quanh thanh điều hướng đáy (Bottom Nav), giao diện liền mạch\n• Lịch trình tự động cho phép chọn Lặp lại hàng tuần hoặc Chỉ tuần này\n• Cảnh báo ngoài khung giờ điều khiển trực tiếp trên danh sách xem trước thiết bị';
 
       res.json({
         success: true,

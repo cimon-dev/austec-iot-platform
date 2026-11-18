@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Auto = $false,
     [string]$Version = "",
     [int]$BuildNumber = 0,

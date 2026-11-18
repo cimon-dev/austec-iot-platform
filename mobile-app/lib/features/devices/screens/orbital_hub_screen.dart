@@ -551,7 +551,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // 1. Ảnh quảng bá độc lập (Pure Hero Banner) ở trên cùng: Chiều ngang max, chiều cao co giãn theo tỉ lệ ảnh (800:450) để hiển thị trọn vẹn 100% hình ảnh không bị co nhỏ
+  // 1. Ảnh quảng bá độc lập (Pure Hero Banner) ở trên cùng: Chiều cao bằng khoảng 3/4 so với trước, dạng cover full khung chứa không che khuất phía dưới
   Widget _buildPureHeroBanner(bool isDark) {
     return Container(
       width: double.infinity,
@@ -574,11 +574,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
       child: ClipRRect(
         borderRadius: BorderRadius.circular(13),
         child: AspectRatio(
-          aspectRatio: 800 / 450,
+          aspectRatio: 800 / (450 * 0.75), // Giảm chiều cao xuống khoảng 3/4 để thoáng không gian bên dưới
           child: Image.asset(
             "assets/header.png",
             width: double.infinity,
-            fit: BoxFit.cover,
+            fit: BoxFit.cover, // Full hình trong khung chứa tương ứng
             alignment: Alignment.center,
             errorBuilder: (context, error, stackTrace) {
               return Container(
@@ -737,9 +737,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           Divider(color: cardBorder, height: 1),
           const SizedBox(height: 8),
 
-          // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối (Tối ưu độ rộng gọn gàng không bao giờ tràn mép)
+          // Hàng 2: Đẩy các công cụ (Theme, Ngôn ngữ, Tìm kiếm, Thông báo) sang bên trái, nhường trọn vẹn không gian cho nút Thêm thiết bị đầy đủ chữ
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Nút Chuyển Đổi Dark / Light Mode
               InkWell(
@@ -772,6 +771,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 ),
               ),
 
+              const SizedBox(width: 6),
+
               // Nút Chuyển Đổi Ngôn Ngữ (VI / EN)
               InkWell(
                 onTap: _toggleLanguage,
@@ -797,67 +798,71 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 ),
               ),
 
-              // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.search, size: 18, color: textCol),
-                    tooltip: AppTheme.t("search_device"),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
-                    onPressed: _openSearchDialog,
-                  ),
-                  const SizedBox(width: 2),
-                  IconButton(
-                    icon: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
-                        if (_realNotifications.any((n) => n['isRead'] != true))
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              width: 6,
-                              height: 6,
-                              decoration: const BoxDecoration(
-                                color: AppTheme.cyanAccent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
+              const SizedBox(width: 4),
+
+              // Nút Tìm kiếm
+              IconButton(
+                icon: Icon(Icons.search, size: 18, color: textCol),
+                tooltip: AppTheme.t("search_device"),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
+                onPressed: _openSearchDialog,
+              ),
+
+              const SizedBox(width: 2),
+
+              // Chuông thông báo
+              IconButton(
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
+                    if (_realNotifications.any((n) => n['isRead'] != true))
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.cyanAccent,
+                            shape: BoxShape.circle,
                           ),
-                      ],
-                    ),
-                    tooltip: AppTheme.t("notifications"),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
-                    onPressed: _openNotificationCenter,
-                  ),
-                  const SizedBox(width: 4),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.brandBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-                      minimumSize: const Size(0, 28),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      elevation: 0,
-                    ),
-                    icon: const Icon(Icons.add, size: 13),
-                    label: Text(
-                      AppTheme.currentLang == "vi" ? "Thêm" : "Add",
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
-                    ),
-                    onPressed: () async {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
-                      );
-                      await _gateway.fetchDevicesFromBackend();
-                      if (mounted) setState(() {});
-                    },
-                  ),
-                ],
+                        ),
+                      ),
+                  ],
+                ),
+                tooltip: AppTheme.t("notifications"),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
+                onPressed: _openNotificationCenter,
+              ),
+
+              // Khoảng trống co giãn đẩy toàn bộ công cụ sang trái, nhường chỗ cho nút Thêm thiết bị bên phải
+              const Spacer(),
+
+              // Nút Ghép nối thiết bị: Đầy đủ chữ "Thêm thiết bị"
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.brandBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: const Size(0, 28),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.add, size: 13),
+                label: Text(
+                  AppTheme.currentLang == "vi" ? "Thêm thiết bị" : "Add device",
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                  );
+                  await _gateway.fetchDevicesFromBackend();
+                  if (mounted) setState(() {});
+                },
               ),
             ],
           ),
