@@ -234,7 +234,7 @@ class IoTGatewayClient {
       name: "Hệ thống Pin BMS Lithium",
       modelName: "Austec Smart BMS 16S",
       modelCode: "BMS_16S_150A",
-      category: DeviceCategory.dataAnalytics,
+      category: DeviceCategory.energyManage,
       roomName: "Phòng kỹ thuật",
       badgeText: "16S 150A",
       deviceNumber: "150",
@@ -291,18 +291,37 @@ class IoTGatewayClient {
   List<DeviceItem> getDevicesByCategory(DeviceCategory category) {
     final realDevices = _devices.where((d) => d.category == category).toList();
 
-    // 100% REAL DATA cho 4 chủng loại thiết bị chính thức (Cửa cuốn, Ổ cắm, Camera, Công tơ điện)
+    // 1. Quản lý năng lượng (Bao gồm Công tơ điện tử chống giật & Hệ thống BMS)
+    if (category == DeviceCategory.energyManage) {
+      final List<DeviceItem> result = List.from(realDevices);
+      final hasSmartMeter = result.any((d) =>
+          d.modelCode.contains('SmartMetter') ||
+          d.hardwareId.toUpperCase().contains('SMARTMETTER') ||
+          d.hardwareId.toUpperCase().contains('SMARTMETER') ||
+          d.hardwareId.toUpperCase().contains('CONGTO') ||
+          d.name.toLowerCase().contains('công tơ'));
+      if (!hasSmartMeter) {
+        result.insert(0, _mockSmartMetter);
+      }
+      final hasBms = result.any((d) =>
+          d.modelCode.toUpperCase().contains('BMS') ||
+          d.hardwareId.toUpperCase().contains('BMS') ||
+          d.name.toLowerCase().contains('bms'));
+      if (!hasBms) {
+        result.add(_mockBms);
+      }
+      return result;
+    }
+
     if (category == DeviceCategory.rollerDoor ||
         category == DeviceCategory.lightSwitch ||
-        category == DeviceCategory.camera ||
-        category == DeviceCategory.energyManage) {
+        category == DeviceCategory.camera) {
       return realDevices;
     }
 
-    // Với nhóm BMS Data Analytics:
+    // Nhóm Data Analytics thuần túy (nếu có):
     if (category == DeviceCategory.dataAnalytics) {
-      if (realDevices.isNotEmpty) return realDevices;
-      return [_mockBms];
+      return realDevices;
     }
 
     return realDevices;
@@ -683,8 +702,8 @@ class IoTGatewayClient {
       cat = DeviceCategory.energyManage;
     } else if (isAnyDoor) {
       cat = DeviceCategory.rollerDoor;
-    } else if (upperHwId.startsWith('BMS') || lowerType.contains('bms')) {
-      cat = DeviceCategory.dataAnalytics;
+    } else if (upperHwId.startsWith('BMS') || lowerType.contains('bms') || upperModel.contains('BMS')) {
+      cat = DeviceCategory.energyManage;
     // 2. Explicit Category nếu được server/cache trả về rõ ràng
     } else if (explicitCat == 'lightswitch' || explicitCat == 'socket') {
       cat = DeviceCategory.lightSwitch;
@@ -692,9 +711,9 @@ class IoTGatewayClient {
       cat = DeviceCategory.camera;
     } else if (explicitCat == 'rollerdoor' || explicitCat == 'door') {
       cat = DeviceCategory.rollerDoor;
-    } else if (explicitCat == 'energymanage' || explicitCat == 'energy' || explicitCat == 'meter') {
+    } else if (explicitCat == 'energymanage' || explicitCat == 'energy' || explicitCat == 'meter' || explicitCat == 'bms') {
       cat = DeviceCategory.energyManage;
-    } else if (explicitCat == 'dataanalytics' || explicitCat == 'bms') {
+    } else if (explicitCat == 'dataanalytics') {
       cat = DeviceCategory.dataAnalytics;
     } else if (explicitCat == 'environment') {
       cat = DeviceCategory.environment;

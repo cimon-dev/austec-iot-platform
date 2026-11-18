@@ -93,21 +93,25 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
       builder: (ctx) => AddMemberBottomSheet(
         device: _selectedDevice!,
         suggestions: _suggestedMembers,
-        onMemberAdded: (newMember) async {
+        onMembersAdded: (newMembers) async {
           setState(() {
-            _currentMembers.add(newMember);
+            _currentMembers.addAll(newMembers);
+            final addedNames = newMembers.map((m) => m.memberName).toSet();
+            final addedPhones = newMembers.map((m) => m.phoneNumber).toSet();
             _suggestedMembers.removeWhere(
-              (s) => s.phoneNumber == newMember.phoneNumber || s.memberName == newMember.memberName,
+              (s) => addedPhones.contains(s.phoneNumber) || addedNames.contains(s.memberName),
             );
           });
 
-          await _service.addMember(_selectedDevice!.hardwareId, newMember);
+          for (final m in newMembers) {
+            await _service.addMember(_selectedDevice!.hardwareId, m);
+          }
           _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
 
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text("Đã phân quyền thành công cho ${newMember.memberName}!"),
+                content: Text("Đã phân quyền thành công cho ${newMembers.length} thành viên!"),
                 backgroundColor: AppTheme.emeraldSuccess,
               ),
             );
@@ -315,49 +319,61 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Device Horizontal Carousel
-            SizedBox(
-              height: 72,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _devices.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, idx) {
-                  final dev = _devices[idx];
-                  final isSelected = dev.hardwareId == _selectedDevice?.hardwareId;
-
-                  return GestureDetector(
-                    onTap: () => _onDeviceSelected(dev),
-                    child: Container(
-                      width: 180,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.cyanAccent.withValues(alpha: 0.16) : cardBg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.cyanAccent : cardBorder,
-                          width: isSelected ? 1.6 : 1,
-                        ),
-                      ),
+            // Device Dropdown / Combobox
+            Text(
+              "CHỌN THIẾT BỊ PHÂN QUYỀN",
+              style: TextStyle(
+                color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.6,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Container(
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: cardBorder, width: 1.2),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<DeviceItem>(
+                  value: _selectedDevice != null &&
+                          _devices.any((d) => d.hardwareId == _selectedDevice!.hardwareId)
+                      ? _devices.firstWhere((d) => d.hardwareId == _selectedDevice!.hardwareId)
+                      : (_devices.isNotEmpty ? _devices.first : null),
+                  isExpanded: true,
+                  dropdownColor: isDark ? const Color(0xFF1E222D) : Colors.white,
+                  icon: Icon(Icons.keyboard_arrow_down_rounded, color: textCol),
+                  items: _devices.map((dev) {
+                    return DropdownMenuItem<DeviceItem>(
+                      value: dev,
                       child: Row(
                         children: [
-                          Icon(_getDeviceIcon(dev.category), color: isSelected ? AppTheme.cyanAccent : Colors.grey, size: 24),
-                          const SizedBox(width: 8),
+                          Icon(_getDeviceIcon(dev.category),
+                              color: AppTheme.brandBlue, size: 20),
+                          const SizedBox(width: 10),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(dev.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 12)),
-                                Text(dev.hardwareId, style: const TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace')),
-                              ],
+                            child: Text(
+                              "${dev.name} (${dev.hardwareId})",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: textCol,
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  );
-                },
+                    );
+                  }).toList(),
+                  onChanged: (newDev) {
+                    if (newDev != null) _onDeviceSelected(newDev);
+                  },
+                ),
               ),
             ),
             const SizedBox(height: 20),

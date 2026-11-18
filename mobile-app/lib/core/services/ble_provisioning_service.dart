@@ -112,6 +112,12 @@ class BleProvisioningService {
                 }
               }
 
+              // Chuẩn hóa mã phần cứng BMS theo mục 5 tài liệu kỹ thuật: Tên sẽ là BMS + mã MAC (BMS<MAC>)
+              if ((matchedProfile.defaultModelCode == 'SMART_BMS_PRO' || matchedProfile == DeviceProvisioningCatalog.bmsProfile) && devId.contains(':')) {
+                final cleanHex = devId.replaceAll(':', '').toUpperCase();
+                devId = "BMS$cleanHex";
+              }
+
               final exists = discovered.any((d) => d.hardwareId.toLowerCase() == devId.toLowerCase());
               if (!exists) {
                 discovered.add(DiscoveredHardwareBLE(

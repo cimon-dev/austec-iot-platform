@@ -1518,17 +1518,21 @@ export class DeviceOperationsController {
       }
 
       if (this.client.getConnected()) {
+        const currentUserId = req.user?.id || '';
         const query = `
-          SELECT u.id, u.full_name, u.phone_number, u.email, u.role_title
+          SELECT DISTINCT u.id, u.full_name, u.phone_number, u.email, u.role_title
           FROM users u
-          WHERE u.id NOT IN (
-            SELECT user_id FROM device_permissions WHERE LOWER(hardware_id) = LOWER($1)
-          )
-          AND u.role = 'CUSTOMER'
-          ORDER BY u.registered_at DESC
-          LIMIT 8
+          JOIN device_permissions dp ON dp.user_id = u.id
+          JOIN device_instances di ON LOWER(di.hardware_id) = LOWER(dp.hardware_id)
+          WHERE di.owner_id = $1
+            AND u.id != $1
+            AND u.id NOT IN (
+              SELECT user_id FROM device_permissions WHERE LOWER(hardware_id) = LOWER($2)
+            )
+          ORDER BY u.full_name ASC
+          LIMIT 20
         `;
-        const result = await this.client.query(query, [hardwareId]);
+        const result = await this.client.query(query, [currentUserId, hardwareId]);
         const suggestions = result.rows.map(r => ({
           userId: r.id,
           memberName: r.full_name || r.email || 'Người thân',

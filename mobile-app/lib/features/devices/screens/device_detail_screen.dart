@@ -8,6 +8,7 @@ import '../../chat/screens/chat_room_screen.dart';
 import '../../cskh/domain/entities/chat_device_item.dart';
 import '../widgets/camera_webrtc_player.dart';
 import 'camera_landscape_fullscreen_viewer.dart';
+import 'bms_landscape_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 
@@ -642,9 +643,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   // 3. Chi Tiết Ổ Cắm Thông Minh & Chiếu Sáng (Mặt ổ cắm điện thực tế + Công tắc gạt cơ học ON/OFF)
   Widget _buildLightSwitchDetailedControls() {
     final isOn = _device.isRelayOn;
-    // Chuẩn kỹ thuật Austec theo PDF Trang 5: Trạng thái ON - Công tắc màu đỏ. Trạng thái OFF - Công tắc màu xanh.
-    const onColor = Color(0xFFEF4444); // ON: Đỏ (Đang đóng mạch điện)
-    const offColor = Color(0xFF10B981); // OFF: Xanh lá (Đã ngắt mạch an toàn)
+    // Trạng thái ON - Công tắc màu xanh lá. Trạng thái OFF - Công tắc màu đỏ.
+    const onColor = Color(0xFF10B981); // ON: Xanh lá (Đang cấp điện)
+    const offColor = Color(0xFFEF4444); // OFF: Đỏ (Đã ngắt điện)
     final switchColor = isOn ? onColor : offColor;
 
     return Container(
@@ -1099,8 +1100,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     );
   }
 
-  // 6. Chi Tiết Lưu Điện UPS
+  // 6. Chi Tiết Lưu Điện UPS & Pin Lưu Trữ BMS
   Widget _buildUpsDetailedControls() {
+    final bool isBms = _device.hardwareId.toUpperCase().contains('BMS') || _device.modelCode.contains('BMS');
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -1109,28 +1112,98 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         border: Border.all(color: const Color(0xFF26324A), width: 1.2),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text("Xả Pin Bảo Dưỡng Tự Động", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                  Text(_device.isDischarging ? "Đang chạy chu trình xả ắc quy" : "Đang duy trì điện lưới 220V", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                ],
+          if (isBms) ...[
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (ctx) => BmsLandscapeScreen(device: _device),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              Switch(
-                value: _device.isDischarging,
-                activeThumbColor: AppTheme.emeraldSuccess,
-                onChanged: (val) => _triggerAction("TOGGLE_DISCHARGE"),
+              icon: const Icon(Icons.crop_landscape_rounded, size: 20),
+              label: const Text(
+                "MỞ BẢNG ĐIỀU KHIỂN 16 CELL BMS (MÀN HÌNH NGANG)",
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildTelemetryRow("Điện áp ắc quy", "${_device.batteryVoltage.toStringAsFixed(1)} VDC", Icons.battery_charging_full),
-          _buildTelemetryRow("Mức dung lượng lưu trữ", "${_device.batteryPercent}% (Còn ~48 giờ)", Icons.bolt),
-          _buildTelemetryRow("Điện áp lưới ngõ vào", "${_device.acVoltage.toStringAsFixed(0)} VAC (Sóng Sin chuẩn)", Icons.power),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              "Thao Tác Nhanh Hệ Pin (Gửi Lệnh MQTT):",
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _triggerAction("SET_LFP"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.cyanAccent,
+                      side: const BorderSide(color: AppTheme.cyanAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text("Hệ LFP (3.65V)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _triggerAction("SET_LIION"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.amberAccent,
+                      side: const BorderSide(color: Colors.amberAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text("Li-ion (4.20V)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _triggerAction("CLEAR_LOG"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    child: const Text("Xóa Lỗi", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Xả Pin Bảo Dưỡng Tự Động", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text(_device.isDischarging ? "Đang chạy chu trình xả ắc quy" : "Đang duy trì điện lưới 220V", style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  ],
+                ),
+                Switch(
+                  value: _device.isDischarging,
+                  activeThumbColor: AppTheme.emeraldSuccess,
+                  onChanged: (val) => _triggerAction("TOGGLE_DISCHARGE"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+          _buildTelemetryRow("Điện áp bộ pin", "${_device.batteryVoltage.toStringAsFixed(1)} VDC", Icons.battery_charging_full),
+          _buildTelemetryRow("Mức dung lượng lưu trữ", "${_device.batteryPercent}%", Icons.bolt),
+          _buildTelemetryRow("Công suất hiện tại", "${_device.currentPowerKw.toStringAsFixed(2)} kW", Icons.power),
         ],
       ),
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/services/auth_service.dart';
 import '../../cskh/screens/customer_support_tickets_screen.dart';
 import '../../devices/devices.dart';
@@ -25,6 +27,30 @@ class AppSettingsScreen extends StatefulWidget {
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _pushNotifications = true;
   bool _biometricLock = true;
+  String _currentVersionText = "Đang tải...";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _currentVersionText = "v${info.version}";
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _currentVersionText = "v2.4.0";
+        });
+      }
+    }
+  }
 
   void _triggerEmergencyLockdown() {
     final isDark = AppTheme.isDarkMode;
@@ -141,7 +167,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         child: ClipOval(
                           child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
                               ? Image.network(
-                                  user.avatarUrl!,
+                                  user.avatarUrl!.startsWith('http')
+                                      ? user.avatarUrl!
+                                      : '${ApiConfig.baseUrl}${user.avatarUrl!}',
                                   width: 48,
                                   height: 48,
                                   fit: BoxFit.cover,
@@ -465,7 +493,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        "v2.1.0",
+                        _currentVersionText,
                         style: TextStyle(
                           color: isDark ? AppTheme.cyanAccent : AppTheme.lightTextSecondary,
                           fontSize: 12,

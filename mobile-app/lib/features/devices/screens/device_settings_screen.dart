@@ -25,23 +25,8 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   late String _accessEndTime;
   late List<bool> _accessDays;
 
-  // Danh sách lịch trình mẫu
-  final List<Map<String, dynamic>> _schedules = [
-    {
-      "title": "Mở thông gió buổi sáng",
-      "time": "06:30",
-      "days": "T2 - T6",
-      "action": "Mở 20%",
-      "enabled": true,
-    },
-    {
-      "title": "Đóng an toàn ban đêm",
-      "time": "22:30",
-      "days": "Hàng ngày",
-      "action": "Đóng 0%",
-      "enabled": true,
-    },
-  ];
+  // Danh sách lịch trình thực tế lưu trong thuộc tính thiết bị
+  final List<Map<String, dynamic>> _schedules = [];
 
   bool _isSaving = false;
   bool _isDeleting = false;
@@ -50,6 +35,22 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    if (!widget.device.canConfig) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("403 - Bạn không có quyền cấu hình thiết bị này"),
+              backgroundColor: AppTheme.roseDanger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      });
+      return;
+    }
+
     _nameController = TextEditingController(text: widget.device.name);
     _openTimeout = widget.device.openTimeoutSeconds;
     _closeTimeout = widget.device.closeTimeoutSeconds;
@@ -58,6 +59,15 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     _accessStartTime = widget.device.accessStartTime;
     _accessEndTime = widget.device.accessEndTime;
     _accessDays = List<bool>.from(widget.device.accessDays);
+
+    final rawSchedules = widget.device.currentProperties['schedules'];
+    if (rawSchedules is List) {
+      for (final s in rawSchedules) {
+        if (s is Map) {
+          _schedules.add(Map<String, dynamic>.from(s));
+        }
+      }
+    }
 
     // Nạp giá trị ban đầu cho các thuộc tính Mẫu thương phẩm
     for (final p in widget.device.assignedProperties) {
@@ -98,6 +108,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     widget.device.accessEndTime = _accessEndTime;
     widget.device.accessDays = _accessDays;
 
+    widget.device.currentProperties['schedules'] = _schedules;
     final Map<String, dynamic> propsToSave = {
       'open_timeout': _openTimeout,
       'close_timeout': _closeTimeout,
@@ -106,6 +117,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       'access_start': _accessStartTime,
       'access_end': _accessEndTime,
       'access_days': _accessDays,
+      'schedules': _schedules,
       ..._dynamicPropValues,
     };
 
@@ -331,6 +343,88 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _showAddScheduleDialog() async {
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 7, minute: 0),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final formattedTime =
+        "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
+    final isSwitch = widget.device.category == DeviceCategory.lightSwitch;
+    String selectedAction = isSwitch ? "Bật công tắc" : "Mở 100%";
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            backgroundColor:
+                AppTheme.isDarkMode ? const Color(0xFF18181B) : Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text("Thêm lịch trình mới",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Thời gian kích hoạt: $formattedTime",
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 12),
+                const Text("Hành động thực hiện:",
+                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedAction,
+                  dropdownColor: AppTheme.isDarkMode
+                      ? const Color(0xFF27272A)
+                      : Colors.white,
+                  items: (isSwitch
+                          ? ["Bật công tắc", "Tắt công tắc"]
+                          : ["Mở 100%", "Mở 50%", "Mở 20%", "Đóng 0%"])
+                      .map((act) =>
+                          DropdownMenuItem(value: act, child: Text(act)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => selectedAction = val);
+                    }
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text("Hủy")),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.brandBlue,
+                    foregroundColor: Colors.white),
+                onPressed: () {
+                  setState(() {
+                    _schedules.add({
+                      "title": "Lịch hẹn $formattedTime",
+                      "time": formattedTime,
+                      "days": "Hàng ngày",
+                      "action": selectedAction,
+                      "enabled": true,
+                    });
+                  });
+                  Navigator.of(ctx).pop();
+                },
+                child: const Text("Thêm"),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -577,51 +671,96 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                   ),
                   if (_isAutoSchedule) ...[
                     const SizedBox(height: 14),
-                    ..._schedules.map((s) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppTheme.surface.withValues(alpha: 0.5) : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.alarm, color: iconCol, size: 20),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(s["title"], style: TextStyle(color: textCol, fontWeight: FontWeight.bold, fontSize: 13)),
-                                    Text("${s["time"]} • ${s["days"]} • ${s["action"]}",
-                                        style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
-                                  ],
+                    if (_schedules.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        alignment: Alignment.center,
+                        child: Column(
+                          children: [
+                            Icon(Icons.event_busy_outlined,
+                                color: isDark ? AppTheme.textMuted : Colors.grey[500],
+                                size: 28),
+                            const SizedBox(height: 6),
+                            Text(
+                              "Chưa có lịch trình tự động nào được thêm",
+                              style: TextStyle(
+                                  color: isDark ? AppTheme.textMuted : Colors.grey[600],
+                                  fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ..._schedules.map((s) => Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppTheme.surface.withValues(alpha: 0.5)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: isDark
+                                      ? AppTheme.cardBorder
+                                      : AppTheme.lightBorder),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.alarm, color: iconCol, size: 20),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s["title"]?.toString() ?? "Lịch trình",
+                                          style: TextStyle(
+                                              color: textCol,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13)),
+                                      Text(
+                                          "${s["time"] ?? ''} • ${s["days"] ?? 'Hàng ngày'} • ${s["action"] ?? ''}",
+                                          style: TextStyle(
+                                              color: AppTheme.textMuted,
+                                              fontSize: 11)),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Switch(
-                                value: s["enabled"] as bool,
-                                activeThumbColor: Colors.white,
-                                activeTrackColor: AppTheme.brandBlue,
-                                onChanged: (val) => setState(() => s["enabled"] = val),
-                              ),
-                            ],
-                          ),
-                        )),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 18, color: AppTheme.roseDanger),
+                                  onPressed: () {
+                                    setState(() {
+                                      _schedules.remove(s);
+                                    });
+                                  },
+                                ),
+                                Switch(
+                                  value: s["enabled"] == true,
+                                  activeThumbColor: Colors.white,
+                                  activeTrackColor: AppTheme.brandBlue,
+                                  onChanged: (val) =>
+                                      setState(() => s["enabled"] = val),
+                                ),
+                              ],
+                            ),
+                          )),
                     const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Chức năng thêm lịch tùy biến")),
-                          );
-                        },
+                        onPressed: _showAddScheduleDialog,
                         icon: const Icon(Icons.add, size: 16, color: AppTheme.brandBlue),
-                        label: const Text("Thêm mốc lịch trình mới", style: TextStyle(color: AppTheme.brandBlue, fontSize: 12, fontWeight: FontWeight.w600)),
+                        label: const Text("Thêm mốc lịch trình mới",
+                            style: TextStyle(
+                                color: AppTheme.brandBlue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600)),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: AppTheme.brandBlue.withValues(alpha: 0.4)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide(
+                              color: AppTheme.brandBlue.withValues(alpha: 0.4)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                       ),
                     ),

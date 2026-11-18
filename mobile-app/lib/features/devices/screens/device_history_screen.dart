@@ -30,6 +30,21 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
   @override
   void initState() {
     super.initState();
+    if (!widget.device.canViewHistory) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("403 - Bạn không có quyền xem nhật ký thiết bị này"),
+              backgroundColor: AppTheme.roseDanger,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      });
+      return;
+    }
     _meterTab = widget.initialTabIndex;
     _fetchLiveHistory();
   }

@@ -222,6 +222,29 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
+  // 6. HỆ THỐNG PIN LƯU TRỮ THÔNG MINH AUSTEC BMS (AUSTEC_BMS + MAC - BMSV01.ino)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile bmsProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.energyManage,
+    defaultTitle: "Hệ Thống Pin Lưu Trữ BMS",
+    defaultModelCode: "SMART_BMS_PRO",
+    icon: Icons.battery_charging_full_rounded,
+    accentColor: AppTheme.emeraldSuccess,
+    bleServiceUuids: [
+      "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
+      "4fafc201",
+    ],
+    nameKeywords: ["austec_bms", "bms", "austec-bms", "smartbms"],
+    bleRxCharUuid: "8258380b-1039-4733-9b81-22f431886882",
+    bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+    // Cú pháp nạp BLE đúng chuẩn hàm applyRemoteSettingsCommand trong BMSV01.ino: PAIR:<ssid>,<pass>
+    buildBlePayload: (data) => "PAIR:${data.ssid},${data.password}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
   // 6. THIẾT BỊ BLE CHƯA ĐĂNG KÝ (GENERIC / UNREGISTERED) - KHÔNG DÙNG FALLBACK ÉP KIỂU!
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile unregisteredDeviceProfile = DeviceProvisioningProfile(
@@ -247,6 +270,7 @@ class DeviceProvisioningCatalog {
     smartSocketProfile, // 3. Ổ cắm công tắc thông minh (SmartSW / OCAM)
     cameraProfile,      // 4. Camera An Ninh AI (ESP32-CAM)
     smartMeterProfile,  // 5. Công tơ điện tử chống giật (SmartMetter)
+    bmsProfile,         // 6. Hệ thống Pin Lưu Trữ BMS (AUSTEC_BMS)
   ];
 
   /// Hàm tìm và khớp Profile CHÍNH XÁC THEO TÀI LIỆU KỸ THUẬT AUSTEC
@@ -257,6 +281,11 @@ class DeviceProvisioningCatalog {
   }) {
     final lowerName = rawName.toLowerCase().trim();
     final upperName = rawName.toUpperCase().trim();
+
+    // 0. Hệ thống Pin lưu trữ BMS: Bắt đầu bằng AUSTEC_BMS / BMS / SMARTBMS
+    if (upperName.startsWith("AUSTEC_BMS") || upperName.startsWith("BMS") || upperName.startsWith("SMARTBMS") || (lowerName.contains("bms") && !lowerName.contains("door"))) {
+      return bmsProfile;
+    }
 
     // 1. Công tơ điện tử chống giật: Bắt đầu bằng SmartMetter / smartmeter / congto
     if (upperName.startsWith("SMARTMETTER") || upperName.startsWith("SMARTMETER") || lowerName.contains("congto") || (lowerName.contains("meter") && !lowerName.contains("door"))) {
@@ -288,6 +317,7 @@ class DeviceProvisioningCatalog {
     if (advertisedUuids.isNotEmpty) {
       final normAdvUuids = advertisedUuids.map((u) => u.toLowerCase().replaceAll('-', '')).toList();
       if (normAdvUuids.any((u) => u.contains("4fafc201"))) {
+        if (lowerName.contains("bms")) return bmsProfile;
         if (lowerName.contains("meter") || lowerName.contains("metter")) return smartMeterProfile;
         if (lowerName.contains("cam")) return cameraProfile;
       }

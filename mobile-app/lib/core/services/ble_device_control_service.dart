@@ -295,4 +295,91 @@ class BleDeviceControlService {
     }
     return false;
   }
+
+  /// Gửi lệnh điều khiển hoặc cấu hình tham số trực tiếp tới BMS qua BLE (khi mất Wi-Fi hoặc không có Internet)
+  Future<bool> sendBmsCommand({
+    required String hardwareId,
+    required String command,
+  }) async {
+    if (kIsWeb) return false;
+
+    try {
+      BluetoothDevice? targetDevice;
+      final cleanHwId = hardwareId.toLowerCase().trim();
+
+      // 1. Kiểm tra danh sách thiết bị đang kết nối
+      try {
+        final connectedList = FlutterBluePlus.connectedDevices;
+        for (final dev in connectedList) {
+          final n = dev.platformName.toLowerCase();
+          if (n == cleanHwId || n.contains(cleanHwId) || cleanHwId.contains(n)) {
+            targetDevice = dev;
+            break;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Kiểm tra scan results gần nhất
+      if (targetDevice == null) {
+        final scanResults = FlutterBluePlus.lastScanResults;
+        for (final r in scanResults) {
+          final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+          if (n == cleanHwId || n.contains(cleanHwId) || cleanHwId.contains(n)) {
+            targetDevice = r.device;
+            break;
+          }
+        }
+      }
+
+      // 3. Nếu chưa thấy, quét nhanh 2.5s
+      if (targetDevice == null) {
+        try {
+          if (!FlutterBluePlus.isScanningNow) {
+            await FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+            await Future.delayed(const Duration(milliseconds: 2500));
+            try { await FlutterBluePlus.stopScan(); } catch (_) {}
+            for (final r in FlutterBluePlus.lastScanResults) {
+              final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+              if (n == cleanHwId || n.contains(cleanHwId) || cleanHwId.contains(n)) {
+                targetDevice = r.device;
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (targetDevice != null) {
+        if (!targetDevice.isConnected) {
+          await targetDevice.connect(license: License.nonprofit, timeout: const Duration(seconds: 5));
+          await Future.delayed(const Duration(milliseconds: 200));
+        }
+
+        final services = await targetDevice.discoverServices();
+        BluetoothCharacteristic? rxChar;
+
+        for (final s in services) {
+          for (final c in s.characteristics) {
+            final cUuid = c.uuid.toString().toLowerCase().replaceAll('-', '');
+            // BMS CHAR_COMMAND_UUID: 8258380b... hoặc BEA5
+            if (cUuid.contains("8258380b") || cUuid.contains("bea5") || (c.properties.write || c.properties.writeWithoutResponse)) {
+              rxChar = c;
+              break;
+            }
+          }
+          if (rxChar != null) break;
+        }
+
+        if (rxChar != null) {
+          final bool withoutResp = rxChar.properties.writeWithoutResponse && !rxChar.properties.write;
+          await rxChar.write(utf8.encode(command), withoutResponse: withoutResp).timeout(const Duration(seconds: 3));
+          debugPrint("[BLE BMS Control] ⚡ Đã truyền lệnh xuống BMS qua BLE: $command");
+          return true;
+        }
+      }
+    } catch (e) {
+      debugPrint("[BLE BMS Control] ⚠️ Lỗi gửi lệnh BMS qua BLE: $e");
+    }
+    return false;
+  }
 }

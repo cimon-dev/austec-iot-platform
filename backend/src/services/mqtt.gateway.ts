@@ -22,14 +22,14 @@ export class MqttGateway {
     private blackboxService: BlackboxService,
     private hotCache: HotCacheClient,
     private onStateChangeCallback?: (hwId: string, state: any) => void
-  ) {}
+  ) { }
 
   public start(port: number = 1883): Promise<boolean> {
     const isCloudEnv = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
     this.brokerUrl = process.env.MQTT_BROKER_URL || (isCloudEnv ? 'mqtt://broker.emqx.io:1883' : `mqtt://127.0.0.1:${port}`);
     return new Promise((resolve) => {
       console.log(`[MQTT Gateway] 🔌 Đang kết nối tới EMQX MQTT Broker tại ${this.brokerUrl}...`);
-      
+
       this.client = mqtt.connect(this.brokerUrl, {
         clientId: `austec_backend_${Date.now()}`,
         reconnectPeriod: 3000,
@@ -39,7 +39,7 @@ export class MqttGateway {
       this.client.on('connect', () => {
         this.isRunning = true;
         console.log(`[MQTT Gateway] 🚀 Đã kết nối thành công tới EMQX MQTT Broker (Port 1883)!`);
-        
+
         // Đăng ký nhận chính xác các kênh của Austec (loại bỏ wildcard đơn +/status để tránh rác công cộng trên EMQX):
         // 1. Cửa cuốn & Ổ cắm (ocammoi): USR-330967/#, amtuong/#, +/+/pub/#, +/+/onboard, austec/#
         // 2. Camera AI (espcam.pdf): esp32/+/status, esp32/+/photo, devices/+/camera/#
@@ -104,7 +104,7 @@ export class MqttGateway {
           `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
           [hwId]
         );
-      } catch (_) {}
+      } catch (_) { }
 
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { cameraFrame: true, size: message.length });
@@ -121,7 +121,7 @@ export class MqttGateway {
       const parts = topic.split('/');
       const hwId = parts[1];
       if (!hwId || hwId === 'status') return;
-      
+
       // Chỉ nhận diện Camera theo đúng chuẩn espcam.pdf (tên bắt đầu bằng CAM) hoặc thiết bị Austec
       const isAustecCam = hwId.toUpperCase().startsWith('CAM') || topic.startsWith('devices/');
       if (!isAustecCam) return;
@@ -141,7 +141,7 @@ export class MqttGateway {
           `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
           [hwId]
         );
-      } catch (_) {}
+      } catch (_) { }
 
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { isOnline: true });
@@ -149,7 +149,7 @@ export class MqttGateway {
       return;
     }
 
-    // B.2. XỬ LÝ DỮ LIỆU CÔNG TƠ ĐIỆN TỬ: austec/{hwId}/telemetry, austec/{hwId}/alarm, austec/{hwId}/daily_report
+    // B.2. XỬ LÝ DỮ LIỆU CÔNG TƠ ĐIỆN TỬ & PIN LƯU TRỮ BMS: austec/{hwId}/telemetry, austec/{hwId}/alarm, austec/{hwId}/daily_report
     if (topic.startsWith('austec/') && (topic.endsWith('/telemetry') || topic.endsWith('/alarm') || topic.endsWith('/daily_report'))) {
       const parts = topic.split('/');
       const hwId = parts[1];
@@ -157,6 +157,47 @@ export class MqttGateway {
       try {
         const json = JSON.parse(payload);
         if (sub === 'telemetry') {
+          // B.2.1. Phân loại xử lý BMS: AUSTEC_BMS...
+          if (hwId.toUpperCase().includes('BMS')) {
+            console.log(`[MQTT Gateway] 🔋 [${hwId}] Nhận Telemetry BMS: V=${json.v_pack}V, I=${json.i_pack}A, SOC=${json.soc}%, Status=${json.status}`);
+            const bmsState = {
+              isOnline: true,
+              currentProperties: {
+                batteryVoltage: json.v_pack ?? 0,
+                packVoltage: json.v_pack ?? 0,
+                packCurrent: json.i_pack ?? 0,
+                currentPowerKw: json.p_kw ?? 0,
+                batteryPercent: json.soc ?? 0,
+                socPercent: json.soc ?? 0,
+                bmsStatus: json.status ?? 'BMS Wakeup',
+                isDischarging: (json.i_pack ?? 0) < -0.3,
+                isCharging: (json.i_pack ?? 0) > 0.3,
+                mosTemp: json.t_mos ?? 0,
+                ntcTemps: json.t_ntc ?? [],
+                cellVoltages: json.cells ?? [],
+                cfg: json.cfg ?? {},
+              },
+              lastHeartbeat: new Date().toISOString(),
+            };
+            await this.hotCache.setDeviceState(hwId, bmsState);
+            await this.hotCache.setDeviceState(hwId.toLowerCase(), bmsState);
+            await this.hotCache.setDeviceState(hwId.toUpperCase(), bmsState);
+            try {
+              await this.postgresService?.query(
+                `UPDATE device_instances 
+                 SET is_online = true, 
+                     current_properties = COALESCE(current_properties, '{}'::jsonb) || $1::jsonb,
+                     last_heartbeat = NOW()::text 
+                 WHERE LOWER(hardware_id) = LOWER($2)`,
+                [JSON.stringify(bmsState.currentProperties), hwId]
+              );
+            } catch (_) { }
+            if (this.onStateChangeCallback) {
+              this.onStateChangeCallback(hwId, bmsState.currentProperties);
+            }
+            return;
+          }
+
           console.log(`[MQTT Gateway] ⚡ [${hwId}] Nhận dữ liệu Telemetry Công tơ: U=${json.voltage}V, I=${json.current}A, P=${json.power}W, Total=${json.total_kwh}kWh, Relay=${json.relay_status}`);
           const isRelayOn = json.relay_status === 'ON';
           const meterState = {
@@ -187,7 +228,7 @@ export class MqttGateway {
                WHERE LOWER(hardware_id) = LOWER($2)`,
               [JSON.stringify(meterState.currentProperties), hwId]
             );
-          } catch (_) {}
+          } catch (_) { }
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, meterState.currentProperties);
           }
@@ -212,7 +253,7 @@ export class MqttGateway {
                WHERE LOWER(hardware_id) = LOWER($2)`,
               [JSON.stringify(alarmState.currentProperties), hwId]
             );
-          } catch (_) {}
+          } catch (_) { }
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, alarmState.currentProperties);
           }
@@ -227,52 +268,52 @@ export class MqttGateway {
     const slashCount = (topic.match(/\//g) || []).length;
     if (slashCount === 1) {
       const [hwId, subAction] = topic.split('/');
-      
+
       // CHỈ xử lý nếu đúng là ổ cắm Austec (định danh OCAM...)
       if (hwId.startsWith('OCAM')) {
         // 1. Ổ cắm báo Online: {deviceName}/status
         if (subAction === 'status') {
-        console.log(`[MQTT Gateway] 🔌 Ổ cắm [${hwId}] thông báo ONLINE! Payload: ${payload}`);
-        await this.hotCache.setDeviceState(hwId, {
-          isOnline: true,
-          currentProperties: { is_relay_on: false, relay_state: 'OFF' },
-          lastHeartbeat: new Date().toISOString(),
-        });
-        try {
-          await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
-        } catch (_) {}
-        if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(hwId, { isOnline: true });
+          console.log(`[MQTT Gateway] 🔌 Ổ cắm [${hwId}] thông báo ONLINE! Payload: ${payload}`);
+          await this.hotCache.setDeviceState(hwId, {
+            isOnline: true,
+            currentProperties: { is_relay_on: false, relay_state: 'OFF' },
+            lastHeartbeat: new Date().toISOString(),
+          });
+          try {
+            await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE hardware_id = $1', [hwId]);
+          } catch (_) { }
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, { isOnline: true });
+          }
+          return;
         }
-        return;
-      }
 
-      // 2. Ổ cắm phản hồi kết quả rơ-le: {deviceName}/response ("3" = Bật, "4" = Tắt)
-      if (subAction === 'response') {
-        const isRelayOn = payload.trim() === '3';
-        console.log(`[MQTT Gateway] ⚡ [${hwId}] Ổ cắm phản hồi trạng thái Rơ-le: ${isRelayOn ? 'BẬT (3)' : 'TẮT (4)'}`);
-        await this.hotCache.setDeviceState(hwId, {
-          isOnline: true,
-          currentProperties: { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' },
-          lastHeartbeat: new Date().toISOString(),
-        });
-        await this.postgresService.logBlackbox({
-          hardwareId: hwId,
-          actorId: '00000000-0000-0000-0000-000000000001',
-          actorRole: 'CUSTOMER',
-          actorName: 'Ổ cắm thông minh',
-          actionType: isRelayOn ? 'RELAY_TURNED_ON' : 'RELAY_TURNED_OFF',
-          payloadSent: { action: payload, isRelayOn },
-          ackStatus: 'SUCCESS',
-          latencyMs: 25,
-        });
-        if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+        // 2. Ổ cắm phản hồi kết quả rơ-le: {deviceName}/response ("3" = Bật, "4" = Tắt)
+        if (subAction === 'response') {
+          const isRelayOn = payload.trim() === '3';
+          console.log(`[MQTT Gateway] ⚡ [${hwId}] Ổ cắm phản hồi trạng thái Rơ-le: ${isRelayOn ? 'BẬT (3)' : 'TẮT (4)'}`);
+          await this.hotCache.setDeviceState(hwId, {
+            isOnline: true,
+            currentProperties: { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' },
+            lastHeartbeat: new Date().toISOString(),
+          });
+          await this.postgresService.logBlackbox({
+            hardwareId: hwId,
+            actorId: '00000000-0000-0000-0000-000000000001',
+            actorRole: 'CUSTOMER',
+            actorName: 'Ổ cắm thông minh',
+            actionType: isRelayOn ? 'RELAY_TURNED_ON' : 'RELAY_TURNED_OFF',
+            payloadSent: { action: payload, isRelayOn },
+            ackStatus: 'SUCCESS',
+            latencyMs: 25,
+          });
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+          }
+          return;
         }
-        return;
       }
     }
-  }
 
     // D. XỬ LÝ CỬA CUỐN AUSTEC (CodeCuaCuonBLE chuẩn)
     const parts = topic.split('/');
@@ -294,7 +335,7 @@ export class MqttGateway {
         await this.hotCache.setDeviceState(hwId.toUpperCase(), stateObj);
         try {
           await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)', [hwId]);
-        } catch (_) {}
+        } catch (_) { }
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
@@ -313,7 +354,7 @@ export class MqttGateway {
         await this.hotCache.setDeviceState(hwId.toUpperCase(), stateObj);
         try {
           await this.postgresService.query('UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)', [hwId]);
-        } catch (_) {}
+        } catch (_) { }
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
@@ -340,7 +381,7 @@ export class MqttGateway {
               `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text, current_properties = current_properties || jsonb_build_object('is_relay_on', $2::boolean, 'relay_state', $3) WHERE LOWER(hardware_id) = LOWER($1)`,
               [hwId, isRelayOn, isRelayOn ? 'ON' : 'OFF']
             );
-          } catch (_) {}
+          } catch (_) { }
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
           }
@@ -393,8 +434,8 @@ export class MqttGateway {
    */
   public getCameraSnapshot(hwId: string): { buffer: Buffer; timestamp: number } | undefined {
     return this.cameraSnapshots.get(hwId) ||
-           this.cameraSnapshots.get(hwId.toLowerCase()) ||
-           this.cameraSnapshots.get(hwId.toUpperCase());
+      this.cameraSnapshots.get(hwId.toLowerCase()) ||
+      this.cameraSnapshots.get(hwId.toUpperCase());
   }
 
   /**
@@ -407,11 +448,17 @@ export class MqttGateway {
     const upperHwId = hwId.toUpperCase();
     const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.includes('OCAM');
     const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
-    const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
+    const isBms = !isSocket && !isCamera && upperHwId.includes('BMS');
+    const isMeter = !isSocket && !isCamera && !isBms && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     const candidateTopics = new Set<string>();
 
-    if (isMeter) {
+    if (isBms) {
+      candidateTopics.add(`austec/${hwId}/command`);
+      candidateTopics.add(`austec/${hwId.toLowerCase()}/command`);
+      candidateTopics.add(`austec/${hwId.toUpperCase()}/command`);
+      candidateTopics.add(`${hwId}/command`);
+    } else if (isMeter) {
       candidateTopics.add(`austec/${hwId}/command`);
       candidateTopics.add(`austec/${hwId.toLowerCase()}/command`);
       candidateTopics.add(`austec/${hwId}/sub/action`);
@@ -464,7 +511,7 @@ export class MqttGateway {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) { }
 
     try {
       const state = await this.hotCache.getDeviceState(hwId);
@@ -472,12 +519,25 @@ export class MqttGateway {
       if (knownOwner) {
         candidateTopics.add(`${knownOwner}/${hwId}/sub/action`);
       }
-    } catch (_) {}
+    } catch (_) { }
+
+    let payloadsToSend = [actionNumber];
+    if (isMeter) {
+      if (actionNumber === 'METER_POWER_OFF' || actionNumber === 'OFF' || actionNumber === '14' || actionNumber === '1') {
+        payloadsToSend = ['14', '1', 'METER_POWER_OFF'];
+      } else if (actionNumber === 'METER_POWER_ON' || actionNumber === 'ON' || actionNumber === '13' || actionNumber === '2') {
+        payloadsToSend = ['13', '2', 'METER_POWER_ON'];
+      } else if (actionNumber === 'RESET' || actionNumber === '0') {
+        payloadsToSend = ['0', 'RESET'];
+      }
+    }
 
     let anySuccess = false;
     for (const topic of candidateTopics) {
-      const ok = await this.publishMessage(topic, actionNumber);
-      if (ok) anySuccess = true;
+      for (const p of payloadsToSend) {
+        const ok = await this.publishMessage(topic, p);
+        if (ok) anySuccess = true;
+      }
     }
 
     return anySuccess;
@@ -542,10 +602,10 @@ export class MqttGateway {
     const cleanId = hwId.trim().toLowerCase();
     try {
       const state = (await this.hotCache.getDeviceState(hwId)) ||
-                    (await this.hotCache.getDeviceState(cleanId)) ||
-                    (await this.hotCache.getDeviceState(hwId.toUpperCase()));
+        (await this.hotCache.getDeviceState(cleanId)) ||
+        (await this.hotCache.getDeviceState(hwId.toUpperCase()));
       if (state && state.isOnline) return true;
-    } catch (_) {}
+    } catch (_) { }
 
     const hasRecentMsg = this.messageHistory.some((m) => {
       const top = m.topic.toLowerCase();
@@ -559,21 +619,21 @@ export class MqttGateway {
     // Chủ động phát gói thăm dò (ping) xuống topic sub/isonline của Cửa cuốn / Ổ cắm
     try {
       // 1. Prefix chuẩn EEPROM phần cứng thực tế (USR-330967 và amtuong)
-      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '1').catch(() => {});
+      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '1').catch(() => { });
 
       // 2. User đăng nhập hiện tại & các fallback admin
       if (userId && userId.trim().length > 0) {
-        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => {});
+        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => { });
       }
-      this.publishMessage(`00000000-0000-0000-0000-000000000001/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`austec/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`admin/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`root/${hwId}/sub/isonline`, '1').catch(() => {});
-      this.publishMessage(`devices/${hwId}/sub/isonline`, '1').catch(() => {});
-    } catch (_) {}
+      this.publishMessage(`00000000-0000-0000-0000-000000000001/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`austec/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`admin/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`root/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`devices/${hwId}/sub/isonline`, '1').catch(() => { });
+    } catch (_) { }
 
     return false;
   }

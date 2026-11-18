@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/constants/api_config.dart';
 import '../../../core/services/auth_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -263,7 +264,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ? const Center(child: CircularProgressIndicator(color: AppTheme.cyanAccent, strokeWidth: 2))
                           : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
                               ? Image.network(
-                                  user.avatarUrl!,
+                                  user.avatarUrl!.startsWith('http')
+                                      ? user.avatarUrl!
+                                      : '${ApiConfig.baseUrl}${user.avatarUrl!}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => Icon(Icons.person, color: subTextCol, size: 48),
                                 )

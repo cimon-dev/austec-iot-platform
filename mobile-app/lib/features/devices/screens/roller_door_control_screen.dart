@@ -9,6 +9,7 @@ import '../../chat/models/conversation_item.dart';
 import '../../provisioning/screens/provisioning_screen.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
+import 'camera_landscape_fullscreen_viewer.dart';
 import '../widgets/camera_webrtc_player.dart';
 import '../../cskh/domain/entities/chat_device_item.dart';
 
@@ -329,15 +330,16 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         centerTitle: true,
         actions: [
           // Icon Xem lịch sử đặt bên trái Icon CSKH
-          IconButton(
-            icon: Icon(Icons.history_rounded, color: textCol, size: 22),
-            tooltip: "Lịch sử điều khiển",
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
-              );
-            },
-          ),
+          if (_device.canViewHistory)
+            IconButton(
+              icon: Icon(Icons.history_rounded, color: textCol, size: 22),
+              tooltip: "Lịch sử điều khiển",
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => DeviceHistoryScreen(device: _device)),
+                );
+              },
+            ),
           // Icon CSKH hỗ trợ trực tuyến (Mở màn chat CSKH thật)
           IconButton(
             icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 22),
@@ -1341,90 +1343,25 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     );
   }
 
-  // Phóng to camera giám sát cửa cuốn để soi chi tiết khóa
+  // Phóng to camera giám sát cửa cuốn theo chuẩn xoay ngang toàn màn hình
   void _showDoorCameraZoomDialog(String camName) {
     if (_linkedCameraHwId == null) return;
-    final isDark = AppTheme.isDarkMode;
-    final cardBorder = isDark ? const Color(0xFF3F3F46) : const Color(0xFFE4E4E7);
+    final linkedCam = _gateway.findByHardwareId(_linkedCameraHwId!) ??
+        DeviceItem(
+          id: _linkedCameraHwId!,
+          hardwareId: _linkedCameraHwId!,
+          name: camName,
+          category: DeviceCategory.camera,
+          isOnline: true,
+          modelName: 'Austec Vision Cam',
+          roomName: 'Khu vực cửa cuốn',
+        );
 
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Container(
-              width: double.infinity,
-              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.78),
-              decoration: BoxDecoration(
-                color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: cardBorder, width: 1.5),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(18),
-                child: InteractiveViewer(
-                  minScale: 1.0,
-                  maxScale: 6.0,
-                  panEnabled: true,
-                  scaleEnabled: true,
-                  child: _linkedCameraHwId == null
-                      ? const SizedBox.shrink()
-                      : CameraWebRtcPlayer(
-                          hardwareId: _linkedCameraHwId!,
-                          isActive: true,
-                        ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 14,
-              left: 14,
-              right: 14,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.75),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: Text(
-                        "$camName • Soi khóa cửa cuốn (1x - 6x)",
-                        style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.close_fullscreen_rounded, color: Colors.white, size: 20),
-                    style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.75)),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  "Chụm / Mở 2 ngón tay để soi cận cảnh chốt khóa cửa cuốn",
-                  style: TextStyle(color: Colors.white70, fontSize: 11),
-                ),
-              ),
-            ),
-          ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CameraLandscapeFullscreenViewer(
+          initialDevice: linkedCam,
+          gateway: _gateway,
         ),
       ),
     );

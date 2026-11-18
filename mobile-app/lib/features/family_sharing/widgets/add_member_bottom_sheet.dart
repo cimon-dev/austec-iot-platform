@@ -1,18 +1,54 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../domain/entities/member_permission_entity.dart';
+import '../services/family_sharing_service.dart';
+
+class SelectedUserItem {
+  final String userId;
+  final String name;
+  final String phone;
+  final String email;
+  final String? avatarUrl;
+  bool isChecked;
+
+  SelectedUserItem({
+    required this.userId,
+    required this.name,
+    required this.phone,
+    required this.email,
+    this.avatarUrl,
+    this.isChecked = true,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SelectedUserItem &&
+          ((userId.isNotEmpty && userId == other.userId) ||
+              (phone.isNotEmpty && phone == other.phone) ||
+              (email.isNotEmpty && email == other.email));
+
+  @override
+  int get hashCode => (userId.isNotEmpty
+          ? userId
+          : (phone.isNotEmpty ? phone : email))
+      .hashCode;
+}
 
 class AddMemberBottomSheet extends StatefulWidget {
   final DeviceItem device;
   final List<SuggestedMember> suggestions;
-  final Function(MemberPermission) onMemberAdded;
+  final Function(MemberPermission)? onMemberAdded;
+  final Function(List<MemberPermission>)? onMembersAdded;
 
   const AddMemberBottomSheet({
     super.key,
     required this.device,
     required this.suggestions,
-    required this.onMemberAdded,
+    this.onMemberAdded,
+    this.onMembersAdded,
   });
 
   @override
@@ -20,11 +56,15 @@ class AddMemberBottomSheet extends StatefulWidget {
 }
 
 class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  final FamilySharingService _service = FamilySharingService();
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
-  String _selectedRole = "MEMBER"; // MEMBER | GUEST
+  final Set<SelectedUserItem> _selectedUsers = {};
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _isSearching = false;
+  SuggestedMember? _selectedSuggestion;
+
   bool _canControl = true;
   bool _canViewHistory = true;
   bool _canChildLock = false;
@@ -33,54 +73,96 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
   String _accessStartTime = "08:00";
   String _accessEndTime = "18:00";
 
-  String? _selectedSuggestionName;
-  String? _selectedSuggestionUserId;
-
   @override
   void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
+    _debounceTimer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
-  void _applySuggestion(SuggestedMember sug) {
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () async {
+      final results = await _service.searchUsers(query);
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    });
+  }
+
+  void _addUserToSelection({
+    required String userId,
+    required String name,
+    required String phone,
+    required String email,
+    String? avatarUrl,
+  }) {
+    final item = SelectedUserItem(
+      userId: userId,
+      name: name.isNotEmpty ? name : (phone.isNotEmpty ? phone : email),
+      phone: phone,
+      email: email,
+      avatarUrl: avatarUrl,
+      isChecked: true,
+    );
     setState(() {
-      _nameController.text = sug.memberName;
-      _phoneController.text = sug.phoneNumber;
-      _selectedRole = sug.role == "GUEST" ? "GUEST" : "MEMBER";
-      _canControl = sug.canControl;
-      _canViewHistory = sug.canViewHistory;
-      _canChildLock = sug.canChildLock;
-      _canConfig = sug.canConfig;
-      _scheduleLimitActive = sug.scheduleLimitActive;
-      _accessStartTime = sug.accessStartTime;
-      _accessEndTime = sug.accessEndTime;
-      _selectedSuggestionName = sug.memberName;
-      _selectedSuggestionUserId = sug.userId;
+      _selectedUsers.remove(item);
+      _selectedUsers.add(item);
     });
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    final activeUsers = _selectedUsers.where((u) => u.isChecked).toList();
+    if (activeUsers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng chọn ít nhất 1 người dùng để phân quyền"),
+          backgroundColor: AppTheme.amberWarning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-    final newMember = MemberPermission(
-      id: "PERM-${DateTime.now().millisecondsSinceEpoch}",
-      hardwareId: widget.device.hardwareId,
-      userId: _selectedSuggestionUserId ?? "",
-      memberName: _nameController.text.trim(),
-      phoneNumber: _phoneController.text.trim(),
-      role: _selectedRole,
-      canControl: _canControl,
-      canViewHistory: _canViewHistory,
-      canChildLock: _canChildLock,
-      canConfig: _canConfig,
-      scheduleLimitActive: _scheduleLimitActive,
-      accessStartTime: _accessStartTime,
-      accessEndTime: _accessEndTime,
-      createdAt: DateTime.now().toIso8601String(),
-    );
+    final List<MemberPermission> newMembers = activeUsers.map((u) {
+      return MemberPermission(
+        id: "PERM-${DateTime.now().millisecondsSinceEpoch}-${u.userId}",
+        hardwareId: widget.device.hardwareId,
+        userId: u.userId,
+        memberName: u.name,
+        phoneNumber: u.phone.isNotEmpty ? u.phone : u.email,
+        role: "MEMBER",
+        canControl: _canControl,
+        canViewHistory: _canViewHistory,
+        canChildLock: _canChildLock,
+        canConfig: _canConfig,
+        scheduleLimitActive: _scheduleLimitActive,
+        accessStartTime: _accessStartTime,
+        accessEndTime: _accessEndTime,
+        createdAt: DateTime.now().toIso8601String(),
+      );
+    }).toList();
 
-    widget.onMemberAdded(newMember);
+    if (widget.onMembersAdded != null) {
+      widget.onMembersAdded!(newMembers);
+    } else if (widget.onMemberAdded != null) {
+      for (final m in newMembers) {
+        widget.onMemberAdded!(m);
+      }
+    }
+
     Navigator.of(context).pop();
   }
 
@@ -89,14 +171,18 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.surface : Colors.white;
     final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final cardBg = isDark ? AppTheme.background : AppTheme.lightBackground;
+    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+
+    final activeCount = _selectedUsers.where((u) => u.isChecked).length;
 
     return Container(
       constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.88,
+        maxHeight: MediaQuery.of(context).size.height * 0.90,
       ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-        top: 14,
+        top: 12,
         left: 16,
         right: 16,
       ),
@@ -104,368 +190,509 @@ class _AddMemberBottomSheetState extends State<AddMemberBottomSheet> {
         color: bgCol,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Phân Quyền Thành Viên Mới",
-                        style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Thiết bị: ${widget.device.name}",
-                        style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-              const Divider(height: 20),
-
-              // SMART SUGGESTIONS TỪ THIẾT BỊ KHÁC
-              if (widget.suggestions.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cyanAccent.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.auto_awesome, color: AppTheme.cyanAccent, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            "Gợi ý từ các thiết bị khác (${widget.suggestions.length})",
-                            style: const TextStyle(
-                              color: AppTheme.cyanAccent,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Đã có trong các thiết bị khác của bạn. Chạm để chọn nhanh:",
-                        style: TextStyle(
-                          color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
-                          fontSize: 10.5,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 58,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: widget.suggestions.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, i) {
-                            final sug = widget.suggestions[i];
-                            final isPicked = _selectedSuggestionName == sug.memberName;
-
-                            return InkWell(
-                              onTap: () => _applySuggestion(sug),
-                              borderRadius: BorderRadius.circular(10),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: isPicked
-                                      ? AppTheme.cyanAccent.withValues(alpha: 0.25)
-                                      : (isDark ? Colors.white10 : Colors.white),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isPicked ? AppTheme.cyanAccent : Colors.grey.withValues(alpha: 0.3),
-                                    width: isPicked ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 14,
-                                      backgroundColor: AppTheme.cyanAccent.withValues(alpha: 0.2),
-                                      child: Text(
-                                        sug.memberName.isNotEmpty ? sug.memberName[0].toUpperCase() : "U",
-                                        style: const TextStyle(
-                                          color: AppTheme.cyanAccent,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              sug.memberName,
-                                              style: TextStyle(
-                                                color: textCol,
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            if (isPicked) ...[
-                                              const SizedBox(width: 4),
-                                              const Icon(Icons.check_circle, size: 12, color: AppTheme.cyanAccent),
-                                            ],
-                                          ],
-                                        ),
-                                        Text(
-                                          "${sug.phoneNumber} • ${sug.sourceDeviceNames.join(', ')}",
-                                          style: const TextStyle(
-                                            color: AppTheme.textMuted,
-                                            fontSize: 9.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-              ],
-
-              // 1. Tên thành viên
-              Text(
-                "HỌ VÀ TÊN THÀNH VIÊN *",
-                style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6),
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _nameController,
-                style: TextStyle(color: textCol, fontSize: 13),
-                decoration: InputDecoration(
-                  hintText: "Ví dụ: Trần Thu Hà (Vợ), Nguyễn Văn An...",
-                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                  filled: true,
-                  fillColor: isDark ? AppTheme.background : AppTheme.lightBackground,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  prefixIcon: const Icon(Icons.person_outline, size: 18),
-                ),
-                validator: (val) => (val == null || val.trim().isEmpty) ? "Vui lòng nhập tên thành viên" : null,
-              ),
-              const SizedBox(height: 12),
-
-              // 2. Số điện thoại
-              Text(
-                "SỐ ĐIỆN THOẠI ĐĂNG NHẬP APP *",
-                style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6),
-              ),
-              const SizedBox(height: 6),
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                style: TextStyle(color: textCol, fontSize: 13, fontFamily: 'monospace'),
-                decoration: InputDecoration(
-                  hintText: "Ví dụ: 0988 776 655...",
-                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                  filled: true,
-                  fillColor: isDark ? AppTheme.background : AppTheme.lightBackground,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                  prefixIcon: const Icon(Icons.phone_outlined, size: 18),
-                ),
-                validator: (val) => (val == null || val.trim().isEmpty) ? "Vui lòng nhập số điện thoại" : null,
-              ),
-              const SizedBox(height: 14),
-
-              // 3. Phân loại vai trò
-              Text(
-                "VAI TRÒ TRUY CẬP",
-                style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildRoleChip(
-                      label: "Thành viên gia đình",
-                      role: "MEMBER",
-                      icon: Icons.group_outlined,
-                      isSelected: _selectedRole == "MEMBER",
-                      onTap: () => setState(() => _selectedRole = "MEMBER"),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildRoleChip(
-                      label: "Khách / Giúp việc",
-                      role: "GUEST",
-                      icon: Icons.person_outline,
-                      isSelected: _selectedRole == "GUEST",
-                      onTap: () => setState(() => _selectedRole = "GUEST"),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 4. Ma trận các quyền hạn
-              Text(
-                "CHI TIẾT QUYỀN HẠN ĐƯỢC CẤP",
-                style: TextStyle(color: textCol, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6),
-              ),
-              const SizedBox(height: 6),
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? AppTheme.background : AppTheme.lightBackground,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
-                ),
+              Expanded(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SwitchListTile(
-                      dense: true,
-                      activeThumbColor: AppTheme.cyanAccent,
-                      title: const Text("Điều khiển từ xa (Mở / Đóng / Dừng)", style: TextStyle(fontSize: 12.5)),
-                      value: _canControl,
-                      onChanged: (val) => setState(() => _canControl = val),
+                    Text(
+                      "Phân Quyền Thành Viên Mới",
+                      style: TextStyle(
+                          color: textCol,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold),
                     ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      dense: true,
-                      activeThumbColor: AppTheme.cyanAccent,
-                      title: const Text("Xem nhật ký & lịch sử đóng mở", style: TextStyle(fontSize: 12.5)),
-                      value: _canViewHistory,
-                      onChanged: (val) => setState(() => _canViewHistory = val),
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      dense: true,
-                      activeThumbColor: AppTheme.cyanAccent,
-                      title: const Text("Kích hoạt Khóa trẻ em an toàn", style: TextStyle(fontSize: 12.5)),
-                      value: _canChildLock,
-                      onChanged: (val) => setState(() => _canChildLock = val),
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      dense: true,
-                      activeThumbColor: AppTheme.cyanAccent,
-                      title: const Text("Đổi tên & cấu hình thiết bị", style: TextStyle(fontSize: 12.5)),
-                      value: _canConfig,
-                      onChanged: (val) => setState(() => _canConfig = val),
-                    ),
-                    const Divider(height: 1),
-                    SwitchListTile(
-                      dense: true,
-                      activeThumbColor: AppTheme.amberWarning,
-                      title: const Text("Giới hạn khung giờ truy cập", style: TextStyle(fontSize: 12.5)),
-                      subtitle: _scheduleLimitActive
-                          ? Text("Chỉ được mở từ $_accessStartTime đến $_accessEndTime", style: const TextStyle(fontSize: 10.5, color: AppTheme.amberWarning))
-                          : null,
-                      value: _scheduleLimitActive,
-                      onChanged: (val) => setState(() => _scheduleLimitActive = val),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Thiết bị: ${widget.device.name}",
+                      style: const TextStyle(
+                          color: AppTheme.brandBlue,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-
-              // Nút xác nhận
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.brandBlue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.check, size: 18),
-                  label: const Text(
-                    "XÁC NHẬN PHÂN QUYỀN",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  ),
-                  onPressed: _submit,
-                ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
+          const Divider(height: 16),
 
-  Widget _buildRoleChip({
-    required String label,
-    required String role,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.cyanAccent.withValues(alpha: 0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? AppTheme.cyanAccent : Colors.grey.withValues(alpha: 0.3),
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: isSelected ? AppTheme.cyanAccent : Colors.grey),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? AppTheme.cyanAccent : Colors.grey,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: 11,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. COMBOBOX GỢI Ý TỪ THIẾT BỊ KHÁC
+                  if (widget.suggestions.isNotEmpty) ...[
+                    Text(
+                      "GỢI Ý TỪ CÁC THIẾT BỊ KHÁC",
+                      style: TextStyle(
+                        color: isDark ? AppTheme.cyanAccent : AppTheme.brandBlue,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<SuggestedMember>(
+                          value: _selectedSuggestion,
+                          isExpanded: true,
+                          hint: const Text(
+                            "Chọn nhanh thành viên đã có...",
+                            style: TextStyle(
+                                color: AppTheme.textMuted, fontSize: 13),
+                          ),
+                          dropdownColor:
+                              isDark ? const Color(0xFF1E222D) : Colors.white,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                          items: widget.suggestions.map((sug) {
+                            return DropdownMenuItem<SuggestedMember>(
+                              value: sug,
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: AppTheme.brandBlue
+                                        .withValues(alpha: 0.2),
+                                    child: Text(
+                                      sug.memberName.isNotEmpty
+                                          ? sug.memberName[0].toUpperCase()
+                                          : "U",
+                                      style: const TextStyle(
+                                          color: AppTheme.brandBlue,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "${sug.memberName} (${sug.phoneNumber})",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                          color: textCol, fontSize: 12.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (sug) {
+                            if (sug != null) {
+                              _addUserToSelection(
+                                userId: sug.userId,
+                                name: sug.memberName,
+                                phone: sug.phoneNumber,
+                                email: '',
+                              );
+                              setState(() {
+                                _selectedSuggestion = sug;
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
+                  // 2. Ô TÌM KIẾM THEO TÊN, EMAIL, SỐ ĐIỆN THOẠI
+                  Text(
+                    "TÌM KIẾM NGƯỜI DÙNG",
+                    style: TextStyle(
+                      color: textCol,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: TextStyle(color: textCol, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: "Tìm theo tên, email hoặc số điện thoại...",
+                      hintStyle:
+                          const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                      filled: true,
+                      fillColor: cardBg,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 11),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: cardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: cardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide:
+                            const BorderSide(color: AppTheme.brandBlue, width: 1.5),
+                      ),
+                      prefixIcon:
+                          const Icon(Icons.search, size: 18, color: Colors.grey),
+                      suffixIcon: _isSearching
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppTheme.brandBlue),
+                              ),
+                            )
+                          : (_searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _onSearchChanged('');
+                                  },
+                                )
+                              : null),
+                    ),
+                  ),
+
+                  // KẾT QUẢ TÌM KIẾM TRỰC TIẾP
+                  if (_searchResults.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 160),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _searchResults.length,
+                        separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.grey[200]),
+                        itemBuilder: (context, idx) {
+                          final u = _searchResults[idx];
+                          final name = (u['full_name'] ??
+                                  u['fullName'] ??
+                                  u['name'] ??
+                                  '')
+                              .toString();
+                          final phone = (u['phone_number'] ??
+                                  u['phoneNumber'] ??
+                                  u['phone'] ??
+                                  '')
+                              .toString();
+                          final email = (u['email'] ?? '').toString();
+                          final uid = (u['id'] ?? '').toString();
+
+                          final isAlreadySelected = _selectedUsers.any((item) =>
+                              (uid.isNotEmpty && item.userId == uid) ||
+                              (phone.isNotEmpty && item.phone == phone));
+
+                          return ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 0),
+                            leading: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppTheme.brandBlue
+                                  .withValues(alpha: 0.15),
+                              child: Text(
+                                name.isNotEmpty ? name[0].toUpperCase() : "U",
+                                style: const TextStyle(
+                                    color: AppTheme.brandBlue,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            title: Text(
+                              name.isNotEmpty ? name : (phone.isNotEmpty ? phone : email),
+                              style: TextStyle(
+                                  color: textCol,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            subtitle: Text(
+                              "$phone ${email.isNotEmpty ? '• $email' : ''}".trim(),
+                              style: const TextStyle(
+                                  color: AppTheme.textMuted, fontSize: 10),
+                            ),
+                            trailing: isAlreadySelected
+                                ? const Icon(Icons.check_circle_rounded,
+                                    color: AppTheme.emeraldSuccess, size: 18)
+                                : const Icon(Icons.add_circle_outline_rounded,
+                                    color: AppTheme.brandBlue, size: 18),
+                            onTap: () {
+                              _addUserToSelection(
+                                userId: uid,
+                                name: name,
+                                phone: phone,
+                                email: email,
+                                avatarUrl: u['avatar_url']?.toString(),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 14),
+
+                  // 3. DANH SÁCH NGƯỜI ĐƯỢC CHỌN VỚI CHECKBOX
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "NGƯỜI ĐƯỢC CHỌN (${_selectedUsers.length})",
+                        style: TextStyle(
+                          color: textCol,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      if (_selectedUsers.isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedUsers.clear();
+                              _selectedSuggestion = null;
+                            });
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 24),
+                          ),
+                          child: const Text(
+                            "Xóa hết",
+                            style: TextStyle(
+                                color: AppTheme.roseDanger, fontSize: 11),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  if (_selectedUsers.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "Chưa có người dùng nào được chọn",
+                          style: TextStyle(
+                              color: AppTheme.textMuted, fontSize: 12),
+                        ),
+                      ),
+                    )
+                  else
+                    Container(
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cardBorder),
+                      ),
+                      child: Column(
+                        children: _selectedUsers.map((u) {
+                          return CheckboxListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 0),
+                            value: u.isChecked,
+                            activeColor: AppTheme.brandBlue,
+                            onChanged: (val) {
+                              setState(() {
+                                u.isChecked = val ?? false;
+                              });
+                            },
+                            title: Text(
+                              u.name,
+                              style: TextStyle(
+                                color: textCol,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                decoration: u.isChecked
+                                    ? TextDecoration.none
+                                    : TextDecoration.lineThrough,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${u.phone} ${u.email.isNotEmpty ? '• ${u.email}' : ''}"
+                                  .trim(),
+                              style: const TextStyle(
+                                  color: AppTheme.textMuted, fontSize: 10),
+                            ),
+                            secondary: IconButton(
+                              icon: const Icon(Icons.remove_circle_outline,
+                                  size: 18, color: AppTheme.roseDanger),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedUsers.remove(u);
+                                });
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // 4. MA TRẬN QUYỀN HẠN
+                  Text(
+                    "QUYỀN HẠN ÁP DỤNG",
+                    style: TextStyle(
+                      color: textCol,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: cardBorder),
+                    ),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          dense: true,
+                          activeThumbColor: AppTheme.brandBlue,
+                          title: const Text(
+                              "Điều khiển từ xa (Mở / Đóng / Dừng)",
+                              style: TextStyle(fontSize: 12.5)),
+                          value: _canControl,
+                          onChanged: (val) => setState(() => _canControl = val),
+                        ),
+                        Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.grey[200]),
+                        SwitchListTile(
+                          dense: true,
+                          activeThumbColor: AppTheme.brandBlue,
+                          title: const Text("Xem nhật ký & lịch sử",
+                              style: TextStyle(fontSize: 12.5)),
+                          value: _canViewHistory,
+                          onChanged: (val) =>
+                              setState(() => _canViewHistory = val),
+                        ),
+                        Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.grey[200]),
+                        SwitchListTile(
+                          dense: true,
+                          activeThumbColor: AppTheme.brandBlue,
+                          title: const Text("Khóa an toàn trẻ em",
+                              style: TextStyle(fontSize: 12.5)),
+                          value: _canChildLock,
+                          onChanged: (val) =>
+                              setState(() => _canChildLock = val),
+                        ),
+                        Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.grey[200]),
+                        SwitchListTile(
+                          dense: true,
+                          activeThumbColor: AppTheme.brandBlue,
+                          title: const Text("Đổi tên & cấu hình thiết bị",
+                              style: TextStyle(fontSize: 12.5)),
+                          value: _canConfig,
+                          onChanged: (val) => setState(() => _canConfig = val),
+                        ),
+                        Divider(
+                            height: 1,
+                            color: isDark ? Colors.white10 : Colors.grey[200]),
+                        SwitchListTile(
+                          dense: true,
+                          activeThumbColor: AppTheme.amberWarning,
+                          title: const Text("Giới hạn khung giờ truy cập",
+                              style: TextStyle(fontSize: 12.5)),
+                          subtitle: _scheduleLimitActive
+                              ? Text(
+                                  "Cho phép điều khiển từ $_accessStartTime đến $_accessEndTime",
+                                  style: const TextStyle(
+                                      fontSize: 10.5,
+                                      color: AppTheme.amberWarning))
+                              : null,
+                          value: _scheduleLimitActive,
+                          onChanged: (val) =>
+                              setState(() => _scheduleLimitActive = val),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Nút xác nhận
+          SizedBox(
+            width: double.infinity,
+            height: 46,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.brandBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.check, size: 18),
+              label: Text(
+                activeCount > 0
+                    ? "LƯU PHÂN QUYỀN ($activeCount NGƯỜI)"
+                    : "LƯU PHÂN QUYỀN",
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              onPressed: activeCount > 0 ? _submit : null,
+            ),
+          ),
+        ],
       ),
     );
   }

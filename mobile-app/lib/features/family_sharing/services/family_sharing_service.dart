@@ -36,6 +36,19 @@ class FamilySharingService {
     return [];
   }
 
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final res = await ApiClient().get('/api/chat/users/search?q=${Uri.encodeComponent(query.trim())}');
+      if (res.success && res.data is Map && res.data['users'] is List) {
+        return List<Map<String, dynamic>>.from(res.data['users']);
+      }
+    } catch (e) {
+      debugPrint('[FamilySharingService] searchUsers error: $e');
+    }
+    return [];
+  }
+
   Future<bool> addMember(String hardwareId, MemberPermission member) async {
     try {
       final res = await ApiClient().post(
