@@ -72,7 +72,7 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                   setState(() {});
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(ok ? "Đã lưu tên thiết bị lên CSDL thành công!" : "Đã cập nhật tên thiết bị."),
+                      content: Text(ok ? "Đã đổi tên thiết bị thành công!" : "Đã cập nhật tên thiết bị."),
                       backgroundColor: ok ? AppTheme.emeraldSuccess : AppTheme.brandBlue,
                     ),
                   );

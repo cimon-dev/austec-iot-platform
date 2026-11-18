@@ -955,7 +955,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          "Không tìm thấy thông tin thiết bị [$hwId] từ máy chủ CSDL."),
+                          "Không tìm thấy thông tin thiết bị [$hwId] trên hệ thống."),
                       backgroundColor: AppTheme.roseDanger,
                     ),
                   );
@@ -1014,7 +1014,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1025,12 +1025,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   const Text("THIẾT BỊ TÌM THẤY",
                       style: TextStyle(
                           color: AppTheme.cyanAccent,
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold)),
                   TextButton.icon(
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                          horizontal: 10, vertical: 4),
                       visualDensity: VisualDensity.compact,
                       backgroundColor:
                           AppTheme.cyanAccent.withValues(alpha: 0.12),
@@ -1057,22 +1057,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
 
               if (_discoveredDevices.isEmpty)
                 Container(
                   width: double.infinity,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                   decoration: BoxDecoration(
                     color: const Color(0xFF141924),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: const Color(0xFF26324A)),
                   ),
                   child: Row(
                     children: [
                       const Icon(Icons.bluetooth_searching_rounded,
-                          color: AppTheme.cyanAccent, size: 18),
+                          color: AppTheme.cyanAccent, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -1084,7 +1084,8 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                               color: _bleErrorMessage != null
                                   ? AppTheme.roseDanger
                                   : Colors.white70,
-                              fontSize: 11),
+                              fontSize: 11.5,
+                              height: 1.3),
                         ),
                       ),
                     ],
@@ -1138,16 +1139,16 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                   ),
                 ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-              // 2. CẤU HÌNH WI-FI 2.4GHZ (Gọn Gàng)
+              // 2. CẤU HÌNH WI-FI 2.4GHZ
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text("CẤU HÌNH MẠNG WI-FI",
                       style: TextStyle(
                           color: AppTheme.cyanAccent,
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold)),
                   InkWell(
                     onTap: _isScanningWifi
@@ -1164,22 +1165,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                                     strokeWidth: 1.5,
                                     color: AppTheme.cyanAccent))
                             : const Icon(Icons.wifi_find_rounded,
-                                color: AppTheme.cyanAccent, size: 13),
+                                color: AppTheme.cyanAccent, size: 14),
                         const SizedBox(width: 4),
                         const Text("Lấy Wi-Fi máy",
                             style: TextStyle(
                                 color: AppTheme.cyanAccent,
-                                fontSize: 11,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
 
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFF141924),
                   borderRadius: BorderRadius.circular(12),
@@ -1194,7 +1195,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         labelText: "Tên mạng Wi-Fi (SSID)",
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                            horizontal: 12, vertical: 12),
                         prefixIcon: const Icon(Icons.wifi_rounded,
                             color: AppTheme.cyanAccent, size: 18),
                         suffixIcon: IconButton(
@@ -1206,7 +1207,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                             borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -1215,7 +1216,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         labelText: "Mật khẩu Wi-Fi",
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                            horizontal: 12, vertical: 12),
                         prefixIcon: const Icon(Icons.lock_outline,
                             color: AppTheme.cyanAccent, size: 18),
                         suffixIcon: IconButton(
@@ -1236,16 +1237,16 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-              // 3. VỊ TRÍ & TỌA ĐỘ GPS (Gộp Gọn)
+              // 3. VỊ TRÍ & TỌA ĐỘ GPS
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text("VỊ TRÍ & TỌA ĐỘ LẮP ĐẶT",
                       style: TextStyle(
                           color: AppTheme.cyanAccent,
-                          fontSize: 11.5,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold)),
                   InkWell(
                     onTap: _isGettingLocation
@@ -1263,22 +1264,22 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                                     strokeWidth: 1.5,
                                     color: AppTheme.cyanAccent))
                             : const Icon(Icons.my_location,
-                                color: AppTheme.cyanAccent, size: 13),
+                                color: AppTheme.cyanAccent, size: 14),
                         const SizedBox(width: 4),
                         const Text("Lấy GPS",
                             style: TextStyle(
                                 color: AppTheme.cyanAccent,
-                                fontSize: 11,
+                                fontSize: 11.5,
                                 fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
 
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFF141924),
                   borderRadius: BorderRadius.circular(12),
@@ -1294,14 +1295,14 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                             "Khu vực lắp đặt (Tùy chọn - ví dụ: Cửa chính, Phòng khách)",
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                            horizontal: 12, vertical: 12),
                         prefixIcon: const Icon(Icons.meeting_room_outlined,
                             color: AppTheme.cyanAccent, size: 18),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     TextField(
                       controller: _addressController,
                       readOnly: true,
@@ -1311,7 +1312,7 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                         labelText: "Địa chỉ GPS tự động",
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
+                            horizontal: 12, vertical: 12),
                         prefixIcon: const Icon(Icons.location_on_outlined,
                             color: AppTheme.cyanAccent, size: 18),
                         border: OutlineInputBorder(
@@ -1322,12 +1323,12 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // 4. NÚT BẮT ĐẦU GHÉP NỐI
               SizedBox(
                 width: double.infinity,
-                height: 44,
+                height: 48,
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.brandBlue,
@@ -1337,12 +1338,44 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     elevation: 0,
                   ),
                   onPressed: _runProvisioningPipeline,
-                  icon: const Icon(Icons.bolt, size: 18),
+                  icon: const Icon(Icons.bolt, size: 20),
                   label: const Text("BẮT ĐẦU GHÉP NỐI THIẾT BỊ",
                       style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // 5. LƯU Ý HƯỚNG DẪN THOÁNG ĐẸP PHÍA DƯỚI
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline_rounded,
+                        color: AppTheme.cyanAccent, size: 18),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        "Đảm bảo thiết bị đã được cấp nguồn, điện thoại bật sẵn Bluetooth và ở gần thiết bị (< 5m). Mạng Wi-Fi cần hỗ trợ băng tần 2.4GHz.",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 11.5,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),

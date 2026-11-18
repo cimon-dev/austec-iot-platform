@@ -554,99 +554,129 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
             ],
           ),
 
-          // Dòng 2: Nút Switch và Trạng thái BẬT/TẮT cân xứng 2 bên
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: (isOn ? AppTheme.cyanAccent : Colors.grey)
-                  .withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
+          // Dòng 2: Nút Switch và Trạng thái BẬT/TẮT cân xứng 2 bên (Ẩn và báo khi ngoài khung giờ / tạm khóa)
+          if (device.canPerformControl)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
                 color: (isOn ? AppTheme.cyanAccent : Colors.grey)
-                    .withValues(alpha: 0.25),
-                width: 0.8,
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      isOn ? "ĐANG BẬT" : "ĐANG TẮT",
-                      style: TextStyle(
-                        color: isOn ? AppTheme.cyanAccent : Colors.grey,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                    .withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: (isOn ? AppTheme.cyanAccent : Colors.grey)
+                      .withValues(alpha: 0.25),
+                  width: 0.8,
                 ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        device.isChildLockActive
-                            ? Icons.lock_rounded
-                            : Icons.lock_open_rounded,
-                        color: device.isChildLockActive
-                            ? AppTheme.roseDanger
-                            : Colors.grey,
-                        size: 16,
-                      ),
-                      tooltip: device.isChildLockActive
-                          ? "Đang khóa an toàn"
-                          : "Mở khóa an toàn",
-                      onPressed: _isProcessing
-                          ? null
-                          : () {
-                              setState(() {
-                                device.isChildLockActive =
-                                    !device.isChildLockActive;
-                              });
-                              _executePreviewAction(
-                                  device, "TOGGLE_CHILD_LOCK");
-                            },
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 22, minHeight: 22),
-                    ),
-                    const SizedBox(width: 2),
-                    SizedBox(
-                      width: 36,
-                      height: 24,
-                      child: FittedBox(
-                        fit: BoxFit.contain,
-                        child: Switch(
-                          value: isOn,
-                          materialTapTargetSize:
-                              MaterialTapTargetSize.shrinkWrap,
-                          activeTrackColor:
-                              AppTheme.cyanAccent.withValues(alpha: 0.45),
-                          activeThumbColor: AppTheme.cyanAccent,
-                          inactiveTrackColor:
-                              isDark ? Colors.grey[800] : Colors.grey[300],
-                          inactiveThumbColor: Colors.grey,
-                          onChanged: _isProcessing
-                              ? null
-                              : (newVal) {
-                                  setState(() {
-                                    device.isRelayOn = newVal;
-                                  });
-                                  _executePreviewAction(
-                                      device, newVal ? "TURN_ON" : "TURN_OFF");
-                                },
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        isOn ? "ĐANG BẬT" : "ĐANG TẮT",
+                        style: TextStyle(
+                          color: isOn ? AppTheme.cyanAccent : Colors.grey,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          device.isChildLockActive
+                              ? Icons.lock_rounded
+                              : Icons.lock_open_rounded,
+                          color: device.isChildLockActive
+                              ? AppTheme.roseDanger
+                              : Colors.grey,
+                          size: 16,
+                        ),
+                        tooltip: device.isChildLockActive
+                            ? "Đang khóa an toàn"
+                            : "Mở khóa an toàn",
+                        onPressed: _isProcessing
+                            ? null
+                            : () {
+                                setState(() {
+                                  device.isChildLockActive =
+                                      !device.isChildLockActive;
+                                });
+                                _executePreviewAction(
+                                    device, "TOGGLE_CHILD_LOCK");
+                              },
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 22, minHeight: 22),
+                      ),
+                      const SizedBox(width: 2),
+                      SizedBox(
+                        width: 36,
+                        height: 24,
+                        child: FittedBox(
+                          fit: BoxFit.contain,
+                          child: Switch(
+                            value: isOn,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            activeTrackColor:
+                                AppTheme.cyanAccent.withValues(alpha: 0.45),
+                            activeThumbColor: AppTheme.cyanAccent,
+                            inactiveTrackColor:
+                                isDark ? Colors.grey[800] : Colors.grey[300],
+                            inactiveThumbColor: Colors.grey,
+                            onChanged: _isProcessing
+                                ? null
+                                : (newVal) {
+                                    setState(() {
+                                      device.isRelayOn = newVal;
+                                    });
+                                    _executePreviewAction(
+                                        device, newVal ? "TURN_ON" : "TURN_OFF");
+                                  },
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_clock_rounded, color: AppTheme.amberWarning, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      device.isWithinAllowedSchedule
+                          ? "Quyền điều khiển bị khóa"
+                          : "Ngoài khung giờ (${device.accessStartTime} - ${device.accessEndTime})",
+                      style: const TextStyle(
+                        color: AppTheme.amberWarning,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
           // Dòng 3: 2 Nút chuẩn [Chi tiết] và [Cài đặt]
           Row(
@@ -2025,104 +2055,135 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
             ),
           ),
           const SizedBox(height: 12),
-          // Điều khiển nhanh: Nút Bật/Tắt nguồn & Khóa an toàn (Chuẩn PDF Trang 7)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFE2E8F0)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      isOn ? Icons.power_rounded : Icons.power_off_rounded,
-                      color: isOn
-                          ? AppTheme.emeraldSuccess
-                          : AppTheme.crimsonDanger,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isOn ? "NGUỒN: BẬT" : "NGUỒN: NGẮT",
-                      style: TextStyle(
+          // Điều khiển nhanh: Nút Bật/Tắt nguồn & Khóa an toàn (Ẩn và báo khi ngoài khung giờ / tạm khóa)
+          if (device.canPerformControl) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF1E293B)
+                        : const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        isOn ? Icons.power_rounded : Icons.power_off_rounded,
                         color: isOn
                             ? AppTheme.emeraldSuccess
                             : AppTheme.crimsonDanger,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        device.isChildLockActive
-                            ? Icons.lock_rounded
-                            : Icons.lock_open_rounded,
-                        color: device.isChildLockActive
-                            ? AppTheme.roseDanger
-                            : Colors.grey,
                         size: 18,
                       ),
-                      tooltip: device.isChildLockActive
-                          ? "Đang khóa an toàn"
-                          : "Mở khóa an toàn",
-                      onPressed: _isProcessing
-                          ? null
-                          : () {
-                              setState(() {
-                                device.isChildLockActive =
-                                    !device.isChildLockActive;
-                              });
-                              _executePreviewAction(
-                                  device, "TOGGLE_CHILD_LOCK");
-                            },
-                      padding: EdgeInsets.zero,
-                      constraints:
-                          const BoxConstraints(minWidth: 28, minHeight: 28),
-                    ),
-                    const SizedBox(width: 6),
-                    Transform.scale(
-                      scale: 0.85,
-                      child: Switch(
-                        value: isOn,
-                        activeTrackColor:
-                            AppTheme.emeraldSuccess.withValues(alpha: 0.45),
-                        activeThumbColor: AppTheme.emeraldSuccess,
-                        inactiveTrackColor:
-                            isDark ? Colors.grey[800] : Colors.grey[300],
-                        inactiveThumbColor: Colors.grey,
-                        onChanged: _isProcessing
+                      const SizedBox(width: 6),
+                      Text(
+                        isOn ? "NGUỒN: BẬT" : "NGUỒN: NGẮT",
+                        style: TextStyle(
+                          color: isOn
+                              ? AppTheme.emeraldSuccess
+                              : AppTheme.crimsonDanger,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          device.isChildLockActive
+                              ? Icons.lock_rounded
+                              : Icons.lock_open_rounded,
+                          color: device.isChildLockActive
+                              ? AppTheme.roseDanger
+                              : Colors.grey,
+                          size: 18,
+                        ),
+                        tooltip: device.isChildLockActive
+                            ? "Đang khóa an toàn"
+                            : "Mở khóa an toàn",
+                        onPressed: _isProcessing
                             ? null
-                            : (newVal) {
+                            : () {
                                 setState(() {
-                                  device.currentProperties['relay_status'] =
-                                      newVal ? 'ON' : 'OFF';
-                                  device.currentProperties['is_meter_on'] =
-                                      newVal;
+                                  device.isChildLockActive =
+                                      !device.isChildLockActive;
                                 });
                                 _executePreviewAction(
-                                    device,
-                                    newVal
-                                        ? "METER_POWER_ON"
-                                        : "METER_POWER_OFF");
+                                    device, "TOGGLE_CHILD_LOCK");
                               },
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 28, minHeight: 28),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 6),
+                      Transform.scale(
+                        scale: 0.85,
+                        child: Switch(
+                          value: isOn,
+                          activeTrackColor:
+                              AppTheme.emeraldSuccess.withValues(alpha: 0.45),
+                          activeThumbColor: AppTheme.emeraldSuccess,
+                          inactiveTrackColor:
+                              isDark ? Colors.grey[800] : Colors.grey[300],
+                          inactiveThumbColor: Colors.grey,
+                          onChanged: _isProcessing
+                              ? null
+                              : (newVal) {
+                                  setState(() {
+                                    device.currentProperties['relay_status'] =
+                                        newVal ? 'ON' : 'OFF';
+                                    device.currentProperties['is_meter_on'] =
+                                        newVal;
+                                  });
+                                  _executePreviewAction(
+                                      device,
+                                      newVal
+                                          ? "METER_POWER_ON"
+                                          : "METER_POWER_OFF");
+                                },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: (isDark ? Colors.white : Colors.black)
+                    .withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_clock_rounded,
+                      color: AppTheme.amberWarning, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      device.isWithinAllowedSchedule
+                          ? "Quyền điều khiển đã bị chủ nhà tạm khóa"
+                          : "Ngoài khung giờ được phép điều khiển (${device.accessStartTime} - ${device.accessEndTime})",
+                      style: const TextStyle(
+                          color: AppTheme.amberWarning,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           // 2 Nút chuẩn [Chi tiết] và [Cài đặt]
           Row(

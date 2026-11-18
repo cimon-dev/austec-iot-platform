@@ -135,8 +135,8 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               Icon(nameOk || propOk ? Icons.check_circle_outline : Icons.info_outline, color: Colors.white, size: 18),
               const SizedBox(width: 8),
               Text(nameOk || propOk
-                  ? "Đã lưu cấu hình thiết bị lên CSDL Cloud thành công!"
-                  : "Đã lưu cấu hình cục bộ (ngoại tuyến)!"),
+                  ? "Đã lưu cài đặt thành công!"
+                  : "Đã lưu cài đặt (ngoại tuyến)!"),
             ],
           ),
           backgroundColor: nameOk || propOk ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
@@ -354,51 +354,249 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     );
     if (pickedTime == null || !mounted) return;
 
-    final formattedTime =
+    String formattedTime =
         "${pickedTime.hour.toString().padLeft(2, '0')}:${pickedTime.minute.toString().padLeft(2, '0')}";
     final isSwitch = widget.device.category == DeviceCategory.lightSwitch;
     String selectedAction = isSwitch ? "Bật công tắc" : "Mở 100%";
+    String scheduleType = "weekly"; // "weekly" (Lặp lại hàng tuần) hoặc "this_week" (Chỉ tuần này)
+    List<bool> selectedDays = [true, true, true, true, true, true, true]; // T2..CN
+    final dayLabels = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
+          final isDark = AppTheme.isDarkMode;
+          final isAllDays = selectedDays.every((d) => d);
+
+          String getDaysSummary() {
+            if (isAllDays) return "Hàng ngày";
+            final activeDays = <String>[];
+            for (int i = 0; i < 7; i++) {
+              if (selectedDays[i]) activeDays.add(dayLabels[i]);
+            }
+            if (activeDays.isEmpty) return "Chưa chọn ngày";
+            return activeDays.join(", ");
+          }
+
           return AlertDialog(
             backgroundColor:
-                AppTheme.isDarkMode ? const Color(0xFF18181B) : Colors.white,
+                isDark ? const Color(0xFF18181B) : Colors.white,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Text("Thêm lịch trình mới",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Thời gian kích hoạt: $formattedTime",
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 14)),
-                const SizedBox(height: 12),
-                const Text("Hành động thực hiện:",
-                    style: TextStyle(fontSize: 12, color: AppTheme.textMuted)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedAction,
-                  dropdownColor: AppTheme.isDarkMode
-                      ? const Color(0xFF27272A)
-                      : Colors.white,
-                  items: (isSwitch
-                          ? ["Bật công tắc", "Tắt công tắc"]
-                          : ["Mở 100%", "Mở 50%", "Mở 20%", "Đóng 0%"])
-                      .map((act) =>
-                          DropdownMenuItem(value: act, child: Text(act)))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setDialogState(() => selectedAction = val);
+                const Text("Thêm lịch trình mới",
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                InkWell(
+                  onTap: () async {
+                    final newTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay(
+                        hour: int.tryParse(formattedTime.split(":")[0]) ?? 7,
+                        minute: int.tryParse(formattedTime.split(":")[1]) ?? 0,
+                      ),
+                    );
+                    if (newTime != null) {
+                      setDialogState(() {
+                        formattedTime =
+                            "${newTime.hour.toString().padLeft(2, '0')}:${newTime.minute.toString().padLeft(2, '0')}";
+                      });
                     }
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.brandBlue.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.access_time_filled, color: AppTheme.brandBlue, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          formattedTime,
+                          style: const TextStyle(
+                            color: AppTheme.brandBlue,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Hành động thực hiện:",
+                      style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedAction,
+                    isDense: true,
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    dropdownColor: isDark ? const Color(0xFF27272A) : Colors.white,
+                    items: (isSwitch
+                            ? ["Bật công tắc", "Tắt công tắc"]
+                            : ["Mở 100%", "Mở 50%", "Mở 20%", "Đóng 0%"])
+                        .map((act) => DropdownMenuItem(value: act, child: Text(act, style: const TextStyle(fontSize: 13))))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedAction = val);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text("Loại lịch trình:",
+                      style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => scheduleType = "weekly"),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: scheduleType == "weekly"
+                                  ? AppTheme.brandBlue.withValues(alpha: 0.15)
+                                  : (isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: scheduleType == "weekly" ? AppTheme.brandBlue : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Lặp lại hàng tuần",
+                                style: TextStyle(
+                                  color: scheduleType == "weekly"
+                                      ? AppTheme.brandBlue
+                                      : (isDark ? Colors.white70 : Colors.black87),
+                                  fontSize: 11,
+                                  fontWeight: scheduleType == "weekly" ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => setDialogState(() => scheduleType = "this_week"),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: scheduleType == "this_week"
+                                  ? AppTheme.brandBlue.withValues(alpha: 0.15)
+                                  : (isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: scheduleType == "this_week" ? AppTheme.brandBlue : Colors.transparent,
+                                width: 1.2,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                "Chỉ tuần này",
+                                style: TextStyle(
+                                  color: scheduleType == "this_week"
+                                      ? AppTheme.brandBlue
+                                      : (isDark ? Colors.white70 : Colors.black87),
+                                  fontSize: 11,
+                                  fontWeight: scheduleType == "this_week" ? FontWeight.bold : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text("Ngày áp dụng:",
+                          style: TextStyle(fontSize: 11.5, color: AppTheme.textMuted, fontWeight: FontWeight.w600)),
+                      InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            final makeAll = !isAllDays;
+                            for (int i = 0; i < 7; i++) {
+                              selectedDays[i] = makeAll;
+                            }
+                          });
+                        },
+                        child: Text(
+                          isAllDays ? "Bỏ chọn tất cả" : "Tất cả các ngày",
+                          style: const TextStyle(
+                            color: AppTheme.cyanAccent,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(7, (i) {
+                      final isSelected = selectedDays[i];
+                      return InkWell(
+                        onTap: () {
+                          setDialogState(() {
+                            selectedDays[i] = !selectedDays[i];
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.brandBlue
+                                : (isDark ? const Color(0xFF27272A) : const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.brandBlue
+                                  : (isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1)),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              dayLabels[i],
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.white70 : Colors.black87),
+                                fontSize: 11,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
             ),
             actions: [
               TextButton(
@@ -409,11 +607,16 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     backgroundColor: AppTheme.brandBlue,
                     foregroundColor: Colors.white),
                 onPressed: () {
+                  final daysText = getDaysSummary();
+                  final typeLabel = scheduleType == "weekly" ? "Lặp lại" : "Chỉ tuần này";
                   setState(() {
                     _schedules.add({
-                      "title": "Lịch hẹn $formattedTime",
+                      "title": "$selectedAction lúc $formattedTime",
                       "time": formattedTime,
-                      "days": "Hàng ngày",
+                      "days": daysText,
+                      "scheduleType": scheduleType,
+                      "scheduleTypeLabel": typeLabel,
+                      "selectedDays": List<bool>.from(selectedDays),
                       "action": selectedAction,
                       "enabled": true,
                     });
@@ -719,7 +922,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                                               fontWeight: FontWeight.bold,
                                               fontSize: 13)),
                                       Text(
-                                          "${s["time"] ?? ''} • ${s["days"] ?? 'Hàng ngày'} • ${s["action"] ?? ''}",
+                                          "${s["time"] ?? ''} • ${s["scheduleTypeLabel"] ?? 'Lặp lại'} • ${s["days"] ?? 'Hàng ngày'} • ${s["action"] ?? ''}",
                                           style: TextStyle(
                                               color: AppTheme.textMuted,
                                               fontSize: 11)),

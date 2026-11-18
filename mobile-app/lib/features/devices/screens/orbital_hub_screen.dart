@@ -466,12 +466,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     final isDark = AppTheme.isDarkMode;
     final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
     final screenSize = MediaQuery.of(context).size;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: bgCol,
       body: Stack(
         children: [
           SafeArea(
+            bottom: false,
             child: Column(
               children: [
                 // NỘI DUNG CHÍNH (THEO TAB ĐƯỢC CHỌN)
@@ -492,16 +494,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                 ),
                 ),
 
-                // BOTTOM NAVIGATION BAR
+                // BOTTOM NAVIGATION BAR (Flush tràn viền, không khung pill bao quanh)
                 _buildBottomNavBar(isDark),
               ],
             ),
           ),
 
-          // NÚT CSKH CHAT NỔI KÉO THẢ & VÙNG VUỐT ĐÓNG (CHỈ HIỂN THỊ TẠI TRANG ĐIỀU KHIỂN)
+          // NÚT CSKH CHAT NỔI KÉO THẢ & VÙNG VUỐT ĐÓNG (NẰM TRÊN THANH ĐIỀU HƯỚNG ĐÁY)
           if (_selectedBottomNavIndex == 0) ...[
-            _buildDismissZone(screenSize),
-            _buildFloatingChatBubble(screenSize, isDark),
+            _buildDismissZone(screenSize, bottomInset),
+            _buildFloatingChatBubble(screenSize, bottomInset, isDark),
           ],
         ],
       ),
@@ -549,11 +551,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // 1. Ảnh quảng bá độc lập (Pure Hero Banner) ở trên cùng: Hiển thị trọn vẹn 100% chiều cao và chiều ngang, không bị cắt mép
+  // 1. Ảnh quảng bá độc lập (Pure Hero Banner) ở trên cùng: Chiều ngang max, chiều cao co giãn theo tỉ lệ ảnh (800:450) để hiển thị trọn vẹn 100% hình ảnh không bị co nhỏ
   Widget _buildPureHeroBanner(bool isDark) {
     return Container(
       width: double.infinity,
-      height: 115,
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF141417).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.5),
@@ -572,15 +573,19 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(13),
-        child: Image.asset(
-          "assets/header.png",
-          fit: BoxFit.contain, // Giữ trọn vẹn 100% chiều cao hình ảnh gốc, không bị cắt xén bất cứ góc nào
-          alignment: Alignment.center,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: isDark ? const Color(0xFF141417) : const Color(0xFFE2E8F0),
-            );
-          },
+        child: AspectRatio(
+          aspectRatio: 800 / 450,
+          child: Image.asset(
+            "assets/header.png",
+            width: double.infinity,
+            fit: BoxFit.cover,
+            alignment: Alignment.center,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: isDark ? const Color(0xFF141417) : const Color(0xFFE2E8F0),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -732,7 +737,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           Divider(color: cardBorder, height: 1),
           const SizedBox(height: 8),
 
-          // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối
+          // Hàng 2: Thanh công cụ Dark/Light, Ngôn ngữ, Tìm kiếm, Chuông, Ghép nối (Tối ưu độ rộng gọn gàng không bao giờ tràn mép)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -741,13 +746,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 onTap: _toggleTheme,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
@@ -756,8 +762,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        isDark ? AppTheme.t("dark_mode") : AppTheme.t("light_mode"),
-                        style: TextStyle(color: textCol, fontSize: 10.5, fontWeight: FontWeight.w600),
+                        isDark
+                            ? (AppTheme.currentLang == "vi" ? "Tối" : "Dark")
+                            : (AppTheme.currentLang == "vi" ? "Sáng" : "Light"),
+                        style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -769,19 +777,20 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 onTap: _toggleLanguage,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 11)),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 3),
                       Text(
                         AppTheme.currentLang == "vi" ? "VI" : "EN",
-                        style: TextStyle(color: textCol, fontSize: 10.5, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -790,12 +799,13 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
 
               // Cụm Nút Tìm kiếm, Chuông thông báo, Ghép nối thiết bị
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: Icon(Icons.search, size: 18, color: textCol),
                     tooltip: AppTheme.t("search_device"),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
                     onPressed: _openSearchDialog,
                   ),
                   const SizedBox(width: 2),
@@ -821,7 +831,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     ),
                     tooltip: AppTheme.t("notifications"),
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(minWidth: 26, minHeight: 28),
                     onPressed: _openNotificationCenter,
                   ),
                   const SizedBox(width: 4),
@@ -829,15 +839,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.brandBlue,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                       minimumSize: const Size(0, 28),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    icon: const Icon(Icons.add, size: 14),
+                    icon: const Icon(Icons.add, size: 13),
                     label: Text(
-                      AppTheme.t("add_device"),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      AppTheme.currentLang == "vi" ? "Thêm" : "Add",
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
                     ),
                     onPressed: () async {
                       await Navigator.of(context).push(
@@ -1128,15 +1138,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     }
   }
 
-  // 1. Vùng nhả đáy màn hình để đóng nút chat CSKH (Swipe down to dismiss zone)
-  Widget _buildDismissZone(Size screenSize) {
+  // 1. Vùng nhả đáy màn hình để đóng nút chat CSKH (Nằm phía trên thanh điều hướng đáy)
+  Widget _buildDismissZone(Size screenSize, double bottomInset) {
     if (!_isDraggingChat || _isChatButtonDismissed) return const SizedBox.shrink();
 
-    final currentOffset = _chatButtonOffset ?? Offset(screenSize.width - 68, screenSize.height - 180);
-    final isOver = currentOffset.dy > screenSize.height - 140;
+    final dismissBottom = 72.0 + bottomInset;
+    final currentOffset = _chatButtonOffset ?? Offset(screenSize.width - 68, screenSize.height - (dismissBottom + 100));
+    final isOver = currentOffset.dy > screenSize.height - (dismissBottom + 64);
 
     return Positioned(
-      bottom: 24,
+      bottom: dismissBottom,
       left: screenSize.width / 2 - 75,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -1177,12 +1188,13 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   }
 
   // 2. Nút Chat CSKH Nổi Kéo Thả Tự Do & Hút Mép Màn Hình
-  Widget _buildFloatingChatBubble(Size screenSize, bool isDark) {
+  Widget _buildFloatingChatBubble(Size screenSize, double bottomInset, bool isDark) {
     if (_isChatButtonDismissed) return const SizedBox.shrink();
 
-    final defaultOffset = Offset(screenSize.width - 68, screenSize.height - 180);
+    final dismissBottom = 72.0 + bottomInset;
+    final defaultOffset = Offset(screenSize.width - 68, screenSize.height - (dismissBottom + 100));
     final currentOffset = _chatButtonOffset ?? defaultOffset;
-    final isOverDismissZone = _isDraggingChat && (currentOffset.dy > screenSize.height - 140);
+    final isOverDismissZone = _isDraggingChat && (currentOffset.dy > screenSize.height - (dismissBottom + 64));
 
     return Positioned(
       left: currentOffset.dx,
@@ -1197,7 +1209,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             final newY = currentOffset.dy + details.delta.dy;
             _chatButtonOffset = Offset(
               newX.clamp(12.0, screenSize.width - 64),
-              newY.clamp(60.0, screenSize.height - 80),
+              newY.clamp(60.0, screenSize.height - (dismissBottom + 16)),
             );
           });
         },
@@ -1220,7 +1232,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             // Snap to nearest side edge (left or right)
             final snapX = (currentOffset.dx + 26 < screenSize.width / 2) ? 16.0 : (screenSize.width - 68);
             setState(() {
-              _chatButtonOffset = Offset(snapX, currentOffset.dy.clamp(80.0, screenSize.height - 170));
+              _chatButtonOffset = Offset(snapX, currentOffset.dy.clamp(80.0, screenSize.height - (dismissBottom + 70)));
               _isDraggingChat = false;
             });
           }
@@ -1264,34 +1276,31 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
   }
 
-  // 3. Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt) - Chuẩn Monochrome Industrial
+  // 3. Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt) - Gọn gàng, loại bỏ viền bao quanh
   Widget _buildBottomNavBar(bool isDark) {
     final bg = isDark ? const Color(0xFF141417) : Colors.white;
-    final border = isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1);
+    final topBorder = isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: border, width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border(top: BorderSide(color: topBorder, width: 1.0)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(0, Icons.grid_view_rounded, AppTheme.t("control"), isDark),
-          _buildNavItem(1, Icons.storefront_rounded, AppTheme.t("shop"), isDark),
-          _buildNavItem(2, Icons.forum_rounded, AppTheme.t("chat"), isDark),
-          _buildNavItem(3, Icons.settings_rounded, AppTheme.currentLang == 'vi' ? "Cài đặt" : "Settings", isDark),
-        ],
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(0, Icons.grid_view_rounded, AppTheme.t("control"), isDark),
+              _buildNavItem(1, Icons.storefront_rounded, AppTheme.t("shop"), isDark),
+              _buildNavItem(2, Icons.forum_rounded, AppTheme.t("chat"), isDark),
+              _buildNavItem(3, Icons.settings_rounded, AppTheme.currentLang == 'vi' ? "Cài đặt" : "Settings", isDark),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1310,33 +1319,24 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           }
         });
       },
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFF0F172A).withValues(alpha: 0.08))
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? (isDark ? Colors.white30 : const Color(0xFF0F172A).withValues(alpha: 0.2))
-                : Colors.transparent,
-            width: 1,
-          ),
-        ),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? activeTextColor : inactiveTextColor, size: 20),
+            Icon(
+              icon,
+              color: isSelected ? activeTextColor : inactiveTextColor,
+              size: 22,
+            ),
             const SizedBox(height: 3),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? activeTextColor : inactiveTextColor,
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),
           ],

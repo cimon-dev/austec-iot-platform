@@ -43,8 +43,8 @@ export class SettingsController {
   @Get('/app/version')
   public async getAppVersion(req: Request, res: Response) {
     try {
-      const latestVersion = process.env.APP_LATEST_VERSION || '2.5.0';
-      const buildCode = parseInt(process.env.APP_BUILD_CODE || '17', 10);
+      const latestVersion = process.env.APP_LATEST_VERSION || '2.5.1';
+      const buildCode = parseInt(process.env.APP_BUILD_CODE || '18', 10);
       const minRequiredVersion = process.env.APP_MIN_VERSION || '2.0.0';
       const minRequiredBuild = parseInt(process.env.APP_MIN_BUILD || '10', 10);
       const forceUpdate = process.env.APP_FORCE_UPDATE === 'true';
@@ -57,7 +57,7 @@ export class SettingsController {
       const apkUrl = process.env.APP_APK_URL || `${baseUrl}/api/system/download-apk`;
 
       const releaseNotes = process.env.APP_RELEASE_NOTES ||
-        'Bản cập nhật v2.5.0:\n• Tối ưu giao diện Hub không tràn mép trên mọi thiết bị\n• Xem camera và camera cửa cuốn xoay ngang toàn màn hình sắc nét\n• Chuẩn hóa mã lệnh điều khiển kép cho Công tơ điện tử chống giật\n• Chuyển đổi BMS sang Quản lý Năng lượng, tối giản giao diện\n• Giao diện phân quyền thành viên dạng Combobox & chọn nhiều người cùng lúc\n• Tự động cập nhật trực tiếp (In-App OTA) không cần tải lại thủ công';
+        'Bản cập nhật v2.5.1:\n• Ảnh quảng bá Hub hiển thị tối đa chiều ngang và co giãn trọn vẹn theo tỷ lệ\n• Nút thêm thiết bị và thanh công cụ Hub tối ưu chống tràn mép trên mọi dòng máy\n• Nâng cao vùng thả đóng nút CSKH nổi trên Android\n• Bỏ viền bao quanh thanh điều hướng đáy (Bottom Nav), giao diện liền mạch hiện đại\n• Lịch trình tự động cho phép chọn Lặp lại hàng tuần hoặc Chỉ tuần này, chọn nhanh tất cả hoặc từng ngày\n• Cảnh báo ngoài khung giờ điều khiển trực tiếp trên danh sách xem trước thiết bị\n• Thông báo thân thiện, ngắn gọn và dễ hiểu\n• Giao diện ghép nối thiết bị phân bố thoáng đãng và trực quan';
 
       res.json({
         success: true,
@@ -86,11 +86,11 @@ export class SettingsController {
     try {
       const candidates = [
         path.resolve(process.cwd(), 'public/downloads/Austec_IoT_latest.apk'),
+        path.resolve(process.cwd(), 'public/downloads/Austec_IoT_v2.5.1.apk'),
         path.resolve(process.cwd(), 'public/downloads/Austec_IoT_v2.5.0.apk'),
-        path.resolve(process.cwd(), 'public/downloads/Austec_IoT_v2.4.0.apk'),
         path.resolve(process.cwd(), '../dist-apk/Austec_IoT_latest.apk'),
+        path.resolve(process.cwd(), '../dist-apk/Austec_IoT_v2.5.1.apk'),
         path.resolve(process.cwd(), '../dist-apk/Austec_IoT_v2.5.0.apk'),
-        path.resolve(process.cwd(), '../dist-apk/Austec_IoT_v2.4.0.apk'),
         path.resolve(process.cwd(), '../../dist-apk/Austec_IoT_latest.apk'),
       ];
 

@@ -221,7 +221,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
           else
             IconButton(
               icon: Icon(Icons.refresh, color: textCol, size: 20),
-              tooltip: "Đồng bộ từ CSDL",
+              tooltip: "Làm mới lịch sử",
               onPressed: _fetchLiveHistory,
             ),
           const SizedBox(width: 4),

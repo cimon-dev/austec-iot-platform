@@ -1185,7 +1185,7 @@ class IoTGatewayClient {
     return CommandResult(
       success: true,
       latencyMs: totalLatency > 0 ? totalLatency : netLatency,
-      message: "Lệnh $action đã gửi tới bo mạch & lưu vào Hộp Đen CSDL",
+      message: "Lệnh $action đã thực hiện thành công",
       cryptoSignature: cryptoSig,
     );
   }
