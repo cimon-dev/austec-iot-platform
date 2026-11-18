@@ -251,6 +251,17 @@ try {
         }
         Copy-Item $SourceApk (Join-Path $BackendDownloadsDir "Austec_IoT_latest.apk") -Force
         Copy-Item $SourceApk (Join-Path $BackendDownloadsDir $VersionOnlyName) -Force
+
+        # Tự động đồng bộ lên Cloudflare R2 CDN để phục vụ In-App OTA tốc độ cao không phụ thuộc IP
+        $UploadScript = Join-Path $ScriptDir "backend\scripts\upload_apk_r2.cjs"
+        if (Test-Path $UploadScript) {
+            Write-Host "-> Đang đồng bộ file APK lên Cloudflare R2 CDN..." -ForegroundColor Cyan
+            try {
+                & node $UploadScript
+            } catch {
+                Write-Host "[CẢNH BÁO] Không thể tải APK lên R2: $_" -ForegroundColor Yellow
+            }
+        }
     }
 
     $ApkItem = Get-Item $VersionOnlyPath

@@ -194,9 +194,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
       _errorMessage = null;
     });
 
-    final targetUrl = widget.updateInfo.apkUrl.isNotEmpty
-        ? widget.updateInfo.apkUrl
-        : widget.updateInfo.directApkUrl;
+    final targetUrl = widget.updateInfo.directApkUrl.isNotEmpty
+        ? widget.updateInfo.directApkUrl
+        : widget.updateInfo.apkUrl;
 
     try {
       OtaUpdate()
