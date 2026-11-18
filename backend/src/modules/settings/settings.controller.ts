@@ -53,7 +53,7 @@ export class SettingsController {
       const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
       const baseUrl = `${protocol}://${host}`;
 
-      const directApkUrl = process.env.APP_DIRECT_APK_URL || 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/releases/Austec_IoT_latest.apk';
+      const directApkUrl = process.env.APP_DIRECT_APK_URL || 'http://103.82.39.109/Austec_IoT_latest.apk';
       const apkUrl = process.env.APP_APK_URL || `${baseUrl}/api/system/download-apk`;
 
       const releaseNotes = process.env.APP_RELEASE_NOTES ||
@@ -100,7 +100,7 @@ export class SettingsController {
         }
       }
 
-      const fallbackUrl = process.env.APP_DIRECT_APK_URL || 'https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/releases/Austec_IoT_latest.apk';
+      const fallbackUrl = process.env.APP_APK_URL || process.env.APP_DIRECT_APK_URL || 'http://103.82.39.109/Austec_IoT_latest.apk';
       return res.redirect(fallbackUrl);
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
