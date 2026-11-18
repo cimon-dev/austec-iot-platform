@@ -145,6 +145,8 @@ export class CommandService {
       const configuredRtspPort = (process.env.STREAM_SERVER_PORT_RTSP || '8554').trim();
       if (isCamera && actionCode === '13' && configuredMediaHost) {
         await this.mqttGateway.publishAction(req.actorId, req.hardwareId, `rtsp:${configuredMediaHost}:${configuredRtspPort}`);
+        // Chờ 250ms để ESP32-CAM ghi cấu hình MediaMTX vào bộ nhớ Flash NVS xong, tránh bị tràn buffer bỏ rơi lệnh "13"
+        await new Promise(resolve => setTimeout(resolve, 250));
       }
       // Phát mã lệnh chuẩn trực tiếp qua MQTT tới thiết bị phần cứng
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);

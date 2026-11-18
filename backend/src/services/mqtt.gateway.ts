@@ -50,6 +50,7 @@ export class MqttGateway {
           '+/+/pub/#',
           '+/+/onboard',
           'devices/+/camera/#',
+          'devices/+/status',
           'esp32/+/status',
           'esp32/+/photo',
         ], (err) => {

@@ -114,6 +114,12 @@ export function DeviceGroupTab({
       const res = await fetch(`${getApiBaseUrl()}/api/admin/groups`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      if (res.status === 401) {
+        localStorage.removeItem("austec_auth_token");
+        localStorage.removeItem("austec_auth_user");
+        window.location.replace("/login");
+        return;
+      }
       const data = await res.json();
       if (data.success && Array.isArray(data.groups)) {
         setGroups(data.groups);

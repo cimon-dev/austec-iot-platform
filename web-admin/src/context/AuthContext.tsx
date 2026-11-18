@@ -64,20 +64,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem("austec_auth_user");
-      const savedToken = localStorage.getItem("austec_auth_token");
-      if (savedUser && savedToken) {
-        setUser(JSON.parse(savedUser));
-      } else {
-        // Require explicit login
+    const initAuth = async () => {
+      try {
+        const savedUser = localStorage.getItem("austec_auth_user");
+        const savedToken = localStorage.getItem("austec_auth_token");
+        if (savedUser && savedToken) {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+
+          // Xác thực tính hợp lệ của Token với Backend
+          if (savedToken !== "austec-admin-super-token") {
+            try {
+              const res = await fetch(`${getApiBaseUrl()}/api/auth/me`, {
+                headers: { Authorization: `Bearer ${savedToken}` },
+              });
+              if (res.status === 401) {
+                console.warn("[AuthContext] Phiên đăng nhập đã hết hạn (401), chuyển hướng về /login...");
+                localStorage.removeItem("austec_auth_user");
+                localStorage.removeItem("austec_auth_token");
+                setUser(null);
+                if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+                  window.location.replace("/login");
+                }
+                return;
+              }
+              const data = await res.json();
+              if (data.success && data.user) {
+                const updated = { ...parsedUser, ...data.user };
+                setUser(updated);
+                localStorage.setItem("austec_auth_user", JSON.stringify(updated));
+              }
+            } catch (err) {
+              console.warn("[AuthContext] Không kết nối được API kiểm tra token:", err);
+            }
+          }
+        } else {
+          // Require explicit login
+          setUser(null);
+        }
+      } catch {
         setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+
+    initAuth();
   }, []);
 
   const login = async (params: LoginParams): Promise<{ success: boolean; error?: string; require2FA?: boolean }> => {

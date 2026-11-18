@@ -52,12 +52,24 @@ function DevicesManagementContent() {
     const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
     const headers = { Authorization: `Bearer ${token}` };
 
+    const handleApiResponse = async (res: Response) => {
+      if (res.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("austec_auth_token");
+          localStorage.removeItem("austec_auth_user");
+          window.location.replace("/login");
+        }
+        return { success: false };
+      }
+      return res.json();
+    };
+
     try {
       await Promise.allSettled([
-        fetch(`${apiBase}/api/admin/groups`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.groups)) setGroups(d.groups); }),
-        fetch(`${apiBase}/api/admin/device-types`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.deviceTypes)) setDeviceTypes(d.deviceTypes); }),
-        fetch(`${apiBase}/api/admin/models`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.models)) setModels(d.models); }),
-        fetch(`${apiBase}/api/admin/devices`, { headers }).then(r => r.json()).then(d => { if (d.success && Array.isArray(d.devices)) setDevices(d.devices); }),
+        fetch(`${apiBase}/api/admin/groups`, { headers }).then(handleApiResponse).then(d => { if (d.success && Array.isArray(d.groups)) setGroups(d.groups); }),
+        fetch(`${apiBase}/api/admin/device-types`, { headers }).then(handleApiResponse).then(d => { if (d.success && Array.isArray(d.deviceTypes)) setDeviceTypes(d.deviceTypes); }),
+        fetch(`${apiBase}/api/admin/models`, { headers }).then(handleApiResponse).then(d => { if (d.success && Array.isArray(d.models)) setModels(d.models); }),
+        fetch(`${apiBase}/api/admin/devices`, { headers }).then(handleApiResponse).then(d => { if (d.success && Array.isArray(d.devices)) setDevices(d.devices); }),
       ]);
     } catch (e) {
       console.warn("Lỗi tải master data:", e);
