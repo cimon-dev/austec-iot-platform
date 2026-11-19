@@ -860,8 +860,9 @@ export class DeviceOperationsController {
             }
           } else {
             const perm = permRes.rows[0];
+            const isStreamAction = command === 'STREAM_START' || command === 'STREAM_STOP' || command === '13' || command === '14' || command === 'TAKE_SNAPSHOT';
             if (perm.role !== 'OWNER') {
-              if (perm.can_control === false) {
+              if (!isStreamAction && perm.can_control === false) {
                 res.status(403).json({
                   success: false,
                   error: 'Quyền điều khiển thiết bị của bạn đã bị chủ nhà tạm khóa',
@@ -877,7 +878,7 @@ export class DeviceOperationsController {
                 return;
               }
 
-              if (perm.schedule_limit_active) {
+              if (!isStreamAction && perm.schedule_limit_active) {
                 const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
                 const currentHours = nowVN.getUTCHours();
                 const currentMinutes = nowVN.getUTCMinutes();
