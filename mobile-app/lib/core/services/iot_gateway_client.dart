@@ -755,13 +755,14 @@ class IoTGatewayClient {
         ? (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20).toInt()
         : 20;
     final bool autoSchedule = props['is_auto_schedule'] == true || props['auto_schedule'] == true;
-    final bool accessLimit = props['access_limit'] == true || props['is_access_limit'] == true;
-    final String accessStart = (props['access_start'] ?? props['accessStartTime'] ?? '08:00').toString();
-    final String accessEnd = (props['access_end'] ?? props['accessEndTime'] ?? '17:00').toString();
+    final bool accessLimit = (d['scheduleLimitActive'] == true || d['schedule_limit_active'] == true || props['access_limit'] == true || props['is_access_limit'] == true) && cat != DeviceCategory.camera;
+    final String accessStart = (d['accessStartTime'] ?? d['access_start_time'] ?? props['access_start'] ?? props['accessStartTime'] ?? '00:00').toString();
+    final String accessEnd = (d['accessEndTime'] ?? d['access_end_time'] ?? props['access_end'] ?? props['accessEndTime'] ?? '23:59').toString();
 
     List<bool>? accessDays;
-    if (props['access_days'] is List) {
-      accessDays = (props['access_days'] as List).map((x) => x == true).toList();
+    final rawDays = d['accessDays'] ?? d['access_days'] ?? props['access_days'];
+    if (rawDays is List) {
+      accessDays = rawDays.map((x) => x == true).toList();
     }
 
     final bool isRelayOn = props['is_relay_on'] == true || props['relay_state'] == 'ON' || props['state'] == 'ON';
@@ -863,23 +864,26 @@ class IoTGatewayClient {
 
     final device = findByHardwareId(hardwareId);
     if (device != null) {
-      if (!device.canPerformControl) {
-        return CommandResult(
-          success: false,
-          latencyMs: 15,
-          message: !device.canControl
-              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
-              : "Hiện ngoài khung giờ cho phép điều khiển (${device.accessStartTime} - ${device.accessEndTime})",
-          cryptoSignature: cryptoSig,
-        );
-      }
-      if (action == "TOGGLE_CHILD_LOCK" && !device.canChildLock) {
-        return CommandResult(
-          success: false,
-          latencyMs: 15,
-          message: "Bạn không có quyền bật/tắt Khóa an toàn trẻ em",
-          cryptoSignature: cryptoSig,
-        );
+      final isStreamAction = action == "STREAM_START" || action == "STREAM_STOP" || action == "13" || action == "14" || action == "TAKE_SNAPSHOT";
+      if (!isStreamAction) {
+        if (!device.canPerformControl) {
+          return CommandResult(
+            success: false,
+            latencyMs: 15,
+            message: !device.canControl
+                ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+                : "Hiện ngoài khung giờ cho phép điều khiển (${device.accessStartTime} - ${device.accessEndTime})",
+            cryptoSignature: cryptoSig,
+          );
+        }
+        if (action == "TOGGLE_CHILD_LOCK" && !device.canChildLock) {
+          return CommandResult(
+            success: false,
+            latencyMs: 15,
+            message: "Bạn không có quyền bật/tắt Khóa an toàn trẻ em",
+            cryptoSignature: cryptoSig,
+          );
+        }
       }
     }
 

@@ -51,6 +51,11 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
     });
 
     if (widget.categoryMeta.category == DeviceCategory.camera) {
+      final localCams = _gateway.getDevicesByCategory(DeviceCategory.camera);
+      for (final cam in localCams) {
+        _activeStreamingCameras.add(cam.hardwareId);
+        _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+      }
       _loadInitialCameraBatch();
       _scrollController.addListener(_onScroll);
     }
