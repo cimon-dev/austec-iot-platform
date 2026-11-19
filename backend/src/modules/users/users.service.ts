@@ -6,24 +6,25 @@ import { UnifiedUser } from '../../server.js';
 export class UsersService {
   constructor(private repo: UsersRepository) {}
 
+  public async findByIdAsync(userId: string) {
+    return this.repo.findByIdAsync(userId);
+  }
+
   public async login(dto: LoginDto) {
     const targetInput = (dto.identifier || dto.email || dto.phone || dto.phoneNumber || '').trim().toLowerCase();
     const cleanPhone = targetInput.replace(/[\s.-]/g, '');
 
-    const allUsers = this.repo.getAll();
-    let userRecord = allUsers.find(u =>
-      (u.email && u.email.toLowerCase() === targetInput) ||
-      (u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone) ||
-      (u.empID && u.empID.toLowerCase() === targetInput)
-    );
+    // 1. Luôn tra cứu trực tiếp từ PostgreSQL để đảm bảo lấy dữ liệu thực tế mới nhất (đặc biệt là avatar_url)
+    let userRecord = await this.repo.findUserForAuthAsync(targetInput, cleanPhone);
 
     if (!userRecord) {
+      const allUsers = this.repo.getAll();
       if (dto.role === 'ADMIN' || targetInput.includes('admin')) {
-        userRecord = allUsers.find(u => u.role === 'ADMIN');
+        userRecord = allUsers.find(u => u.role === 'ADMIN') || null;
       } else if (dto.role === 'CSKH' || targetInput.includes('cskh')) {
-        userRecord = allUsers.find(u => u.role === 'CSKH');
+        userRecord = allUsers.find(u => u.role === 'CSKH') || null;
       } else if (targetInput === '') {
-        userRecord = allUsers.find(u => u.role === 'CUSTOMER');
+        userRecord = allUsers.find(u => u.role === 'CUSTOMER') || null;
       }
     }
 

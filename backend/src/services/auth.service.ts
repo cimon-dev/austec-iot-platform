@@ -9,6 +9,9 @@ export interface AuthUser {
   role: UserRole;
   fullName: string;
   phoneNumber?: string;
+  avatarUrl?: string;
+  address?: string;
+  province?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -28,6 +31,9 @@ export class AuthService {
         role: user.role,
         fullName: user.fullName,
         phoneNumber: user.phoneNumber,
+        avatarUrl: user.avatarUrl,
+        address: user.address,
+        province: user.province,
       },
       getJwtSecret(),
       { expiresIn: '7d' }

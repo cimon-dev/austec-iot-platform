@@ -50,6 +50,7 @@ export interface UnifiedUser {
   address?: string;
   province?: string;
   password?: string;
+  avatarUrl?: string;
   isActive: boolean;
   registeredAt: string;
   updatedAt?: string;
@@ -104,9 +105,45 @@ export function createApp() {
   postgresClient.connect().then(ok => {
     if (ok) {
       if (postgresService) {
-        postgresService.initTables().then(() => {
-          postgresService.seedInitialMetadata();
-          seedDatabase();
+        postgresService.initTables().then(async () => {
+          await postgresService.seedInitialMetadata();
+          await seedDatabase();
+          try {
+            const uRes = await postgresClient.query('SELECT * FROM public.users');
+            if (uRes.rows.length > 0) {
+              for (const r of uRes.rows) {
+                const uEnt: UnifiedUser = {
+                  id: r.id,
+                  empID: r.emp_id || undefined,
+                  fullName: r.full_name,
+                  email: r.email,
+                  phoneNumber: r.phone_number || undefined,
+                  company: r.company || undefined,
+                  department: r.department || undefined,
+                  role: r.role,
+                  roleTitle: r.role_title || undefined,
+                  password: r.password,
+                  address: r.address || undefined,
+                  province: r.province || undefined,
+                  avatarUrl: r.avatar_url || undefined,
+                  isActive: r.is_active ?? true,
+                  registeredAt: r.registered_at || new Date().toISOString(),
+                  updatedAt: r.updated_at || undefined,
+                  updatedBy: r.updated_by || undefined,
+                  devices: typeof r.devices === 'string' ? JSON.parse(r.devices) : (r.devices || []),
+                };
+                const idx = usersStore.findIndex(u => u.id === uEnt.id);
+                if (idx >= 0) {
+                  usersStore[idx] = uEnt;
+                } else {
+                  usersStore.push(uEnt);
+                }
+              }
+              console.log(`[Server] Đã đồng bộ ${uRes.rows.length} tài khoản người dùng từ PostgreSQL vào bộ nhớ.`);
+            }
+          } catch (e: any) {
+            console.warn('[Server] Không thể đồng bộ users từ PostgreSQL:', e.message);
+          }
         }).catch(err => {
           console.warn('[Server] Lỗi init/seed Postgres:', err.message);
         });

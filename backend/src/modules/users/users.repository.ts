@@ -57,20 +57,22 @@ export class UsersRepository {
   }
 
   public async findByIdAsync(id: string): Promise<UserEntity | null> {
-    const memoryUser = this.usersStore.find(u => u.id === id || u.empID === id);
-    if (memoryUser) return memoryUser;
-
     try {
       const res = await this.client.query('SELECT * FROM public.users WHERE id = $1 OR emp_id = $1 LIMIT 1', [id]);
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
-        this.usersStore.push(entity);
+        const idx = this.usersStore.findIndex(u => u.id === entity.id);
+        if (idx >= 0) {
+          this.usersStore[idx] = entity;
+        } else {
+          this.usersStore.push(entity);
+        }
         return entity;
       }
     } catch (e: any) {
       console.warn('[UsersRepository] findByIdAsync DB error:', e.message);
     }
-    return null;
+    return this.usersStore.find(u => u.id === id || u.empID === id) || null;
   }
 
   public findByEmailOrPhone(email?: string, phone?: string): UserEntity | undefined {
@@ -83,9 +85,6 @@ export class UsersRepository {
   }
 
   public async findByEmailOrPhoneAsync(email?: string, phone?: string): Promise<UserEntity | null> {
-    const mem = this.findByEmailOrPhone(email, phone);
-    if (mem) return mem;
-
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanPhone = (phone || '').replace(/[\s.-]/g, '');
 
@@ -99,20 +98,61 @@ export class UsersRepository {
       );
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
-        this.usersStore.push(entity);
+        const idx = this.usersStore.findIndex(u => u.id === entity.id);
+        if (idx >= 0) {
+          this.usersStore[idx] = entity;
+        } else {
+          this.usersStore.push(entity);
+        }
         return entity;
       }
     } catch (e: any) {
       console.warn('[UsersRepository] findByEmailOrPhoneAsync error:', e.message);
     }
-    return null;
+    return this.findByEmailOrPhone(email, phone) || null;
+  }
+
+  public async findUserForAuthAsync(identifier: string, cleanPhone: string): Promise<UserEntity | null> {
+    const cleanId = (identifier || '').toLowerCase().trim();
+    const phone = (cleanPhone || '').replace(/[\s.-]/g, '');
+
+    try {
+      const res = await this.client.query(
+        `SELECT * FROM public.users 
+         WHERE (LOWER(email) = $1 AND $1 != '') 
+            OR (REPLACE(REPLACE(phone_number, ' ', ''), '-', '') = $2 AND $2 != '')
+            OR (LOWER(id) = $1 AND $1 != '')
+            OR (LOWER(emp_id) = $1 AND $1 != '')
+         LIMIT 1`,
+        [cleanId, phone]
+      );
+      if (res.rows.length > 0) {
+        const entity = this.mapRowToEntity(res.rows[0]);
+        const idx = this.usersStore.findIndex(u => u.id === entity.id);
+        if (idx >= 0) {
+          this.usersStore[idx] = entity;
+        } else {
+          this.usersStore.push(entity);
+        }
+        return entity;
+      }
+    } catch (e: any) {
+      console.warn('[UsersRepository] findUserForAuthAsync DB error:', e.message);
+    }
+
+    return this.usersStore.find(u =>
+      (cleanId && u.email && u.email.toLowerCase() === cleanId) ||
+      (phone && u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === phone) ||
+      (cleanId && u.empID && u.empID.toLowerCase() === cleanId) ||
+      (cleanId && u.id && u.id.toLowerCase() === cleanId)
+    ) || null;
   }
 
   public async add(user: UserEntity): Promise<void> {
     try {
       await this.client.query(
-        `INSERT INTO public.users (id, emp_id, full_name, email, phone_number, company, department, role, role_title, password, address, province, is_active, registered_at, updated_at, updated_by, devices)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        `INSERT INTO public.users (id, emp_id, full_name, email, phone_number, company, department, role, role_title, password, address, province, avatar_url, is_active, registered_at, updated_at, updated_by, devices)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
          ON CONFLICT (id) DO UPDATE SET
            full_name = EXCLUDED.full_name,
            email = EXCLUDED.email,
@@ -124,6 +164,7 @@ export class UsersRepository {
            password = EXCLUDED.password,
            address = EXCLUDED.address,
            province = EXCLUDED.province,
+           avatar_url = EXCLUDED.avatar_url,
            is_active = EXCLUDED.is_active,
            updated_at = EXCLUDED.updated_at,
            updated_by = EXCLUDED.updated_by`,
@@ -140,6 +181,7 @@ export class UsersRepository {
           user.password || 'Austec123!@#',
           user.address || null,
           user.province || null,
+          user.avatarUrl || null,
           user.isActive,
           user.registeredAt,
           user.updatedAt || user.registeredAt,

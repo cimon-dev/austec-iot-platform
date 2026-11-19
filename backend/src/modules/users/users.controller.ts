@@ -33,6 +33,28 @@ export class UsersController {
 
   @Get('/auth/me', authenticate)
   public async me(req: AuthenticatedRequest, res: Response) {
+    try {
+      const freshUser = await this.service.findByIdAsync(req.user!.id);
+      if (freshUser) {
+        res.json({
+          success: true,
+          user: {
+            id: freshUser.id,
+            email: freshUser.email,
+            phoneNumber: freshUser.phoneNumber,
+            role: freshUser.role,
+            fullName: freshUser.fullName,
+            address: freshUser.address,
+            province: freshUser.province,
+            avatarUrl: freshUser.avatarUrl,
+            company: freshUser.company,
+            department: freshUser.department,
+            empID: freshUser.empID,
+          },
+        });
+        return;
+      }
+    } catch (_) {}
     res.json({ success: true, user: req.user });
   }
 
