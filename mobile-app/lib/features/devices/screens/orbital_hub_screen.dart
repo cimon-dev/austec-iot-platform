@@ -22,7 +22,8 @@ class OrbitalHubScreen extends StatefulWidget {
   State<OrbitalHubScreen> createState() => _OrbitalHubScreenState();
 }
 
-class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerProviderStateMixin {
+class _OrbitalHubScreenState extends State<OrbitalHubScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   final IoTGatewayClient _gateway = IoTGatewayClient();
   int _selectedBottomNavIndex = 0;
@@ -42,8 +43,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     );
     setState(() {
       _cskhPrefilledDevice = chatDev;
-      _cskhPrefilledPrompt = "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.";
-      _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat (Navbar giữ nguyên)
+      _cskhPrefilledPrompt =
+          "Xin chào CSKH Austec! Tôi cần tư vấn và báo giá chi tiết về sản phẩm ${product.name}.";
+      _selectedBottomNavIndex =
+          2; // Chuyển sang Tab CSKH Chat (Navbar giữ nguyên)
     });
   }
 
@@ -64,7 +67,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   Future<void> _fetchNotifications() async {
     try {
       final res = await ApiClient().get('/api/notifications');
-      if (res.success && res.data != null && res.data['notifications'] is List) {
+      if (res.success &&
+          res.data != null &&
+          res.data['notifications'] is List) {
         if (mounted) {
           setState(() {
             _realNotifications = res.data['notifications'];
@@ -85,20 +90,24 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     )..repeat(reverse: true);
 
     final now = DateTime.now();
-    _timeString = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-    _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+    _timeString =
+        "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+    _dateString =
+        "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
 
-    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
+    _clockTimer =
+        Timer.periodic(const Duration(seconds: 1), (_) => _updateClock());
 
     // Nạp thông báo thật từ API và định kỳ kiểm tra thông báo mới
     _fetchNotifications();
-    _notiTimer = Timer.periodic(const Duration(seconds: 15), (_) => _fetchNotifications());
+    _notiTimer = Timer.periodic(
+        const Duration(seconds: 15), (_) => _fetchNotifications());
 
     // Lắng nghe luồng cập nhật thiết bị thời gian thực & Local Cache
     _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
       if (mounted) setState(() {});
     });
-    
+
     // Nạp danh sách thiết bị thật của người dùng từ Backend API (kèm offline fallback)
     _gateway.fetchDevicesFromBackend(token: AuthService().token).then((_) {
       if (mounted) setState(() {});
@@ -118,8 +127,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     final now = DateTime.now();
     if (mounted) {
       setState(() {
-        _timeString = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
-        _dateString = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+        _timeString =
+            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}";
+        _dateString =
+            "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
       });
     }
   }
@@ -161,17 +172,23 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: isDark ? AppTheme.surfaceDark : Colors.white,
-        title: Text(AppTheme.t("search_device"), style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16)),
+        title: Text(AppTheme.t("search_device"),
+            style: TextStyle(
+                color: isDark ? Colors.white : Colors.black, fontSize: 16)),
         content: TextField(
           controller: controller,
           autofocus: true,
           style: TextStyle(color: isDark ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: "Nhập tên hoặc mã thiết bị...",
-            hintStyle: TextStyle(color: isDark ? AppTheme.textMuted : Colors.grey),
+            hintStyle:
+                TextStyle(color: isDark ? AppTheme.textMuted : Colors.grey),
             prefixIcon: const Icon(Icons.search, color: AppTheme.cyanAccent),
-            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: isDark ? AppTheme.cardBorder : Colors.grey[300]!)),
-            focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cyanAccent)),
+            enabledBorder: OutlineInputBorder(
+                borderSide: BorderSide(
+                    color: isDark ? AppTheme.cardBorder : Colors.grey[300]!)),
+            focusedBorder: const OutlineInputBorder(
+                borderSide: BorderSide(color: AppTheme.cyanAccent)),
           ),
         ),
         actions: [
@@ -180,16 +197,25 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             child: Text(AppTheme.t("cancel")),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.cyanAccent, foregroundColor: Colors.black),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.cyanAccent,
+                foregroundColor: Colors.black),
             onPressed: () {
               Navigator.of(ctx).pop();
               final q = controller.text.trim().toLowerCase();
               if (q.isNotEmpty) {
-                final found = _gateway.devices.where((d) => d.name.toLowerCase().contains(q) || d.hardwareId.toLowerCase().contains(q)).toList();
+                final found = _gateway.devices
+                    .where((d) =>
+                        d.name.toLowerCase().contains(q) ||
+                        d.hardwareId.toLowerCase().contains(q))
+                    .toList();
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text("Tìm thấy ${found.length} thiết bị phù hợp với '$q'"),
-                    backgroundColor: isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
+                    content: Text(
+                        "Tìm thấy ${found.length} thiết bị phù hợp với '$q'"),
+                    backgroundColor: isDark
+                        ? const Color(0xFF1E1E22)
+                        : const Color(0xFF0F172A),
                     behavior: SnackBarBehavior.floating,
                     dismissDirection: DismissDirection.horizontal,
                     duration: const Duration(milliseconds: 2500),
@@ -251,7 +277,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           decoration: BoxDecoration(
             color: isDark ? AppTheme.surface : AppTheme.lightSurface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(top: BorderSide(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder, width: 1.5)),
+            border: Border(
+                top: BorderSide(
+                    color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder,
+                    width: 1.5)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -273,12 +302,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.notifications_active, color: AppTheme.cyanAccent, size: 20),
+                      const Icon(Icons.notifications_active,
+                          color: AppTheme.cyanAccent, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         AppTheme.t("notifications"),
                         style: TextStyle(
-                          color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                          color:
+                              isDark ? Colors.white : AppTheme.lightTextPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -287,7 +318,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   ),
                   if (_realNotifications.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppTheme.cyanAccent.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(10),
@@ -322,7 +354,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         Text(
                           "Không có thông báo mới",
                           style: TextStyle(
-                            color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                            color: isDark
+                                ? Colors.white
+                                : AppTheme.lightTextPrimary,
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -331,7 +365,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         Text(
                           "Bạn đã cập nhật tất cả thông tin mới nhất từ hệ thống.",
                           style: TextStyle(
-                            color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary,
+                            color: isDark
+                                ? AppTheme.textMuted
+                                : AppTheme.lightTextSecondary,
                             fontSize: 11,
                           ),
                           textAlign: TextAlign.center,
@@ -347,9 +383,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     itemCount: _realNotifications.length,
                     itemBuilder: (context, index) {
                       final noti = _realNotifications[index];
-                      final title = noti['title']?.toString() ?? 'Thông báo hệ thống';
+                      final title =
+                          noti['title']?.toString() ?? 'Thông báo hệ thống';
                       final message = noti['message']?.toString() ?? '';
-                      final time = noti['sentAt']?.toString() ?? noti['createdAt']?.toString() ?? '';
+                      final time = noti['sentAt']?.toString() ??
+                          noti['createdAt']?.toString() ??
+                          '';
                       final category = noti['category']?.toString() ?? 'SYSTEM';
                       final isRead = noti['isRead'] == true;
                       final id = noti['id'];
@@ -371,11 +410,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isDark ? AppTheme.background : AppTheme.lightBackground,
+                            color: isDark
+                                ? AppTheme.background
+                                : AppTheme.lightBackground,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isRead
-                                  ? (isDark ? AppTheme.cardBorder : AppTheme.lightBorder)
+                                  ? (isDark
+                                      ? AppTheme.cardBorder
+                                      : AppTheme.lightBorder)
                                   : AppTheme.cyanAccent.withValues(alpha: 0.4),
                               width: isRead ? 1.0 : 1.5,
                             ),
@@ -386,7 +429,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                               Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
-                                  color: _getNotiColor(category).withValues(alpha: 0.12),
+                                  color: _getNotiColor(category)
+                                      .withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -406,9 +450,13 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                           child: Text(
                                             title,
                                             style: TextStyle(
-                                              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : AppTheme.lightTextPrimary,
                                               fontSize: 12,
-                                              fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                                              fontWeight: isRead
+                                                  ? FontWeight.w500
+                                                  : FontWeight.bold,
                                             ),
                                           ),
                                         ),
@@ -416,7 +464,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                           Container(
                                             width: 6,
                                             height: 6,
-                                            margin: const EdgeInsets.only(left: 6),
+                                            margin:
+                                                const EdgeInsets.only(left: 6),
                                             decoration: const BoxDecoration(
                                               color: AppTheme.cyanAccent,
                                               shape: BoxShape.circle,
@@ -424,12 +473,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                           ),
                                       ],
                                     ),
-                                    if (message.isNotEmpty && message != title) ...[
+                                    if (message.isNotEmpty &&
+                                        message != title) ...[
                                       const SizedBox(height: 2),
                                       Text(
                                         message,
                                         style: TextStyle(
-                                          color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary,
+                                          color: isDark
+                                              ? AppTheme.textMuted
+                                              : AppTheme.lightTextSecondary,
                                           fontSize: 11,
                                         ),
                                         maxLines: 2,
@@ -440,7 +492,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                     Text(
                                       time,
                                       style: TextStyle(
-                                        color: isDark ? AppTheme.textMuted.withValues(alpha: 0.7) : Colors.grey[500],
+                                        color: isDark
+                                            ? AppTheme.textMuted
+                                                .withValues(alpha: 0.7)
+                                            : Colors.grey[500],
                                         fontSize: 10,
                                       ),
                                     ),
@@ -481,7 +536,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   child: _selectedBottomNavIndex == 0
                       ? _buildControlPageWithBackground(isDark)
                       : _selectedBottomNavIndex == 1
-                          ? NativeShopScreen(onConsultProduct: _handleConsultProduct)
+                          ? NativeShopScreen(
+                              onConsultProduct: _handleConsultProduct)
                           : _selectedBottomNavIndex == 2
                               ? ChatHubScreen(
                                   prefilledDevice: _cskhPrefilledDevice,
@@ -520,7 +576,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             "assets/austec_banner_new.png",
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
-              return Container(color: isDark ? AppTheme.background : AppTheme.lightBackground);
+              return Container(
+                  color:
+                      isDark ? AppTheme.background : AppTheme.lightBackground);
             },
           ),
         ),
@@ -557,7 +615,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF141417).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.5),
+        color: isDark
+            ? const Color(0xFF141417).withValues(alpha: 0.45)
+            : Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isDark ? const Color(0xFF27272A) : const Color(0xFFCBD5E1),
@@ -574,7 +634,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
       child: ClipRRect(
         borderRadius: BorderRadius.circular(13),
         child: AspectRatio(
-          aspectRatio: 800 / (450 * 0.75), // Giảm chiều cao xuống khoảng 3/4 để thoáng không gian bên dưới
+          aspectRatio: 800 /
+              (450 *
+                  0.75), // Giảm chiều cao xuống khoảng 3/4 để thoáng không gian bên dưới
           child: Image.asset(
             "assets/header.png",
             width: double.infinity,
@@ -582,7 +644,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             alignment: Alignment.center,
             errorBuilder: (context, error, stackTrace) {
               return Container(
-                color: isDark ? const Color(0xFF141417) : const Color(0xFFE2E8F0),
+                color:
+                    isDark ? const Color(0xFF141417) : const Color(0xFFE2E8F0),
               );
             },
           ),
@@ -596,8 +659,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
     final user = AuthService().currentUser;
     final userName = user?.fullName ?? "Nguyễn Văn An";
     final userProvince = user?.province ?? "Hà Nội";
-    final cardBorder = isDark ? Colors.white.withValues(alpha: 0.16) : Colors.white.withValues(alpha: 0.28);
-    final cardBg = isDark ? Colors.black.withValues(alpha: 0.28) : Colors.white.withValues(alpha: 0.18);
+    final cardBorder = isDark
+        ? Colors.white.withValues(alpha: 0.16)
+        : Colors.white.withValues(alpha: 0.28);
+    final cardBg = isDark
+        ? Colors.black.withValues(alpha: 0.28)
+        : Colors.white.withValues(alpha: 0.18);
     const textCol = Colors.white; // Chữ trắng sáng nổi bật sắc nét trên nền
     final subTextCol = const Color(0xFFCBD5E1);
 
@@ -630,7 +697,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                   InkWell(
                     onTap: () async {
                       await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+                        MaterialPageRoute(
+                            builder: (_) => const UserProfileScreen()),
                       );
                       if (mounted) setState(() {});
                     },
@@ -640,8 +708,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                       height: 36,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0),
-                        border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6), width: 1.5),
+                        color: isDark
+                            ? const Color(0xFF27272A)
+                            : const Color(0xFFE2E8F0),
+                        border: Border.all(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.6),
+                            width: 1.5),
                         boxShadow: [
                           BoxShadow(
                             color: AppTheme.cyanAccent.withValues(alpha: 0.25),
@@ -650,15 +722,22 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         ],
                       ),
                       child: ClipOval(
-                        child: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                        child: (user?.avatarUrl != null &&
+                                user!.avatarUrl!.isNotEmpty)
                             ? Image.network(
-                                user.avatarUrl!.startsWith('http') ? user.avatarUrl! : '${ApiConfig.baseUrl}${user.avatarUrl!}',
+                                user.avatarUrl!.startsWith('http')
+                                    ? user.avatarUrl!
+                                    : '${ApiConfig.baseUrl}${user.avatarUrl!}',
                                 width: 36,
                                 height: 36,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(Icons.person, color: textCol, size: 20),
+                                errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.person,
+                                    color: textCol,
+                                    size: 20),
                               )
-                            : const Icon(Icons.person, color: textCol, size: 20),
+                            : const Icon(Icons.person,
+                                color: textCol, size: 20),
                       ),
                     ),
                   ),
@@ -673,14 +752,18 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           shadows: [
-                            Shadow(color: Colors.black54, blurRadius: 4, offset: Offset(0, 1)),
+                            Shadow(
+                                color: Colors.black54,
+                                blurRadius: 4,
+                                offset: Offset(0, 1)),
                           ],
                         ),
                       ),
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined, color: subTextCol, size: 12),
+                          Icon(Icons.location_on_outlined,
+                              color: subTextCol, size: 12),
                           const SizedBox(width: 2),
                           Text(
                             "$userProvince • 30°C",
@@ -689,7 +772,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                               shadows: const [
-                                Shadow(color: Colors.black45, blurRadius: 3, offset: Offset(0, 1)),
+                                Shadow(
+                                    color: Colors.black45,
+                                    blurRadius: 3,
+                                    offset: Offset(0, 1)),
                               ],
                             ),
                           ),
@@ -745,9 +831,12 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 onTap: _toggleTheme,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
+                    color: isDark
+                        ? const Color(0xFF1E1E22)
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
@@ -755,7 +844,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                        isDark
+                            ? Icons.dark_mode_rounded
+                            : Icons.light_mode_rounded,
                         size: 13,
                         color: isDark ? Colors.white : Colors.amber[800],
                       ),
@@ -764,7 +855,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         isDark
                             ? (AppTheme.currentLang == "vi" ? "Tối" : "Dark")
                             : (AppTheme.currentLang == "vi" ? "Sáng" : "Light"),
-                        style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                            color: textCol,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -778,20 +872,27 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 onTap: _toggleLanguage,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E1E22) : const Color(0xFFF1F5F9),
+                    color: isDark
+                        ? const Color(0xFF1E1E22)
+                        : const Color(0xFFF1F5F9),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧", style: const TextStyle(fontSize: 11)),
+                      Text(AppTheme.currentLang == "vi" ? "🇻🇳" : "🇬🇧",
+                          style: const TextStyle(fontSize: 11)),
                       const SizedBox(width: 3),
                       Text(
                         AppTheme.currentLang == "vi" ? "VI" : "EN",
-                        style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            color: textCol,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -816,7 +917,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 icon: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Icon(Icons.notifications_none_rounded, size: 18, color: textCol),
+                    Icon(Icons.notifications_none_rounded,
+                        size: 18, color: textCol),
                     if (_realNotifications.any((n) => n['isRead'] != true))
                       Positioned(
                         top: 0,
@@ -846,19 +948,23 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.brandBlue,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   minimumSize: const Size(0, 28),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
                 icon: const Icon(Icons.add, size: 13),
                 label: Text(
                   AppTheme.currentLang == "vi" ? "Thêm thiết bị" : "Add device",
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 10.5, fontWeight: FontWeight.bold),
                 ),
                 onPressed: () async {
                   await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const ProvisioningScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const ProvisioningScreen()),
                   );
                   await _gateway.fetchDevicesFromBackend();
                   if (mounted) setState(() {});
@@ -905,7 +1011,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08 + pulseVal * 0.05),
+                            color: (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.08 + pulseVal * 0.05),
                             width: 1.0,
                           ),
                         ),
@@ -917,7 +1024,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.12),
+                            color: (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.12),
                             width: 1.0,
                           ),
                         ),
@@ -934,12 +1042,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                                 : const [Color(0xFFFFFFFF), Color(0xFFE4E4E7)],
                           ),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                            color: isDark
+                                ? const Color(0xFF3F3F46)
+                                : const Color(0xFFD4D4D8),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                              color: Colors.black
+                                  .withValues(alpha: isDark ? 0.35 : 0.08),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -955,12 +1066,17 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                             ),
                             const SizedBox(height: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF090A0C) : const Color(0xFFF4F4F5),
+                                color: isDark
+                                    ? const Color(0xFF090A0C)
+                                    : const Color(0xFFF4F4F5),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8),
+                                  color: isDark
+                                      ? const Color(0xFF3F3F46)
+                                      : const Color(0xFFD4D4D8),
                                   width: 1.0,
                                 ),
                               ),
@@ -992,7 +1108,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
               return Positioned(
                 left: posX,
                 top: posY,
-                child: _buildFixedCategorySphere(cat, catDevices.length, isDark, textCol),
+                child: _buildFixedCategorySphere(
+                    cat, catDevices.length, isDark, textCol),
               );
             }),
           ],
@@ -1002,8 +1119,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   }
 
   // Khối danh mục hình vuông bo góc cố định (Monochrome B&W)
-  Widget _buildFixedCategorySphere(CategoryMeta cat, int deviceCount, bool isDark, Color textCol) {
-    final borderColor = isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8);
+  Widget _buildFixedCategorySphere(
+      CategoryMeta cat, int deviceCount, bool isDark, Color textCol) {
+    final borderColor =
+        isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8);
 
     return InkWell(
       onTap: () => _openCategoryDevices(cat),
@@ -1038,7 +1157,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
                     cat.assetPath,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
-                      return Icon(_getCategoryFallbackIcon(cat.category), color: isDark ? Colors.white : Colors.black87, size: 22);
+                      return Icon(_getCategoryFallbackIcon(cat.category),
+                          color: isDark ? Colors.white : Colors.black87,
+                          size: 22);
                     },
                   ),
                 ),
@@ -1094,7 +1215,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
               style: TextStyle(
                 color: deviceCount > 0
                     ? (isDark ? const Color(0xFF93C5FD) : AppTheme.brandBlue)
-                    : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    : (isDark
+                        ? const Color(0xFF94A3B8)
+                        : const Color(0xFF64748B)),
                 fontSize: 8.5,
                 fontWeight: FontWeight.bold,
               ),
@@ -1145,10 +1268,13 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
 
   // 1. Vùng nhả đáy màn hình để đóng nút chat CSKH (Nằm phía trên thanh điều hướng đáy)
   Widget _buildDismissZone(Size screenSize, double bottomInset) {
-    if (!_isDraggingChat || _isChatButtonDismissed) return const SizedBox.shrink();
+    if (!_isDraggingChat || _isChatButtonDismissed)
+      return const SizedBox.shrink();
 
     final dismissBottom = 72.0 + bottomInset;
-    final currentOffset = _chatButtonOffset ?? Offset(screenSize.width - 68, screenSize.height - (dismissBottom + 100));
+    final currentOffset = _chatButtonOffset ??
+        Offset(
+            screenSize.width - 68, screenSize.height - (dismissBottom + 100));
     final isOver = currentOffset.dy > screenSize.height - (dismissBottom + 64);
 
     return Positioned(
@@ -1159,7 +1285,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
         width: 150,
         height: 48,
         decoration: BoxDecoration(
-          color: isOver ? const Color(0xFFDC2626).withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.75),
+          color: isOver
+              ? const Color(0xFFDC2626).withValues(alpha: 0.9)
+              : Colors.black.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isOver ? Colors.white : Colors.white24,
@@ -1167,7 +1295,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           ),
           boxShadow: [
             BoxShadow(
-              color: (isOver ? const Color(0xFFDC2626) : Colors.black).withValues(alpha: 0.4),
+              color: (isOver ? const Color(0xFFDC2626) : Colors.black)
+                  .withValues(alpha: 0.4),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -1193,13 +1322,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   }
 
   // 2. Nút Chat CSKH Nổi Kéo Thả Tự Do & Hút Mép Màn Hình
-  Widget _buildFloatingChatBubble(Size screenSize, double bottomInset, bool isDark) {
+  Widget _buildFloatingChatBubble(
+      Size screenSize, double bottomInset, bool isDark) {
     if (_isChatButtonDismissed) return const SizedBox.shrink();
 
     final dismissBottom = 72.0 + bottomInset;
-    final defaultOffset = Offset(screenSize.width - 68, screenSize.height - (dismissBottom + 100));
+    final defaultOffset = Offset(
+        screenSize.width - 68, screenSize.height - (dismissBottom + 100));
     final currentOffset = _chatButtonOffset ?? defaultOffset;
-    final isOverDismissZone = _isDraggingChat && (currentOffset.dy > screenSize.height - (dismissBottom + 64));
+    final isOverDismissZone = _isDraggingChat &&
+        (currentOffset.dy > screenSize.height - (dismissBottom + 64));
 
     return Positioned(
       left: currentOffset.dx,
@@ -1226,18 +1358,25 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
             });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text("Đã ẩn nút CSKH. Bạn có thể mở lại tại tab Tin nhắn."),
+                content: const Text(
+                    "Đã ẩn nút CSKH. Bạn có thể mở lại tại tab Tin nhắn."),
                 behavior: SnackBarBehavior.floating,
                 dismissDirection: DismissDirection.horizontal,
                 duration: const Duration(milliseconds: 2500),
-                backgroundColor: isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
+                backgroundColor:
+                    isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
               ),
             );
           } else {
             // Snap to nearest side edge (left or right)
-            final snapX = (currentOffset.dx + 26 < screenSize.width / 2) ? 16.0 : (screenSize.width - 68);
+            final snapX = (currentOffset.dx + 26 < screenSize.width / 2)
+                ? 16.0
+                : (screenSize.width - 68);
             setState(() {
-              _chatButtonOffset = Offset(snapX, currentOffset.dy.clamp(80.0, screenSize.height - (dismissBottom + 70)));
+              _chatButtonOffset = Offset(
+                  snapX,
+                  currentOffset.dy
+                      .clamp(80.0, screenSize.height - (dismissBottom + 70)));
               _isDraggingChat = false;
             });
           }
@@ -1257,7 +1396,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
               color: isDark ? const Color(0xFF1E1E22) : Colors.white,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
+                color:
+                    isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
                 width: 1.4,
               ),
               boxShadow: [
@@ -1284,7 +1424,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   // 3. Bottom Navigation Bar (4 Tab: Điều khiển, Gian hàng, Tin nhắn, Cài đặt) - Gọn gàng, loại bỏ viền bao quanh
   Widget _buildBottomNavBar(bool isDark) {
     final bg = isDark ? const Color(0xFF141417) : Colors.white;
-    final topBorder = isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0);
+    final topBorder =
+        isDark ? const Color(0xFF27272A) : const Color(0xFFE2E8F0);
 
     return Container(
       width: double.infinity,
@@ -1299,10 +1440,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(0, Icons.grid_view_rounded, AppTheme.t("control"), isDark),
-              _buildNavItem(1, Icons.storefront_rounded, AppTheme.t("shop"), isDark),
+              _buildNavItem(
+                  0, Icons.grid_view_rounded, AppTheme.t("control"), isDark),
+              _buildNavItem(
+                  1, Icons.storefront_rounded, AppTheme.t("shop"), isDark),
               _buildNavItem(2, Icons.forum_rounded, AppTheme.t("chat"), isDark),
-              _buildNavItem(3, Icons.settings_rounded, AppTheme.currentLang == 'vi' ? "Cài đặt" : "Settings", isDark),
+              _buildNavItem(
+                  3,
+                  Icons.settings_rounded,
+                  AppTheme.currentLang == 'vi' ? "Cài đặt" : "Settings",
+                  isDark),
             ],
           ),
         ),
@@ -1313,14 +1460,16 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen> with SingleTickerPr
   Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
     final isSelected = _selectedBottomNavIndex == index;
     final activeTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final inactiveTextColor = isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
+    final inactiveTextColor =
+        isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
 
     return InkWell(
       onTap: () {
         setState(() {
           _selectedBottomNavIndex = index;
           if (index == 2) {
-            _isChatButtonDismissed = false; // Phục hồi nút chat khi người dùng vào tab Chat
+            _isChatButtonDismissed =
+                false; // Phục hồi nút chat khi người dùng vào tab Chat
           }
         });
       },

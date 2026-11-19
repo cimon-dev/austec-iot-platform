@@ -2,16 +2,28 @@
 set -e
 
 echo "=========================================================="
-echo "  AUSTEC IOT - TRIỂN KHAI MEDIAMTX LÊN CLOUDFLY VPS"
+echo "  AUSTEC IOT - TRIỂN KHAI MEDIAMTX & APK SERVER LÊN VPS"
 echo "=========================================================="
 
 export DEBIAN_FRONTEND=noninteractive
 
-echo ">>> 1. Cập nhật hệ thống & cài gói phụ trợ..."
+echo ">>> 1. Cấu hình 2GB Swap bộ nhớ ảo (ổn định hệ thống 1GB RAM)..."
+if [ ! -f /swapfile ]; then
+    fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    echo "Swap 2GB đã được kích hoạt!"
+else
+    echo "Swapfile đã tồn tại."
+fi
+
+echo ">>> 2. Cập nhật hệ thống & cài gói phụ trợ..."
 apt-get update -y
 apt-get install -y ca-certificates curl gnupg lsb-release ufw
 
-echo ">>> 2. Cài đặt Docker & Docker Compose..."
+echo ">>> 3. Cài đặt Docker & Docker Compose..."
 if ! command -v docker &> /dev/null; then
     curl -fsSL https://get.docker.com -o get-docker.sh
     sh get-docker.sh
@@ -21,9 +33,25 @@ fi
 systemctl enable docker
 systemctl start docker
 
-echo ">>> 3. Tạo thư mục cấu hình /opt/austec-media..."
+echo ">>> 4. Tạo thư mục cấu hình /opt/austec-media & /opt/austec-downloads..."
 mkdir -p /opt/austec-media
+mkdir -p /opt/austec-downloads
 cd /opt/austec-media
+
+cat << 'EOF' > nginx.conf
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    autoindex on;
+    autoindex_exact_size off;
+    autoindex_localtime on;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+EOF
 
 cat << 'EOF' > docker-compose.yml
 version: "3.8"
@@ -36,7 +64,7 @@ services:
     network_mode: host
     environment:
       # 1. IP Public của CloudFly VPS
-      - MTX_WEBRTCADDITIONALHOSTS=103.82.39.109
+      - MTX_WEBRTCADDITIONALHOSTS=103.82.135.110
 
       # 2. Cổng dịch vụ
       - MTX_RTSPADDRESS=:8554
@@ -55,10 +83,21 @@ services:
       - MTX_WRITETIMEOUT=20s
     volumes:
       - ./mediamtx.yml:/mediamtx.yml:ro
+
+  apk-server:
+    image: nginx:alpine
+    container_name: austec_apk_server
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - /opt/austec-downloads:/usr/share/nginx/html:ro
+      - /opt/austec-media/nginx.conf:/etc/nginx/conf.d/default.conf:ro
 EOF
 
-echo ">>> 4. Cấu hình tường lửa UFW (Mở cổng 22, 8554, 8889, 8888, 8189)..."
+echo ">>> 5. Cấu hình tường lửa UFW (Mở cổng 22, 80, 8554, 8889, 8888, 8189)..."
 ufw allow 22/tcp
+ufw allow 80/tcp
 ufw allow 8554/tcp
 ufw allow 8889/tcp
 ufw allow 8888/tcp
@@ -66,14 +105,13 @@ ufw allow 8189/tcp
 ufw allow 8189/udp
 ufw --force enable
 
-echo ">>> 5. Khởi chạy Docker container MediaMTX..."
+echo ">>> 6. Khởi chạy Docker containers..."
 docker compose pull
 docker compose down || true
 docker compose up -d
 
-echo ">>> 6. Kiểm tra trạng thái dịch vụ..."
+echo ">>> 7. Kiểm tra trạng thái dịch vụ..."
 sleep 3
 docker ps
 echo ""
 echo "=== TRIỂN KHAI HOÀN TẤT THÀNH CÔNG! ==="
-

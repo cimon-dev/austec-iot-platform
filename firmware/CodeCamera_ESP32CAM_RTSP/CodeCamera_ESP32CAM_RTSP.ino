@@ -61,7 +61,7 @@ bool parseJpegBuffer(const uint8_t* buf, size_t totalLen, JpegParsedInfo* out);
 // --- CẤU HÌNH ĐỒNG BỘ TỪ FILE .env (Tự cập nhật khi chạy .\scripts\sync-env.ps1) ---
 // [LOCAL TEST / VPS]: Giá trị mặc định lúc biên dịch lấy từ austec-iot-platform/.env.
 // Khi đổi Wi-Fi hoặc chuyển lên VPS, Backend sẽ tự gửi IP/Domain mới trong .env xuống qua MQTT (không cần nạp lại mạch nếu đã online).
-#define MEDIAMTX_HOST        "103.82.39.109"
+#define MEDIAMTX_HOST        "103.82.135.110"
 #define MEDIAMTX_PORT        8554
 #define MEDIAMTX_PATH_PREFIX "/raw/" // Đẩy luồng MJPEG RTSP vào /raw/<device_name>, MediaMTX chuyển mã H.264 sang /live/<device_name>
 #define DEFAULT_MQTT_HOST    "broker.emqx.io"
