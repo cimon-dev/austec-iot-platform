@@ -63,7 +63,10 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
     _linkedCameraHwId = _device.currentProperties['linked_camera_id']?.toString();
     if (_linkedCameraHwId != null && _linkedCameraHwId!.isNotEmpty) {
-      _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_START");
+      final cam = _gateway.findByHardwareId(_linkedCameraHwId!);
+      if (cam == null || cam.canViewCameraStream) {
+        _gateway.sendCommand(hardwareId: _linkedCameraHwId!, action: "STREAM_START");
+      }
     }
 
     _pulseController = AnimationController(
@@ -994,10 +997,37 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   fit: StackFit.expand,
                   children: [
                     if (_linkedCameraHwId != null)
-                      CameraWebRtcPlayer(
-                        hardwareId: _linkedCameraHwId!,
-                        isActive: true,
-                      ),
+                      Builder(builder: (ctx) {
+                        final cam = _gateway.findByHardwareId(_linkedCameraHwId!);
+                        if (cam != null && !cam.canViewCameraStream) {
+                          return Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.lock_clock_rounded, color: AppTheme.amberWarning, size: 28),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    cam.scheduleBlockedReason,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    "${cam.accessStartTime} - ${cam.accessEndTime}",
+                                    style: const TextStyle(color: AppTheme.textMuted, fontSize: 10),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return CameraWebRtcPlayer(
+                          hardwareId: _linkedCameraHwId!,
+                          isActive: true,
+                        );
+                      }),
                     Positioned(
                       top: 8,
                       right: 8,

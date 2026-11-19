@@ -53,8 +53,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
     if (widget.categoryMeta.category == DeviceCategory.camera) {
       final localCams = _gateway.getDevicesByCategory(DeviceCategory.camera);
       for (final cam in localCams) {
-        _activeStreamingCameras.add(cam.hardwareId);
-        _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+        if (cam.canViewCameraStream) {
+          _activeStreamingCameras.add(cam.hardwareId);
+          _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+        }
       }
       _loadInitialCameraBatch();
       _scrollController.addListener(_onScroll);
@@ -116,14 +118,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       _isLoadingCameras = false;
     });
 
-    // Gửi mã 13 (STREAM_START) cho đợt camera đầu tiên và các camera đã lưu
+    // Gửi mã 13 (STREAM_START) cho đợt camera đầu tiên và các camera đã lưu (nếu trong khung giờ)
     for (final cam in batch) {
-      _activeStreamingCameras.add(cam.hardwareId);
-      _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+      if (cam.canViewCameraStream) {
+        _activeStreamingCameras.add(cam.hardwareId);
+        _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
+      }
     }
     final localCams = _gateway.getDevicesByCategory(DeviceCategory.camera);
     for (final cam in localCams) {
-      if (!_activeStreamingCameras.contains(cam.hardwareId)) {
+      if (cam.canViewCameraStream && !_activeStreamingCameras.contains(cam.hardwareId)) {
         _activeStreamingCameras.add(cam.hardwareId);
         _gateway.sendCommand(
             hardwareId: cam.hardwareId, action: "STREAM_START");
@@ -144,9 +148,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       _isLoadingCameras = false;
     });
 
-    // Gửi mã 13 (STREAM_START) CHỈ cho các camera mới được tải
+    // Gửi mã 13 (STREAM_START) CHỈ cho các camera mới được tải (nếu trong khung giờ)
     for (final cam in nextBatch) {
-      if (!_activeStreamingCameras.contains(cam.hardwareId)) {
+      if (cam.canViewCameraStream && !_activeStreamingCameras.contains(cam.hardwareId)) {
         _activeStreamingCameras.add(cam.hardwareId);
         _gateway.sendCommand(
             hardwareId: cam.hardwareId, action: "STREAM_START");
@@ -845,10 +849,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.emeraldSuccess.withValues(alpha: 0.12),
+                  color: !device.canViewCameraStream
+                      ? AppTheme.amberWarning.withValues(alpha: 0.15)
+                      : AppTheme.emeraldSuccess.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: AppTheme.emeraldSuccess.withValues(alpha: 0.35)),
+                      color: !device.canViewCameraStream
+                          ? AppTheme.amberWarning.withValues(alpha: 0.5)
+                          : AppTheme.emeraldSuccess.withValues(alpha: 0.35)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -856,15 +864,19 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                     Container(
                       width: 6,
                       height: 6,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppTheme.emeraldSuccess),
+                          color: !device.canViewCameraStream
+                              ? AppTheme.amberWarning
+                              : AppTheme.emeraldSuccess),
                     ),
                     const SizedBox(width: 4),
-                    const Text(
-                      "LIVE",
+                    Text(
+                      !device.canViewCameraStream ? "GIỚI HẠN GIỜ" : "LIVE",
                       style: TextStyle(
-                          color: AppTheme.emeraldSuccess,
+                          color: !device.canViewCameraStream
+                              ? AppTheme.amberWarning
+                              : AppTheme.emeraldSuccess,
                           fontSize: 10,
                           fontWeight: FontWeight.bold),
                     ),
@@ -879,24 +891,84 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
           // Màn hình xem Camera trực tiếp (Live Stream Container)
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: InkWell(
-              onTap: () => _showZoomDialog(device),
-              child: Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  border: Border.all(
-                      color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    CameraWebRtcPlayer(
-                      hardwareId: device.hardwareId,
-                      isActive:
-                          _activeStreamingCameras.contains(device.hardwareId),
+            child: !device.canViewCameraStream
+                ? Container(
+                    height: 200,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131722),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.amberWarning.withValues(alpha: 0.6),
+                        width: 1.5,
+                      ),
                     ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                          ),
+                          child: const Icon(
+                            Icons.lock_clock_rounded,
+                            color: AppTheme.amberWarning,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "NGOÀI KHUNG GIỜ ĐƯỢC PHÉP XEM",
+                          style: TextStyle(
+                            color: AppTheme.amberWarning,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          device.scheduleBlockedReason,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Khung giờ cho phép: ${device.accessStartTime} - ${device.accessEndTime} (theo phân quyền của chủ nhà)",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : InkWell(
+                    onTap: () => _showZoomDialog(device),
+                    child: Container(
+                      height: 200,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        border: Border.all(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CameraWebRtcPlayer(
+                            hardwareId: device.hardwareId,
+                            isActive:
+                                _activeStreamingCameras.contains(device.hardwareId),
+                          ),
                     Positioned(
                       top: 10,
                       left: 10,

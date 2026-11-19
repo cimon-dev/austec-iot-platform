@@ -96,6 +96,43 @@ class _CameraLandscapeFullscreenViewerState extends State<CameraLandscapeFullscr
                 setState(() => _currentIndex = idx);
               },
               itemBuilder: (ctx, idx) {
+                final cam = _cameras[idx];
+                if (!cam.canViewCameraStream) {
+                  return Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      margin: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF131722),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.6), width: 1.5),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.lock_clock_rounded, color: AppTheme.amberWarning, size: 48),
+                          const SizedBox(height: 12),
+                          const Text(
+                            "NGOÀI KHUNG GIỜ ĐƯỢC PHÉP XEM",
+                            style: TextStyle(color: AppTheme.amberWarning, fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            cam.scheduleBlockedReason,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            "Khung giờ cho phép: ${cam.accessStartTime} - ${cam.accessEndTime} (theo phân quyền của chủ nhà)",
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 return InteractiveViewer(
                   minScale: 1.0,
                   maxScale: 6.0,

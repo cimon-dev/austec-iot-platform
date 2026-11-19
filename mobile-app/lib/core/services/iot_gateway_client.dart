@@ -755,9 +755,9 @@ class IoTGatewayClient {
         ? (props['close_timeout'] ?? props['closeTimeoutSeconds'] ?? 20).toInt()
         : 20;
     final bool autoSchedule = props['is_auto_schedule'] == true || props['auto_schedule'] == true;
-    final bool accessLimit = (d['scheduleLimitActive'] == true || d['schedule_limit_active'] == true || props['access_limit'] == true || props['is_access_limit'] == true) && cat != DeviceCategory.camera;
-    final String accessStart = (d['accessStartTime'] ?? d['access_start_time'] ?? props['access_start'] ?? props['accessStartTime'] ?? '00:00').toString();
-    final String accessEnd = (d['accessEndTime'] ?? d['access_end_time'] ?? props['access_end'] ?? props['accessEndTime'] ?? '23:59').toString();
+    final bool accessLimit = (d['scheduleLimitActive'] == true || d['schedule_limit_active'] == true || props['access_limit'] == true || props['is_access_limit'] == true);
+    final String accessStart = (d['accessStartTime'] ?? d['access_start_time'] ?? props['access_start'] ?? props['accessStartTime'] ?? '08:00').toString();
+    final String accessEnd = (d['accessEndTime'] ?? d['access_end_time'] ?? props['access_end'] ?? props['accessEndTime'] ?? '18:00').toString();
 
     List<bool>? accessDays;
     final rawDays = d['accessDays'] ?? d['access_days'] ?? props['access_days'];
@@ -864,8 +864,19 @@ class IoTGatewayClient {
 
     final device = findByHardwareId(hardwareId);
     if (device != null) {
-      final isStreamAction = action == "STREAM_START" || action == "STREAM_STOP" || action == "13" || action == "14" || action == "TAKE_SNAPSHOT";
-      if (!isStreamAction) {
+      final isStreamStartAction = action == "STREAM_START" || action == "13";
+      if (isStreamStartAction) {
+        if (!device.canViewCameraStream) {
+          return CommandResult(
+            success: false,
+            latencyMs: 15,
+            message: device.scheduleBlockedReason,
+            cryptoSignature: cryptoSig,
+          );
+        }
+      } else if (action == "STREAM_STOP" || action == "14") {
+        // Cho phép dừng stream
+      } else {
         if (!device.canPerformControl) {
           return CommandResult(
             success: false,

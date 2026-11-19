@@ -106,6 +106,38 @@ class DeviceItem {
 
   bool get canPerformControl => canControl && isWithinAllowedSchedule;
 
+  bool get canViewCameraStream {
+    if (isOwner) return true;
+    if (!canControl && !canViewHistory) return false;
+    return isWithinAllowedSchedule;
+  }
+
+  String get scheduleBlockedReason {
+    if (isOwner) return '';
+    if (!canControl && !canViewHistory) {
+      return 'Tài khoản của bạn đã bị chủ nhà tạm khóa quyền truy cập';
+    }
+    if (!isAccessLimitActive) return '';
+
+    final now = DateTime.now();
+    final dayIdx = (now.weekday - 1) % 7;
+    if (accessDays.length > dayIdx && !accessDays[dayIdx]) {
+      return 'Hôm nay không nằm trong lịch xem được chủ nhà phân quyền';
+    }
+
+    try {
+      final startParts = accessStartTime.split(':');
+      final endParts = accessEndTime.split(':');
+      final startMin = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      final endMin = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
+      final curMin = now.hour * 60 + now.minute;
+      if (curMin < startMin || curMin > endMin) {
+        return 'Ngoài khung giờ được phép xem ($accessStartTime - $accessEndTime)';
+      }
+    } catch (_) {}
+    return 'Ngoài khung giờ cho phép theo phân quyền của chủ nhà';
+  }
+
   // Thuộc tính động từ Mẫu thương phẩm (Dynamic Schema)
   Map<String, dynamic> currentProperties;
   List<Map<String, dynamic>> assignedProperties;

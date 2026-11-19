@@ -95,6 +95,16 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
 
   Future<void> _resolveAndLoadStream() async {
     if (!mounted) return;
+
+    final dev = IoTGatewayClient().findByHardwareId(widget.hardwareId);
+    if (dev != null && !dev.canViewCameraStream) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = dev.scheduleBlockedReason;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _isVideoReady = false;
@@ -333,34 +343,53 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
     }
 
     if (_errorMessage != null) {
+      final isScheduleBlock = _errorMessage!.contains('khung giờ') || _errorMessage!.contains('phân quyền');
       return Container(
-        color: Colors.black,
+        color: const Color(0xFF131722),
         alignment: Alignment.center,
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, color: AppTheme.amberWarning, size: 32),
+            Icon(
+              isScheduleBlock ? Icons.lock_clock_rounded : Icons.error_outline_rounded,
+              color: AppTheme.amberWarning,
+              size: isScheduleBlock ? 36 : 32,
+            ),
             const SizedBox(height: 8),
+            if (isScheduleBlock) ...[
+              const Text(
+                "NGOÀI KHUNG GIỜ ĐƯỢC PHÉP XEM",
+                style: TextStyle(
+                  color: AppTheme.amberWarning,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+            ],
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
             ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () {
-                CameraWebRtcPlayer.clearCacheFor(widget.hardwareId);
-                _resolveAndLoadStream();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.cyanAccent,
-                side: const BorderSide(color: AppTheme.cyanAccent),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            if (!isScheduleBlock) ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  CameraWebRtcPlayer.clearCacheFor(widget.hardwareId);
+                  _resolveAndLoadStream();
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.cyanAccent,
+                  side: const BorderSide(color: AppTheme.cyanAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Thử lại', style: TextStyle(fontSize: 12)),
               ),
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Thử lại', style: TextStyle(fontSize: 12)),
-            ),
+            ],
           ],
         ),
       );

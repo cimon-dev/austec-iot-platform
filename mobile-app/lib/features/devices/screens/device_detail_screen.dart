@@ -36,9 +36,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     _device = widget.device;
 
     if (_device.category == DeviceCategory.camera) {
-      if (!widget.isAlreadyStreaming) {
-        // Chỉ gửi mã 13 nếu chưa phát stream từ trước
-        _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_START");
+      if (_device.canViewCameraStream) {
+        if (!widget.isAlreadyStreaming) {
+          // Chỉ gửi mã 13 nếu chưa phát stream từ trước và trong khung giờ cho phép
+          _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_START");
+        }
       }
     }
   }
@@ -963,51 +965,111 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.black,
-                border: Border.all(color: const Color(0xFF26324A)),
-              ),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: CameraWebRtcPlayer(
-                      hardwareId: _device.hardwareId,
-                      isActive: _isStreamActive,
-                      reloadNonce: _streamReloadNonce,
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(6)),
-                      child: const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  Positioned(
-                    top: 10,
-                    right: 10,
-                    child: InkWell(
-                      onTap: _openCameraFullscreen,
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.75),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.7)),
-                        ),
-                        child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 20),
+            child: !_device.canViewCameraStream
+                ? Container(
+                    height: 200,
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131722),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppTheme.amberWarning.withValues(alpha: 0.6),
+                        width: 1.5,
                       ),
                     ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppTheme.amberWarning.withValues(alpha: 0.15),
+                          ),
+                          child: const Icon(
+                            Icons.lock_clock_rounded,
+                            color: AppTheme.amberWarning,
+                            size: 36,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          "NGOÀI KHUNG GIỜ ĐƯỢC PHÉP XEM",
+                          style: TextStyle(
+                            color: AppTheme.amberWarning,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _device.scheduleBlockedReason,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "Khung giờ cho phép: ${_device.accessStartTime} - ${_device.accessEndTime} (theo phân quyền của chủ nhà)",
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Container(
+                    height: 200,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      border: Border.all(color: const Color(0xFF26324A)),
+                    ),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: CameraWebRtcPlayer(
+                            hardwareId: _device.hardwareId,
+                            isActive: _isStreamActive,
+                            reloadNonce: _streamReloadNonce,
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(6)),
+                            child: const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: InkWell(
+                            onTap: _openCameraFullscreen,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.75),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.7)),
+                              ),
+                              child: const Icon(Icons.fullscreen_rounded, color: AppTheme.cyanAccent, size: 20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
           ),
           const SizedBox(height: 14),
           Row(
