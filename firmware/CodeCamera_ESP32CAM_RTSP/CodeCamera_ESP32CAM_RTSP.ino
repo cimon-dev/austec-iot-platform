@@ -116,14 +116,25 @@ bool initCameraHardware() {
     config.pin_vsync = VSYNC_GPIO_NUM; config.pin_href = HREF_GPIO_NUM;
     config.pin_sccb_sda = SIOD_GPIO_NUM; config.pin_sccb_scl = SIOC_GPIO_NUM;
     config.pin_pwdn = PWDN_GPIO_NUM; config.pin_reset = RESET_GPIO_NUM;
-    config.xclk_freq_hz = 20000000; // 20MHz chuẩn OV2640 cho tốc độ quét 15-20 FPS mượt mà
-    config.frame_size = FRAMESIZE_VGA; // Đúng chuẩn VGA 640x480 đồng bộ kích thước DMA
+    config.xclk_freq_hz = 20000000; // 20MHz chuẩn OV2640
     config.pixel_format = PIXFORMAT_JPEG;
-    config.grab_mode = CAMERA_GRAB_LATEST; // Luôn lấy khung hình mới nhất, triệt tiêu độ trễ DMA
-    config.fb_location = CAMERA_FB_IN_PSRAM;
-    config.jpeg_quality = 21; // Tối ưu dung lượng ~7-9KB/frame, truyền TCP tức thì không nghẽn Wi-Fi
-    config.fb_count = 2; // Double buffer chuẩn của esp32-camera
     config.jpeg_buffer_size = 0;
+
+    if (psramFound()) {
+        Serial.println(F("-> [CAMERA]: Phát hiện PSRAM vật lý -> Kích hoạt Double Buffer VGA."));
+        config.frame_size = FRAMESIZE_VGA;
+        config.jpeg_quality = 18;
+        config.fb_count = 2;
+        config.grab_mode = CAMERA_GRAB_LATEST;
+        config.fb_location = CAMERA_FB_IN_PSRAM;
+    } else {
+        Serial.println(F("-> [CAMERA]: KHÔNG có PSRAM -> Dùng internal DRAM (SRAM) Single Buffer."));
+        config.frame_size = FRAMESIZE_VGA;
+        config.jpeg_quality = 20;
+        config.fb_count = 1;
+        config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+        config.fb_location = CAMERA_FB_IN_DRAM;
+    }
     
     esp_err_t err = esp_camera_init(&config);
     if (err != ESP_OK) {
@@ -133,7 +144,7 @@ bool initCameraHardware() {
 
     sensor_t *s = esp_camera_sensor_get();
     if (s) {
-        s->set_quality(s, 21);
+        s->set_quality(s, 18);
     }
 
     // Chờ cảm biến ổn định xung VSYNC sau khi chuyển sang độ phân giải VGA
@@ -663,7 +674,7 @@ void handleRTSPAndSDLogging() {
         static int pushFailCount = 0;
         if (!pushed) {
             pushFailCount++;
-            if (!rtspClient.connected() || pushFailCount >= 8) {
+            if (!rtspClient.connected() || pushFailCount >= 5) {
                 Serial.printf("[RTSP ERROR]: Mất kết nối MediaMTX (lỗi %d lần liên tiếp). Đóng phiên để kết nối lại...\n", pushFailCount);
                 stopRtspPushSession();
                 pushFailCount = 0;
