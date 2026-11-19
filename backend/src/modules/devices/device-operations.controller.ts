@@ -862,10 +862,12 @@ export class DeviceOperationsController {
             const perm = permRes.rows[0];
             const isStreamAction = command === 'STREAM_START' || command === 'STREAM_STOP' || command === '13' || command === '14' || command === 'TAKE_SNAPSHOT';
             if (perm.role !== 'OWNER') {
-              if (!isStreamAction && perm.can_control === false) {
+              if (perm.can_control === false && (!isStreamAction || perm.can_view_history === false)) {
                 res.status(403).json({
                   success: false,
-                  error: 'Quyền điều khiển thiết bị của bạn đã bị chủ nhà tạm khóa',
+                  error: isStreamAction
+                    ? 'Quyền xem camera của bạn đã bị chủ nhà tạm khóa'
+                    : 'Quyền điều khiển thiết bị của bạn đã bị chủ nhà tạm khóa',
                 });
                 return;
               }
@@ -878,7 +880,7 @@ export class DeviceOperationsController {
                 return;
               }
 
-              if (!isStreamAction && perm.schedule_limit_active) {
+              if (perm.schedule_limit_active) {
                 const nowVN = new Date(Date.now() + 7 * 3600 * 1000);
                 const currentHours = nowVN.getUTCHours();
                 const currentMinutes = nowVN.getUTCMinutes();
@@ -894,7 +896,9 @@ export class DeviceOperationsController {
                 if (days[currentDayIdx] === false) {
                   res.status(403).json({
                     success: false,
-                    error: 'Hôm nay bạn không được phép điều khiển thiết bị theo lịch phân quyền của chủ nhà',
+                    error: isStreamAction
+                      ? 'Hôm nay bạn không được phép xem camera theo lịch phân quyền của chủ nhà'
+                      : 'Hôm nay bạn không được phép điều khiển thiết bị theo lịch phân quyền của chủ nhà',
                   });
                   return;
                 }
@@ -906,7 +910,9 @@ export class DeviceOperationsController {
                 if (curTimeStr < startTime || curTimeStr > endTime) {
                   res.status(403).json({
                     success: false,
-                    error: `Ngoài khung giờ điều khiển cho phép (${startTime} - ${endTime})`,
+                    error: isStreamAction
+                      ? `Ngoài khung giờ được phép xem camera (${startTime} - ${endTime}) theo phân quyền của chủ nhà`
+                      : `Ngoài khung giờ điều khiển cho phép (${startTime} - ${endTime})`,
                   });
                   return;
                 }

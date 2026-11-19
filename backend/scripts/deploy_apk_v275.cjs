@@ -14,25 +14,25 @@ const s3 = new S3Client({
 async function main() {
   const buildApk = path.resolve(__dirname, '../../mobile-app/build/app/outputs/flutter-apk/app-release.apk');
   const distDir = path.resolve(__dirname, '../../dist-apk');
-  const v275Apk = path.join(distDir, 'Austec_IoT_v2.7.5.apk');
+  const v276Apk = path.join(distDir, 'Austec_IoT_v2.7.6.apk');
   const latestApk = path.join(distDir, 'Austec_IoT_latest.apk');
 
   console.log('Copying built APK from:', buildApk);
-  fs.copyFileSync(buildApk, v275Apk);
+  fs.copyFileSync(buildApk, v276Apk);
   fs.copyFileSync(buildApk, latestApk);
 
-  const file = fs.readFileSync(v275Apk);
+  const file = fs.readFileSync(v276Apk);
   console.log('Size:', (file.length / (1024 * 1024)).toFixed(2), 'MB');
 
-  console.log('1. Uploading releases/Austec_IoT_v2.7.5.apk to R2...');
+  console.log('1. Uploading releases/Austec_IoT_v2.7.6.apk to R2...');
   await s3.send(new PutObjectCommand({
     Bucket: 'austec-media',
-    Key: 'releases/Austec_IoT_v2.7.5.apk',
+    Key: 'releases/Austec_IoT_v2.7.6.apk',
     Body: file,
     ContentType: 'application/vnd.android.package-archive',
     CacheControl: 'public, max-age=31536000, immutable'
   }));
-  console.log('-> Success: https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/releases/Austec_IoT_v2.7.5.apk');
+  console.log('-> Success: https://pub-fd6df13a6cc4417c8cf0051aebc9758d.r2.dev/releases/Austec_IoT_v2.7.6.apk');
 
   console.log('2. Uploading releases/Austec_IoT_latest.apk to R2...');
   await s3.send(new PutObjectCommand({
