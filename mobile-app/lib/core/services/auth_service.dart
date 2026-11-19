@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -41,9 +42,34 @@ class AuthService {
         final Map<String, dynamic> userMap = jsonDecode(userJsonStr);
         _currentUser = UserModel.fromJson(userMap, token: _token);
       }
+      // Tự động làm mới dữ liệu người dùng từ máy chủ (đồng bộ avatar và thông tin mới nhất)
+      if (_token != null && _token!.isNotEmpty) {
+        unawaited(refreshProfile());
+      }
     } catch (e) {
       debugPrint('[AuthService] Lưu ý khi nạp session: $e');
     }
+  }
+
+  /// Làm mới thông tin người dùng từ máy chủ (đồng bộ avatarUrl từ CSDL)
+  Future<void> refreshProfile() async {
+    if (_token == null || _token!.isEmpty) return;
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/api/auth/me'),
+        headers: {
+          'Authorization': 'Bearer $_token',
+        },
+      ).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['user'] is Map) {
+          final updated = UserModel.fromJson(data['user'] as Map<String, dynamic>, token: _token);
+          _currentUser = updated;
+          await _saveSession(_token!, updated);
+        }
+      }
+    } catch (_) {}
   }
 
   /// Đăng nhập bằng Email/SĐT và Mật khẩu
