@@ -6,6 +6,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/services/iot_gateway_client.dart';
 
 /// Widget phát luồng video thật từ MediaMTX WebRTC (WHEP HTTP page :8889/live/<hwId>).
 /// Tối ưu state: Lưu cache WebViewController theo hardwareId để khi bấm phóng to hoặc
@@ -100,62 +101,55 @@ class _CameraWebRtcPlayerState extends State<CameraWebRtcPlayer> {
       _errorMessage = null;
     });
 
+    // Tự động kích hoạt luồng camera (gửi lệnh 13 STREAM_START)
+    try {
+      IoTGatewayClient().sendCommand(hardwareId: widget.hardwareId, action: "STREAM_START");
+    } catch (_) {}
+
     String rawWebRtcUrl = '';
 
-    // Chế độ Hybrid: App dùng Backend Render cho Auth/Devices/MQTT, riêng luồng Camera đi thẳng MediaMTX
     final cachedEndpoints = CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId];
     if (cachedEndpoints != null && cachedEndpoints['webrtc'] != null) {
       rawWebRtcUrl = cachedEndpoints['webrtc']?.toString().trim() ?? '';
     } else {
-      final directMediaBase = ApiConfig.resolvedMediaMtxBaseUrl;
-      if (directMediaBase != null) {
-        rawWebRtcUrl = '$directMediaBase/live/${widget.hardwareId}';
-        final directUri = Uri.tryParse(rawWebRtcUrl);
-        final mediaHost = directUri?.host ?? '';
-        final epData = {
-          'webrtc': rawWebRtcUrl,
-          if (mediaHost.isNotEmpty) ...{
-            'rtsp': 'rtsp://$mediaHost:${ApiConfig.defaultMediaMtxRtspPort}/live/${widget.hardwareId}',
-            'hls': 'http://$mediaHost:${ApiConfig.defaultMediaMtxHlsPort}/live/${widget.hardwareId}/index.m3u8',
-          },
-        };
-        CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = epData;
-        widget.onStreamInfoLoaded?.call({
-          'success': true,
-          'hardwareId': widget.hardwareId,
-          'streamType': 'webrtc',
-          'mediaHost': mediaHost,
-          'endpoints': epData,
-        });
-      } else {
+      // 1. Luôn ưu tiên lấy cấu hình stream động từ Backend Render (đảm bảo luôn khớp IP VPS MediaMTX mới nhất)
+      try {
         final response = await ApiClient().get('/api/devices/${widget.hardwareId}/camera/stream');
-        if (!mounted || !widget.isActive) return;
-
-        if (!response.success || response.data is! Map) {
-          setState(() {
-            _isLoading = false;
-            _controller = null;
-            _errorMessage = response.message ??
-                'Backend trả về HTTP ${response.statusCode} khi lấy cấu hình WebRTC';
-          });
-          return;
+        if (response.success && response.data is Map) {
+          final data = Map<String, dynamic>.from(response.data as Map);
+          final rawEndpoints = data['endpoints'];
+          if (rawEndpoints is Map) {
+            final endpoints = Map<String, dynamic>.from(rawEndpoints);
+            CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = endpoints;
+            widget.onStreamInfoLoaded?.call(data);
+            rawWebRtcUrl = endpoints['webrtc']?.toString().trim() ?? '';
+          }
         }
+      } catch (_) {}
 
-        final data = Map<String, dynamic>.from(response.data as Map);
-        final rawEndpoints = data['endpoints'];
-        if (rawEndpoints is! Map) {
-          setState(() {
-            _isLoading = false;
-            _controller = null;
-            _errorMessage = 'Backend thiếu object endpoints trong /camera/stream';
+      // 2. Dự phòng (Fallback): Nếu không kết nối được Backend, dùng cấu hình MediaMTX Host đã thiết lập
+      if (rawWebRtcUrl.isEmpty) {
+        final directMediaBase = ApiConfig.resolvedMediaMtxBaseUrl;
+        if (directMediaBase != null) {
+          rawWebRtcUrl = '$directMediaBase/live/${widget.hardwareId}';
+          final directUri = Uri.tryParse(rawWebRtcUrl);
+          final mediaHost = directUri?.host ?? '';
+          final epData = {
+            'webrtc': rawWebRtcUrl,
+            if (mediaHost.isNotEmpty) ...{
+              'rtsp': 'rtsp://$mediaHost:${ApiConfig.defaultMediaMtxRtspPort}/live/${widget.hardwareId}',
+              'hls': 'http://$mediaHost:${ApiConfig.defaultMediaMtxHlsPort}/live/${widget.hardwareId}/index.m3u8',
+            },
+          };
+          CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = epData;
+          widget.onStreamInfoLoaded?.call({
+            'success': true,
+            'hardwareId': widget.hardwareId,
+            'streamType': 'webrtc',
+            'mediaHost': mediaHost,
+            'endpoints': epData,
           });
-          return;
         }
-
-        final endpoints = Map<String, dynamic>.from(rawEndpoints);
-        CameraWebRtcPlayer._cachedStreamEndpoints[widget.hardwareId] = endpoints;
-        widget.onStreamInfoLoaded?.call(data);
-        rawWebRtcUrl = endpoints['webrtc']?.toString().trim() ?? '';
       }
     }
 

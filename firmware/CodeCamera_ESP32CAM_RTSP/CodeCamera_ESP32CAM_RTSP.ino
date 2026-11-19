@@ -82,7 +82,7 @@ bool rtspStarted = false;
 bool sd_card_available = false; 
 
 // Biến cờ chuyển mạch: Kiểm soát việc đóng mở cổng phát mạng 8554 động từ xa
-bool allow_rtsp = false; 
+bool allow_rtsp = true; 
 
 String wifi_ssid = "", wifi_pass = "", mqtt_server = "";
 String rtsp_host = MEDIAMTX_HOST;
@@ -123,16 +123,16 @@ bool initCameraHardware() {
     if (psramFound()) {
         Serial.println(F("-> [CAMERA]: Phát hiện PSRAM vật lý -> Kích hoạt Double Buffer VGA."));
         config.frame_size = FRAMESIZE_VGA;
-        config.jpeg_quality = 18;
+        config.jpeg_quality = 21; // Tối ưu dung lượng ~7-9KB/frame, truyền TCP tức thì không nghẽn Wi-Fi
         config.fb_count = 2;
         config.grab_mode = CAMERA_GRAB_LATEST;
         config.fb_location = CAMERA_FB_IN_PSRAM;
     } else {
         Serial.println(F("-> [CAMERA]: KHÔNG có PSRAM -> Dùng internal DRAM (SRAM) Single Buffer."));
         config.frame_size = FRAMESIZE_VGA;
-        config.jpeg_quality = 20;
+        config.jpeg_quality = 24;
         config.fb_count = 1;
-        config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+        config.grab_mode = CAMERA_GRAB_LATEST;
         config.fb_location = CAMERA_FB_IN_DRAM;
     }
     
@@ -144,7 +144,7 @@ bool initCameraHardware() {
 
     sensor_t *s = esp_camera_sensor_get();
     if (s) {
-        s->set_quality(s, 18);
+        s->set_quality(s, 21);
     }
 
     // Chờ cảm biến ổn định xung VSYNC sau khi chuyển sang độ phân giải VGA
@@ -674,7 +674,7 @@ void handleRTSPAndSDLogging() {
         static int pushFailCount = 0;
         if (!pushed) {
             pushFailCount++;
-            if (!rtspClient.connected() || pushFailCount >= 5) {
+            if (!rtspClient.connected() || pushFailCount >= 8) {
                 Serial.printf("[RTSP ERROR]: Mất kết nối MediaMTX (lỗi %d lần liên tiếp). Đóng phiên để kết nối lại...\n", pushFailCount);
                 stopRtspPushSession();
                 pushFailCount = 0;
@@ -707,22 +707,28 @@ void handleRTSPAndSDLogging() {
             stopRtspPushSession();
         }
 
+        // Xả sạch frame buffer định kỳ để chống tràn DMA (cam_hal: FB-OVF) khi ở chế độ chờ (Idle)
+        camera_fb_t *fb = esp_camera_fb_get();
+        if (fb) {
+            esp_camera_fb_return(fb);
+        }
+
         uint32_t now = millis();
         if (sd_card_available && SD_MMC.cardType() != CARD_NONE) {
             if (now - lastSDFrame > 1000) { 
-                camera_fb_t *fb = esp_camera_fb_get();
-                if (fb) {
+                camera_fb_t *sdFb = esp_camera_fb_get();
+                if (sdFb) {
                     File file = SD_MMC.open("/video.mjpeg", FILE_APPEND);
                     if (file) {
-                        file.write(fb->buf, fb->len); file.close();
-                        Serial.printf("[KHE THẺ SD 1-BIT]: Đã lưu ảnh (%d bytes) cục bộ.\n", fb->len);
+                        file.write(sdFb->buf, sdFb->len); file.close();
+                        Serial.printf("[KHE THẺ SD 1-BIT]: Đã lưu ảnh (%d bytes) cục bộ.\n", sdFb->len);
                     }
-                    esp_camera_fb_return(fb);
+                    esp_camera_fb_return(sdFb);
                 }
                 lastSDFrame = now;
             }
         }
-        delay(20);
+        delay(30);
     }
 }
 

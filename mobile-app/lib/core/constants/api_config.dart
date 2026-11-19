@@ -54,6 +54,15 @@ class ApiConfig {
       customServerHost = prefs.getString('custom_server_host');
       lastLocalServerHost = prefs.getString('last_local_server_host');
       customMediaMtxHost = prefs.getString('custom_mediamtx_host');
+      // Tự động dọn sạch IP VPS CloudFly cũ đã hết hạn
+      if (customMediaMtxHost == '103.82.39.109') {
+        customMediaMtxHost = null;
+        await prefs.remove('custom_mediamtx_host');
+      }
+      if (customServerHost == 'http://103.82.39.109:4000' || customServerHost == '103.82.39.109') {
+        customServerHost = null;
+        await prefs.remove('custom_server_host');
+      }
     } catch (_) {}
   }
 
