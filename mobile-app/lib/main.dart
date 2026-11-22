@@ -3,6 +3,7 @@ import 'package:austec_iot_mobile/core/constants/api_config.dart';
 import 'package:austec_iot_mobile/core/constants/app_theme.dart';
 import 'package:austec_iot_mobile/core/services/auth_service.dart';
 import 'package:austec_iot_mobile/core/services/iot_gateway_client.dart';
+import 'package:austec_iot_mobile/core/utils/app_toast.dart';
 import 'package:austec_iot_mobile/features/devices/devices.dart';
 import 'package:austec_iot_mobile/features/auth/auth.dart';
 import 'package:austec_iot_mobile/features/splash/splash.dart';
@@ -53,6 +54,8 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: AppToast.navigatorKey,
+      scaffoldMessengerKey: AppToast.messengerKey,
       title: 'Austec Smart Home',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

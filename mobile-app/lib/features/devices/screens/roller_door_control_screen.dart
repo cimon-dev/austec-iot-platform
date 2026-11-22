@@ -12,6 +12,7 @@ import 'device_settings_screen.dart';
 import 'camera_landscape_fullscreen_viewer.dart';
 import '../widgets/camera_webrtc_player.dart';
 import '../../cskh/domain/entities/chat_device_item.dart';
+import '../../../core/utils/app_toast.dart';
 
 class RollerDoorControlScreen extends StatefulWidget {
   final DeviceItem device;
@@ -1308,13 +1309,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
     _gateway.updateDeviceProperties(_device.hardwareId, {'linked_camera_id': cam.hardwareId});
     _gateway.sendCommand(hardwareId: cam.hardwareId, action: "STREAM_START");
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Đã liên kết camera '${cam.name}' với cửa cuốn này thành công!"),
-        backgroundColor: AppTheme.emeraldSuccess,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppToast.showSuccess("Đã liên kết camera '${cam.name}' với cửa cuốn này thành công!");
   }
 
   // Dialog xác nhận hỏi lại trước khi gỡ camera
@@ -1364,13 +1359,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
 
     _gateway.updateDeviceProperties(_device.hardwareId, {'linked_camera_id': null});
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Đã gỡ camera khỏi cửa cuốn."),
-        backgroundColor: AppTheme.blueAccent,
-        duration: Duration(seconds: 2),
-      ),
-    );
+    AppToast.showInfo("Đã gỡ camera khỏi cửa cuốn.");
   }
 
   // Phóng to camera giám sát cửa cuốn theo chuẩn xoay ngang toàn màn hình

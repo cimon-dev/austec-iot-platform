@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../family_sharing/screens/family_sharing_screen.dart';
 
 class DeviceSettingsScreen extends StatefulWidget {
@@ -86,13 +87,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
   Future<void> _saveSettings() async {
     if (!widget.device.canConfig) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Tài khoản của bạn là thành viên phụ và chưa được cấp quyền chỉnh sửa cấu hình."),
-          backgroundColor: AppTheme.amberWarning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.showWarning("Tài khoản của bạn là thành viên phụ và chưa được cấp quyền chỉnh sửa cấu hình.");
       return;
     }
     if (_isSaving) return;
@@ -128,22 +123,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
     if (mounted) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(nameOk || propOk ? Icons.check_circle_outline : Icons.info_outline, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(nameOk || propOk
-                  ? "Đã lưu cài đặt thành công!"
-                  : "Đã lưu cài đặt (ngoại tuyến)!"),
-            ],
-          ),
-          backgroundColor: nameOk || propOk ? AppTheme.emeraldSuccess : AppTheme.blueAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(true);
+      if (nameOk || propOk) {
+        AppToast.showSuccess("Đã lưu cài đặt thành công!");
+      } else {
+        AppToast.showInfo("Đã lưu cài đặt (ngoại tuyến)!");
+      }
     }
   }
 
@@ -181,15 +166,12 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
               final ok = await _gateway.unpairDevice(widget.device.hardwareId);
               if (mounted) {
                 setState(() => _isDeleting = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(ok
-                        ? "Đã xóa và hủy ghép nối thiết bị thành công!"
-                        : "Đã gỡ thiết bị khỏi danh sách."),
-                    backgroundColor: AppTheme.crimsonDanger,
-                  ),
-                );
                 Navigator.of(context).pop(true);
+                if (ok) {
+                  AppToast.showSuccess("Đã xóa và hủy ghép nối thiết bị thành công!");
+                } else {
+                  AppToast.showInfo("Đã gỡ thiết bị khỏi danh sách.");
+                }
               }
             },
             child: const Text("Xác nhận Xóa"),

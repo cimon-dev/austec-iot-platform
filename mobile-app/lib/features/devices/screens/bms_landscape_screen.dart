@@ -4,6 +4,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/services/ble_device_control_service.dart';
+import '../../../core/utils/app_toast.dart';
 
 class BmsLandscapeScreen extends StatefulWidget {
   final DeviceItem device;
@@ -698,11 +699,7 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                             visualDensity: VisualDensity.compact,
                           ),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      "Đã gửi lệnh xác nhận lỗi xuống BMS")),
-                            );
+                            AppToast.showInfo("Đã gửi lệnh xác nhận lỗi xuống BMS");
                           },
                           child: const Text("Xác nhận lỗi",
                               style: TextStyle(fontSize: 10)),
@@ -717,10 +714,7 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                             visualDensity: VisualDensity.compact,
                           ),
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Đã xóa lịch sử cảnh báo")),
-                            );
+                            AppToast.showSuccess("Đã xóa lịch sử cảnh báo");
                           },
                           child: const Text("Xóa lịch sử",
                               style: TextStyle(fontSize: 10)),
@@ -971,15 +965,11 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
                               : (viaBle
                                   ? "trực tiếp qua Bluetooth BLE (Offline)"
                                   : "qua hệ thống");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              backgroundColor: (viaServer || viaBle)
-                                  ? AppTheme.emeraldSuccess
-                                  : Colors.orangeAccent,
-                              content: Text(
-                                  "Đã nạp thông số bảo vệ xuống BMS $channelMsg thành công!"),
-                            ),
-                          );
+                          if (viaServer || viaBle) {
+                            AppToast.showSuccess("Đã nạp thông số bảo vệ xuống BMS $channelMsg thành công!");
+                          } else {
+                            AppToast.showWarning("Đã nạp thông số bảo vệ xuống BMS $channelMsg thành công!");
+                          }
                         }
                       },
               ),

@@ -14,6 +14,7 @@ import '../../../core/constants/api_config.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/app_update_service.dart';
+import '../../../core/utils/app_toast.dart';
 
 class OrbitalHubScreen extends StatefulWidget {
   const OrbitalHubScreen({super.key});
@@ -58,6 +59,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
   // Trạng thái nút chat CSKH kéo thả & vuốt đóng
   Offset? _chatButtonOffset;
   bool _isDraggingChat = false;
+  double _chatDragDistance = 0.0;
   bool _isChatButtonDismissed = false;
 
   StreamSubscription? _deviceUpdateSub;
@@ -1268,8 +1270,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
 
   // 1. Vùng nhả đáy màn hình để đóng nút chat CSKH (Nằm phía trên thanh điều hướng đáy)
   Widget _buildDismissZone(Size screenSize, double bottomInset) {
-    if (!_isDraggingChat || _isChatButtonDismissed)
+    if (!_isDraggingChat || _isChatButtonDismissed) {
       return const SizedBox.shrink();
+    }
 
     final dismissBottom = 72.0 + bottomInset;
     final currentOffset = _chatButtonOffset ??
@@ -1280,42 +1283,45 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
     return Positioned(
       bottom: dismissBottom,
       left: screenSize.width / 2 - 75,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: 150,
-        height: 48,
-        decoration: BoxDecoration(
-          color: isOver
-              ? const Color(0xFFDC2626).withValues(alpha: 0.9)
-              : Colors.black.withValues(alpha: 0.75),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isOver ? Colors.white : Colors.white24,
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: (isOver ? const Color(0xFFDC2626) : Colors.black)
-                  .withValues(alpha: 0.4),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+      child: IgnorePointer(
+        ignoring: true,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 150,
+          height: 48,
+          decoration: BoxDecoration(
+            color: isOver
+                ? const Color(0xFFDC2626).withValues(alpha: 0.95)
+                : Colors.black.withValues(alpha: 0.8),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isOver ? Colors.white : Colors.white24,
+              width: 1.4,
             ),
-          ],
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.close_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 6),
-            Text(
-              "Thả để đóng",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 11.5,
-                fontWeight: FontWeight.bold,
+            boxShadow: [
+              BoxShadow(
+                color: (isOver ? const Color(0xFFDC2626) : Colors.black)
+                    .withValues(alpha: 0.5),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.close_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 6),
+              Text(
+                "Thả để đóng",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1337,10 +1343,15 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
       left: currentOffset.dx,
       top: currentOffset.dy,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onPanStart: (_) {
-          setState(() => _isDraggingChat = true);
+          setState(() {
+            _isDraggingChat = true;
+            _chatDragDistance = 0.0;
+          });
         },
         onPanUpdate: (details) {
+          _chatDragDistance += details.delta.distance;
           setState(() {
             final newX = currentOffset.dx + details.delta.dx;
             final newY = currentOffset.dy + details.delta.dy;
@@ -1355,18 +1366,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
             setState(() {
               _isChatButtonDismissed = true;
               _isDraggingChat = false;
+              _chatDragDistance = 0.0;
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                    "Đã ẩn nút CSKH. Bạn có thể mở lại tại tab Tin nhắn."),
-                behavior: SnackBarBehavior.floating,
-                dismissDirection: DismissDirection.horizontal,
-                duration: const Duration(milliseconds: 2500),
-                backgroundColor:
-                    isDark ? const Color(0xFF1E1E22) : const Color(0xFF0F172A),
-              ),
-            );
+            AppToast.showInfo("Đã ẩn nút CSKH. Bạn có thể mở lại tại tab Tin nhắn.");
           } else {
             // Snap to nearest side edge (left or right)
             final snapX = (currentOffset.dx + 26 < screenSize.width / 2)
@@ -1378,42 +1380,43 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                   currentOffset.dy
                       .clamp(80.0, screenSize.height - (dismissBottom + 70)));
               _isDraggingChat = false;
+              _chatDragDistance = 0.0;
             });
           }
         },
-        child: InkWell(
-          onTap: () {
+        onTap: () {
+          // Chỉ mở tab Tin nhắn CSKH nếu chạm nhẹ tại chỗ (không phải đang kéo thả)
+          if (!_isDraggingChat && _chatDragDistance < 8.0) {
             setState(() {
               _selectedBottomNavIndex = 2; // Chuyển sang Tab CSKH Chat
             });
-          },
-          borderRadius: BorderRadius.circular(26),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E22) : Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color:
-                    isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
-                width: 1.4,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          }
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color:
+                  isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
+              width: 1.4,
             ),
-            child: Center(
-              child: Icon(
-                Icons.support_agent_rounded,
-                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                size: 26,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              Icons.support_agent_rounded,
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              size: 26,
             ),
           ),
         ),

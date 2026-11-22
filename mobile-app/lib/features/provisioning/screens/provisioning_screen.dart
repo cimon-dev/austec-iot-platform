@@ -15,6 +15,8 @@ import '../widgets/pairing_progress_dialog.dart';
 import '../../devices/screens/roller_door_control_screen.dart';
 import '../../devices/screens/device_detail_screen.dart';
 import '../../devices/screens/smartmetter_detail_screen.dart';
+import '../../devices/screens/bms_landscape_screen.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/services/device_location_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -947,19 +949,11 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                 Navigator.of(context).pop(true);
               }
             },
-            onControlDoor: (hwId) async {
+            onControlDevice: (hwId) async {
               await IoTGatewayClient().fetchDevicesFromBackend();
               DeviceItem? dev = IoTGatewayClient().findByHardwareId(hwId);
               if (dev == null) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                          "Không tìm thấy thông tin thiết bị [$hwId] trên hệ thống."),
-                      backgroundColor: AppTheme.roseDanger,
-                    ),
-                  );
-                }
+                AppToast.showError("Không tìm thấy thông tin thiết bị [$hwId] trên hệ thống.");
                 return;
               }
 
@@ -969,6 +963,13 @@ class _ProvisioningScreenState extends State<ProvisioningScreen> {
                     MaterialPageRoute(
                         builder: (context) =>
                             RollerDoorControlScreen(device: dev)),
+                  );
+                } else if (dev.hardwareId.toUpperCase().contains("BMS") ||
+                    dev.modelCode.toUpperCase().contains("BMS")) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                        builder: (context) =>
+                            BmsLandscapeScreen(device: dev)),
                   );
                 } else if (dev.category == DeviceCategory.energyManage ||
                     dev.modelCode.contains("SmartMetter") ||

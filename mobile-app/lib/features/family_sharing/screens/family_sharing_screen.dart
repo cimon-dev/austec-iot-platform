@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
+import '../../../core/utils/app_toast.dart';
 import '../domain/entities/member_permission_entity.dart';
 import '../services/family_sharing_service.dart';
 import '../widgets/member_permission_card.dart';
@@ -163,12 +164,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
   void _deleteMember(MemberPermission member) {
     if (member.role == "OWNER") {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Không thể xóa tài khoản Chủ sở hữu (OWNER)!"),
-          backgroundColor: AppTheme.roseDanger,
-        ),
-      );
+      AppToast.showError("Không thể xóa tài khoản Chủ sở hữu (OWNER)!");
       return;
     }
 
@@ -190,12 +186,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
               _loadMembersAndSuggestions(_selectedDevice!.hardwareId);
 
               if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Đã thu hồi quyền của ${member.memberName}!"),
-                    backgroundColor: AppTheme.roseDanger,
-                  ),
-                );
+                AppToast.showInfo("Đã thu hồi quyền của ${member.memberName}!");
               }
             },
             child: const Text("Thu hồi"),
@@ -213,12 +204,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
       setState(() => _transferOtp = res['otpCode'].toString());
       _showTransferOtpDialog();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Không thể tạo mã OTP. Vui lòng kiểm tra lại quyền Chủ sở hữu."),
-          backgroundColor: AppTheme.amberWarning,
-        ),
-      );
+      AppToast.showWarning("Không thể tạo mã OTP. Vui lòng kiểm tra lại quyền Chủ sở hữu.");
     }
   }
 
@@ -261,12 +247,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
                 await _service.cancelTransferOtp(_selectedDevice!.hardwareId);
                 setState(() => _transferOtp = null);
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Đã hủy mã OTP chuyển giao thiết bị!"),
-                      backgroundColor: AppTheme.roseDanger,
-                    ),
-                  );
+                  AppToast.showInfo("Đã hủy mã OTP chuyển giao thiết bị!");
                 }
               }
             },
@@ -319,21 +300,11 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
               final res = await _service.claimDeviceByOtp(code);
               if (mounted) {
                 if (res != null && res['success'] == true) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(res['message'] ?? "Chúc mừng! Tiếp nhận quyền sở hữu thành công!"),
-                      backgroundColor: AppTheme.emeraldSuccess,
-                    ),
-                  );
+                  AppToast.showSuccess(res['message'] ?? "Chúc mừng! Tiếp nhận quyền sở hữu thành công!");
                   await _gateway.fetchDevicesFromBackend();
                   _initDeviceList();
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Mã OTP không hợp lệ hoặc đã hết hạn (15 phút)!"),
-                      backgroundColor: AppTheme.roseDanger,
-                    ),
-                  );
+                  AppToast.showError("Mã OTP không hợp lệ hoặc đã hết hạn (15 phút)!");
                 }
               }
             },

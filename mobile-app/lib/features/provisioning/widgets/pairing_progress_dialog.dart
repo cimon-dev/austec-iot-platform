@@ -10,7 +10,8 @@ class PairingProgressDialog extends StatelessWidget {
   final String wifiSsid;
   final VoidCallback onCancel;
   final VoidCallback? onDone;
-  final Function(String hardwareId) onControlDoor;
+  final Function(String hardwareId)? onControlDevice;
+  final Function(String hardwareId)? onControlDoor;
 
   const PairingProgressDialog({
     super.key,
@@ -21,7 +22,8 @@ class PairingProgressDialog extends StatelessWidget {
     required this.wifiSsid,
     required this.onCancel,
     this.onDone,
-    required this.onControlDoor,
+    this.onControlDevice,
+    this.onControlDoor,
   });
 
   @override
@@ -150,7 +152,7 @@ class PairingProgressDialog extends StatelessWidget {
                             Navigator.of(context).pop();
                             onDone?.call();
                           },
-                          child: const Text("Đóng", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: const Text("Quay lại", style: TextStyle(color: AppTheme.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -164,11 +166,12 @@ class PairingProgressDialog extends StatelessWidget {
                           ),
                           onPressed: () {
                             Navigator.of(context).pop();
-                            onControlDoor(pairingResult!.hardwareId);
+                            final handler = onControlDevice ?? onControlDoor;
+                            handler?.call(pairingResult!.hardwareId);
                           },
-                          child: Text(
-                            _getControlActionTitle(pairingResult?.modelName ?? "", pairingResult?.hardwareId ?? ""),
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          child: const Text(
+                            "Điều khiển thiết bị",
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -334,22 +337,5 @@ class PairingProgressDialog extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _getControlActionTitle(String modelName, String hardwareId) {
-    final lower = "$modelName $hardwareId".toLowerCase();
-    if (lower.contains("ổ cắm") || lower.contains("ocam") || lower.contains("socket") || lower.contains("switch") || lower.contains("relay")) {
-      return "Điều Khiển Ổ Cắm";
-    }
-    if (lower.contains("camera") || lower.contains("cam")) {
-      return "Xem Camera";
-    }
-    if (lower.contains("khóa") || lower.contains("lock") || lower.contains("masaru")) {
-      return "Mở Khóa";
-    }
-    if (lower.contains("lưu điện") || lower.contains("ups")) {
-      return "Quản Lý Nguồn";
-    }
-    return "Điều Khiển Cửa";
   }
 }

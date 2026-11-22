@@ -7,6 +7,7 @@ import '../../../core/services/iot_gateway_client.dart';
 import '../../chat/models/conversation_item.dart';
 import '../../chat/screens/chat_room_screen.dart';
 import '../../cskh/domain/entities/chat_device_item.dart';
+import '../../../core/utils/app_toast.dart';
 import 'device_history_screen.dart';
 import 'device_settings_screen.dart';
 
@@ -70,15 +71,9 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
 
   void _handleReset() {
     if (!_device.canPerformControl) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(!_device.canControl
-              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
-              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
-          backgroundColor: AppTheme.amberWarning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.showWarning(!_device.canControl
+          ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+          : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
       return;
     }
 
@@ -89,24 +84,12 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       _device.currentProperties['is_meter_on'] = true;
       _isMeterOn = true;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Đã gửi mã lệnh 0 (RESET): Xóa cảnh báo & đóng lại nguồn điện."),
-        backgroundColor: AppTheme.brandBlue,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.showInfo("Đã gửi mã lệnh 0 (RESET): Xóa cảnh báo & đóng lại nguồn điện.");
   }
 
   void _handleTogglePowerSetting() {
     if (!_device.canConfig) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Bạn không có quyền thay đổi thông số cấu hình công tơ điện"),
-          backgroundColor: AppTheme.amberWarning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.showWarning("Bạn không có quyền thay đổi thông số cấu hình công tơ điện");
       return;
     }
 
@@ -121,13 +104,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         action: "CONFIG_POWER_LIMIT",
         parameters: {'power_limit': _powerLimitW},
       );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Đã lưu giới hạn công suất: $_powerLimitW W xuống công tơ điện tử!"),
-          backgroundColor: AppTheme.emeraldSuccess,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.showSuccess("Đã lưu giới hạn công suất: $_powerLimitW W xuống công tơ điện tử!");
     }
   }
 
@@ -183,26 +160,14 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       _device.currentProperties['relay_status'] = 'OFF';
     });
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_OFF");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Đã giữ > 5s: Đã ngắt rơ-le công tơ điện tử an toàn (Lệnh 14)!"),
-        backgroundColor: AppTheme.crimsonDanger,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.showInfo("Đã giữ > 5s: Đã ngắt rơ-le công tơ điện tử an toàn (Lệnh 14)!");
   }
 
   void _turnOnMeter() {
     if (!_device.canPerformControl) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(!_device.canControl
-              ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
-              : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})"),
-          backgroundColor: AppTheme.amberWarning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      AppToast.showWarning(!_device.canControl
+          ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
+          : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
       return;
     }
 
@@ -212,13 +177,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
       _device.currentProperties['relay_status'] = 'ON';
     });
     _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_ON");
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("Đã bật nguồn điện công tơ điện tử (Lệnh 13)!"),
-        backgroundColor: AppTheme.emeraldSuccess,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppToast.showSuccess("Đã bật nguồn điện công tơ điện tử (Lệnh 13)!");
   }
 
   @override

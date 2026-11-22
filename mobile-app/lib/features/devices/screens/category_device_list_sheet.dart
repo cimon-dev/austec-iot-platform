@@ -11,6 +11,7 @@ import 'bms_landscape_screen.dart';
 import 'smartmetter_detail_screen.dart';
 import 'camera_landscape_fullscreen_viewer.dart';
 import '../widgets/camera_webrtc_player.dart';
+import '../../../core/utils/app_toast.dart';
 
 class CategoryDeviceListSheet extends StatefulWidget {
   final CategoryMeta categoryMeta;
@@ -169,35 +170,15 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
     if (mounted) {
       setState(() => _isProcessing = false);
       final isBle = !device.isOnline;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              if (isBle) ...[
-                const Icon(Icons.bluetooth_audio_rounded,
-                    color: Colors.black, size: 18),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  "${res.message}${isBle ? ' (Lệnh phát qua BLE tầm gần)' : ''} • ${res.latencyMs}ms",
-                  style: TextStyle(
-                    color: isBle ? Colors.black : Colors.white,
-                    fontWeight: isBle ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: isBle
-              ? AppTheme.amberWarning
-              : (AppTheme.isDarkMode
-                  ? AppTheme.surfaceGlass
-                  : Colors.grey[800]),
-          duration: const Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (res.success) {
+        AppToast.showSuccess(
+          "${res.message}${isBle ? ' (Lệnh phát qua BLE tầm gần)' : ''} • ${res.latencyMs}ms",
+        );
+      } else {
+        AppToast.showError(
+          res.message.isNotEmpty ? res.message : "Thao tác không thành công",
+        );
+      }
     }
   }
 
@@ -1540,14 +1521,8 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
   }
 
   void _showLockedNotice() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-            "Cửa đang KHÓA AN TOÀN TRẺ EM! Các nút Mở/Dừng/Đóng đã bị vô hiệu hóa. Vui lòng mở khóa trước."),
-        backgroundColor: AppTheme.amberWarning,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(seconds: 2),
-      ),
+    AppToast.showWarning(
+      "Cửa đang KHÓA AN TOÀN TRẺ EM! Các nút Mở/Dừng/Đóng đã bị vô hiệu hóa. Vui lòng mở khóa trước.",
     );
   }
 
