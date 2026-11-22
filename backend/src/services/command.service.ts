@@ -82,7 +82,10 @@ export class CommandService {
     const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     let actionCode = req.command;
-    if (isMeter) {
+    // Bắt mã lệnh thăm dò Online/Offline chuẩn 295 toàn hệ thống
+    if (req.command === 'CHECK_ONLINE' || req.command === 'PROBE_ONLINE' || req.command === 'PING' || req.command === '295' || req.command === 'HEARTBEAT') {
+      actionCode = '295';
+    } else if (isMeter) {
       if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === 'METER_POWER_ON' || req.command === '13') {
         actionCode = '13';
       } else if (req.command === 'TURN_OFF' || req.command === 'OFF' || req.command === 'METER_POWER_OFF' || req.command === '14') {

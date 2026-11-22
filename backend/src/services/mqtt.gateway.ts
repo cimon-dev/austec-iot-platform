@@ -81,7 +81,7 @@ export class MqttGateway {
   }
 
   /**
-   * Thực thi quét và kiểm tra trạng thái Online/Offline thực tế
+   * Thực thi quét và kiểm tra trạng thái Online/Offline thực tế bằng mã chuẩn 295
    */
   public async runHeartbeatScan() {
     try {
@@ -89,33 +89,35 @@ export class MqttGateway {
       const res = await this.postgresService.query(`SELECT hardware_id, last_heartbeat, is_online FROM device_instances`);
       if (!res || !res.rows) return;
 
-      const now = Date.now();
       for (const row of res.rows) {
         const hwId = row.hardware_id;
         if (!hwId) continue;
 
-        // Gửi ping thăm dò trạng thái xuống phần cứng
-        await this.publishAction('system-ping', hwId, 'ping');
-        await this.publishMessage(`austec/${hwId}/command`, 'PING');
+        // Gửi mã chuẩn 295 thăm dò trạng thái trực tuyến xuống toàn bộ các kênh thiết bị
+        await this.publishAction('system-ping', hwId, '295');
+        await this.publishMessage(`austec/${hwId}/command`, '295');
+        await this.publishMessage(`devices/${hwId}/camera/cmd`, '295');
+        await this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295');
+        await this.publishMessage(`amtuong/${hwId}/sub/isonline`, '295');
 
-        // Kiểm tra thời gian phản hồi cuối cùng (ngưỡng 5 phút = 300.000 ms)
-        let isActuallyOnline = true;
-        if (!row.last_heartbeat) {
-          isActuallyOnline = false;
+        // Chờ nhận phản hồi đúng mã 295 trong 2.5 giây
+        const ack = await this.waitForActionAck(hwId, ['295'], 2500);
+
+        let isActuallyOnline = false;
+        if (ack.success && (ack.payload?.trim() === '295' || ack.payload?.includes('295'))) {
+          isActuallyOnline = true;
         } else {
-          const lastTime = new Date(row.last_heartbeat).getTime();
-          if (isNaN(lastTime) || (now - lastTime > 300000)) {
-            isActuallyOnline = false;
-          }
+          // Bắt buộc thiết bị phải phản hồi mã 295. Nếu không phản hồi, nhận biết thiết bị đã OFFLINE
+          isActuallyOnline = false;
         }
 
         if (row.is_online !== isActuallyOnline) {
-          console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}]: ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
+          console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}] (Mã 295): ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
           await this.postgresService.query(
-            `UPDATE device_instances SET is_online = $1 WHERE LOWER(hardware_id) = LOWER($2)`,
+            `UPDATE device_instances SET is_online = $1, ${isActuallyOnline ? 'last_heartbeat = NOW()::text,' : ''} updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($2)`,
             [isActuallyOnline, hwId]
           );
-          await this.hotCache.setDeviceState(hwId, { isOnline: isActuallyOnline });
+          await this.hotCache.setDeviceState(hwId, { isOnline: isActuallyOnline, ...(isActuallyOnline ? { lastHeartbeat: new Date().toISOString() } : {}) });
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { isOnline: isActuallyOnline });
           }
@@ -219,6 +221,48 @@ export class MqttGateway {
     const payload = message.length > 2048 ? message.subarray(0, 2048).toString('utf-8') : message.toString('utf-8');
     const shortPayload = payload.length > 80 ? payload.slice(0, 80) + '...' : payload;
     this.recordMessage(topic, shortPayload, 'INCOMING');
+
+    // =========================================================================
+    // XỬ LÝ MÃ NHẬN DIỆN THIẾT BỊ ONLINE CHUẨN TOÀN HỆ THỐNG: MÃ 295
+    // Khi Backend gửi mã 295 xuống thiết bị, thiết bị bắt buộc gửi lại đúng mã 295.
+    // Nếu nhận được mã 295 từ bất kỳ topic nào của thiết bị, lập tức kích hoạt ONLINE!
+    // =========================================================================
+    const cleanPayload = payload.trim();
+    if (cleanPayload === '295' || cleanPayload.includes('"probe":295') || cleanPayload.includes('"probe":"295"') || cleanPayload.includes('"action":"295"') || cleanPayload.includes('"action":295')) {
+      let detectedHwId = '';
+      const tParts = topic.split('/');
+      if (topic.startsWith('devices/') || topic.startsWith('esp32/') || topic.startsWith('austec/')) {
+        detectedHwId = tParts[1] || '';
+      } else if (tParts.length >= 3 && (tParts[0] === 'USR-330967' || tParts[0] === 'amtuong' || tParts[2] === 'pub')) {
+        detectedHwId = tParts[1] || '';
+      } else if (tParts.length >= 2) {
+        detectedHwId = tParts[0] || tParts[1] || '';
+      } else {
+        detectedHwId = topic;
+      }
+
+      if (detectedHwId && detectedHwId !== 'status' && detectedHwId !== 'action' && detectedHwId !== 'command') {
+        console.log(`[MQTT Gateway] 🟢 [${detectedHwId}] Xác thực ONLINE thành công qua mã chuẩn 295! Topic: ${topic}`);
+        const nowIso = new Date().toISOString();
+        const onlineState = { isOnline: true, lastHeartbeat: nowIso };
+        await this.hotCache.setDeviceState(detectedHwId, onlineState);
+        await this.hotCache.setDeviceState(detectedHwId.toLowerCase(), onlineState);
+        await this.hotCache.setDeviceState(detectedHwId.toUpperCase(), onlineState);
+
+        try {
+          await this.postgresService?.query(
+            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text, updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [detectedHwId]
+          );
+        } catch (_) { }
+
+        if (this.onStateChangeCallback) {
+          this.onStateChangeCallback(detectedHwId, { isOnline: true });
+        }
+        this.resolvePendingAck(detectedHwId, '295');
+        return;
+      }
+    }
 
     // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status HOẶC esp32/{hwId}/status (espcam.pdf)
     if ((topic.startsWith('devices/') && topic.endsWith('/status')) || (topic.startsWith('esp32/') && topic.endsWith('/status'))) {
@@ -754,23 +798,24 @@ export class MqttGateway {
     });
     if (hasRecentMsg) return true;
 
-    // Chủ động phát gói thăm dò (ping) xuống topic sub/isonline của Cửa cuốn / Ổ cắm
+    // Chủ động phát gói thăm dò mã 295 xuống phần cứng thực tế
     try {
-      // 1. Prefix chuẩn EEPROM phần cứng thực tế (USR-330967 và amtuong)
-      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '1').catch(() => { });
+      await this.publishAction('system-ping', hwId, '295');
+      this.publishMessage(`austec/${hwId}/command`, '295').catch(() => { });
+      this.publishMessage(`devices/${hwId}/camera/cmd`, '295').catch(() => { });
+      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295').catch(() => { });
+      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '295').catch(() => { });
+      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '295').catch(() => { });
+      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '295').catch(() => { });
 
-      // 2. User đăng nhập hiện tại & các fallback admin
       if (userId && userId.trim().length > 0) {
-        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => { });
+        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '295').catch(() => { });
       }
-      this.publishMessage(`00000000-0000-0000-0000-000000000001/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`austec/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`admin/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`root/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`devices/${hwId}/sub/isonline`, '1').catch(() => { });
+
+      const ack = await this.waitForActionAck(hwId, ['295'], 2000);
+      if (ack.success && (ack.payload?.trim() === '295' || ack.payload?.includes('295'))) {
+        return true;
+      }
     } catch (_) { }
 
     return false;
