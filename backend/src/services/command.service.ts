@@ -150,6 +150,29 @@ export class CommandService {
       }
       // Phát mã lệnh chuẩn trực tiếp qua MQTT tới thiết bị phần cứng
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
+
+      // Chờ phản hồi ACK 2 chiều thực tế từ thiết bị phần cứng (3.5s timeout)
+      const ack = await this.mqttGateway.waitForActionAck(req.hardwareId, [actionCode], 3500);
+      if (!ack.success) {
+        const latencyMs = Math.round(performance.now() - startTime);
+        this.blackboxService.logCommand({
+          hardwareId: req.hardwareId,
+          actorId: req.actorId,
+          actorRole: req.actorRole,
+          actorIp: req.actorIp,
+          actionType: `CMD_${req.command}`,
+          payloadSent: { actionCode, params: req.params || {} },
+          ackStatus: 'TIMEOUT',
+          latencyMs,
+        });
+
+        return {
+          success: false,
+          ackStatus: 'TIMEOUT',
+          latencyMs,
+          message: `Thiết bị '${req.hardwareId}' không phản hồi thực tế (Mất kết nối phần cứng). Trạng thái không đổi.`,
+        };
+      }
     } else {
       const hardwareResponseTimeMs = Math.floor(40 + Math.random() * 50);
       await new Promise(resolve => setTimeout(resolve, hardwareResponseTimeMs));

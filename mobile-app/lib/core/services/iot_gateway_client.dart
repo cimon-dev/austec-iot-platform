@@ -956,6 +956,8 @@ class IoTGatewayClient {
         }),
       ).timeout(const Duration(milliseconds: 6000));
 
+      bool isSuccess = false;
+      String? errorMessage;
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data['cryptoSignature'] != null) {
@@ -963,6 +965,11 @@ class IoTGatewayClient {
         }
         if (data['latencyMs'] != null) {
           netLatency = (data['latencyMs'] as num).toInt();
+        }
+        if (data['success'] != false) {
+          isSuccess = true;
+        } else {
+          errorMessage = data['error'] ?? data['message'] ?? 'Thiết bị không phản hồi thực tế';
         }
       } else if (res.statusCode == 403) {
         final data = jsonDecode(res.body);
@@ -972,11 +979,35 @@ class IoTGatewayClient {
           message: data['error'] ?? 'Bạn không có quyền thực hiện thao tác này',
           cryptoSignature: cryptoSig,
         );
+      } else {
+        try {
+          final data = jsonDecode(res.body);
+          errorMessage = data['error'] ?? data['message'] ?? 'Thiết bị không phản hồi thực tế (Mã ${res.statusCode})';
+        } catch (_) {
+          errorMessage = 'Thiết bị không phản hồi thực tế (Mã ${res.statusCode})';
+        }
       }
-    } catch (_) {
-      // Offline fallback
-      final delayMs = 60 + (DateTime.now().microsecond % 40);
-      await Future.delayed(Duration(milliseconds: delayMs));
+
+      // Nếu máy chủ báo lệnh không thành công do phần cứng không có ACK thực tế -> dừng ngay, KHÔNG sửa trạng thái ảo
+      if (!isSuccess) {
+        return CommandResult(
+          success: false,
+          latencyMs: netLatency,
+          message: errorMessage ?? 'Thiết bị không phản hồi xác nhận thực tế (Mất kết nối hoặc ngoại tuyến)',
+          cryptoSignature: cryptoSig,
+        );
+      }
+    } catch (e) {
+      // Chỉ khi thiết bị ngoại tuyến nhưng điều khiển trực tiếp qua BLE tầm gần
+      final isBleDevice = device != null && !device.isOnline;
+      if (!isBleDevice) {
+        return CommandResult(
+          success: false,
+          latencyMs: 120,
+          message: 'Không thể kết nối tới thiết bị hoặc thiết bị đang ngoại tuyến',
+          cryptoSignature: cryptoSig,
+        );
+      }
     }
 
     if (device != null) {

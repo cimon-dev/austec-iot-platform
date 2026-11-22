@@ -16,6 +16,12 @@ export class MqttGateway {
   private isRunning: boolean = false;
   private brokerUrl: string = 'mqtt://127.0.0.1:1883';
   private cameraSnapshots: Map<string, { buffer: Buffer; timestamp: number }> = new Map();
+  private pendingAcks: Map<string, Array<{
+    expectedActions?: string[];
+    resolve: (value: { success: boolean; payload?: string }) => void;
+    timer: NodeJS.Timeout;
+  }>> = new Map();
+  private heartbeatTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private postgresService: PostgresService,
@@ -23,6 +29,102 @@ export class MqttGateway {
     private hotCache: HotCacheClient,
     private onStateChangeCallback?: (hwId: string, state: any) => void
   ) { }
+
+  /**
+   * Chờ xác nhận 2 chiều từ phần cứng thực tế (Loại bỏ thành công ảo)
+   */
+  public waitForActionAck(hardwareId: string, expectedActions?: string[], timeoutMs: number = 3500): Promise<{ success: boolean; payload?: string }> {
+    return new Promise((resolve) => {
+      const key = hardwareId.toLowerCase().trim();
+      const timer = setTimeout(() => {
+        const list = this.pendingAcks.get(key) || [];
+        const filtered = list.filter(item => item.timer !== timer);
+        if (filtered.length > 0) {
+          this.pendingAcks.set(key, filtered);
+        } else {
+          this.pendingAcks.delete(key);
+        }
+        resolve({ success: false, payload: 'TIMEOUT' });
+      }, timeoutMs);
+
+      const item = { expectedActions, resolve, timer };
+      const list = this.pendingAcks.get(key) || [];
+      list.push(item);
+      this.pendingAcks.set(key, list);
+    });
+  }
+
+  /**
+   * Giải phóng chờ ACK khi nhận được gói tin thực tế từ phần cứng
+   */
+  public resolvePendingAck(hardwareId: string, payload: string) {
+    const key = hardwareId.toLowerCase().trim();
+    const list = this.pendingAcks.get(key);
+    if (!list || list.length === 0) return;
+
+    for (const item of list) {
+      clearTimeout(item.timer);
+      item.resolve({ success: true, payload });
+    }
+    this.pendingAcks.delete(key);
+  }
+
+  /**
+   * Khởi động cơ chế quét trạng thái thiết bị định kỳ (5 phút / lần)
+   */
+  public startHeartbeatScanner(intervalMs: number = 300000) {
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    console.log(`[MQTT Gateway] ⏱️ Đã kích hoạt cơ chế quét trạng thái thiết bị định kỳ (${intervalMs / 1000}s/lần)`);
+    this.heartbeatTimer = setInterval(async () => {
+      await this.runHeartbeatScan();
+    }, intervalMs);
+  }
+
+  /**
+   * Thực thi quét và kiểm tra trạng thái Online/Offline thực tế
+   */
+  public async runHeartbeatScan() {
+    try {
+      if (!this.postgresService || typeof this.postgresService.query !== 'function') return;
+      const res = await this.postgresService.query(`SELECT hardware_id, last_heartbeat, is_online FROM device_instances`);
+      if (!res || !res.rows) return;
+
+      const now = Date.now();
+      for (const row of res.rows) {
+        const hwId = row.hardware_id;
+        if (!hwId) continue;
+
+        // Gửi ping thăm dò trạng thái xuống phần cứng
+        await this.publishAction('system-ping', hwId, 'ping');
+        await this.publishMessage(`austec/${hwId}/command`, 'PING');
+
+        // Kiểm tra thời gian phản hồi cuối cùng (ngưỡng 5 phút = 300.000 ms)
+        let isActuallyOnline = true;
+        if (!row.last_heartbeat) {
+          isActuallyOnline = false;
+        } else {
+          const lastTime = new Date(row.last_heartbeat).getTime();
+          if (isNaN(lastTime) || (now - lastTime > 300000)) {
+            isActuallyOnline = false;
+          }
+        }
+
+        if (row.is_online !== isActuallyOnline) {
+          console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}]: ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
+          await this.postgresService.query(
+            `UPDATE device_instances SET is_online = $1 WHERE LOWER(hardware_id) = LOWER($2)`,
+            [isActuallyOnline, hwId]
+          );
+          await this.hotCache.setDeviceState(hwId, { isOnline: isActuallyOnline });
+          if (this.onStateChangeCallback) {
+            this.onStateChangeCallback(hwId, { isOnline: isActuallyOnline });
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[MQTT Gateway] Lỗi khi quét trạng thái thiết bị định kỳ:`, e.message);
+    }
+  }
 
   public start(port: number = 1883): Promise<boolean> {
     const isCloudEnv = !!(process.env.RENDER || process.env.NODE_ENV === 'production');
@@ -58,6 +160,7 @@ export class MqttGateway {
             console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm Austec trên EMQX!');
           }
         });
+        this.startHeartbeatScanner(300000);
         resolve(true);
       });
 
@@ -109,6 +212,7 @@ export class MqttGateway {
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { cameraFrame: true, size: message.length });
       }
+      this.resolvePendingAck(hwId, 'CAMERA_FRAME');
       return;
     }
 
@@ -146,6 +250,7 @@ export class MqttGateway {
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { isOnline: true });
       }
+      this.resolvePendingAck(hwId, 'CAMERA_ONLINE');
       return;
     }
 
@@ -195,6 +300,7 @@ export class MqttGateway {
             if (this.onStateChangeCallback) {
               this.onStateChangeCallback(hwId, bmsState.currentProperties);
             }
+            this.resolvePendingAck(hwId, payload);
             return;
           }
 
@@ -232,6 +338,7 @@ export class MqttGateway {
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, meterState.currentProperties);
           }
+          this.resolvePendingAck(hwId, payload);
           return;
         } else if (sub === 'alarm') {
           console.warn(`[MQTT Gateway] 🚨 [${hwId}] CẢNH BÁO CÔNG TƠ ĐIỆN TỬ: ${json.message}`);
@@ -254,9 +361,34 @@ export class MqttGateway {
               [JSON.stringify(alarmState.currentProperties), hwId]
             );
           } catch (_) { }
+
+          // TH2: Phát thông báo cảnh báo nguy hiểm khẩn cấp tới chủ sở hữu thiết bị
+          try {
+            const devOwnerRes = await this.postgresService?.query(
+              `SELECT owner_id, custom_name FROM device_instances WHERE LOWER(hardware_id) = LOWER($1) LIMIT 1`,
+              [hwId]
+            );
+            if (devOwnerRes?.rows?.length > 0 && devOwnerRes.rows[0].owner_id) {
+              const ownerId = devOwnerRes.rows[0].owner_id;
+              const devName = devOwnerRes.rows[0].custom_name || hwId;
+              const notifId = `NOTIF-ALERT-${Date.now()}`;
+              await this.postgresService?.query(
+                `INSERT INTO notifications (id, user_id, title, message, type, is_read, created_at)
+                 VALUES ($1, $2, $3, $4, 'ALERT_DANGER', false, NOW()::text)`,
+                [
+                  notifId,
+                  ownerId,
+                  `🚨 CẢNH BÁO NGUY HIỂM: ${devName}`,
+                  `Phát hiện sự cố an toàn: ${json.message || 'Cảnh báo rơ-le / sự cố quá tải'} trên thiết bị ${devName} (${hwId}).`,
+                ]
+              );
+            }
+          } catch (_) { }
+
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, alarmState.currentProperties);
           }
+          this.resolvePendingAck(hwId, payload);
           return;
         }
       } catch (err: any) {
@@ -285,6 +417,7 @@ export class MqttGateway {
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { isOnline: true });
           }
+          this.resolvePendingAck(hwId, payload);
           return;
         }
 
@@ -310,6 +443,7 @@ export class MqttGateway {
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
           }
+          this.resolvePendingAck(hwId, payload);
           return;
         }
       }
@@ -339,6 +473,7 @@ export class MqttGateway {
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
+        this.resolvePendingAck(hwId, payload);
       }
 
       // 2. Gói tin Phản Hồi Trạng Thái Trực Tuyến: {user}/{hwId}/pub/isonline
@@ -358,6 +493,7 @@ export class MqttGateway {
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { isOnline: true, paired: true });
         }
+        this.resolvePendingAck(hwId, payload);
       }
 
       // 3. Gói tin Báo Cảm Biến / Hành Trình Cửa HOẶC Trạng Thái Ổ Cắm (ocammoi): {user}/{hwId}/pub/action
@@ -385,6 +521,7 @@ export class MqttGateway {
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
           }
+          this.resolvePendingAck(hwId, payload);
           return;
         }
 
@@ -416,6 +553,7 @@ export class MqttGateway {
         if (this.onStateChangeCallback) {
           this.onStateChangeCallback(hwId, { open_state: openState, action: payload });
         }
+        this.resolvePendingAck(hwId, payload);
       }
 
       // 3. Tiến độ OTA nạp từ xa

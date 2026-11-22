@@ -103,36 +103,34 @@ class DeviceProvisioningProfile {
 /// lập trình viên chỉ cần thêm 1 Profile vào danh sách này, không cần sửa đổi giao diện!
 class DeviceProvisioningCatalog {
   // ---------------------------------------------------------------------------
-  // 1. CỬA CUỐN TRUNG TÂM AUSTEC (WIFRFTT + MAC) - Có phần thêm tay cầm RF
+  // 1. CỬA CUỐN CHÍNH (cuacuon, WIFIRF-TT+MAC, vvcucuon)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile rollerDoorProfile = DeviceProvisioningProfile(
     category: DeviceCategory.rollerDoor,
-    defaultTitle: "Cửa Cuốn Trung Tâm",
+    defaultTitle: "Cửa Cuốn Chính",
     defaultModelCode: "DOOR_HUB_WIFRFTT",
     icon: Icons.roller_shades_rounded,
     accentColor: AppTheme.cyanAccent,
     bleServiceUuids: [
-      "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Chuẩn Nordic UART Service
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
       "6e400001",
     ],
-    nameKeywords: ["wifrftt", "cuacuon", "austec", "door", "roller", "at-door"],
+    nameKeywords: ["cuacuon", "wifirf-tt", "wifirftt", "vvcucuon"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
-    // Cú pháp nạp Cửa cuốn: onboard/{ssid}/{pass}/{userId}/{brokerIp}/{port}
     buildBlePayload: (data) =>
         "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
-    // Cú pháp nạp SoftAP: http://192.168.4.1/?SSID=...&PASS=...&USER=...&IP=...&PORT=...
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
       'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
     ),
   );
 
   // ---------------------------------------------------------------------------
-  // 2. CỬA CUỐN ÂM TƯỜNG AUSTEC (WIFRF_ECO + MAC) - Cùng nhóm Doors màu cam, KHÔNG CÓ tay cầm RF
+  // 2. THIẾT BỊ ĐIỀU KHIỂN GẮN TƯỜNG / ÂM TƯỜNG (amtuong, WIFIRF-ECO+MAC, vvamtuong)
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile wallDoorProfile = DeviceProvisioningProfile(
     category: DeviceCategory.rollerDoor,
-    defaultTitle: "Cửa Cuốn Âm Tường",
+    defaultTitle: "Cửa Cuốn Gắn Tường",
     defaultModelCode: "DOOR_INWALL_ECO",
     icon: Icons.roller_shades_closed_rounded,
     accentColor: AppTheme.amberWarning,
@@ -140,7 +138,7 @@ class DeviceProvisioningCatalog {
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
       "6e400001",
     ],
-    nameKeywords: ["wifrf_eco", "wifrfeco", "wifrf", "amtuong", "inwall"],
+    nameKeywords: ["amtuong", "wifirf-eco", "wifirfeco", "vvamtuong"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     buildBlePayload: (data) =>
@@ -151,7 +149,53 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 3. Ổ CẮM CÔNG TẮC THÔNG MINH AUSTEC (SmartSW + MAC / OCAM)
+  // 3. CỬA KÍNH LÙA (Glsdoor + MAC)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile glsDoorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.rollerDoor,
+    defaultTitle: "Cửa Kính Lùa",
+    defaultModelCode: "DOOR_GLSDOOR",
+    icon: Icons.meeting_room_rounded,
+    accentColor: AppTheme.cyanAccent,
+    bleServiceUuids: [
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "6e400001",
+    ],
+    nameKeywords: ["glsdoor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 4. CỬA TAY QUAY (Rolldoor + MAC)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile rollDoorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.rollerDoor,
+    defaultTitle: "Cửa Tay Quay",
+    defaultModelCode: "DOOR_ROLLDOOR",
+    icon: Icons.swap_horiz_rounded,
+    accentColor: AppTheme.amberWarning,
+    bleServiceUuids: [
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "6e400001",
+    ],
+    nameKeywords: ["rolldoor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}&USER=${Uri.encodeComponent(data.userId)}&IP=${Uri.encodeComponent(data.brokerIp)}&PORT=${data.brokerPort}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 5. Ổ CẮM & CÔNG TẮC (ocam + MAC, SW + MAC) -> Lights Switch
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartSocketProfile = DeviceProvisioningProfile(
     category: DeviceCategory.lightSwitch,
@@ -160,12 +204,12 @@ class DeviceProvisioningCatalog {
     icon: Icons.power_rounded,
     accentColor: AppTheme.amberWarning,
     bleServiceUuids: [
-      "6e400001-b5a3-f393-e0a9-e50e24dcca9e", // Chuẩn Nordic UART của ocammoi
-      "4faac861-11a3-45d6-964d-c57406320509", // Hỗ trợ mạch cũ nếu có
+      "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
+      "4faac861-11a3-45d6-964d-c57406320509",
       "4faac861",
       "6e400001",
     ],
-    nameKeywords: ["smartsw", "smart_sw", "ocam", "socket", "ocamping"],
+    nameKeywords: ["ocam", "sw", "smartsw"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     buildBlePayload: (data) =>
@@ -176,30 +220,7 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 4. CAMERA AN NINH AI (AI-Thinker ESP32-CAM OV2640)
-  // ---------------------------------------------------------------------------
-  static final DeviceProvisioningProfile cameraProfile = DeviceProvisioningProfile(
-    category: DeviceCategory.camera,
-    defaultTitle: "Camera An Ninh AI",
-    defaultModelCode: "AI_CAMERA_360",
-    icon: Icons.videocam_rounded,
-    accentColor: AppTheme.purpleAccent,
-    bleServiceUuids: [
-      "4fafc201-1fb5-459e-8fcc-c5c9c331914b", // UUID BLE trong code camera OV2640
-      "4fafc201",
-    ],
-    nameKeywords: ["esp32-cam", "camera", "cam_", "cam-", "ov2640", "ezviz", "dahua", "hikvision"],
-    bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
-    bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
-    buildBlePayload: (data) =>
-        "${data.ssid},${data.password},${data.brokerIp}",
-    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
-      'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
-    ),
-  );
-
-  // ---------------------------------------------------------------------------
-  // 5. CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT AUSTEC (SmartMetter + MAC - smartmetter_copy.ino)
+  // 6. CÔNG TƠ ĐIỆN TỬ CHỐNG GIẬT (Smartmetter + MAC) -> Energy Manages
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile smartMeterProfile = DeviceProvisioningProfile(
     category: DeviceCategory.energyManage,
@@ -211,7 +232,7 @@ class DeviceProvisioningCatalog {
       "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
       "4fafc201",
     ],
-    nameKeywords: ["smartmetter", "smartmeter", "congto", "meter"],
+    nameKeywords: ["smartmetter", "smartmeter"],
     bleRxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
     bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
     buildBlePayload: (data) =>
@@ -222,7 +243,7 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 6. HỆ THỐNG PIN LƯU TRỮ THÔNG MINH AUSTEC BMS (AUSTEC_BMS + MAC - BMSV01.ino)
+  // 7. THIẾT BỊ QUẢN LÝ VÀ GIÁM SÁT PIN LITHIUM BMS (BMS + MAC) -> Energy Manages
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile bmsProfile = DeviceProvisioningProfile(
     category: DeviceCategory.energyManage,
@@ -234,10 +255,9 @@ class DeviceProvisioningCatalog {
       "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
       "4fafc201",
     ],
-    nameKeywords: ["austec_bms", "bms", "austec-bms", "smartbms"],
+    nameKeywords: ["bms"],
     bleRxCharUuid: "8258380b-1039-4733-9b81-22f431886882",
     bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
-    // Cú pháp nạp BLE đúng chuẩn hàm applyRemoteSettingsCommand trong BMSV01.ino: PAIR:<ssid>,<pass>
     buildBlePayload: (data) => "PAIR:${data.ssid},${data.password}",
     buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
       'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
@@ -245,7 +265,129 @@ class DeviceProvisioningCatalog {
   );
 
   // ---------------------------------------------------------------------------
-  // 6. THIẾT BỊ BLE CHƯA ĐĂNG KÝ (GENERIC / UNREGISTERED) - KHÔNG DÙNG FALLBACK ÉP KIỂU!
+  // 8. THIẾT BỊ LƯU TRỮ NĂNG LƯỢNG UPS (UPS + MAC) -> Energy Manages
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile upsProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.energyManage,
+    defaultTitle: "Bộ Lưu Điện UPS",
+    defaultModelCode: "SMART_UPS_PRO",
+    icon: Icons.power_input_rounded,
+    accentColor: AppTheme.emeraldSuccess,
+    bleServiceUuids: [
+      "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
+      "4fafc201",
+    ],
+    nameKeywords: ["ups"],
+    bleRxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+    bleTxCharUuid: "beb5483e-36e1-4688-b7f5-ea07361b26a8",
+    buildBlePayload: (data) =>
+        "${data.ssid},${data.password},${data.brokerIp},${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/config?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 9. CẢM BIẾN NHIỆT ĐỘ (Tempsensor + MAC) -> Thiết bị môi trường
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile tempSensorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.environment,
+    defaultTitle: "Cảm Biến Nhiệt Độ",
+    defaultModelCode: "SENSOR_TEMP",
+    icon: Icons.thermostat_rounded,
+    accentColor: Colors.orangeAccent,
+    bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+    nameKeywords: ["tempsensor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 10. CẢM BIẾN KHÍ GAS (Gassensor + MAC) -> Thiết bị môi trường
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile gasSensorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.environment,
+    defaultTitle: "Cảm Biến Khí Gas",
+    defaultModelCode: "SENSOR_GAS",
+    icon: Icons.cloud_queue_rounded,
+    accentColor: Colors.amberAccent,
+    bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+    nameKeywords: ["gassensor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 11. CẢM BIẾN NỒNG ĐỘ OXY (O2sensor + MAC) -> Thiết bị môi trường
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile o2SensorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.environment,
+    defaultTitle: "Cảm Biến Nồng Độ Oxy",
+    defaultModelCode: "SENSOR_O2",
+    icon: Icons.air_rounded,
+    accentColor: Colors.lightBlueAccent,
+    bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+    nameKeywords: ["o2sensor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 12. CẢM BIẾN BÁO CHÁY (Flamsensor + MAC) -> Thiết bị môi trường
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile flamSensorProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.environment,
+    defaultTitle: "Cảm Biến Báo Cháy",
+    defaultModelCode: "SENSOR_FLAM",
+    icon: Icons.local_fire_department_rounded,
+    accentColor: Colors.redAccent,
+    bleServiceUuids: ["6e400001-b5a3-f393-e0a9-e50e24dcca9e"],
+    nameKeywords: ["flamsensor"],
+    bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
+    buildBlePayload: (data) =>
+        "onboard/${data.ssid}/${data.password}/${data.userId}/${data.brokerIp}/${data.brokerPort}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/?SSID=${Uri.encodeComponent(data.ssid)}&PASS=${Uri.encodeComponent(data.password)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 13. CAMERA AN NINH AI (CAM + MAC)
+  // ---------------------------------------------------------------------------
+  static final DeviceProvisioningProfile cameraProfile = DeviceProvisioningProfile(
+    category: DeviceCategory.camera,
+    defaultTitle: "Camera An Ninh AI",
+    defaultModelCode: "AI_CAMERA_360",
+    icon: Icons.videocam_rounded,
+    accentColor: AppTheme.purpleAccent,
+    bleServiceUuids: [
+      "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
+      "4fafc201",
+    ],
+    nameKeywords: ["cam"],
+    bleRxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
+    bleTxCharUuid: "bea5c122-3d83-11ed-a261-0242ac120002",
+    buildBlePayload: (data) =>
+        "${data.ssid},${data.password},${data.brokerIp}",
+    buildSoftApUri: (data, {String apHost = "192.168.4.1"}) => Uri.parse(
+      'http://$apHost/save?ssid=${Uri.encodeComponent(data.ssid)}&pass=${Uri.encodeComponent(data.password)}&mqtt=${Uri.encodeComponent(data.brokerIp)}',
+    ),
+  );
+
+  // ---------------------------------------------------------------------------
+  // 14. THIẾT BỊ KHÁC (TẤT CẢ CÁC THIẾT BỊ CÒN LẠI KHI GHÉP NỐI) -> Other Control
   // ---------------------------------------------------------------------------
   static final DeviceProvisioningProfile unregisteredDeviceProfile = DeviceProvisioningProfile(
     category: DeviceCategory.othersControl,
@@ -263,73 +405,81 @@ class DeviceProvisioningCatalog {
     ),
   );
 
-  /// Danh sách thiết bị trọng tâm đang hoạt động thực tế
+  /// Danh sách tất cả Profile chuẩn hóa theo file yêu cầu
   static final List<DeviceProvisioningProfile> allProfiles = [
-    rollerDoorProfile,  // 1. Cửa cuốn trung tâm (WIFRFTT)
-    wallDoorProfile,    // 2. Cửa cuốn âm tường (WIFRF_ECO / amtuong)
-    smartSocketProfile, // 3. Ổ cắm công tắc thông minh (SmartSW / OCAM)
-    cameraProfile,      // 4. Camera An Ninh AI (ESP32-CAM)
-    smartMeterProfile,  // 5. Công tơ điện tử chống giật (SmartMetter)
-    bmsProfile,         // 6. Hệ thống Pin Lưu Trữ BMS (AUSTEC_BMS)
+    rollerDoorProfile,   // Cửa cuốn chính
+    wallDoorProfile,     // Gắn tường / Âm tường
+    glsDoorProfile,      // Cửa kính lùa
+    rollDoorProfile,     // Cửa tay quay
+    smartSocketProfile,  // Lights & Switch
+    smartMeterProfile,   // Công tơ điện tử
+    bmsProfile,          // Pin lithium BMS
+    upsProfile,          // Bộ lưu điện UPS
+    tempSensorProfile,   // Cảm biến nhiệt độ
+    gasSensorProfile,    // Cảm biến Gas
+    o2SensorProfile,     // Cảm biến Oxy
+    flamSensorProfile,   // Cảm biến báo cháy
+    cameraProfile,       // Camera
   ];
 
-  /// Hàm tìm và khớp Profile CHÍNH XÁC THEO TÀI LIỆU KỸ THUẬT AUSTEC
-  /// Tuyệt đối không fallback ép kiểu về các loại trên đối với thiết bị lạ!
+  /// Hàm tìm và khớp Profile CHÍNH XÁC 100% THEO FILE YÊU CẦU
+  /// Sử dụng toLowerCase() để bắt mọi trường hợp chữ HOA / chữ thường (Vidu, ViDu, vidu, VIDU)
   static DeviceProvisioningProfile resolveProfile({
     required String rawName,
     List<String> advertisedUuids = const [],
   }) {
     final lowerName = rawName.toLowerCase().trim();
-    final upperName = rawName.toUpperCase().trim();
 
-    // 0. Hệ thống Pin lưu trữ BMS: Bắt đầu bằng AUSTEC_BMS / BMS / SMARTBMS
-    if (upperName.startsWith("AUSTEC_BMS") || upperName.startsWith("BMS") || upperName.startsWith("SMARTBMS") || (lowerName.contains("bms") && !lowerName.contains("door"))) {
-      return bmsProfile;
+    // 1. Nhóm Cửa (4 loại: Cửa cuốn chính, Âm tường, Kính lùa, Tay quay)
+    if (lowerName.contains("cuacuon") || lowerName.contains("wifirf-tt") || lowerName.contains("wifirftt") || lowerName.contains("vvcucuon")) {
+      return rollerDoorProfile;
+    }
+    if (lowerName.contains("amtuong") || lowerName.contains("wifirf-eco") || lowerName.contains("wifirfeco") || lowerName.contains("vvamtuong")) {
+      return wallDoorProfile;
+    }
+    if (lowerName.contains("glsdoor")) {
+      return glsDoorProfile;
+    }
+    if (lowerName.contains("rolldoor")) {
+      return rollDoorProfile;
     }
 
-    // 1. Công tơ điện tử chống giật: Bắt đầu bằng SmartMetter / smartmeter / congto
-    if (upperName.startsWith("SMARTMETTER") || upperName.startsWith("SMARTMETER") || lowerName.contains("congto") || (lowerName.contains("meter") && !lowerName.contains("door"))) {
-      return smartMeterProfile;
-    }
-
-    // 2. Ổ cắm công tắc thông minh: Bắt cả case chữ in hoa và thường: SmartSW, SMARTSW, smartsw, OCAM, socket
-    if (upperName.startsWith("SMARTSW") || rawName.contains("SmartSW") || upperName.startsWith("OCAM") || lowerName.contains("socket") || lowerName.contains("ocamping")) {
+    // 2. Lights & Switch: ocam, sw, smartsw
+    if (lowerName.contains("ocam") || lowerName.contains("smartsw") || lowerName.startsWith("sw") || lowerName.contains("sw-") || lowerName.contains("sw_") || lowerName.contains("sw+")) {
       return smartSocketProfile;
     }
 
-    // 3. Camera an ninh AI: Bắt đầu bằng cam, esp32-cam, camera, ov2640 (loại trừ ocam, smartsw, socket)
-    if ((lowerName.startsWith("cam") || lowerName.contains("camera") || lowerName.contains("esp32-cam") || lowerName.contains("ov2640")) &&
-        !upperName.startsWith("OCAM") && !upperName.startsWith("SMARTSW") && !lowerName.contains("socket")) {
+    // 3. Energy Manages: Smartmetter, BMS, UPS
+    if (lowerName.contains("smartmetter") || lowerName.contains("smartmeter")) {
+      return smartMeterProfile;
+    }
+    if (lowerName.contains("bms")) {
+      return bmsProfile;
+    }
+    if (lowerName.contains("ups")) {
+      return upsProfile;
+    }
+
+    // 4. Thiết bị môi trường: Tempsensor, Gassensor, O2sensor, Flamsensor
+    if (lowerName.contains("tempsensor")) {
+      return tempSensorProfile;
+    }
+    if (lowerName.contains("gassensor")) {
+      return gasSensorProfile;
+    }
+    if (lowerName.contains("o2sensor")) {
+      return o2SensorProfile;
+    }
+    if (lowerName.contains("flamsensor")) {
+      return flamSensorProfile;
+    }
+
+    // 5. Camera an ninh: cam (loại trừ ocam)
+    if (lowerName.contains("cam") && !lowerName.contains("ocam")) {
       return cameraProfile;
     }
 
-    // 4. Cửa cuốn âm tường: Bắt đầu bằng WIFRF_ECO, WIFRFECO, amtuong, inwall
-    if (upperName.startsWith("WIFRF_ECO") || upperName.startsWith("WIFRFECO") || lowerName.startsWith("amtuong") || lowerName.contains("inwall") || (upperName.startsWith("WIFRF") && upperName.contains("ECO"))) {
-      return wallDoorProfile;
-    }
-
-    // 5. Cửa cuốn trung tâm: Bắt đầu bằng WIFRFTT, cuacuon, at-door, door
-    if (upperName.startsWith("WIFRFTT") || lowerName.startsWith("cuacuon") || lowerName.startsWith("at-door") || (lowerName.startsWith("door") && !lowerName.contains("sensor"))) {
-      return rollerDoorProfile;
-    }
-
-    // 6. Khớp Service UUID đặc thù NẾU có dấu hiệu rõ ràng
-    if (advertisedUuids.isNotEmpty) {
-      final normAdvUuids = advertisedUuids.map((u) => u.toLowerCase().replaceAll('-', '')).toList();
-      if (normAdvUuids.any((u) => u.contains("4fafc201"))) {
-        if (lowerName.contains("bms")) return bmsProfile;
-        if (lowerName.contains("meter") || lowerName.contains("metter")) return smartMeterProfile;
-        if (lowerName.contains("cam")) return cameraProfile;
-      }
-      if (normAdvUuids.any((u) => u.contains("6e400001"))) {
-        if (upperName.startsWith("SMARTSW") || upperName.startsWith("OCAM")) return smartSocketProfile;
-        if (upperName.startsWith("WIFRF_ECO") || lowerName.startsWith("amtuong")) return wallDoorProfile;
-        if (upperName.startsWith("WIFRFTT") || lowerName.startsWith("cuacuon") || lowerName.startsWith("at-door")) return rollerDoorProfile;
-      }
-    }
-
-    // 7. TUYỆT ĐỐI KHÔNG FALLBACK VỀ 4/5 LOẠI TRÊN!
-    // Các thiết bị lạ tự động chuyển vào loại Other Control
+    // 6. TẤT CẢ CÁC THIẾT BỊ CÒN LẠI: Vào Others Control
     return unregisteredDeviceProfile;
   }
 }

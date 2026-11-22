@@ -123,6 +123,40 @@ class FamilySharingService {
     ];
   }
 
+  Future<Map<String, dynamic>?> createTransferOtp(String hardwareId) async {
+    try {
+      final res = await ApiClient().post('/api/devices/$hardwareId/transfer/create');
+      if (res.success && res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+    } catch (e) {
+      debugPrint('[FamilySharingService] createTransferOtp error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> cancelTransferOtp(String hardwareId) async {
+    try {
+      final res = await ApiClient().post('/api/devices/$hardwareId/transfer/cancel');
+      return res.success;
+    } catch (e) {
+      debugPrint('[FamilySharingService] cancelTransferOtp error: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> claimDeviceByOtp(String otpCode) async {
+    try {
+      final res = await ApiClient().post('/api/devices/transfer/claim', body: {'otpCode': otpCode});
+      if (res.success && res.data is Map) {
+        return Map<String, dynamic>.from(res.data);
+      }
+    } catch (e) {
+      debugPrint('[FamilySharingService] claimDeviceByOtp error: $e');
+    }
+    return null;
+  }
+
   List<SuggestedMember> getOfflineFallbackSuggestions(String hwId) {
     return [
       SuggestedMember(

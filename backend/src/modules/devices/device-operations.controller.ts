@@ -202,25 +202,36 @@ export class DeviceOperationsController {
             const warrantyUntil = formatSafeDate(r.warranty_end_at, '2028-10-22');
             const warrantyCode = `EW-${(r.hardware_id || '').replace(/-/g, '').toUpperCase()}-24M`;
 
-            const hwUpper = (r.hardware_id || '').toUpperCase();
-            const isSocketDev = hwUpper.startsWith('OCAM') || hwUpper.includes('SOCKET') || hwUpper.startsWith('SMARTSW') || hwUpper.includes('SMARTSW');
-            const isCamDev = !isSocketDev && (hwUpper.startsWith('CAM') || hwUpper.includes('ESP32-CAM') || hwUpper.includes('CAMERA') || hwUpper.includes('OV2640'));
-            const isMeterDev = !isSocketDev && !isCamDev && (hwUpper.startsWith('SMARTMETTER') || hwUpper.startsWith('SMARTMETER') || hwUpper.includes('METER') || hwUpper.includes('CONGTO'));
+            const hwLower = (r.hardware_id || '').toLowerCase().trim();
+            const isSocketDev = hwLower.includes('ocam') || hwLower.includes('smartsw') || hwLower.startsWith('sw') || hwLower.includes('sw-') || hwLower.includes('sw_') || hwLower.includes('sw+');
+            const isCamDev = !isSocketDev && hwLower.includes('cam');
+            const isMeterDev = hwLower.includes('smartmetter') || hwLower.includes('smartmeter');
+            const isBmsDev = hwLower.includes('bms');
+            const isUpsDev = hwLower.includes('ups');
+            const isEnergyDev = isMeterDev || isBmsDev || isUpsDev;
 
-            const isHubDoor = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRFTT') || hwUpper.includes('WIFRFTT') || hwUpper.startsWith('CUACUON') || hwUpper.startsWith('AT-DOOR'));
-            const isWallDoor = !isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF_ECO') || hwUpper.startsWith('WIFRFECO') || hwUpper.includes('ECO') || hwUpper.startsWith('AMTUONG') || hwUpper.includes('AMTUONG'));
-            const isDoorDev = isHubDoor || isWallDoor || (!isSocketDev && !isCamDev && !isMeterDev && (hwUpper.startsWith('WIFRF') || hwUpper.startsWith('DOOR') || hwUpper.includes('DOOR')));
+            const isHubDoor = hwLower.includes('cuacuon') || hwLower.includes('wifirf-tt') || hwLower.includes('wifirftt') || hwLower.includes('vvcucuon');
+            const isWallDoor = hwLower.includes('amtuong') || hwLower.includes('wifirf-eco') || hwLower.includes('wifirfeco') || hwLower.includes('vvamtuong');
+            const isGlsDoor = hwLower.includes('glsdoor');
+            const isRollDoor = hwLower.includes('rolldoor');
+            const isDoorDev = isHubDoor || isWallDoor || isGlsDoor || isRollDoor;
 
-            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : isMeterDev ? 'Công tơ điện tử' : (isWallDoor ? 'Cửa cuốn âm tường' : (isHubDoor ? 'Cửa cuốn trung tâm' : (isDoorDev ? 'Cửa cuốn' : 'Thiết bị khác')));
-            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm công tắc thông minh' : isMeterDev ? 'Công tơ điện tử chống giật' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isHubDoor ? 'Cửa cuốn trung tâm Austec' : 'Austec Smart Device'));
-            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_SW' : isMeterDev ? 'SMART_METER_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isHubDoor ? 'DOOR_HUB_WIFRFTT' : 'DOOR_GERMAN_ALU'));
-            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : isMeterDev ? `Công tơ ${r.hardware_id}` : (isWallDoor ? 'Cửa cuốn âm tường' : 'Cửa cuốn trung tâm');
+            const isTempDev = hwLower.includes('tempsensor');
+            const isGasDev = hwLower.includes('gassensor');
+            const isO2Dev = hwLower.includes('o2sensor');
+            const isFlamDev = hwLower.includes('flamsensor');
+            const isEnvDev = isTempDev || isGasDev || isO2Dev || isFlamDev;
 
-            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (isMeterDev ? 'Công tơ điện tử' : (isWallDoor ? 'Cửa cuốn âm tường' : (isHubDoor ? 'Cửa cuốn trung tâm' : (isDoorDev ? 'Cửa cuốn' : (r.device_type || defaultDevType))))));
-            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_SW' : (isCamDev ? 'AI_CAMERA_360' : (isMeterDev ? 'SMART_METER_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isHubDoor ? 'DOOR_HUB_WIFRFTT' : (r.model_code || defaultDevModelCode)))));
-            const resolvedModelName = isSocketDev ? 'Ổ cắm công tắc thông minh' : (isCamDev ? 'AI Camera 360' : (isMeterDev ? 'Công tơ điện tử chống giật' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isHubDoor ? 'Cửa cuốn trung tâm Austec' : (r.model_name || defaultDevModelName)))));
+            const defaultDevType = isCamDev ? 'Camera' : isSocketDev ? 'Ổ cắm' : isMeterDev ? 'Công tơ điện tử' : isBmsDev ? 'Hệ thống Pin BMS' : isUpsDev ? 'Bộ lưu điện UPS' : (isWallDoor ? 'Cửa cuốn âm tường' : (isGlsDoor ? 'Cửa kính lùa' : (isRollDoor ? 'Cửa tay quay' : (isDoorDev ? 'Cửa cuốn chính' : (isEnvDev ? 'Cảm biến môi trường' : 'Thiết bị khác')))));
+            const defaultDevModelName = isCamDev ? 'AI Camera 360' : isSocketDev ? 'Ổ cắm công tắc thông minh' : isMeterDev ? 'Công tơ điện tử chống giật' : isBmsDev ? 'Hệ thống Pin Lưu Trữ BMS' : isUpsDev ? 'Bộ lưu điện UPS' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isGlsDoor ? 'Cửa kính lùa Austec' : (isRollDoor ? 'Cửa tay quay Austec' : (isDoorDev ? 'Cửa cuốn chính Austec' : (isEnvDev ? 'Cảm biến môi trường' : 'Austec Smart Device')))));
+            const defaultDevModelCode = isCamDev ? 'AI_CAMERA_360' : isSocketDev ? 'SMART_SOCKET_SW' : isMeterDev ? 'SMART_METER_PRO' : isBmsDev ? 'SMART_BMS_PRO' : isUpsDev ? 'SMART_UPS_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isGlsDoor ? 'DOOR_GLSDOOR' : (isRollDoor ? 'DOOR_ROLLDOOR' : (isDoorDev ? 'DOOR_HUB_WIFRFTT' : 'OTHER_CONTROL_DEVICE'))));
+            const defaultDevName = isCamDev ? `Camera ${r.hardware_id}` : isSocketDev ? `Ổ cắm ${r.hardware_id}` : isMeterDev ? `Công tơ ${r.hardware_id}` : isBmsDev ? `BMS ${r.hardware_id}` : (isWallDoor ? 'Cửa cuốn âm tường' : 'Cửa cuốn chính');
+
+            const resolvedDevType = isSocketDev ? 'Ổ cắm' : (isCamDev ? 'Camera' : (isMeterDev ? 'Công tơ điện tử' : isBmsDev ? 'Hệ thống Pin BMS' : (isWallDoor ? 'Cửa cuốn âm tường' : (isGlsDoor ? 'Cửa kính lùa' : (isRollDoor ? 'Cửa tay quay' : (isDoorDev ? 'Cửa cuốn chính' : (r.device_type || defaultDevType)))))));
+            const resolvedModelCode = isSocketDev ? 'SMART_SOCKET_SW' : (isCamDev ? 'AI_CAMERA_360' : (isMeterDev ? 'SMART_METER_PRO' : isBmsDev ? 'SMART_BMS_PRO' : (isWallDoor ? 'DOOR_INWALL_ECO' : (isGlsDoor ? 'DOOR_GLSDOOR' : (isRollDoor ? 'DOOR_ROLLDOOR' : (isDoorDev ? 'DOOR_HUB_WIFRFTT' : (r.model_code || defaultDevModelCode)))))));
+            const resolvedModelName = isSocketDev ? 'Ổ cắm công tắc thông minh' : (isCamDev ? 'AI Camera 360' : (isMeterDev ? 'Công tơ điện tử chống giật' : isBmsDev ? 'Hệ thống Pin Lưu Trữ BMS' : (isWallDoor ? 'Cửa cuốn âm tường Austec' : (isGlsDoor ? 'Cửa kính lùa Austec' : (isRollDoor ? 'Cửa tay quay Austec' : (isDoorDev ? 'Cửa cuốn chính Austec' : (r.model_name || defaultDevModelName)))))));
             const finalDevName = r.custom_name || (r.model_name && !r.model_name.includes('A900') ? r.model_name : defaultDevName);
-            const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : (isMeterDev ? 'energyManage' : (isDoorDev ? 'rollerDoor' : 'othersControl')));
+            const resolvedCategory = isCamDev ? 'camera' : (isSocketDev ? 'lightSwitch' : (isEnergyDev ? 'energyManage' : (isDoorDev ? 'rollerDoor' : (isEnvDev ? 'environment' : 'othersControl'))));
 
             const isOwner = r.user_role === 'OWNER';
             return {

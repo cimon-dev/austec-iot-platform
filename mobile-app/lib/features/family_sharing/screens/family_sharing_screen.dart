@@ -205,9 +205,24 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
     );
   }
 
-  void _generateTransferOtp() {
-    setState(() => _transferOtp = "889241");
+  Future<void> _generateTransferOtp() async {
+    if (_selectedDevice == null) return;
+    final res = await _service.createTransferOtp(_selectedDevice!.hardwareId);
+    if (!mounted) return;
+    if (res != null && res['otpCode'] != null) {
+      setState(() => _transferOtp = res['otpCode'].toString());
+      _showTransferOtpDialog();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Không thể tạo mã OTP. Vui lòng kiểm tra lại quyền Chủ sở hữu."),
+          backgroundColor: AppTheme.amberWarning,
+        ),
+      );
+    }
+  }
 
+  void _showTransferOtpDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -216,7 +231,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text("Mã OTP chuyển nhượng thiết bị '${_selectedDevice?.name}' có hiệu lực trong 15 phút:"),
+            Text("Mã OTP chuyển nhượng thiết bị '${_selectedDevice?.name}' có hiệu lực trong 15 phút. Người nhận nhập mã này để tiếp quản quyền sở hữu:"),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -226,7 +241,7 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
                 border: Border.all(color: AppTheme.cyanAccent),
               ),
               child: Text(
-                _transferOtp!,
+                _transferOtp ?? "------",
                 style: const TextStyle(
                   color: AppTheme.cyanAccent,
                   fontSize: 28,
@@ -239,10 +254,90 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
           ],
         ),
         actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              if (_selectedDevice != null) {
+                await _service.cancelTransferOtp(_selectedDevice!.hardwareId);
+                setState(() => _transferOtp = null);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Đã hủy mã OTP chuyển giao thiết bị!"),
+                      backgroundColor: AppTheme.roseDanger,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Hủy mã OTP", style: TextStyle(color: AppTheme.roseDanger)),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.brandBlue, foregroundColor: Colors.white),
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("Đã hiểu"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openClaimDeviceDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.isDarkMode ? AppTheme.surface : Colors.white,
+        title: const Text("Tiếp Nhận Thiết Bị Bằng OTP", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Nhập mã OTP 6 chữ số do Chủ sở hữu cũ cung cấp để tiếp quản quyền sở hữu:"),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(
+                hintText: "000000",
+                counterText: "",
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text("Hủy")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.emeraldSuccess, foregroundColor: Colors.white),
+            onPressed: () async {
+              final code = controller.text.trim();
+              if (code.length < 6) return;
+              Navigator.of(ctx).pop();
+              final res = await _service.claimDeviceByOtp(code);
+              if (mounted) {
+                if (res != null && res['success'] == true) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(res['message'] ?? "Chúc mừng! Tiếp nhận quyền sở hữu thành công!"),
+                      backgroundColor: AppTheme.emeraldSuccess,
+                    ),
+                  );
+                  await _gateway.fetchDevicesFromBackend();
+                  _initDeviceList();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Mã OTP không hợp lệ hoặc đã hết hạn (15 phút)!"),
+                      backgroundColor: AppTheme.roseDanger,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Xác nhận"),
           ),
         ],
       ),
@@ -306,6 +401,11 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
         title: const Text("Phân Quyền Thành Viên", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.key_rounded, color: AppTheme.cyanAccent),
+            tooltip: "Tiếp nhận thiết bị bằng mã OTP",
+            onPressed: _openClaimDeviceDialog,
+          ),
           if (_selectedDevice?.isOwner == true)
             IconButton(
               icon: const Icon(Icons.person_add_alt_1_rounded, color: AppTheme.brandBlue),

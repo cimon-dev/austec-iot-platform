@@ -242,6 +242,19 @@ export class PostgresService {
         updated_at VARCHAR(50)
       );
 
+      -- 8.1 BẢNG CHUYỂN GIAO QUYỀN SỞ HỮU THIẾT BỊ (OTP TRANSFER)
+      CREATE TABLE IF NOT EXISTS device_ownership_transfers (
+        id VARCHAR(100) PRIMARY KEY,
+        hardware_id VARCHAR(100) NOT NULL,
+        from_user_id VARCHAR(100) NOT NULL,
+        otp_code VARCHAR(10) NOT NULL,
+        status VARCHAR(20) DEFAULT 'PENDING',
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        claimed_by_user_id VARCHAR(100),
+        claimed_at TIMESTAMP
+      );
+
       -- 9. BẢNG TAY REMOTE RF (DEVICE RF REMOTES)
       CREATE TABLE IF NOT EXISTS device_rf_remotes (
         id SERIAL PRIMARY KEY,
@@ -543,6 +556,8 @@ export class PostgresService {
       CREATE INDEX IF NOT EXISTS idx_inventory_status ON device_inventory(status);
       CREATE INDEX IF NOT EXISTS idx_permissions_hw ON device_permissions(hardware_id);
       CREATE INDEX IF NOT EXISTS idx_permissions_user ON device_permissions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_transfer_otp ON device_ownership_transfers(otp_code);
+      CREATE INDEX IF NOT EXISTS idx_transfer_hw ON device_ownership_transfers(hardware_id);
       CREATE INDEX IF NOT EXISTS idx_tickets_cust ON support_tickets(customer_id);
       CREATE INDEX IF NOT EXISTS idx_messages_ticket ON live_chat_messages(ticket_id);
       CREATE INDEX IF NOT EXISTS idx_blackbox_hw ON blackbox_logs(hardware_id);

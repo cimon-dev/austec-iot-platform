@@ -20,6 +20,7 @@ import { SupportService } from './services/support.service.js';
 import { PersistenceService } from './services/persistence.service.js';
 import { PostgresService } from './services/postgres.service.js';
 import { MqttGateway } from './services/mqtt.gateway.js';
+import { AutomationSchedulerService } from './services/automation-scheduler.service.js';
 import { INITIAL_SEED_USERS, seedDatabase } from './scripts/seed.js';
 
 // Feature Module Routers (NestJS Resource Standard)
@@ -185,6 +186,9 @@ export function createApp() {
   });
   mqttGateway.start(1883).catch(e => console.warn('[Server] MQTT Gateway warning:', e.message));
   commandService.setMqttGateway(mqttGateway);
+
+  const automationScheduler = new AutomationSchedulerService(postgresService, commandService);
+  automationScheduler.start(60000);
 
   if (existingBackup?.supportTickets && existingBackup?.supportMessages) {
     supportService.importData({

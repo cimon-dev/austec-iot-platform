@@ -610,7 +610,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
                 children: [
                   _buildLedIndicator("NGUỒN", const Color(0xFF22C55E), true),
                   const SizedBox(width: 36),
-                  _buildLedIndicator("RƠ-LE", _isMeterOn ? const Color(0xFF22C55E) : const Color(0xFFEF4444), true),
+                  _buildLedIndicator("ON/OFF", _isMeterOn ? const Color(0xFF22C55E) : const Color(0xFFEF4444), true),
                   const SizedBox(width: 36),
                   _buildLedIndicator("CÀI ĐẶT", _isSettingPower ? const Color(0xFFF59E0B) : const Color(0xFF334155), _isSettingPower),
                 ],
