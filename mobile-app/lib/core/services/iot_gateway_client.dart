@@ -941,6 +941,7 @@ class IoTGatewayClient {
                       ? resolvedSocketAction
                       : action;
 
+      final isRfCmd = beAction == "RF_SETUP" || beAction == "RF_PAIR_NEW" || beAction == "RF_CLEAR" || beAction == "RF_CLEAR_ALL" || beAction == "11" || beAction == "12";
       final userToken = AuthService().token ?? 'austec-customer-token';
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
@@ -954,22 +955,27 @@ class IoTGatewayClient {
           'action': beAction,
           'parameters': parameters ?? {},
         }),
-      ).timeout(const Duration(milliseconds: 6000));
+      ).timeout(Duration(milliseconds: isRfCmd ? 12000 : 6000));
 
       bool isSuccess = false;
       String? errorMessage;
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
+        final innerResult = data['result'] is Map ? data['result'] as Map : null;
         if (data['cryptoSignature'] != null) {
           cryptoSig = data['cryptoSignature'].toString();
         }
         if (data['latencyMs'] != null) {
           netLatency = (data['latencyMs'] as num).toInt();
+        } else if (innerResult?['latencyMs'] != null) {
+          netLatency = (innerResult!['latencyMs'] as num).toInt();
         }
-        if (data['success'] != false) {
+        final bool outerOk = data['success'] == true;
+        final bool innerOk = innerResult == null || innerResult['success'] != false;
+        if (outerOk && innerOk) {
           isSuccess = true;
         } else {
-          errorMessage = data['error'] ?? data['message'] ?? 'Thiết bị không phản hồi thực tế';
+          errorMessage = data['error'] ?? innerResult?['message'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng kiểm tra kết nối.';
         }
       } else if (res.statusCode == 403) {
         final data = jsonDecode(res.body);
@@ -982,9 +988,9 @@ class IoTGatewayClient {
       } else {
         try {
           final data = jsonDecode(res.body);
-          errorMessage = data['error'] ?? data['message'] ?? 'Thiết bị không phản hồi thực tế (Mã ${res.statusCode})';
+          errorMessage = data['error'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
         } catch (_) {
-          errorMessage = 'Thiết bị không phản hồi thực tế (Mã ${res.statusCode})';
+          errorMessage = 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
         }
       }
 
@@ -993,7 +999,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: false,
           latencyMs: netLatency,
-          message: errorMessage ?? 'Thiết bị không phản hồi xác nhận thực tế (Mất kết nối hoặc ngoại tuyến)',
+          message: errorMessage ?? 'Thiết bị không phản hồi. Vui lòng kiểm tra kết nối.',
           cryptoSignature: cryptoSig,
         );
       }
@@ -1122,7 +1128,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: "Đã bật rơ-le công tơ điện tử (mã 13)",
+          message: "Đã bật công tơ điện",
           cryptoSignature: cryptoSig,
         );
       } else if (action == "METER_POWER_OFF" || action == "METER_OFF" || (action == "TURN_OFF" && device.category == DeviceCategory.energyManage)) {
@@ -1132,7 +1138,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: "Đã ngắt rơ-le công tơ điện tử (mã 14)",
+          message: "Đã tắt công tơ điện",
           cryptoSignature: cryptoSig,
         );
       } else if (action == "RESET" && (device.category == DeviceCategory.energyManage || hardwareId.toLowerCase().contains("meter"))) {
@@ -1143,7 +1149,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: "Đã xóa cảnh báo và khôi phục rơ-le công tơ",
+          message: "Đã xóa cảnh báo và cấp điện lại",
           cryptoSignature: cryptoSig,
         );
       } else if (action == "TOGGLE_RELAY" || action == "TURN_ON" || action == "TURN_OFF") {
@@ -1154,7 +1160,7 @@ class IoTGatewayClient {
           0,
           AuditLog(
             time: nowStr,
-            action: turnOn ? "Bật rơ-le / ổ cắm" : "Tắt rơ-le / ổ cắm",
+            action: turnOn ? "Bật ổ cắm" : "Tắt ổ cắm",
             actionCode: turnOn ? 13 : 14,
             triggeredBy: currentActor,
             deviceCode: device.hardwareId,
@@ -1164,7 +1170,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: turnOn ? "Đã bật cấp điện rơ-le (mã 13)" : "Đã ngắt điện rơ-le (mã 14)",
+          message: turnOn ? "Đã bật nguồn điện" : "Đã tắt nguồn điện",
           cryptoSignature: cryptoSig,
         );
       } else if (action == "STOP") {
@@ -1173,7 +1179,7 @@ class IoTGatewayClient {
           0,
           AuditLog(
             time: nowStr,
-            action: "Dừng rơ-le / xung ổ cắm",
+            action: "Dừng thiết bị",
             actionCode: 3,
             triggeredBy: currentActor,
             deviceCode: device.hardwareId,
@@ -1183,17 +1189,18 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: "Đã gửi lệnh dừng rơ-le (mã 3)",
+          message: "Đã dừng thiết bị",
           cryptoSignature: cryptoSig,
         );
-      } else if (action == "RF_SETUP" || action == "RF_CLEAR") {
+      } else if (action == "RF_SETUP" || action == "RF_CLEAR" || action == "RF_PAIR_NEW" || action == "RF_CLEAR_ALL") {
+        final isSetup = action == "RF_SETUP" || action == "RF_PAIR_NEW";
         final currentActor = AuthService().currentUser?.fullName ?? "Chủ nhà";
         device.auditLogs.insert(
           0,
           AuditLog(
             time: nowStr,
-            action: action == "RF_SETUP" ? "Học lệnh Remote RF" : "Xóa Remote RF",
-            actionCode: action == "RF_SETUP" ? 11 : 12,
+            action: isSetup ? "Ghép tay cầm mới" : "Xóa tay cầm",
+            actionCode: isSetup ? 11 : 12,
             triggeredBy: currentActor,
             deviceCode: device.hardwareId,
           ),
@@ -1202,7 +1209,7 @@ class IoTGatewayClient {
         return CommandResult(
           success: true,
           latencyMs: netLatency,
-          message: action == "RF_SETUP" ? "Đang mở chế độ học Remote RF (7s, mã 11)..." : "Đã gửi lệnh xóa toàn bộ Remote RF (mã 12)",
+          message: isSetup ? "Đã bật chế độ ghép tay cầm mới" : "Đã xóa toàn bộ tay cầm",
           cryptoSignature: cryptoSig,
         );
       } else if (action == "STREAM_START" || action == "TAKE_SNAPSHOT" || action == "STREAM_STOP") {

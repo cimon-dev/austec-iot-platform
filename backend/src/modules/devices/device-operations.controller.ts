@@ -942,6 +942,39 @@ export class DeviceOperationsController {
         actorIp: req.ip || '127.0.0.1',
       });
 
+      // STRICT 2-WAY ACK: Nếu phần cứng không phản hồi đúng mã -> TUYỆT ĐỐI KHÔNG cập nhật DB, KHÔNG bắn WS thành công ảo
+      if (!result || !result.success) {
+        if (this.client.getConnected()) {
+          const actorName = targetUser.fullName || targetUser.email || 'Chủ nhà';
+          const actorRole = targetUser.role || 'CUSTOMER';
+          await this.client.query(
+            `INSERT INTO blackbox_logs (hardware_id, actor_id, actor_role, actor_name, actor_ip, action_type, payload_sent, ack_status, latency_ms, crypto_signature, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW()::text)`,
+            [
+              hardwareId,
+              targetUser.id,
+              actorRole,
+              actorName,
+              req.ip || '127.0.0.1',
+              command,
+              JSON.stringify({ command, parameters: params || {}, error: result?.message || 'TIMEOUT' }),
+              result?.ackStatus || 'TIMEOUT',
+              result?.latencyMs || 3500,
+              `SIG-FAIL-${hardwareId.replace(/-/g, '').slice(-4)}-${Date.now().toString().slice(-6)}`
+            ]
+          ).catch(() => {});
+        }
+        res.status(504).json({
+          success: false,
+          error: result?.message || 'Không thể điều khiển thiết bị. Vui lòng kiểm tra kết nối.',
+          message: result?.message || 'Không thể điều khiển thiết bị. Vui lòng kiểm tra kết nối.',
+          ackStatus: result?.ackStatus || 'TIMEOUT',
+          latencyMs: result?.latencyMs || 3500,
+          result,
+        });
+        return;
+      }
+
       if (this.client.getConnected()) {
         const isCam = hardwareId.toUpperCase().startsWith('CAM');
         const isSocket = hardwareId.toUpperCase().startsWith('OCAM');
@@ -1212,8 +1245,12 @@ export class DeviceOperationsController {
       if (hwId) {
         console.log(`[MediaMTX Hook] ⚠️ Camera [${hwId}] ĐÃ NGẮT luồng RTSP!`);
         if (this.client.getConnected()) {
+          // Chỉ cập nhật is_streaming = false; trạng thái Online/Offline do cơ chế mã 295 quyết định
           await this.client.query(
-            `UPDATE device_instances SET is_online = false, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            `UPDATE device_instances
+             SET current_properties = jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{is_streaming}', 'false'::jsonb),
+                 last_heartbeat = NOW()::text
+             WHERE LOWER(hardware_id) = LOWER($1)`,
             [hwId]
           );
         }
@@ -1222,7 +1259,7 @@ export class DeviceOperationsController {
             c.send(JSON.stringify({
               type: 'DEVICE_STATE_CHANGE',
               hardwareId: hwId,
-              state: { isOnline: false, isStreaming: false, lastHeartbeat: new Date().toISOString() }
+              state: { isStreaming: false, lastHeartbeat: new Date().toISOString() }
             }));
           }
         });

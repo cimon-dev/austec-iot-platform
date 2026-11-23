@@ -55,18 +55,62 @@ export class MqttGateway {
   }
 
   /**
-   * Giải phóng chờ ACK khi nhận được gói tin thực tế từ phần cứng
+   * Giải phóng chờ ACK CHỈ KHI gói tin thực tế từ phần cứng khớp chính xác mã lệnh kỳ vọng (Strict 2-Way ACK)
    */
   public resolvePendingAck(hardwareId: string, payload: string) {
     const key = hardwareId.toLowerCase().trim();
     const list = this.pendingAcks.get(key);
     if (!list || list.length === 0) return;
 
-    for (const item of list) {
-      clearTimeout(item.timer);
-      item.resolve({ success: true, payload });
+    const cleanPayload = (payload || '').trim();
+    const cleanLower = cleanPayload.toLowerCase();
+
+    // Parse JSON một lần nếu payload là JSON để hỗ trợ đối chiếu các trường ack/code/action/probe
+    let parsedJson: Record<string, any> | null = null;
+    if (cleanPayload.startsWith('{') && cleanPayload.endsWith('}')) {
+      try {
+        parsedJson = JSON.parse(cleanPayload);
+      } catch (_) {
+        parsedJson = null;
+      }
     }
-    this.pendingAcks.delete(key);
+
+    const matchesExpected = (expectedActions?: string[]): boolean => {
+      if (!expectedActions || expectedActions.length === 0) return true;
+      for (const rawExp of expectedActions) {
+        const exp = (rawExp || '').trim();
+        if (!exp) continue;
+        const expLower = exp.toLowerCase();
+
+        // 1. Khớp tuyệt đối chuỗi payload (ví dụ: "295", "1", "2", "3", "13", "14", "0", "SET_LFP", "CFG:...")
+        if (cleanLower === expLower) return true;
+
+        // 2. Nếu phần cứng trả JSON ACK chuẩn: {"ack":"295"} / {"code":"13"} / {"action":"14"} / {"probe":295}
+        if (parsedJson) {
+          const candidates = [parsedJson.ack, parsedJson.code, parsedJson.action, parsedJson.probe, parsedJson.cmd]
+            .filter((v) => v !== undefined && v !== null)
+            .map((v) => String(v).trim().toLowerCase());
+          if (candidates.includes(expLower)) return true;
+        }
+      }
+      return false;
+    };
+
+    const remaining: typeof list = [];
+    for (const item of list) {
+      if (matchesExpected(item.expectedActions)) {
+        clearTimeout(item.timer);
+        item.resolve({ success: true, payload: cleanPayload });
+      } else {
+        remaining.push(item);
+      }
+    }
+
+    if (remaining.length > 0) {
+      this.pendingAcks.set(key, remaining);
+    } else {
+      this.pendingAcks.delete(key);
+    }
   }
 
   /**
@@ -86,30 +130,30 @@ export class MqttGateway {
   public async runHeartbeatScan() {
     try {
       if (!this.postgresService || typeof this.postgresService.query !== 'function') return;
-      const res = await this.postgresService.query(`SELECT hardware_id, last_heartbeat, is_online FROM device_instances`);
+      const res = await this.postgresService.query(`SELECT hardware_id, owner_id, last_heartbeat, is_online FROM device_instances`);
       if (!res || !res.rows) return;
 
       for (const row of res.rows) {
         const hwId = row.hardware_id;
         if (!hwId) continue;
 
+        // Đăng ký chờ phản hồi đúng mã 295 TRƯỚC khi phát gói tin để tránh race condition
+        const ackPromise = this.waitForActionAck(hwId, ['295'], 2500);
+
         // Gửi mã chuẩn 295 thăm dò trạng thái trực tuyến xuống toàn bộ các kênh thiết bị
-        await this.publishAction('system-ping', hwId, '295');
+        await this.publishAction(row.owner_id || 'system-ping', hwId, '295');
         await this.publishMessage(`austec/${hwId}/command`, '295');
         await this.publishMessage(`devices/${hwId}/camera/cmd`, '295');
         await this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295');
         await this.publishMessage(`amtuong/${hwId}/sub/isonline`, '295');
+        if (row.owner_id) {
+          await this.publishMessage(`${row.owner_id}/${hwId}/sub/isonline`, '295');
+        }
 
         // Chờ nhận phản hồi đúng mã 295 trong 2.5 giây
-        const ack = await this.waitForActionAck(hwId, ['295'], 2500);
+        const ack = await ackPromise;
 
-        let isActuallyOnline = false;
-        if (ack.success && (ack.payload?.trim() === '295' || ack.payload?.includes('295'))) {
-          isActuallyOnline = true;
-        } else {
-          // Bắt buộc thiết bị phải phản hồi mã 295. Nếu không phản hồi, nhận biết thiết bị đã OFFLINE
-          isActuallyOnline = false;
-        }
+        const isActuallyOnline = Boolean(ack.success && ack.payload?.trim() === '295');
 
         if (row.is_online !== isActuallyOnline) {
           console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}] (Mã 295): ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
@@ -264,6 +308,30 @@ export class MqttGateway {
       }
     }
 
+    // B.1. XỬ LÝ GÓI TIN XÁC NHẬN LỆNH CHUẨN (2-WAY ACK): austec/{hwId}/ack, austec/{hwId}/status, devices/{hwId}/camera/ack
+    if (
+      (topic.startsWith('austec/') && (topic.endsWith('/ack') || topic.endsWith('/status'))) ||
+      (topic.startsWith('devices/') && topic.endsWith('/camera/ack'))
+    ) {
+      const parts = topic.split('/');
+      const hwId = parts[1];
+      if (hwId) {
+        console.log(`[MQTT Gateway] ✅ [${hwId}] Nhận ACK phần cứng trên [${topic}]: ${cleanPayload}`);
+        const ackOnlineState = { isOnline: true, lastHeartbeat: new Date().toISOString() };
+        await this.hotCache.setDeviceState(hwId, ackOnlineState);
+        await this.hotCache.setDeviceState(hwId.toLowerCase(), ackOnlineState);
+        await this.hotCache.setDeviceState(hwId.toUpperCase(), ackOnlineState);
+        try {
+          await this.postgresService?.query(
+            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        } catch (_) { }
+        this.resolvePendingAck(hwId, cleanPayload);
+        return;
+      }
+    }
+
     // B. XỬ LÝ TRẠNG THÁI ONLINE CỦA CAMERA: devices/{hwId}/status HOẶC esp32/{hwId}/status (espcam.pdf)
     if ((topic.startsWith('devices/') && topic.endsWith('/status')) || (topic.startsWith('esp32/') && topic.endsWith('/status'))) {
       const parts = topic.split('/');
@@ -344,7 +412,6 @@ export class MqttGateway {
             if (this.onStateChangeCallback) {
               this.onStateChangeCallback(hwId, bmsState.currentProperties);
             }
-            this.resolvePendingAck(hwId, payload);
             return;
           }
 
@@ -382,7 +449,30 @@ export class MqttGateway {
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, meterState.currentProperties);
           }
-          this.resolvePendingAck(hwId, payload);
+          return;
+        } else if (sub === 'daily_report') {
+          console.log(`[MQTT Gateway] 📊 [${hwId}] Nhận báo cáo chốt số cuối ngày (Mã 20): daily=${json.daily_kwh}kWh, total=${json.total_kwh}kWh`);
+          const reportProps = {
+            daily_kwh: json.daily_kwh,
+            total_kwh: json.total_kwh,
+            last_daily_closing_at: new Date().toISOString(),
+          };
+          await this.hotCache.setDeviceState(hwId, {
+            isOnline: true,
+            currentProperties: reportProps,
+            lastHeartbeat: new Date().toISOString(),
+          });
+          try {
+            await this.postgresService?.query(
+              `UPDATE device_instances
+               SET is_online = true,
+                   current_properties = COALESCE(current_properties, '{}'::jsonb) || $1::jsonb,
+                   last_heartbeat = NOW()::text
+               WHERE LOWER(hardware_id) = LOWER($2)`,
+              [JSON.stringify(reportProps), hwId]
+            );
+          } catch (_) { }
+          this.resolvePendingAck(hwId, '20');
           return;
         } else if (sub === 'alarm') {
           console.warn(`[MQTT Gateway] 🚨 [${hwId}] CẢNH BÁO CÔNG TƠ ĐIỆN TỬ: ${json.message}`);
@@ -706,11 +796,11 @@ export class MqttGateway {
     let payloadsToSend = [actionNumber];
     if (isMeter) {
       if (actionNumber === 'METER_POWER_OFF' || actionNumber === 'OFF' || actionNumber === '14' || actionNumber === '1') {
-        payloadsToSend = ['14', '1', 'METER_POWER_OFF'];
+        payloadsToSend = ['14'];
       } else if (actionNumber === 'METER_POWER_ON' || actionNumber === 'ON' || actionNumber === '13' || actionNumber === '2') {
-        payloadsToSend = ['13', '2', 'METER_POWER_ON'];
+        payloadsToSend = ['13'];
       } else if (actionNumber === 'RESET' || actionNumber === '0') {
-        payloadsToSend = ['0', 'RESET'];
+        payloadsToSend = ['0'];
       }
     }
 
@@ -800,7 +890,8 @@ export class MqttGateway {
 
     // Chủ động phát gói thăm dò mã 295 xuống phần cứng thực tế
     try {
-      await this.publishAction('system-ping', hwId, '295');
+      const ackPromise = this.waitForActionAck(hwId, ['295'], 2000);
+      await this.publishAction(userId || 'system-ping', hwId, '295');
       this.publishMessage(`austec/${hwId}/command`, '295').catch(() => { });
       this.publishMessage(`devices/${hwId}/camera/cmd`, '295').catch(() => { });
       this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295').catch(() => { });
@@ -812,8 +903,8 @@ export class MqttGateway {
         this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '295').catch(() => { });
       }
 
-      const ack = await this.waitForActionAck(hwId, ['295'], 2000);
-      if (ack.success && (ack.payload?.trim() === '295' || ack.payload?.includes('295'))) {
+      const ack = await ackPromise;
+      if (ack.success && ack.payload?.trim() === '295') {
         return true;
       }
     } catch (_) { }

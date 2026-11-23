@@ -25,7 +25,7 @@ export class CommandService {
     private blackboxService: BlackboxService,
     private hotCache: HotCacheClient,
     private mqttGateway?: MqttGateway
-  ) {}
+  ) { }
 
   public setMqttGateway(gateway: MqttGateway) {
     this.mqttGateway = gateway;
@@ -42,16 +42,16 @@ export class CommandService {
     if (!currentState || !currentState.isOnline) {
       // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*, CAM_*, OCAM*, WIFRF*, SMARTSW*, SMARTMETTER*)
       const isHardwareDevice = req.hardwareId.toLowerCase().startsWith('amtuong') ||
-                               req.hardwareId.toLowerCase().startsWith('austec') ||
-                               req.hardwareId.toLowerCase().startsWith('esp') ||
-                               req.hardwareId.toLowerCase().startsWith('cam') ||
-                               req.hardwareId.toLowerCase().startsWith('ocam') ||
-                               req.hardwareId.toLowerCase().includes('socket') ||
-                               req.hardwareId.toLowerCase().startsWith('wifrf') ||
-                               req.hardwareId.toLowerCase().startsWith('smartsw') ||
-                               req.hardwareId.toLowerCase().startsWith('smartmetter') ||
-                               req.hardwareId.toLowerCase().startsWith('smartmeter') ||
-                               req.hardwareId.startsWith('AT-');
+        req.hardwareId.toLowerCase().startsWith('austec') ||
+        req.hardwareId.toLowerCase().startsWith('esp') ||
+        req.hardwareId.toLowerCase().startsWith('cam') ||
+        req.hardwareId.toLowerCase().startsWith('ocam') ||
+        req.hardwareId.toLowerCase().includes('socket') ||
+        req.hardwareId.toLowerCase().startsWith('wifrf') ||
+        req.hardwareId.toLowerCase().startsWith('smartsw') ||
+        req.hardwareId.toLowerCase().startsWith('smartmetter') ||
+        req.hardwareId.toLowerCase().startsWith('smartmeter') ||
+        req.hardwareId.startsWith('AT-');
       if (!isHardwareDevice) {
         const latencyMs = Math.round(performance.now() - startTime);
 
@@ -79,12 +79,16 @@ export class CommandService {
     const upperHwId = req.hardwareId.toUpperCase();
     const isSocket = upperHwId.startsWith('OCAM') || upperHwId.includes('SOCKET') || upperHwId.startsWith('SMARTSW') || upperHwId.includes('SMARTSW');
     const isCamera = !isSocket && (upperHwId.startsWith('CAM') || upperHwId.includes('CAMERA') || upperHwId.includes('OV2640'));
-    const isMeter = !isSocket && !isCamera && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
+    const isBms = !isSocket && !isCamera && upperHwId.includes('BMS');
+    const isMeter = !isSocket && !isCamera && !isBms && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     let actionCode = req.command;
-    // Bắt mã lệnh thăm dò Online/Offline chuẩn 295 toàn hệ thống
+    // Bắt mã lệnh thăm dò Online/Offline chuẩn 295 toàn hệ thống (áp dụng cho cả 5 loại thiết bị kể cả Camera)
     if (req.command === 'CHECK_ONLINE' || req.command === 'PROBE_ONLINE' || req.command === 'PING' || req.command === '295' || req.command === 'HEARTBEAT') {
       actionCode = '295';
+    } else if (isBms) {
+      // Pin lưu trữ BMS: giữ nguyên mã chuỗi lệnh chuẩn (SET_LFP, SET_LIION, SET_LTO, CLEAR_LOG, CFG:...)
+      actionCode = req.command.trim();
     } else if (isMeter) {
       if (req.command === 'TURN_ON' || req.command === 'ON' || req.command === 'METER_POWER_ON' || req.command === '13') {
         actionCode = '13';
@@ -136,11 +140,29 @@ export class CommandService {
         '2': '2',
         '3': '3',
         RF_SETUP: '11',
+        RF_PAIR_NEW: '11',
         RF_CLEAR: '12',
+        RF_CLEAR_ALL: '12',
       };
       actionCode = actionMap[req.command] || req.command || '3';
     }
-    
+
+    // Xác định danh sách mã ACK kỳ vọng chính xác & thời gian chờ theo từng loại lệnh
+    const expectedAckCodes: string[] = [actionCode];
+    if (isMeter && (req.command === 'CONFIG_POWER_LIMIT' || (req.params && req.params.power_limit !== undefined))) {
+      expectedAckCodes.push('CONFIG_POWER_LIMIT');
+    } else if (isBms && actionCode.startsWith('CFG:')) {
+      expectedAckCodes.push('CFG_OK');
+    }
+
+    // Riêng lệnh học/xóa tay cầm RF (11, 12) mạch có delay 7s nên nâng timeout lên 10s
+    const ackTimeoutMs = (actionCode === '11' || actionCode === '12')
+      ? 10000
+      : (actionCode === '295' ? 2500 : 3500);
+
+    // Camera: vẫn giữ Strict ACK cho mã 295 (Online/Offline), nhưng KHÔNG chặn cứng MQTT ACK cho lệnh stream 13/14
+    const skipStrictAck = isCamera && (actionCode === '13' || actionCode === '14');
+
     if (this.mqttGateway) {
       // Nếu là lệnh bật stream camera ("13") và Backend có MEDIAMTX_HOST từ .env -> đẩy động xuống ESP32 qua MQTT
       // để khi PC đổi IP Wi-Fi hoặc chuyển lên VPS không cần cắm cáp nạp lại firmware ESP32
@@ -151,11 +173,17 @@ export class CommandService {
         // Chờ 250ms để ESP32-CAM ghi cấu hình MediaMTX vào bộ nhớ Flash NVS xong, tránh bị tràn buffer bỏ rơi lệnh "13"
         await new Promise(resolve => setTimeout(resolve, 250));
       }
+
+      // Đăng ký lắng nghe ACK TRƯỚC khi phát gói tin để tránh race condition khi mạch phản hồi quá nhanh
+      const ackPromise = !skipStrictAck
+        ? this.mqttGateway.waitForActionAck(req.hardwareId, expectedAckCodes, ackTimeoutMs)
+        : Promise.resolve({ success: true, payload: actionCode });
+
       // Phát mã lệnh chuẩn trực tiếp qua MQTT tới thiết bị phần cứng
       await this.mqttGateway.publishAction(req.actorId, req.hardwareId, actionCode);
 
-      // Chờ phản hồi ACK 2 chiều thực tế từ thiết bị phần cứng (3.5s timeout)
-      const ack = await this.mqttGateway.waitForActionAck(req.hardwareId, [actionCode], 3500);
+      // Chờ phản hồi ACK 2 chiều khớp chính xác mã từ thiết bị phần cứng
+      const ack = await ackPromise;
       if (!ack.success) {
         const latencyMs = Math.round(performance.now() - startTime);
         this.blackboxService.logCommand({
@@ -164,7 +192,7 @@ export class CommandService {
           actorRole: req.actorRole,
           actorIp: req.actorIp,
           actionType: `CMD_${req.command}`,
-          payloadSent: { actionCode, params: req.params || {} },
+          payloadSent: { actionCode, expectedAckCodes, params: req.params || {} },
           ackStatus: 'TIMEOUT',
           latencyMs,
         });
@@ -173,7 +201,7 @@ export class CommandService {
           success: false,
           ackStatus: 'TIMEOUT',
           latencyMs,
-          message: `Thiết bị '${req.hardwareId}' không phản hồi thực tế (Mất kết nối phần cứng). Trạng thái không đổi.`,
+          message: 'Không thể điều khiển thiết bị. Thiết bị không phản hồi, vui lòng kiểm tra kết nối.',
         };
       }
     } else {
@@ -249,7 +277,7 @@ export class CommandService {
       success: true,
       ackStatus: 'SUCCESS',
       latencyMs,
-      message: `Lệnh '${req.command}' đã được phần cứng thực thi thành công (ACK sau ${latencyMs}ms)!`,
+      message: 'Thực hiện thành công',
       deviceState: updatedProperties,
     };
   }
