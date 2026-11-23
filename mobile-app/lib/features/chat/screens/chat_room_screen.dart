@@ -339,11 +339,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDarkMode;
-    final bgCol = isDark ? AppTheme.background : AppTheme.lightBackground;
-    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
-    final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
+    // Nền khung tin nhắn xanh trắng dịu nhẹ (Zalo style) ở Light Mode
+    final bgCol = isDark ? AppTheme.background : const Color(0xFFEFF4FA);
+    final textCol = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subTextCol = isDark ? AppTheme.textSecondary : const Color(0xFF64748B);
     final cardBg = isDark ? AppTheme.surfaceDark : Colors.white;
-    final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+    final cardBorder = isDark ? AppTheme.cardBorder : const Color(0xFFDCE6F2);
+    final accent = isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF);
 
     return Scaffold(
       backgroundColor: bgCol,
@@ -352,24 +354,24 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textCol, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: accent, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: InkWell(
           onTap: _openChatSettings,
           child: Row(
             children: [
-              _buildAppBarAvatar(isDark, cardBorder, textCol),
+              _buildAppBarAvatar(isDark, cardBorder, accent),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _conversation.isCskh ? "HỖ TRỢ KỸ THUẬT & CSKH AUSTEC" : _conversation.title,
+                      _conversation.isCskh ? "Hỗ trợ kỹ thuật & CSKH Austec" : _conversation.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                     Row(
                       children: [
@@ -383,10 +385,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _isWsConnected ? (_conversation.isGroup ? "${_conversation.memberCount} thành viên" : "Trực tuyến 24/7") : "Đang kết nối...",
+                          _isWsConnected ? (_conversation.isGroup ? "${_conversation.memberCount} thành viên" : "Đang hoạt động") : "Đang kết nối...",
                           style: TextStyle(
                             color: _isWsConnected ? AppTheme.emeraldSuccess : Colors.orange,
-                            fontSize: 10,
+                            fontSize: 10.5,
                           ),
                         ),
                       ],
@@ -399,8 +401,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: textCol, size: 22),
-            tooltip: "Cài đặt cuộc trò chuyện",
+            icon: Icon(Icons.tune_rounded, color: accent, size: 21),
+            tooltip: "Tùy chọn trò chuyện",
             onPressed: _openChatSettings,
           ),
         ],
@@ -437,45 +439,48 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     );
   }
 
-  Widget _buildAppBarAvatar(bool isDark, Color cardBorder, Color textCol) {
+  Widget _buildAppBarAvatar(bool isDark, Color cardBorder, Color accent) {
+    final bg = accent.withValues(alpha: isDark ? 0.18 : 0.12);
+    final border = accent.withValues(alpha: 0.35);
+
     if (_conversation.isCskh) {
       return Container(
-        width: 36,
-        height: 36,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-          border: Border.all(color: cardBorder, width: 1.2),
+          color: bg,
+          border: Border.all(color: border, width: 1.1),
         ),
-        child: Icon(Icons.support_agent_rounded, color: textCol, size: 20),
+        child: Icon(Icons.support_agent_rounded, color: accent, size: 19),
       );
     }
 
     if (_conversation.isGroup) {
       return Container(
-        width: 36,
-        height: 36,
+        width: 34,
+        height: 34,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-          border: Border.all(color: cardBorder, width: 1.2),
+          color: bg,
+          border: Border.all(color: border, width: 1.1),
         ),
-        child: Icon(Icons.group_rounded, color: textCol, size: 20),
+        child: Icon(Icons.group_rounded, color: accent, size: 19),
       );
     }
 
     return Container(
-      width: 36,
-      height: 36,
+      width: 34,
+      height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-        border: Border.all(color: cardBorder, width: 1.2),
+        color: bg,
+        border: Border.all(color: border, width: 1.1),
       ),
       child: Center(
         child: Text(
           _conversation.title.isNotEmpty ? _conversation.title[0].toUpperCase() : 'U',
-          style: TextStyle(color: textCol, fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(color: accent, fontSize: 13.5, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -557,65 +562,65 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Widget _buildInputBar(bool isDark, Color cardBg, Color cardBorder, Color textCol, Color subTextCol) {
+    final accent = isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
         color: cardBg,
         border: Border(top: BorderSide(color: cardBorder)),
       ),
       child: Row(
         children: [
-          // Nút 1: Mở trực tiếp kho ảnh người dùng (giống Messenger, Zalo)
           IconButton(
-            icon: Icon(Icons.image_rounded, color: textCol, size: 24),
-            tooltip: "Kho ảnh thiết bị",
+            icon: Icon(Icons.image_rounded, color: accent, size: 22),
+            tooltip: "Gửi ảnh",
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
             onPressed: _pickFromPhotoGallery,
           ),
-          // Nút 2: Tệp tin & Hỏi tư vấn thiết bị hệ thống
           IconButton(
-            icon: Icon(Icons.attach_file_rounded, color: textCol, size: 23),
-            tooltip: "Gửi tệp / Hỏi tư vấn thiết bị",
+            icon: Icon(Icons.attach_file_rounded, color: accent, size: 21),
+            tooltip: "Gửi tệp / thiết bị",
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            padding: EdgeInsets.zero,
             onPressed: _openFileAndDeviceSheet,
           ),
-
-          // Ô nhập nội dung
+          const SizedBox(width: 2),
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E2024) : const Color(0xFFF4F4F5),
+                color: isDark ? const Color(0xFF1A1F2B) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: cardBorder),
               ),
               child: TextField(
                 controller: _textController,
                 maxLines: null,
-                style: TextStyle(color: textCol, fontSize: 13),
+                style: TextStyle(color: textCol, fontSize: 13.5),
                 decoration: InputDecoration(
                   hintText: "Nhập tin nhắn...",
-                  hintStyle: TextStyle(color: subTextCol, fontSize: 12.5),
+                  hintStyle: TextStyle(color: subTextCol, fontSize: 13),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 9),
                 ),
                 onSubmitted: (_) => _handleSendMessage(),
               ),
             ),
           ),
           const SizedBox(width: 6),
-
-          // Nút Gửi Tin Nhắn (Brand Blue)
           InkWell(
             onTap: _handleSendMessage,
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: const BoxDecoration(
-                color: AppTheme.brandBlue,
+                color: Color(0xFF0068FF),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 17),
             ),
           ),
         ],

@@ -17,11 +17,17 @@ class ChatBubble extends StatelessWidget {
     final isMe = message.isMe;
 
     final isDark = AppTheme.isDarkMode;
+    // Phong cách Zalo xanh - trắng: Light mode gửi đi màu xanh dương, nhận về màu trắng
     final bubbleColor = isMe
-        ? (isDark ? const Color(0xFF27272A) : const Color(0xFF18181B))
-        : (isDark ? const Color(0xFF141518) : const Color(0xFFE4E4E7));
-    final bubbleTextCol = isMe ? Colors.white : (isDark ? Colors.white : Colors.black87);
-    final bubbleBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+        ? (isDark ? const Color(0xFF1D4ED8) : const Color(0xFF0068FF))
+        : (isDark ? const Color(0xFF1A1F2B) : Colors.white);
+    final bubbleTextCol = isMe ? Colors.white : (isDark ? const Color(0xFFF1F5F9) : const Color(0xFF0F172A));
+    final bubbleBorder = isMe
+        ? Colors.transparent
+        : (isDark ? const Color(0xFF283040) : const Color(0xFFDCE6F2));
+    final timeCol = isMe
+        ? Colors.white.withValues(alpha: 0.78)
+        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B));
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 12),
@@ -108,7 +114,7 @@ class ChatBubble extends StatelessWidget {
                           Text(
                             message.timeFormatted,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
+                              color: timeCol,
                               fontSize: 9.5,
                             ),
                           ),
@@ -206,22 +212,21 @@ class ChatBubble extends StatelessWidget {
   }
 
   Widget _buildSystemMessage() {
+    final isDark = AppTheme.isDarkMode;
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       alignment: Alignment.center,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2ECF7),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
           message.content,
-          style: const TextStyle(
-            color: AppTheme.textSecondary,
+          style: TextStyle(
+            color: isDark ? AppTheme.textSecondary : const Color(0xFF475569),
             fontSize: 11,
-            fontStyle: FontStyle.italic,
           ),
         ),
       ),
@@ -231,27 +236,27 @@ class ChatBubble extends StatelessWidget {
   Widget _buildAvatar(bool isDark, Color bubbleBorder) {
     final isCSKH = message.senderRole == 'CSKH';
     final initial = message.senderName.isNotEmpty ? message.senderName[0].toUpperCase() : 'A';
-    final textCol = isDark ? Colors.white : Colors.black87;
+    final accent = isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF);
 
     return Container(
-      width: 32,
-      height: 32,
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
+        color: accent.withValues(alpha: isDark ? 0.18 : 0.12),
         border: Border.all(
-          color: bubbleBorder,
+          color: accent.withValues(alpha: 0.35),
           width: 1.0,
         ),
       ),
       child: Center(
         child: isCSKH
-            ? Icon(Icons.support_agent_rounded, color: textCol, size: 18)
+            ? Icon(Icons.support_agent_rounded, color: accent, size: 17)
             : Text(
                 initial,
                 style: TextStyle(
-                  color: textCol,
-                  fontSize: 13,
+                  color: accent,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.bold,
                 ),
               ),

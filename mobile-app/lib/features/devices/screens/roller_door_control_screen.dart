@@ -296,14 +296,14 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textCol, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
           children: [
             Text(
               _device.name,
-              style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
             ),
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -321,7 +321,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
                   _device.isOnline ? "Trực tuyến" : "Ngoại tuyến",
                   style: TextStyle(
                     color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -334,7 +334,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           // Icon Xem lịch sử đặt bên trái Icon CSKH
           if (_device.canViewHistory)
             IconButton(
-              icon: Icon(Icons.history_rounded, color: textCol, size: 22),
+              icon: const Icon(Icons.history_rounded, color: Colors.white, size: 22),
               tooltip: "Lịch sử điều khiển",
               onPressed: () {
                 Navigator.of(context).push(
@@ -375,7 +375,7 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           // Icon Cài đặt tham số
           if (_device.canConfig)
             IconButton(
-              icon: Icon(Icons.settings_outlined, color: textCol, size: 22),
+              icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 22),
               tooltip: "Cài đặt thiết bị",
               onPressed: () async {
                 final deleted = await Navigator.of(context).push(
@@ -389,44 +389,77 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
           const SizedBox(width: 4),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (!_device.isOnline)
-                Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppTheme.amberWarning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
-                      SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          "Ngoại tuyến Wi-Fi · Điều khiển trực tiếp qua BLE tầm gần",
-                          style: TextStyle(color: AppTheme.amberWarning, fontSize: 12, fontWeight: FontWeight.w500),
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background đặc trưng AUSTEC
+            Positioned.fill(
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (_, __, ___) => Container(color: bgCol),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.58),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // Logo & Slogan AUSTEC 2026
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 8),
+                        child: Image.asset(
+                          'assets/austec_logo_2026.png',
+                          height: 44,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                    if (!_device.isOnline)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.amberWarning.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.35)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 16),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Ngoại tuyến Wi-Fi · Điều khiển trực tiếp qua Bluetooth tầm gần",
+                                style: TextStyle(color: AppTheme.amberWarning, fontSize: 11.5, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-              _buildRollerDoorGraphicWithControls(cardBg, cardBorder),
-              const SizedBox(height: AppSpacing.md),
-              _buildTwoEqualStatusBlocks(cardBg, cardBorder),
-              const SizedBox(height: AppSpacing.md),
-              _buildDoorCameraSection(cardBg, cardBorder, textCol),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
+                    _buildRollerDoorGraphicWithControls(cardBg, cardBorder),
+                    const SizedBox(height: 10),
+                    _buildTwoEqualStatusBlocks(cardBg, cardBorder),
+                    const SizedBox(height: 10),
+                    _buildDoorCameraSection(cardBg, cardBorder, textCol),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

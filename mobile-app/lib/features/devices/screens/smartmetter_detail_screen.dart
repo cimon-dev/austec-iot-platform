@@ -228,14 +228,14 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textCol, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
           children: [
             Text(
               _device.name,
-              style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
             ),
             Text(
               "${_device.roomName.isNotEmpty ? '${_device.roomName} • ' : ''}${_device.hardwareId}",
@@ -261,7 +261,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           // 2. Icon Xem Lịch sử sự cố
           if (_device.canViewHistory)
             IconButton(
-              icon: Icon(Icons.history_rounded, color: textCol, size: 22),
+              icon: const Icon(Icons.history_rounded, color: Colors.white, size: 22),
               tooltip: "Lịch sử sự cố",
               onPressed: () {
                 Navigator.of(context).push(
@@ -274,7 +274,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           // 3. Icon Cài đặt tham số
           if (_device.canConfig)
             IconButton(
-              icon: Icon(Icons.settings_outlined, color: textCol, size: 20),
+              icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 20),
               tooltip: "Cài đặt tham số",
               onPressed: () async {
                 final deleted = await Navigator.of(context).push(
@@ -320,52 +320,83 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          child: Column(
-            children: [
-              if (_alarm != null && _alarm!.isNotEmpty) ...[
-                Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                  decoration: BoxDecoration(
-                    color: AppTheme.roseDanger.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(AppRadius.control),
-                    border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.5), width: 1.0),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning_amber_rounded, color: AppTheme.roseDanger, size: 20),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: Text(
-                          "Cảnh báo: $_alarm — Đã ngắt rơ-le an toàn",
-                          style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w500),
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (_, __, ___) => Container(color: bgCol),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.58),
+              ),
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Column(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 8),
+                        child: Image.asset(
+                          'assets/austec_logo_2026.png',
+                          height: 40,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
                         ),
                       ),
-                      TextButton(
-                        onPressed: _handleReset,
-                        style: TextButton.styleFrom(
-                          backgroundColor: AppTheme.roseDanger,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
-                          minimumSize: const Size(0, 28),
+                    ),
+                    if (_alarm != null && _alarm!.isNotEmpty) ...[
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.roseDanger.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.5), width: 1.0),
                         ),
-                        child: const Text("Reset", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, color: AppTheme.roseDanger, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                "Cảnh báo: $_alarm — Đã ngắt rơ-le an toàn",
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: _handleReset,
+                              style: TextButton.styleFrom(
+                                backgroundColor: AppTheme.roseDanger,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                minimumSize: const Size(0, 28),
+                              ),
+                              child: const Text("Reset", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
-                  ),
-                ),
-              ],
 
-              Expanded(
-                child: _isMeterOn
-                    ? _buildMeterDisplay(isDark, textCol)
-                    : _buildMeterOffState(),
+                    Expanded(
+                      child: _isMeterOn
+                          ? _buildMeterDisplay(isDark, textCol)
+                          : _buildMeterOffState(),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

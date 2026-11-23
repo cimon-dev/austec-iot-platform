@@ -100,18 +100,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
     final bg = AppTheme.dynamicBackground;
-    final textPrimary = AppTheme.dynamicTextPrimary;
-    final textMuted = AppTheme.dynamicTextMuted;
-    final accent = AppTheme.dynamicAccent;
 
     return Scaffold(
       backgroundColor: bg,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: bg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
@@ -119,12 +118,12 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           children: [
             Text(
               _device.name,
-              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w600),
             ),
             Text(
               "${_device.roomName.isNotEmpty ? '${_device.roomName} · ' : ''}${_device.hardwareId}",
               style: AppTheme.tabular(
-                TextStyle(color: textMuted, fontSize: 11, fontFamily: "monospace"),
+                const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontFamily: "monospace"),
               ),
             ),
           ],
@@ -132,7 +131,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
         actions: [
           if (_device.canViewHistory)
             IconButton(
-              icon: Icon(Icons.history_rounded, color: textPrimary, size: 20),
+              icon: const Icon(Icons.history_rounded, color: Colors.white, size: 20),
               tooltip: "Xem lịch sử",
               onPressed: () {
                 Navigator.of(context).push(
@@ -141,7 +140,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               },
             ),
           IconButton(
-            icon: Icon(Icons.support_agent_rounded, color: accent, size: 20),
+            icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 20),
             tooltip: "Hỗ trợ CSKH",
             onPressed: () {
               final chatDev = ChatDeviceItem(
@@ -171,7 +170,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ),
           if (_device.canConfig)
             IconButton(
-              icon: Icon(Icons.settings_outlined, color: textPrimary, size: 20),
+              icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 20),
               tooltip: "Cài đặt thiết bị",
               onPressed: () async {
                 final deleted = await Navigator.of(context).push(
@@ -185,34 +184,67 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWarrantyAndStatusCard(),
-              const SizedBox(height: AppSpacing.lg),
-              if (_device.canPerformControl) ...[
-                if (_device.category == DeviceCategory.rollerDoor)
-                  _buildRollerDoorDetailedControls()
-                else if (_device.category == DeviceCategory.lightSwitch)
-                  _buildLightSwitchDetailedControls()
-                else if (_device.category == DeviceCategory.camera)
-                  _buildCameraDetailedControls()
-                else if (_device.category == DeviceCategory.environment)
-                  _buildSensorDetailedControls()
-                else if (_device.category == DeviceCategory.energyManage)
-                  _buildUpsDetailedControls()
-                else
-                  _buildLockDetailedControls(),
-              ] else ...[
-                _buildRestrictedPermissionBanner(),
-              ],
-              const SizedBox(height: AppSpacing.xxl),
-            ],
-          ),
+      body: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background đặc trưng AUSTEC
+            Positioned.fill(
+              child: Image.asset(
+                'assets/austec_banner_new.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                errorBuilder: (_, __, ___) => Container(color: bg),
+              ),
+            ),
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withValues(alpha: isDark ? 0.74 : 0.58),
+              ),
+            ),
+            SafeArea(
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Logo & Slogan AUSTEC 2026
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2, bottom: 10),
+                        child: Image.asset(
+                          'assets/austec_logo_2026.png',
+                          height: 44,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ),
+                    _buildWarrantyAndStatusCard(),
+                    const SizedBox(height: 12),
+                    if (_device.canPerformControl) ...[
+                      if (_device.category == DeviceCategory.rollerDoor)
+                        _buildRollerDoorDetailedControls()
+                      else if (_device.category == DeviceCategory.lightSwitch)
+                        _buildLightSwitchDetailedControls()
+                      else if (_device.category == DeviceCategory.camera)
+                        _buildCameraDetailedControls()
+                      else if (_device.category == DeviceCategory.environment)
+                        _buildSensorDetailedControls()
+                      else if (_device.category == DeviceCategory.energyManage)
+                        _buildUpsDetailedControls()
+                      else
+                        _buildLockDetailedControls(),
+                    ] else ...[
+                      _buildRestrictedPermissionBanner(),
+                    ],
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

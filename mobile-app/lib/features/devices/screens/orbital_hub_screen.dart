@@ -567,19 +567,34 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
     );
   }
 
-  // Trang điều khiển chính: Nền Graphite Neutral sạch (không watermark dày che chữ)
+  // Trang điều khiển chính: Khôi phục nền đặc trưng AUSTEC + lớp phủ tối nhẹ giữ độ tương phản
   Widget _buildControlPageWithBackground(bool isDark) {
-    return Container(
-      color: AppTheme.dynamicBackground,
-      child: Column(
-        children: [
-          _buildPureHeroBanner(isDark),
-          _buildUserProfileAndControlCard(isDark),
-          Expanded(
-            child: _buildFixedHubLayout(isDark),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Image.asset(
+            "assets/austec_banner_new.png",
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(color: AppTheme.dynamicBackground);
+            },
           ),
-        ],
-      ),
+        ),
+        Positioned.fill(
+          child: Container(
+            color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.45),
+          ),
+        ),
+        Column(
+          children: [
+            _buildPureHeroBanner(isDark),
+            _buildUserProfileAndControlCard(isDark),
+            Expanded(
+              child: _buildFixedHubLayout(isDark),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -628,22 +643,28 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
     );
   }
 
+  // Khối thông tin người dùng, lời chào & thời gian dạng trong suốt trên nền app
   Widget _buildUserProfileAndControlCard(bool isDark) {
     final user = AuthService().currentUser;
     final userName = user?.fullName ?? "Chủ nhà";
     final userProvince = user?.province ?? "Hà Nội";
-    final cardBorder = AppTheme.dynamicHairline;
-    final cardBg = AppTheme.dynamicSurface;
-    final raisedBg = AppTheme.dynamicSurfaceRaised;
-    final textCol = AppTheme.dynamicTextPrimary;
-    final subTextCol = AppTheme.dynamicTextSecondary;
-    final accent = AppTheme.dynamicAccent;
+    final cardBorder = Colors.white.withValues(alpha: isDark ? 0.16 : 0.26);
+    final cardBg = isDark
+        ? Colors.black.withValues(alpha: 0.28)
+        : Colors.black.withValues(alpha: 0.20);
+    const textCol = Colors.white;
+    const subTextCol = Color(0xFFCBD5E1);
+    final pillBg = Colors.black.withValues(alpha: 0.30);
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
-      decoration: AppTheme.glassBox(color: cardBg, borderColor: cardBorder, radius: AppRadius.card),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: cardBorder, width: 1.0),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -662,12 +683,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     },
                     borderRadius: BorderRadius.circular(18),
                     child: Container(
-                      width: 36,
-                      height: 36,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: raisedBg,
-                        border: Border.all(color: cardBorder, width: 1.0),
+                        color: Colors.black.withValues(alpha: 0.35),
+                        border: Border.all(
+                            color: AppTheme.cyanAccent.withValues(alpha: 0.65),
+                            width: 1.4),
                       ),
                       child: ClipOval(
                         child: (user?.avatarUrl != null &&
@@ -676,44 +699,50 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                                 user.avatarUrl!.startsWith('http')
                                     ? user.avatarUrl!
                                     : '${ApiConfig.baseUrl}${user.avatarUrl!}',
-                                width: 36,
-                                height: 36,
+                                width: 34,
+                                height: 34,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
+                                errorBuilder: (_, __, ___) => const Icon(
                                     Icons.person_rounded,
-                                    color: subTextCol,
-                                    size: 20),
+                                    color: textCol,
+                                    size: 18),
                               )
-                            : Icon(Icons.person_rounded,
-                                color: subTextCol, size: 20),
+                            : const Icon(Icons.person_rounded,
+                                color: textCol, size: 18),
                       ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.md),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        userName,
-                        style: TextStyle(
+                        "${AppTheme.t("welcome")}, $userName",
+                        style: const TextStyle(
                           color: textCol,
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
+                          shadows: [
+                            Shadow(
+                                color: Colors.black54,
+                                blurRadius: 4,
+                                offset: Offset(0, 1)),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Row(
                         children: [
-                          Icon(Icons.location_on_outlined,
-                              color: subTextCol, size: 13),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.location_on_outlined,
+                              color: AppTheme.cyanAccent, size: 12),
+                          const SizedBox(width: 3),
                           Text(
                             "$userProvince · 30°C",
                             style: AppTheme.tabular(
-                              TextStyle(
+                              const TextStyle(
                                 color: subTextCol,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ),
@@ -725,10 +754,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
               ),
 
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: raisedBg,
-                  borderRadius: BorderRadius.circular(AppRadius.inner),
+                  color: pillBg,
+                  borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: cardBorder),
                 ),
                 child: Column(
@@ -737,9 +766,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     Text(
                       _timeString,
                       style: AppTheme.tabular(
-                        TextStyle(
+                        const TextStyle(
                           color: textCol,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                           fontFamily: "monospace",
                         ),
@@ -748,9 +777,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     Text(
                       _dateString,
                       style: AppTheme.tabular(
-                        TextStyle(
+                        const TextStyle(
                           color: subTextCol,
-                          fontSize: 10,
+                          fontSize: 9.5,
                         ),
                       ),
                     ),
@@ -760,20 +789,20 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
             ],
           ),
 
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 7),
           Divider(color: cardBorder, height: 1),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 6),
 
           Row(
             children: [
               InkWell(
                 onTap: _toggleTheme,
-                borderRadius: BorderRadius.circular(AppRadius.inner),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                   decoration: BoxDecoration(
-                    color: raisedBg,
-                    borderRadius: BorderRadius.circular(AppRadius.inner),
+                    color: pillBg,
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
                   child: Row(
@@ -781,60 +810,60 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     children: [
                       Icon(
                         isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                        size: 14,
-                        color: subTextCol,
+                        size: 13,
+                        color: isDark ? AppTheme.cyanAccent : Colors.amber[300],
                       ),
                       const SizedBox(width: 4),
                       Text(
                         isDark
                             ? (AppTheme.currentLang == "vi" ? "Tối" : "Dark")
                             : (AppTheme.currentLang == "vi" ? "Sáng" : "Light"),
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: textCol,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 6),
 
               InkWell(
                 onTap: _toggleLanguage,
-                borderRadius: BorderRadius.circular(AppRadius.inner),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                   decoration: BoxDecoration(
-                    color: raisedBg,
-                    borderRadius: BorderRadius.circular(AppRadius.inner),
+                    color: pillBg,
+                    borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: cardBorder),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.translate_rounded, size: 14, color: subTextCol),
+                      const Icon(Icons.translate_rounded, size: 13, color: AppTheme.cyanAccent),
                       const SizedBox(width: 4),
                       Text(
                         AppTheme.currentLang == "vi" ? "VI" : "EN",
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: textCol,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: 4),
 
               IconButton(
-                icon: Icon(Icons.search_rounded, size: 20, color: subTextCol),
+                icon: const Icon(Icons.search_rounded, size: 18, color: textCol),
                 tooltip: AppTheme.t("search_device"),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 onPressed: _openSearchDialog,
               ),
 
@@ -842,8 +871,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                 icon: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Icon(Icons.notifications_none_rounded,
-                        size: 20, color: subTextCol),
+                    const Icon(Icons.notifications_none_rounded,
+                        size: 18, color: textCol),
                     if (_realNotifications.any((n) => n['isRead'] != true))
                       Positioned(
                         top: 0,
@@ -851,8 +880,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                         child: Container(
                           width: 6,
                           height: 6,
-                          decoration: BoxDecoration(
-                            color: accent,
+                          decoration: const BoxDecoration(
+                            color: AppTheme.cyanAccent,
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -861,29 +890,28 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                 ),
                 tooltip: AppTheme.t("notifications"),
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                 onPressed: _openNotificationCenter,
               ),
 
               const Spacer(),
 
-              // Nút Ghép nối thiết bị: Đầy đủ chữ "Thêm thiết bị"
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.brandBlue,
                   foregroundColor: Colors.white,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   minimumSize: const Size(0, 28),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8)),
                   elevation: 0,
                 ),
-                icon: const Icon(Icons.add, size: 13),
+                icon: const Icon(Icons.add_rounded, size: 14),
                 label: Text(
                   AppTheme.currentLang == "vi" ? "Thêm thiết bị" : "Add device",
                   style: const TextStyle(
-                      fontSize: 10.5, fontWeight: FontWeight.bold),
+                      fontSize: 11, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () async {
                   await Navigator.of(context).push(
@@ -954,28 +982,26 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                           ),
                         ),
                       ),
-                      // Lõi trung tâm Nhà Của Tôi (Pure Monochrome Industrial)
+                      // Lõi trung tâm Nhà Của Tôi (gọn hơn + điểm nhấn xanh Austec)
                       Container(
-                        width: 130,
-                        height: 130,
+                        width: 112,
+                        height: 112,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(
                             colors: isDark
-                                ? const [Color(0xFF27272A), Color(0xFF141518)]
-                                : const [Color(0xFFFFFFFF), Color(0xFFE4E4E7)],
+                                ? const [Color(0xFF1E293B), Color(0xFF0F172A)]
+                                : const [Color(0xFFFFFFFF), Color(0xFFEFF6FF)],
                           ),
                           border: Border.all(
-                            color: isDark
-                                ? const Color(0xFF3F3F46)
-                                : const Color(0xFFD4D4D8),
+                            color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.55 : 0.45),
                             width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black
-                                  .withValues(alpha: isDark ? 0.35 : 0.08),
-                              blurRadius: 10,
+                              color: AppTheme.brandBlue
+                                  .withValues(alpha: isDark ? 0.28 : 0.14),
+                              blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
                           ],
@@ -985,32 +1011,30 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                           children: [
                             Icon(
                               Icons.home_work_rounded,
-                              color: isDark ? Colors.white : Colors.black87,
-                              size: 38,
+                              color: isDark ? AppTheme.cyanAccent : AppTheme.brandBlue,
+                              size: 32,
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 5),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
+                                  horizontal: 10, vertical: 3),
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? const Color(0xFF090A0C)
-                                    : const Color(0xFFF4F4F5),
-                                borderRadius: BorderRadius.circular(12),
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: isDark
-                                      ? const Color(0xFF3F3F46)
-                                      : const Color(0xFFD4D4D8),
+                                  color: AppTheme.brandBlue.withValues(alpha: 0.35),
                                   width: 1.0,
                                 ),
                               ),
                               child: Text(
                                 AppTheme.t("my_home"),
                                 style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.2,
+                                  color: isDark ? Colors.white : AppTheme.brandBlue,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.0,
                                 ),
                               ),
                             ),
@@ -1023,11 +1047,11 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
               ),
             ),
 
-            // 2. Các Khối Danh Mục Xung Quanh CỐ ĐỊNH (Monochrome B&W)
+            // 2. Các Khối Danh Mục Xung Quanh CỐ ĐỊNH (Thon gọn, điểm nhấn xanh)
             ...categories.map((cat) {
               final catDevices = _gateway.getDevicesByCategory(cat.category);
-              final posX = center.dx + cat.offsetX - 46;
-              final posY = center.dy + cat.offsetY - 42;
+              final posX = center.dx + cat.offsetX - 41;
+              final posY = center.dy + cat.offsetY - 36;
 
               return Positioned(
                 left: posX,
@@ -1042,29 +1066,32 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
     );
   }
 
-  // Khối danh mục hình vuông bo góc cố định (Monochrome B&W)
+  // Khối danh mục thon gọn hơn (82x66), icon xanh hài hòa
   Widget _buildFixedCategorySphere(
       CategoryMeta cat, int deviceCount, bool isDark, Color textCol) {
-    final borderColor =
-        isDark ? const Color(0xFF3F3F46) : const Color(0xFFD4D4D8);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.16)
+        : const Color(0xFFCBD5E1);
 
     return InkWell(
       onTap: () => _openCategoryDevices(cat),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 92,
-            height: 78,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            width: 82,
+            height: 66,
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF141518) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor, width: 1.2),
+              color: isDark
+                  ? const Color(0xFF141821).withValues(alpha: 0.90)
+                  : Colors.white.withValues(alpha: 0.94),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor, width: 1.1),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                  color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
                   blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
@@ -1073,23 +1100,20 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Icon danh mục
                 SizedBox(
-                  width: 26,
-                  height: 26,
+                  width: 22,
+                  height: 22,
                   child: Image.asset(
                     cat.assetPath,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return Icon(_getCategoryFallbackIcon(cat.category),
-                          color: isDark ? Colors.white : Colors.black87,
-                          size: 22);
+                          color: isDark ? AppTheme.cyanAccent : AppTheme.brandBlue,
+                          size: 20);
                     },
                   ),
                 ),
-                const SizedBox(height: 4),
-
-                // Tên danh mục: Giữ nguyên từ đơn trọn vẹn trên 1 dòng (FittedBox chống rớt chữ như T trong ENVIRONMENT), các khối 2 dòng giữ nguyên
+                const SizedBox(height: 3),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
@@ -1098,39 +1122,37 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     maxLines: 2,
                     softWrap: false,
                     style: TextStyle(
-                      color: isDark ? Colors.white : const Color(0xFF090A0C),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.3,
-                      height: 1.15,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                      height: 1.12,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
 
           // Huy hiệu số lượng thiết bị
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               color: deviceCount > 0
                   ? (isDark
-                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.35)
+                      ? const Color(0xFF1E3A8A).withValues(alpha: 0.55)
                       : const Color(0xFFEFF6FF))
                   : (isDark
-                      ? Colors.white.withValues(alpha: 0.06)
-                      : const Color(0xFFF1F5F9)),
-              borderRadius: BorderRadius.circular(10),
+                      ? Colors.black.withValues(alpha: 0.45)
+                      : Colors.white.withValues(alpha: 0.85)),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: deviceCount > 0
-                    ? (isDark
-                        ? AppTheme.brandBlue.withValues(alpha: 0.35)
-                        : const Color(0xFFBFDBFE))
+                    ? AppTheme.brandBlue.withValues(alpha: 0.45)
                     : (isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : const Color(0xFFE2E8F0)),
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : const Color(0xFFCBD5E1)),
                 width: 1,
               ),
             ),
@@ -1140,10 +1162,10 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                 color: deviceCount > 0
                     ? (isDark ? const Color(0xFF93C5FD) : AppTheme.brandBlue)
                     : (isDark
-                        ? const Color(0xFF94A3B8)
-                        : const Color(0xFF64748B)),
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFF475569)),
                 fontSize: 8.5,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -1319,26 +1341,25 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E22) : Colors.white,
+            color: AppTheme.brandBlue,
             shape: BoxShape.circle,
             border: Border.all(
-              color:
-                  isDark ? const Color(0xFF3F3F46) : const Color(0xFFCBD5E1),
+              color: Colors.white.withValues(alpha: 0.35),
               width: 1.4,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
+                color: AppTheme.brandBlue.withValues(alpha: 0.4),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Center(
+          child: const Center(
             child: Icon(
               Icons.support_agent_rounded,
-              color: isDark ? Colors.white : const Color(0xFF0F172A),
-              size: 26,
+              color: Colors.white,
+              size: 25,
             ),
           ),
         ),
@@ -1384,7 +1405,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
 
   Widget _buildNavItem(int index, IconData icon, String label, bool isDark) {
     final isSelected = _selectedBottomNavIndex == index;
-    final activeTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final activeTextColor = AppTheme.dynamicAccent;
     final inactiveTextColor =
         isDark ? const Color(0xFF71717A) : const Color(0xFF94A3B8);
 

@@ -416,81 +416,90 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
               // 1. TOP HEADER & CÔNG CỤ TÌM KIẾM
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          Row(
                             children: [
-                              Text(
-                                "Tin Nhắn & Liên Lạc",
-                                style: TextStyle(color: textCol, fontSize: 18, fontWeight: FontWeight.bold),
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0068FF).withValues(alpha: isDark ? 0.18 : 0.12),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: Icon(
+                                  Icons.forum_rounded,
+                                  color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF),
+                                  size: 18,
+                                ),
                               ),
-                              Text(
-                                "Hỗ trợ kỹ thuật & nhóm trò chuyện",
-                                style: TextStyle(color: subTextCol, fontSize: 11),
+                              const SizedBox(width: 9),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Tin nhắn",
+                                    style: TextStyle(color: textCol, fontSize: 16.5, fontWeight: FontWeight.w700),
+                                  ),
+                                  Text(
+                                    "Hỗ trợ kỹ thuật & nhóm trò chuyện",
+                                    style: TextStyle(color: subTextCol, fontSize: 11),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-                              border: Border.all(color: cardBorder),
-                            ),
-                            child: Icon(Icons.forum_rounded, color: textCol, size: 18),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
 
-                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1
+                      // NÚT TẠO NHÓM MỚI VÀ NHẮN TIN 1-1 (Thon gọn, đồng bộ xanh Zalo)
                       Row(
                         children: [
                           Expanded(
                             child: InkWell(
                               onTap: _openNewDirectChatDialog,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                height: 36,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue,
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: const Color(0xFF0068FF),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(Icons.person_add_rounded, color: Colors.white, size: 16),
                                     SizedBox(width: 6),
-                                    Text("Nhắn tin mới", style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Text("Nhắn tin mới", style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: InkWell(
                               onTap: _openCreateGroupDialog,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(10),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                                height: 36,
                                 decoration: BoxDecoration(
-                                  color: AppTheme.brandBlue.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.3)),
+                                  color: const Color(0xFF0068FF).withValues(alpha: isDark ? 0.16 : 0.08),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFF0068FF).withValues(alpha: 0.35)),
                                 ),
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    const Icon(Icons.group_add_rounded, color: AppTheme.brandBlue, size: 16),
+                                    Icon(Icons.group_add_rounded, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF), size: 16),
                                     const SizedBox(width: 6),
-                                    Text("Tạo nhóm mới", style: TextStyle(color: isDark ? const Color(0xFF60A5FA) : AppTheme.brandBlue, fontSize: 11.5, fontWeight: FontWeight.bold)),
+                                    Text("Tạo nhóm mới", style: TextStyle(color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF), fontSize: 12, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
@@ -503,73 +512,80 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                 ),
               ),
 
-              // 2. KHỐI CSKH GHIM ĐẦU (PINNED CONVERSATION MONOCHROME)
+              // 2. KHỐI CSKH GHIM ĐẦU (Zalo-blue accent, gọn gàng)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   child: InkWell(
                     onTap: () => _openCskhChat(),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: cardBorder, width: 1.2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        color: isDark
+                            ? const Color(0xFF152033)
+                            : const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF0068FF).withValues(alpha: isDark ? 0.35 : 0.25),
+                          width: 1.0,
+                        ),
                       ),
                       child: Row(
                         children: [
                           Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
+                            width: 40,
+                            height: 40,
+                            decoration: const BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
+                              color: Color(0xFF0068FF),
                             ),
-                            child: const Icon(Icons.support_agent_rounded, color: Color(0xFFF59E0B), size: 24),
+                            child: const Icon(Icons.support_agent_rounded, color: Colors.white, size: 22),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
                                   children: [
-                                    Text(
-                                      "HỖ TRỢ KỸ THUẬT & CSKH AUSTEC",
-                                      style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
+                                    Flexible(
+                                      child: Text(
+                                        "Hỗ trợ kỹ thuật & CSKH Austec",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.w700),
+                                      ),
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                                        color: const Color(0xFF0068FF).withValues(alpha: 0.16),
                                         borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.3)),
                                       ),
-                                      child: const Text("24/7", style: TextStyle(color: Color(0xFFF59E0B), fontSize: 8.5, fontWeight: FontWeight.bold)),
+                                      child: Text(
+                                        "24/7",
+                                        style: TextStyle(
+                                          color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 2),
                                 Text(
                                   cskhConv.lastMessage ?? "Kỹ thuật viên Austec sẵn sàng hỗ trợ trực tuyến",
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: subTextCol, fontSize: 11),
+                                  style: TextStyle(color: subTextCol, fontSize: 11.5),
                                 ),
                               ],
                             ),
                           ),
-                          Icon(Icons.arrow_forward_ios_rounded, color: subTextCol, size: 14),
+                          Icon(Icons.arrow_forward_ios_rounded, color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF), size: 13),
                         ],
                       ),
                     ),
@@ -580,14 +596,13 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
               // 3. TIÊU ĐỀ DANH SÁCH CUỘC HỘI THOẠI
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
                   child: Text(
-                    "CUỘC TRÒ CHUYỆN GẦN ĐÂY",
+                    "Cuộc trò chuyện gần đây",
                     style: TextStyle(
                       color: subTextCol,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -652,35 +667,37 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
     final subTextCol = isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary;
     final cardBg = isDark ? AppTheme.surfaceGlass : AppTheme.lightSurface;
     final cardBorder = isDark ? AppTheme.cardBorder : AppTheme.lightBorder;
+    final accent = isDark ? const Color(0xFF60A5FA) : const Color(0xFF0068FF);
 
     final isGroup = item.isGroup;
     final title = item.title;
     final initial = title.isNotEmpty ? title[0].toUpperCase() : 'U';
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: cardBorder),
       ),
       child: ListTile(
+        dense: true,
         onTap: () => _openChatRoom(item),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         leading: Container(
-          width: 42,
-          height: 42,
+          width: 40,
+          height: 40,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-            border: Border.all(color: cardBorder),
+            color: accent.withValues(alpha: isDark ? 0.16 : 0.10),
+            border: Border.all(color: accent.withValues(alpha: 0.3)),
           ),
           child: Center(
             child: isGroup
-                ? Icon(Icons.group_rounded, color: textCol, size: 20)
+                ? Icon(Icons.group_rounded, color: accent, size: 19)
                 : Text(
                     initial,
-                    style: TextStyle(color: textCol, fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: accent, fontSize: 14.5, fontWeight: FontWeight.bold),
                   ),
           ),
         ),
@@ -691,20 +708,20 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.bold),
+                style: TextStyle(color: textCol, fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ),
             if (isGroup) ...[
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF27272A) : const Color(0xFFE4E4E7),
-                  borderRadius: BorderRadius.circular(6),
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(5),
                 ),
                 child: Text(
                   "${item.memberCount} TV",
-                  style: TextStyle(color: subTextCol, fontSize: 9, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: accent, fontSize: 9.5, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -714,11 +731,11 @@ class _ChatHubScreenState extends State<ChatHubScreen> {
           item.lastMessage ?? "Bắt đầu cuộc trò chuyện...",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: subTextCol, fontSize: 11),
+          style: TextStyle(color: subTextCol, fontSize: 11.5),
         ),
         trailing: Text(
           item.timeFormatted,
-          style: TextStyle(color: subTextCol, fontSize: 10),
+          style: TextStyle(color: subTextCol, fontSize: 10.5),
         ),
       ),
     );

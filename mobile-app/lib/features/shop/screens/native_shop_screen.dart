@@ -320,54 +320,73 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // Compact Header
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(14, 8, 10, 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
                     children: [
-                      Text(
-                        "Gian hàng thiết bị",
-                        style: TextStyle(
-                          color: textCol,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: AppTheme.brandBlue.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        child: const Icon(Icons.storefront_rounded, color: AppTheme.brandBlue, size: 17),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "Thiết bị chính hãng Austec · Bảo hành điện tử",
-                        style: TextStyle(color: subTextCol, fontSize: 12),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Gian hàng thiết bị",
+                            style: TextStyle(
+                              color: textCol,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          Text(
+                            "Chính hãng Austec · Bảo hành điện tử",
+                            style: TextStyle(color: subTextCol, fontSize: 11),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: Icon(Icons.refresh_rounded, color: subTextCol, size: 20),
+                    icon: const Icon(Icons.refresh_rounded, color: AppTheme.brandBlue, size: 20),
                     onPressed: _fetchProductsFromBackend,
                     tooltip: "Làm mới",
+                    constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                    padding: EdgeInsets.zero,
                   ),
                 ],
               ),
             ),
 
+            // Compact Search Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
               child: Container(
+                height: 38,
                 decoration: BoxDecoration(
                   color: AppTheme.dynamicSurfaceRaised,
-                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: AppTheme.dynamicHairline),
                 ),
                 child: TextField(
                   controller: _searchController,
-                  style: TextStyle(color: textCol, fontSize: 14),
+                  style: TextStyle(color: textCol, fontSize: 13),
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: "Tìm sản phẩm, thiết bị",
-                    hintStyle: TextStyle(color: subTextCol, fontSize: 13),
-                    prefixIcon: Icon(Icons.search_rounded, color: subTextCol, size: 18),
+                    hintText: "Tìm sản phẩm, thiết bị...",
+                    hintStyle: TextStyle(color: subTextCol, fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.brandBlue, size: 18),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(Icons.close_rounded, color: subTextCol, size: 16),
@@ -379,34 +398,35 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                         : null,
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
                   ),
                 ),
               ),
             ),
 
-            // Filter Comboboxes Row (Category & Rating)
+            // Compact Filter Comboboxes Row (Category & Rating)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               child: Row(
                 children: [
-                  // Category Combobox
                   Expanded(
                     flex: 6,
                     child: Container(
+                      height: 34,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: cardBg,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(9),
                         border: Border.all(color: cardBorder),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedCategory,
                           isExpanded: true,
+                          isDense: true,
                           dropdownColor: isDark ? AppTheme.surfaceDark : AppTheme.lightSurface,
-                          icon: Icon(Icons.keyboard_arrow_down_rounded, color: subTextCol, size: 18),
-                          style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w600),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.brandBlue, size: 18),
+                          style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.w600),
                           onChanged: (val) {
                             if (val != null) setState(() => _selectedCategory = val);
                           },
@@ -421,24 +441,24 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-
-                  // Rating Combobox
                   Expanded(
                     flex: 5,
                     child: Container(
+                      height: 34,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
                         color: cardBg,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(9),
                         border: Border.all(color: cardBorder),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _selectedRatingFilter,
                           isExpanded: true,
+                          isDense: true,
                           dropdownColor: isDark ? AppTheme.surfaceDark : AppTheme.lightSurface,
-                          icon: Icon(Icons.keyboard_arrow_down_rounded, color: subTextCol, size: 18),
-                          style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w600),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.brandBlue, size: 18),
+                          style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.w600),
                           onChanged: (val) {
                             if (val != null) setState(() => _selectedRatingFilter = val);
                           },
@@ -456,8 +476,6 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               ),
             ),
 
-            const SizedBox(height: 6),
-
             // Main Product Grid or Loading State
             Expanded(
               child: _isLoading
@@ -467,12 +485,12 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                       : filteredProducts.isEmpty
                           ? _buildEmptyState(textCol, subTextCol)
                           : GridView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 2,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 0.72,
+                                childAspectRatio: 0.79,
                               ),
                               itemCount: filteredProducts.length,
                               itemBuilder: (context, index) {
@@ -585,135 +603,140 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: cardBg,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: cardBorder),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
-              blurRadius: 6,
+              blurRadius: 5,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
+            // Image (gọn hơn)
             Expanded(
-              child: Center(
-                child: Hero(
-                  tag: product.id,
-                  child: product.imagePath.startsWith("http")
-                      ? Image.network(
-                          product.imagePath,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Image.asset("assets/doors.png", fit: BoxFit.contain),
-                        )
-                      : Image.asset(product.imagePath, fit: BoxFit.contain),
-                ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Hero(
+                      tag: product.id,
+                      child: product.imagePath.startsWith("http")
+                          ? Image.network(
+                              product.imagePath,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => Image.asset("assets/doors.png", fit: BoxFit.contain),
+                            )
+                          : Image.asset(product.imagePath, fit: BoxFit.contain),
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.22 : 0.10),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: Text(
+                        product.categoryTag,
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF93C5FD) : AppTheme.brandBlue,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 6),
 
-            // Minimal Category Tag
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF27272A) : const Color(0xFFF4F4F5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                product.categoryTag,
-                style: TextStyle(color: textCol, fontSize: 8.5, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 4),
-
             // Product Name
             Text(
               product.name,
-              style: TextStyle(color: textCol, fontSize: 11.5, fontWeight: FontWeight.bold, height: 1.2),
+              style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w700, height: 1.2),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
 
-            // Price & Original Price
-            Row(
-              children: [
-                Text(
-                  product.formattedPrice,
-                  style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 4),
-                if (product.originalPrice != null)
-                  Expanded(
-                    child: Text(
-                      "${product.originalPrice} đ",
-                      style: TextStyle(color: subTextCol, fontSize: 9, decoration: TextDecoration.lineThrough),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-              ],
-            ),
-
-            const SizedBox(height: 6),
-
-            // Rating Stars & Action Buttons Row
+            // Price & Rating Row (gộp gọn 1 dòng)
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Flexible(
+                  child: Text(
+                    product.formattedPrice,
+                    style: const TextStyle(color: AppTheme.brandBlue, fontSize: 12.5, fontWeight: FontWeight.w700),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 14),
+                    const Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 13),
                     const SizedBox(width: 2),
                     Text(
                       product.rating.toStringAsFixed(1),
-                      style: TextStyle(color: textCol, fontSize: 10, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: subTextCol, fontSize: 10.5, fontWeight: FontWeight.w600),
                     ),
-                    if (product.reviewsCount > 0)
-                      Text(
-                        " (${product.reviewsCount})",
-                        style: TextStyle(color: subTextCol, fontSize: 9),
-                      ),
                   ],
                 ),
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () => _handleConsult(product),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
-                        ),
-                        child: const Text(
-                          "Tư vấn",
-                          style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9.5, fontWeight: FontWeight.bold),
+              ],
+            ),
+
+            const SizedBox(height: 7),
+
+            // 2 Nút bấm cân đối, dễ bấm (height 30)
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _handleConsult(product),
+                    borderRadius: BorderRadius.circular(7),
+                    child: Container(
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandBlue.withValues(alpha: isDark ? 0.16 : 0.08),
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(color: AppTheme.brandBlue.withValues(alpha: 0.35)),
+                      ),
+                      child: Text(
+                        "Tư vấn",
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF93C5FD) : AppTheme.brandBlue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () => _openProductDetail(product),
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: AppTheme.brandBlue,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Text(
-                          "Chi tiết",
-                          style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
-                        ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _openProductDetail(product),
+                    borderRadius: BorderRadius.circular(7),
+                    child: Container(
+                      height: 30,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppTheme.brandBlue,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                      child: const Text(
+                        "Chi tiết",
+                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
