@@ -146,13 +146,13 @@ class _ToastOverlayWidgetState extends State<_ToastOverlayWidget>
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 260),
+      duration: AppMotion.normal,
     );
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: AppMotion.curve);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, -0.6),
+      begin: const Offset(0, -0.35),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutBack));
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: AppMotion.curve));
 
     _animCtrl.forward();
   }
@@ -163,20 +163,9 @@ class _ToastOverlayWidgetState extends State<_ToastOverlayWidget>
     super.dispose();
   }
 
-  Color get _backgroundColor {
-    switch (widget.type) {
-      case ToastType.success:
-        return const Color(0xFF064E3B);
-      case ToastType.error:
-        return const Color(0xFF881337);
-      case ToastType.warning:
-        return const Color(0xFF78350F);
-      case ToastType.info:
-        return const Color(0xFF0F172A);
-    }
-  }
+  Color get _backgroundColor => AppTheme.dynamicSurfaceRaised;
 
-  Color get _borderColor {
+  Color get _accentColor {
     switch (widget.type) {
       case ToastType.success:
         return AppTheme.emeraldSuccess;
@@ -185,7 +174,7 @@ class _ToastOverlayWidgetState extends State<_ToastOverlayWidget>
       case ToastType.warning:
         return AppTheme.amberWarning;
       case ToastType.info:
-        return AppTheme.cyanAccent;
+        return AppTheme.dynamicAccent;
     }
   }
 
@@ -204,13 +193,16 @@ class _ToastOverlayWidgetState extends State<_ToastOverlayWidget>
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textMuted = AppTheme.dynamicTextMuted;
+
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
           child: SlideTransition(
             position: _slideAnim,
             child: FadeTransition(
@@ -225,38 +217,38 @@ class _ToastOverlayWidgetState extends State<_ToastOverlayWidget>
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
                     decoration: BoxDecoration(
-                      color: _backgroundColor.withValues(alpha: 0.96),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _borderColor.withValues(alpha: 0.85), width: 1.3),
+                      color: _backgroundColor,
+                      borderRadius: BorderRadius.circular(AppRadius.card),
+                      border: Border.all(color: _accentColor.withValues(alpha: 0.45), width: 1.0),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
+                          color: Colors.black.withValues(alpha: AppTheme.isDarkMode ? 0.35 : 0.10),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
-                        Icon(_icon, color: _borderColor, size: 22),
-                        const SizedBox(width: 12),
+                        Icon(_icon, color: _accentColor, size: 20),
+                        const SizedBox(width: AppSpacing.md),
                         Expanded(
                           child: Text(
                             widget.message,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: textPrimary,
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w500,
                               height: 1.35,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         GestureDetector(
                           onTap: widget.onDismiss,
-                          child: const Icon(Icons.close_rounded, color: Colors.white60, size: 18),
+                          child: Icon(Icons.close_rounded, color: textMuted, size: 18),
                         ),
                       ],
                     ),

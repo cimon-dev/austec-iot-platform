@@ -55,18 +55,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   }
 
   Future<void> _triggerAction(String action, [Map<String, dynamic>? params]) async {
-    // 1. Phản hồi giao diện tức thì 0ms (Optimistic UI Update)
-    if (action == "TOGGLE_RELAY" || action == "TURN_ON" || action == "TURN_OFF") {
-      final target = action == "TURN_ON" ? true : (action == "TURN_OFF" ? false : !_device.isRelayOn);
-      setState(() {
-        _device.isRelayOn = target;
-      });
-    } else if (action == "TOGGLE_CHILD_LOCK") {
-      setState(() {
-        _device.isChildLockActive = !_device.isChildLockActive;
-      });
-    }
-
+    if (_isBusy) return;
     setState(() => _isBusy = true);
     final res = await _gateway.sendCommand(
       hardwareId: _device.hardwareId,
@@ -76,12 +65,15 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     if (mounted) {
       setState(() {
         _isBusy = false;
-        _device = _gateway.findByHardwareId(_device.hardwareId) ?? _device;
+        if (res.success) {
+          _device = _gateway.findByHardwareId(_device.hardwareId) ?? _device;
+        }
       });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("${res.message} • ${res.latencyMs}ms"),
-          backgroundColor: AppTheme.surfaceGlass,
+          content: Text(res.message),
+          backgroundColor: res.success ? AppTheme.dynamicSurfaceRaised : AppTheme.roseDanger,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
         ),
@@ -108,14 +100,18 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppTheme.dynamicBackground;
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textMuted = AppTheme.dynamicTextMuted;
+    final accent = AppTheme.dynamicAccent;
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      extendBodyBehindAppBar: true,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Column(
@@ -123,19 +119,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           children: [
             Text(
               _device.name,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             Text(
-              "${_device.roomName} • ${_device.hardwareId}",
-              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontFamily: "monospace"),
+              "${_device.roomName.isNotEmpty ? '${_device.roomName} · ' : ''}${_device.hardwareId}",
+              style: AppTheme.tabular(
+                TextStyle(color: textMuted, fontSize: 11, fontFamily: "monospace"),
+              ),
             ),
           ],
         ),
         actions: [
-          // 1. Icon Lịch Sử đặt bên trái Icon CSKH
           if (_device.canViewHistory)
             IconButton(
-              icon: const Icon(Icons.history_rounded, color: Colors.white, size: 22),
+              icon: Icon(Icons.history_rounded, color: textPrimary, size: 20),
               tooltip: "Xem lịch sử",
               onPressed: () {
                 Navigator.of(context).push(
@@ -143,10 +140,9 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 );
               },
             ),
-          // 2. Icon CSKH (Mở trực tiếp ChatRoomScreen phòng CSKH thật)
           IconButton(
-            icon: const Icon(Icons.support_agent_rounded, color: AppTheme.cyanAccent, size: 22),
-            tooltip: "Chat CSKH về thiết bị này",
+            icon: Icon(Icons.support_agent_rounded, color: accent, size: 20),
+            tooltip: "Hỗ trợ CSKH",
             onPressed: () {
               final chatDev = ChatDeviceItem(
                 isOwned: true,
@@ -158,25 +154,24 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               final cskhConv = ConversationItem(
                 id: 'cskh-conv-${AuthService().currentUser?.id ?? "usr-default"}',
                 type: 'CSKH',
-                title: 'HỖ TRỢ KỸ THUẬT & CSKH AUSTEC 24/7',
+                title: 'Hỗ trợ kỹ thuật Austec',
                 avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
-                lastMessage: 'Dạ em chào Quý khách! Kỹ thuật viên Austec đã sẵn sàng hỗ trợ trực tuyến 24/7.',
+                lastMessage: 'Kỹ thuật viên Austec sẵn sàng hỗ trợ.',
               );
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (context) => ChatRoomScreen(
                     conversation: cskhConv,
                     initialDevice: chatDev,
-                    initialPrompt: "Xin chào CSKH Austec! Tôi cần hỗ trợ kỹ thuật về thiết bị ${widget.device.name} (HWID: ${widget.device.hardwareId}).",
+                    initialPrompt: "Tôi cần hỗ trợ kỹ thuật về thiết bị ${widget.device.name} (${widget.device.hardwareId}).",
                   ),
                 ),
               );
             },
           ),
-          // 3. Icon Cài Đặt Tham Số
           if (_device.canConfig)
             IconButton(
-              icon: const Icon(Icons.settings_outlined, color: Colors.white, size: 22),
+              icon: Icon(Icons.settings_outlined, color: textPrimary, size: 20),
               tooltip: "Cài đặt thiết bị",
               onPressed: () async {
                 final deleted = await Navigator.of(context).push(
@@ -187,86 +182,37 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 }
               },
             ),
-          const SizedBox(width: 4),
+          const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      body: SizedBox.expand(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Background Watermark Công Ty AUSTEC (Bao trùm toàn bộ màn hình từ mép trên tới đáy)
-            Positioned.fill(
-              child: Image.asset(
-                'assets/austec_banner_new.png',
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-            ),
-            // Lớp phủ tối nhẹ để thẻ và thông tin nổi bật sắc nét
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.74),
-              ),
-            ),
-            // Nội dung hiển thị
-            SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Logo & Slogan AUSTEC 2026 to, rõ ràng, căn giữa, không nền trắng
-                            Center(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 2, bottom: 12),
-                                child: Image.asset(
-                                  'assets/austec_logo_2026.png',
-                                  height: 48,
-                                  fit: BoxFit.contain,
-                                ),
-                              ),
-                            ),
-
-                            // Thẻ Thông Tin Tổng Quan & Bảo Hành Điện Tử
-                            _buildWarrantyAndStatusCard(),
-                            const SizedBox(height: 12),
-
-                            // Bảng Điều Khiển Chuyên Sâu Tùy Theo Danh Mục (ẨN KHI KHÔNG CÓ QUYỀN ĐIỀU KHIỂN)
-                            if (_device.canPerformControl) ...[
-                              if (_device.category == DeviceCategory.rollerDoor)
-                                _buildRollerDoorDetailedControls()
-                              else if (_device.category == DeviceCategory.lightSwitch)
-                                _buildLightSwitchDetailedControls()
-                              else if (_device.category == DeviceCategory.camera)
-                                _buildCameraDetailedControls()
-                              else if (_device.category == DeviceCategory.environment)
-                                _buildSensorDetailedControls()
-                              else if (_device.category == DeviceCategory.energyManage)
-                                _buildUpsDetailedControls()
-                              else
-                                _buildLockDetailedControls(),
-                            ] else ...[
-                              _buildRestrictedPermissionBanner(),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWarrantyAndStatusCard(),
+              const SizedBox(height: AppSpacing.lg),
+              if (_device.canPerformControl) ...[
+                if (_device.category == DeviceCategory.rollerDoor)
+                  _buildRollerDoorDetailedControls()
+                else if (_device.category == DeviceCategory.lightSwitch)
+                  _buildLightSwitchDetailedControls()
+                else if (_device.category == DeviceCategory.camera)
+                  _buildCameraDetailedControls()
+                else if (_device.category == DeviceCategory.environment)
+                  _buildSensorDetailedControls()
+                else if (_device.category == DeviceCategory.energyManage)
+                  _buildUpsDetailedControls()
+                else
+                  _buildLockDetailedControls(),
+              ] else ...[
+                _buildRestrictedPermissionBanner(),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
+            ],
+          ),
         ),
       ),
     );
@@ -331,15 +277,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     );
   }
 
-  // 1. Thẻ Bảo Hành & Trạng Thái (Chuẩn Solid, Gọn Gàng)
+  // 1. Thẻ bảo hành & trạng thái kết nối (Graphite Neutral + Live Status Dot)
   Widget _buildWarrantyAndStatusCard() {
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textSecondary = AppTheme.dynamicTextSecondary;
+    final textMuted = AppTheme.dynamicTextMuted;
+    final raised = AppTheme.dynamicSurfaceRaised;
+    final hairline = AppTheme.dynamicHairline;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141924),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF26324A), width: 1.2),
-      ),
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: AppTheme.glassBox(radius: AppRadius.card),
       child: Column(
         children: [
           Row(
@@ -352,57 +300,52 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                     height: 8,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A),
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : textMuted,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
-                    _device.isOnline ? "KẾT NỐI TRỰC TUYẾN" : "NGOẠI TUYẾN (BLE KHẢ DỤNG)",
+                    _device.isOnline ? "Trực tuyến" : "Ngoại tuyến (BLE khả dụng)",
                     style: TextStyle(
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                      color: _device.isOnline ? AppTheme.emeraldSuccess : textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF27272A),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF3F3F46)),
+                  color: raised,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: hairline),
                 ),
                 child: Text(
                   _device.modelName,
-                  style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: textPrimary, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
           ),
 
-          // Banner Hướng Dẫn Ngoại Tuyến (rút gọn)
           if (!_device.isOnline) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E2024),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF26324A)),
+                color: raised,
+                borderRadius: BorderRadius.circular(AppRadius.inner),
+                border: Border.all(color: hairline),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.bluetooth_searching_rounded, color: Colors.white, size: 15),
-                  SizedBox(width: 8),
+                  Icon(Icons.bluetooth_searching_rounded, color: textSecondary, size: 16),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
-                      "Ngoại tuyến Wi-Fi. Đến gần (< 15m) để điều khiển trực tiếp qua BLE.",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10.5,
-                      ),
+                      "Ngoại tuyến Wi-Fi. Đến gần (< 15m) để điều khiển trực tiếp qua BLE",
+                      style: TextStyle(color: textSecondary, fontSize: 12),
                     ),
                   ),
                 ],
@@ -410,19 +353,21 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             ),
           ],
 
-          const SizedBox(height: 8),
-          const Divider(color: Color(0xFF26324A), height: 1),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.md),
+          Divider(color: hairline, height: 1),
+          const SizedBox(height: AppSpacing.md),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Mã BH: ${_device.warrantyCode}",
-                style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: "monospace"),
+                "Mã bảo hành: ${_device.warrantyCode}",
+                style: AppTheme.tabular(
+                  TextStyle(color: textSecondary, fontSize: 12, fontFamily: "monospace"),
+                ),
               ),
               Text(
                 "Hạn BH: ${_device.warrantyUntil.length >= 10 ? _device.warrantyUntil.substring(0, 10) : _device.warrantyUntil}",
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                style: AppTheme.tabular(TextStyle(color: textSecondary, fontSize: 12)),
               ),
             ],
           ),
@@ -582,7 +527,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                         "Remote RF Đã Gán: ${_device.rfRemoteCount} tay cầm",
                         style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                       ),
-                      const Text("Học lệnh RF_setup / Xóa RF_clear từ xa", style: TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+                      const Text("Thêm hoặc xóa tay cầm điều khiển", style: TextStyle(color: AppTheme.textMuted, fontSize: 12)),
                     ],
                   ),
                   Row(
@@ -618,8 +563,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
         const SizedBox(height: 20),
         const Text(
-          "THÔNG SỐ VIỄN THÁM BO MẠCH THỰC TẾ",
-          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          "Thông số hoạt động",
+          style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 12),
         Container(
@@ -1199,8 +1144,8 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
             ),
             const SizedBox(height: 14),
             const Text(
-              "Thao Tác Nhanh Hệ Pin (Gửi Lệnh MQTT):",
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
+              "Cấu hình nhanh hệ pin",
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             Row(

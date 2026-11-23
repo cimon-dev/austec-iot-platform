@@ -35,7 +35,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("403 - Bạn không có quyền xem nhật ký thiết bị này"),
+              content: Text("Bạn không có quyền xem lịch sử thiết bị này"),
               backgroundColor: AppTheme.roseDanger,
               behavior: SnackBarBehavior.floating,
             ),

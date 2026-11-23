@@ -237,8 +237,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           ),
           const SizedBox(height: 18),
 
-          // 2. NHÓM 1: QUẢN TRỊ THIẾT BỊ & HỆ THỐNG
-          _buildGroupHeader("QUẢN TRỊ THIẾT BỊ & HỆ THỐNG", textCol),
+          // Nhóm 1: Quản trị thiết bị & hệ thống
+          _buildGroupHeader("Quản trị thiết bị và hệ thống", textCol),
           Container(
             decoration: _cardBox(isDark, cardBg, cardBorder),
             child: Column(
@@ -250,17 +250,17 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => Scaffold(
-                          backgroundColor: isDark ? AppTheme.background : AppTheme.lightBackground,
+                          backgroundColor: AppTheme.dynamicBackground,
                           appBar: AppBar(
-                            backgroundColor: Colors.transparent,
+                            backgroundColor: AppTheme.dynamicBackground,
                             elevation: 0,
                             leading: IconButton(
-                              icon: Icon(Icons.arrow_back_ios_new, color: textCol, size: 20),
+                              icon: Icon(Icons.arrow_back_ios_new_rounded, color: AppTheme.dynamicTextPrimary, size: 20),
                               onPressed: () => Navigator.of(context).pop(),
                             ),
                             title: Text(
-                              "Quản Lý Thiết Bị",
-                              style: TextStyle(color: textCol, fontSize: 16, fontWeight: FontWeight.bold),
+                              "Quản lý thiết bị",
+                              style: TextStyle(color: AppTheme.dynamicTextPrimary, fontSize: 16, fontWeight: FontWeight.w600),
                             ),
                             centerTitle: true,
                           ),
@@ -276,7 +276,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                 _buildDivider(cardBorder),
                 _buildSettingsTile(
                   icon: Icons.group_outlined,
-                  title: "Quản lý phân quyền thành viên",
+                  title: "Phân quyền thành viên",
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(builder: (context) => const FamilySharingScreen()),
@@ -298,10 +298,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.xl),
 
-          // 3. NHÓM 2: GIAO DIỆN & TÙY CHỌN HỆ THỐNG
-          _buildGroupHeader("GIAO DIỆN & TÙY CHỌN", textCol),
+          // Nhóm 2: Giao diện & tùy chọn
+          _buildGroupHeader("Giao diện và tùy chọn", textCol),
           Container(
             decoration: _cardBox(isDark, cardBg, cardBorder),
             child: Column(

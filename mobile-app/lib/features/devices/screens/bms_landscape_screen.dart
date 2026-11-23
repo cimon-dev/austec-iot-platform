@@ -82,19 +82,14 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
         ]);
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF090A0E),
+        backgroundColor: AppTheme.dynamicBackground,
         body: SafeArea(
           child: Column(
             children: [
-              // 1. TOP HEADER (Back button, Logo/Title, Status tag, System status)
               _buildTopHeader(),
-
-              // 2. MAIN BODY (Content of selected tab)
               Expanded(
                 child: _buildActiveTabContent(),
               ),
-
-              // 3. BOTTOM TAB BAR (16 Cell, Biểu đồ, Sự cố, Cài đặt)
               _buildBottomTabBar(),
             ],
           ),
@@ -960,15 +955,10 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
 
                         if (mounted) {
                           setState(() => _isSaving = false);
-                          final String channelMsg = viaServer
-                              ? "qua Máy Chủ Cloud (Wi-Fi)"
-                              : (viaBle
-                                  ? "trực tiếp qua Bluetooth BLE (Offline)"
-                                  : "qua hệ thống");
                           if (viaServer || viaBle) {
-                            AppToast.showSuccess("Đã nạp thông số bảo vệ xuống BMS $channelMsg thành công!");
+                            AppToast.showSuccess("Đã lưu cài đặt BMS");
                           } else {
-                            AppToast.showWarning("Đã nạp thông số bảo vệ xuống BMS $channelMsg thành công!");
+                            AppToast.showError("Không thể lưu cài đặt. Thiết bị không phản hồi.");
                           }
                         }
                       },
@@ -996,11 +986,7 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
   }
 
   BoxDecoration _boxStyle() {
-    return BoxDecoration(
-      color: const Color(0xFF10131A),
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: const Color(0xFF222734)),
-    );
+    return AppTheme.glassBox(radius: AppRadius.control);
   }
 
   Widget _buildStepperItem(String label, double val, String unit,

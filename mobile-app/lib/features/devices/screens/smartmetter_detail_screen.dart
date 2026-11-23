@@ -26,6 +26,7 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
 
   bool _isMeterOn = true;
   bool _isSettingPower = false;
+  bool _isBusy = false;
   int _powerLimitW = 4500;
   Timer? _longPressTimer;
   int _longPressSeconds = 0;
@@ -69,43 +70,62 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
   double get _dailyKwh => (_device.currentProperties['daily_kwh'] as num?)?.toDouble() ?? 0.0;
   String? get _alarm => _device.currentProperties['alarm']?.toString();
 
-  void _handleReset() {
+  Future<void> _handleReset() async {
+    if (_isBusy) return;
     if (!_device.canPerformControl) {
       AppToast.showWarning(!_device.canControl
-          ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
-          : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
+          ? "Tài khoản của bạn chưa được cấp quyền điều khiển"
+          : "Ngoài khung giờ điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
       return;
     }
 
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "RESET");
+    setState(() => _isBusy = true);
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "RESET");
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+    if (!res.success) {
+      AppToast.showError(res.message.isNotEmpty ? res.message : "Không thể đặt lại công tơ. Thiết bị không phản hồi.");
+      return;
+    }
     setState(() {
       _device.currentProperties['alarm'] = null;
       _device.currentProperties['relay_status'] = 'ON';
       _device.currentProperties['is_meter_on'] = true;
       _isMeterOn = true;
     });
-    AppToast.showInfo("Đã gửi mã lệnh 0 (RESET): Xóa cảnh báo & đóng lại nguồn điện.");
+    AppToast.showInfo("Đã xóa cảnh báo và cấp điện lại");
   }
 
-  void _handleTogglePowerSetting() {
+  Future<void> _handleTogglePowerSetting() async {
+    if (_isBusy) return;
     if (!_device.canConfig) {
-      AppToast.showWarning("Bạn không có quyền thay đổi thông số cấu hình công tơ điện");
+      AppToast.showWarning("Bạn không có quyền thay đổi cài đặt công tơ");
       return;
     }
 
-    setState(() {
-      _isSettingPower = !_isSettingPower;
-    });
     if (!_isSettingPower) {
-      _device.currentProperties['power_limit_w'] = _powerLimitW;
-      _gateway.updateDeviceProperties(_device.hardwareId, {'power_limit_w': _powerLimitW});
-      _gateway.sendCommand(
-        hardwareId: _device.hardwareId,
-        action: "CONFIG_POWER_LIMIT",
-        parameters: {'power_limit': _powerLimitW},
-      );
-      AppToast.showSuccess("Đã lưu giới hạn công suất: $_powerLimitW W xuống công tơ điện tử!");
+      setState(() => _isSettingPower = true);
+      return;
     }
+
+    setState(() => _isBusy = true);
+    final res = await _gateway.sendCommand(
+      hardwareId: _device.hardwareId,
+      action: "CONFIG_POWER_LIMIT",
+      parameters: {'power_limit': _powerLimitW},
+    );
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+    if (!res.success) {
+      AppToast.showError(res.message.isNotEmpty ? res.message : "Không thể lưu giới hạn công suất. Thiết bị không phản hồi.");
+      return;
+    }
+    setState(() {
+      _isSettingPower = false;
+      _device.currentProperties['power_limit_w'] = _powerLimitW;
+    });
+    _gateway.updateDeviceProperties(_device.hardwareId, {'power_limit_w': _powerLimitW});
+    AppToast.showSuccess("Đã lưu giới hạn công suất $_powerLimitW W");
   }
 
   void _adjustPower(int delta) {
@@ -150,34 +170,49 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     }
   }
 
-  void _turnOffMeter() {
-    if (!_device.canPerformControl) return;
+  Future<void> _turnOffMeter() async {
+    if (_isBusy || !_device.canPerformControl) return;
 
+    setState(() => _isBusy = true);
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_OFF");
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+    if (!res.success) {
+      AppToast.showError(res.message.isNotEmpty ? res.message : "Không thể tắt công tơ. Thiết bị không phản hồi.");
+      return;
+    }
     setState(() {
       _isMeterOn = false;
       _isSettingPower = false;
       _device.currentProperties['is_meter_on'] = false;
       _device.currentProperties['relay_status'] = 'OFF';
     });
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_OFF");
-    AppToast.showInfo("Đã giữ > 5s: Đã ngắt rơ-le công tơ điện tử an toàn (Lệnh 14)!");
+    AppToast.showInfo("Đã tắt công tơ điện");
   }
 
-  void _turnOnMeter() {
+  Future<void> _turnOnMeter() async {
+    if (_isBusy) return;
     if (!_device.canPerformControl) {
       AppToast.showWarning(!_device.canControl
-          ? "Tài khoản của bạn đã bị chủ nhà giới hạn quyền điều khiển"
-          : "Hiện ngoài khung giờ cho phép điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
+          ? "Tài khoản của bạn chưa được cấp quyền điều khiển"
+          : "Ngoài khung giờ điều khiển (${_device.accessStartTime} - ${_device.accessEndTime})");
       return;
     }
 
+    setState(() => _isBusy = true);
+    final res = await _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_ON");
+    if (!mounted) return;
+    setState(() => _isBusy = false);
+    if (!res.success) {
+      AppToast.showError(res.message.isNotEmpty ? res.message : "Không thể bật công tơ. Thiết bị không phản hồi.");
+      return;
+    }
     setState(() {
       _isMeterOn = true;
       _device.currentProperties['is_meter_on'] = true;
       _device.currentProperties['relay_status'] = 'ON';
     });
-    _gateway.sendCommand(hardwareId: _device.hardwareId, action: "METER_POWER_ON");
-    AppToast.showSuccess("Đã bật nguồn điện công tơ điện tử (Lệnh 13)!");
+    AppToast.showSuccess("Đã bật công tơ điện");
   }
 
   @override
@@ -285,94 +320,52 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: SizedBox.expand(
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 1. Background Watermark Công Ty AUSTEC
-            Positioned.fill(
-              child: Image.asset(
-                "assets/austec_banner_new.png",
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-            ),
-            // Lớp phủ tối sâu (88% dark / 78% light) giúp khối nổi bật rõ ràng, không bị chìm
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: isDark ? 0.88 : 0.78),
-              ),
-            ),
-
-            // NỘI DUNG CHÍNH (GÓI GỌN TRỌN VẸN TRONG 1 MÀN HÌNH KHÔNG CUỘN)
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Column(
-                  children: [
-                    // 1. LOGO & SLOGAN 2026 to rõ, căn giữa
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2, bottom: 8),
-                        child: Image.asset(
-                          "assets/austec_logo_2026.png",
-                          height: 44,
-                          fit: BoxFit.contain,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          child: Column(
+            children: [
+              if (_alarm != null && _alarm!.isNotEmpty) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppTheme.roseDanger.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(AppRadius.control),
+                    border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.5), width: 1.0),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded, color: AppTheme.roseDanger, size: 20),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          "Cảnh báo: $_alarm — Đã ngắt rơ-le an toàn",
+                          style: TextStyle(color: textCol, fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ),
-                    ),
-
-                    // Cảnh báo nếu có sự cố rò điện hoặc quá dòng
-                    if (_alarm != null && _alarm!.isNotEmpty) ...[
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF7F1D1D),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x66EF4444), blurRadius: 10, spreadRadius: 1),
-                          ],
+                      TextButton(
+                        onPressed: _handleReset,
+                        style: TextButton.styleFrom(
+                          backgroundColor: AppTheme.roseDanger,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 4),
+                          minimumSize: const Size(0, 28),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "CẢNH BÁO: $_alarm - Đã ngắt rơ-le an toàn!",
-                                style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _handleReset,
-                              style: TextButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF991B1B),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                minimumSize: const Size(0, 24),
-                              ),
-                              child: const Text("RESET", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                            ),
-                          ],
-                        ),
+                        child: const Text("Reset", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),
                       ),
                     ],
-
-                    // 2. KHUNG NỘI DUNG ĐIỀU KHIỂN CHÍNH
-                    Expanded(
-                      child: _isMeterOn
-                          ? _buildMeterDisplay(isDark, textCol)
-                          : _buildMeterOffState(),
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+
+              Expanded(
+                child: _isMeterOn
+                    ? _buildMeterDisplay(isDark, textCol)
+                    : _buildMeterOffState(),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -449,31 +442,21 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        // Thân đồng hồ công tơ LCD: Màu nền đậm sâu, viền dập nổi sắc nét
+        // Thân đồng hồ công tơ LCD (1 điểm nhấn phần cứng sạch, không neon glow)
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0D1322),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF1E2D4A), width: 2),
-            boxShadow: const [
-              BoxShadow(color: Colors.black87, blurRadius: 24, spreadRadius: 2, offset: Offset(0, 10)),
-            ],
-          ),
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: AppTheme.glassBox(radius: AppRadius.card),
           child: Column(
             children: [
-              // Màn hình hiển thị LCD dạ quang kỹ thuật số (Màu kính LCD OLED đen sâu)
+              // Màn hình LCD kỹ thuật số
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF030712),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.6), width: 2),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x330284C7), blurRadius: 14, spreadRadius: 1),
-                  ],
+                  color: const Color(0xFF0A0E14),
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  border: Border.all(color: AppTheme.dynamicHairline, width: 1.0),
                 ),
                 child: Column(
                   children: [

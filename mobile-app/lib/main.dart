@@ -39,9 +39,8 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
       ]);
     } catch (_) {}
 
-    // Ensure a minimum splash screen duration of 1.2s for smooth radar sweep perception
     final elapsed = DateTime.now().difference(startTime);
-    final remainingDelay = const Duration(milliseconds: 1200) - elapsed;
+    final remainingDelay = const Duration(milliseconds: 1000) - elapsed;
     if (remainingDelay > Duration.zero) {
       await Future.delayed(remainingDelay);
     }
@@ -53,32 +52,29 @@ class _AustecIoTAppState extends State<AustecIoTApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: AppToast.navigatorKey,
-      scaffoldMessengerKey: AppToast.messengerKey,
-      title: 'Austec Smart Home',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppTheme.background,
-        primaryColor: AppTheme.textPrimary,
-        colorScheme: const ColorScheme.dark(
-          primary: AppTheme.textPrimary,
-          secondary: AppTheme.textSecondary,
-          surface: AppTheme.surface,
-        ),
-        useMaterial3: true,
-      ),
-      home: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        switchInCurve: Curves.easeIn,
-        switchOutCurve: Curves.easeOut,
-        child: !_initialized
-            ? const AustecSplashScreen(key: ValueKey('splash'))
-            : (AuthService().isLoggedIn
-                ? const OrbitalHubScreen(key: ValueKey('hub'))
-                : const LoginScreen(key: ValueKey('login'))),
-      ),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: AppTheme.themeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          navigatorKey: AppToast.navigatorKey,
+          scaffoldMessengerKey: AppToast.messengerKey,
+          title: 'Austec Smart Home',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.buildLightTheme(),
+          darkTheme: AppTheme.buildDarkTheme(),
+          themeMode: themeMode,
+          home: AnimatedSwitcher(
+            duration: AppMotion.normal,
+            switchInCurve: AppMotion.curve,
+            switchOutCurve: AppMotion.curve,
+            child: !_initialized
+                ? const AustecSplashScreen(key: ValueKey('splash'))
+                : (AuthService().isLoggedIn
+                    ? const OrbitalHubScreen(key: ValueKey('hub'))
+                    : const LoginScreen(key: ValueKey('login'))),
+          ),
+        );
+      },
     );
   }
 }

@@ -41,7 +41,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("403 - Bạn không có quyền cấu hình thiết bị này"),
+              content: Text("Bạn không có quyền cài đặt thiết bị này"),
               backgroundColor: AppTheme.roseDanger,
               behavior: SnackBarBehavior.floating,
             ),
@@ -731,7 +731,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _buildMetaRow("Mã phần cứng (Hardware ID)", widget.device.hardwareId, isCode: true),
+                  _buildMetaRow("Mã thiết bị", widget.device.hardwareId, isCode: true),
                   const SizedBox(height: 10),
                   _buildMetaRow("Loại thiết bị", widget.device.modelName.isNotEmpty ? widget.device.modelName : widget.device.categoryDisplayName),
                   const SizedBox(height: 10),
@@ -820,11 +820,11 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
                     const SizedBox(height: 10),
                     Divider(color: isDark ? const Color(0xFF26324A) : AppTheme.lightBorder, height: 1),
                     const SizedBox(height: 10),
-                    _buildMetaRow("Ngưỡng cắt điện áp cao (Mã 13)", "260 VAC", isCode: true),
+                    _buildMetaRow("Ngưỡng cắt điện áp cao", "260 VAC", isCode: true),
                     const SizedBox(height: 8),
-                    _buildMetaRow("Ngưỡng cắt điện áp thấp (Mã 14)", "170 VAC", isCode: true),
+                    _buildMetaRow("Ngưỡng cắt điện áp thấp", "170 VAC", isCode: true),
                     const SizedBox(height: 8),
-                    _buildMetaRow("Dòng rò ngắt chống giật (Mã 12)", "30 mA", isCode: true),
+                    _buildMetaRow("Dòng rò ngắt chống giật", "30 mA", isCode: true),
                   ],
                 ),
               ),

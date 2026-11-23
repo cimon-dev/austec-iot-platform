@@ -117,21 +117,21 @@ class _ChatSettingsScreenState extends State<ChatSettingsScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         height: MediaQuery.of(context).size.height * 0.85,
-        decoration: const BoxDecoration(
-          color: Color(0xFF0F172A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(top: BorderSide(color: AppTheme.cardBorder)),
+        decoration: BoxDecoration(
+          color: AppTheme.dynamicSurface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.panel)),
+          border: Border(top: BorderSide(color: AppTheme.dynamicHairline)),
         ),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text("Toàn bộ Ảnh & Video đã gửi", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text("Ảnh và video đã gửi", style: TextStyle(color: AppTheme.dynamicTextPrimary, fontSize: 15, fontWeight: FontWeight.w600)),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white70),
+                    icon: Icon(Icons.close_rounded, color: AppTheme.dynamicTextSecondary),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
                 ],

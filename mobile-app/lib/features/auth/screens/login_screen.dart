@@ -130,213 +130,190 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppTheme.dynamicBackground;
+    final surface = AppTheme.dynamicSurface;
+    final raised = AppTheme.dynamicSurfaceRaised;
+    final hairline = AppTheme.dynamicHairline;
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textSecondary = AppTheme.dynamicTextSecondary;
+    final textMuted = AppTheme.dynamicTextMuted;
+    final accent = AppTheme.dynamicAccent;
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: AppSpacing.xl),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 440),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Emblem & Branding
                   Center(
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color:
-                                    AppTheme.cyanAccent.withValues(alpha: 0.25),
-                                blurRadius: 30,
-                                spreadRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 68,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppTheme.cyanAccent.withValues(alpha: 0.5),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/logo-app.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset(
-                                'assets/logo-app.webp',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  decoration: const BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        AppTheme.cyanAccent,
-                                        AppTheme.blueAccent
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                  ),
-                                  child: const Icon(
-                                    Icons.door_sliding_rounded,
-                                    color: Colors.black,
-                                    size: 36,
-                                  ),
-                                ),
-                              ),
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: hairline, width: 1.0),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/logo-app.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Image.asset(
+                            'assets/logo-app.webp',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(
+                              Icons.door_sliding_rounded,
+                              color: textPrimary,
+                              size: 32,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: AppSpacing.lg),
 
-                  const Text(
-                    "AUSTEC SMART HOME",
+                  Text(
+                    "Austec Smart Home",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2.0,
+                      color: textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    "Hệ sinh thái điều khiển cửa cuốn & Thiết bị IoT",
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    "Điều khiển cửa cuốn, năng lượng và thiết bị IoT",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: AppTheme.textSecondary,
-                      fontSize: 12,
+                      color: textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpacing.xxl),
 
-                  // Error banner
                   if (_errorMessage != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                          horizontal: AppSpacing.md, vertical: AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppTheme.roseDanger.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppTheme.roseDanger.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
                         border: Border.all(
-                            color: AppTheme.roseDanger.withValues(alpha: 0.4)),
+                            color: AppTheme.roseDanger.withValues(alpha: 0.35)),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.error_outline_rounded,
                               color: AppTheme.roseDanger, size: 18),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 12),
+                              style: TextStyle(color: textPrimary, fontSize: 13),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
 
-                  // Glassmorphic Form Card
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceGlass,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.cardBorder),
-                    ),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    decoration: AppTheme.glassBox(radius: AppRadius.card),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          "ĐĂNG NHẬP",
+                        Text(
+                          "Đăng nhập",
                           style: TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
+                            color: textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
 
-                        // Identifier field
                         TextField(
                           controller: _identifierController,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13),
+                          style: TextStyle(color: textPrimary, fontSize: 14),
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            labelText: "Email hoặc Số điện thoại",
-                            labelStyle: const TextStyle(
-                                color: AppTheme.textMuted, fontSize: 12),
-                            prefixIcon: const Icon(
+                            labelText: "Email hoặc số điện thoại",
+                            labelStyle: TextStyle(color: textMuted, fontSize: 13),
+                            prefixIcon: Icon(
                                 Icons.alternate_email_rounded,
-                                color: AppTheme.cyanAccent,
+                                color: textMuted,
                                 size: 18),
                             filled: true,
-                            fillColor: AppTheme.surface,
+                            fillColor: raised,
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none),
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: accent, width: 1.5),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
+                                horizontal: AppSpacing.md, vertical: AppSpacing.md),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Password field
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13),
+                          style: TextStyle(color: textPrimary, fontSize: 14),
                           decoration: InputDecoration(
-                            labelText: "Mật khẩu bảo mật",
-                            labelStyle: const TextStyle(
-                                color: AppTheme.textMuted, fontSize: 12),
-                            prefixIcon: const Icon(Icons.lock_outline_rounded,
-                                color: AppTheme.cyanAccent, size: 18),
+                            labelText: "Mật khẩu",
+                            labelStyle: TextStyle(color: textMuted, fontSize: 13),
+                            prefixIcon: Icon(Icons.lock_outline_rounded,
+                                color: textMuted, size: 18),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: AppTheme.textMuted,
+                                color: textMuted,
                                 size: 18,
                               ),
                               onPressed: () => setState(
                                   () => _obscurePassword = !_obscurePassword),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surface,
+                            fillColor: raised,
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide.none),
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: accent, width: 1.5),
+                            ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 12),
+                                horizontal: AppSpacing.md, vertical: AppSpacing.md),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Options row
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -349,17 +326,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                     value: _rememberMe,
                                     onChanged: (v) =>
                                         setState(() => _rememberMe = v ?? true),
-                                    activeColor: AppTheme.cyanAccent,
-                                    checkColor: Colors.black,
+                                    activeColor: accent,
+                                    checkColor: Colors.white,
                                     shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(4)),
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Text("Ghi nhớ",
+                                const SizedBox(width: AppSpacing.sm),
+                                Text("Ghi nhớ đăng nhập",
                                     style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 11)),
+                                        color: textSecondary,
+                                        fontSize: 12)),
                               ],
                             ),
                             TextButton(
@@ -367,20 +344,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                 showDialog(
                                   context: context,
                                   builder: (ctx) => AlertDialog(
-                                    backgroundColor: AppTheme.surface,
-                                    title: const Text("Khôi phục mật khẩu",
+                                    backgroundColor: surface,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppRadius.card),
+                                      side: BorderSide(color: hairline),
+                                    ),
+                                    title: Text("Khôi phục mật khẩu",
                                         style: TextStyle(
-                                            color: Colors.white, fontSize: 14)),
-                                    content: const Text(
-                                      "Vui lòng liên hệ Hotline CSKH 1900 8823 hoặc dùng mã OTP gửi về Số điện thoại đã kích hoạt để đặt lại mật khẩu.",
+                                            color: textPrimary,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600)),
+                                    content: Text(
+                                      "Liên hệ tổng đài CSKH 1900 8823 hoặc dùng mã OTP gửi về số điện thoại đã kích hoạt để đặt lại mật khẩu.",
                                       style: TextStyle(
-                                          color: AppTheme.textSecondary,
-                                          fontSize: 12),
+                                          color: textSecondary,
+                                          fontSize: 13,
+                                          height: 1.4),
                                     ),
                                     actions: [
                                       TextButton(
                                           onPressed: () => Navigator.pop(ctx),
-                                          child: const Text("Đã hiểu")),
+                                          child: const Text("Đóng")),
                                     ],
                                   ),
                                 );
@@ -388,81 +372,76 @@ class _LoginScreenState extends State<LoginScreen> {
                               style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero),
-                              child: const Text("Quên mật khẩu?",
+                              child: Text("Quên mật khẩu?",
                                   style: TextStyle(
-                                      color: AppTheme.cyanAccent,
-                                      fontSize: 11)),
+                                      color: accent,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500)),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: AppSpacing.xl),
 
-                        // Submit Button
                         SizedBox(
-                          height: 46,
+                          height: 48,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.brandBlue,
+                              backgroundColor: accent,
                               foregroundColor: Colors.white,
+                              elevation: 0,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              elevation: 2,
-                              shadowColor:
-                                  AppTheme.brandBlue.withValues(alpha: 0.35),
+                                  borderRadius: BorderRadius.circular(AppRadius.control)),
                             ),
                             onPressed: _isLoading ? null : _handleLogin,
                             child: _isLoading
                                 ? const SizedBox(
-                                    width: 22,
-                                    height: 22,
+                                    width: 20,
+                                    height: 20,
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.black))
+                                        strokeWidth: 2, color: Colors.white))
                                 : const Text(
-                                    "ĐĂNG NHẬP NGAY",
+                                    "Đăng nhập",
                                     style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.8),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600),
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Biometric button
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                                color:
-                                    AppTheme.cyanAccent.withValues(alpha: 0.5)),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                          ),
-                          onPressed: _isLoading ? null : _handleBiometricLogin,
-                          icon: const Icon(Icons.fingerprint_rounded,
-                              color: AppTheme.cyanAccent, size: 20),
-                          label: const Text(
-                            "Đăng nhập bằng FaceID / Vân tay",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600),
+                        SizedBox(
+                          height: 44,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: textPrimary,
+                              side: BorderSide(color: hairline),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(AppRadius.control)),
+                            ),
+                            onPressed: _isLoading ? null : _handleBiometricLogin,
+                            icon: Icon(Icons.fingerprint_rounded,
+                                color: textSecondary, size: 20),
+                            label: Text(
+                              "Đăng nhập bằng sinh trắc học",
+                              style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500),
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.xxl),
 
-                  // Register link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
-                        "Chưa có tài khoản Austec? ",
-                        style: TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 12),
+                      Text(
+                        "Chưa có tài khoản? ",
+                        style: TextStyle(color: textSecondary, fontSize: 13),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -471,14 +450,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 builder: (_) => const RegisterScreen()),
                           );
                         },
-                        child: const Text(
-                          "Đăng ký ngay",
+                        child: Text(
+                          "Đăng ký",
                           style: TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppTheme.cyanAccent,
+                            color: accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),

@@ -107,7 +107,7 @@ class _FileAndDeviceSheetState extends State<FileAndDeviceSheet> {
         final bytes = await file.readAsBytes();
         setState(() {
           _isUploading = true;
-          _uploadStatus = "Đang tải tệp lên Cloudflare R2...";
+          _uploadStatus = "Đang tải tệp lên...";
         });
 
         final att = await _chatService.uploadAttachment(bytes, file.name);

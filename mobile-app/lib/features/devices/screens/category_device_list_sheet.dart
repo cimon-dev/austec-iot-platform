@@ -169,10 +169,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
     );
     if (mounted) {
       setState(() => _isProcessing = false);
-      final isBle = !device.isOnline;
       if (res.success) {
         AppToast.showSuccess(
-          "${res.message}${isBle ? ' (Lệnh phát qua BLE tầm gần)' : ''} • ${res.latencyMs}ms",
+          res.message,
         );
       } else {
         AppToast.showError(

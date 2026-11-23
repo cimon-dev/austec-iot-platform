@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (res.success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(res.message ?? "Đăng ký tài khoản thành công!"),
+          content: Text(res.message ?? "Đăng ký tài khoản thành công"),
           backgroundColor: AppTheme.emeraldSuccess,
           behavior: SnackBarBehavior.floating,
         ),
@@ -112,130 +112,130 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppTheme.dynamicBackground;
+    final surface = AppTheme.dynamicSurface;
+    final raised = AppTheme.dynamicSurfaceRaised;
+    final hairline = AppTheme.dynamicHairline;
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textSecondary = AppTheme.dynamicTextSecondary;
+    final textMuted = AppTheme.dynamicTextMuted;
+    final accent = AppTheme.dynamicAccent;
+
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 18),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
-          "ĐĂNG KÝ TÀI KHOẢN MỚI",
-          style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+        title: Text(
+          "Đăng ký tài khoản",
+          style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl, vertical: AppSpacing.md),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    "Tạo Tài Khoản Khách Hàng",
+                  Text(
+                    "Tạo tài khoản khách hàng",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: textPrimary,
                       fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    "Kích hoạt tài khoản để kết nối và điều khiển cửa cuốn từ xa",
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    "Kích hoạt tài khoản để kết nối và điều khiển thiết bị từ xa",
+                    style: TextStyle(color: textSecondary, fontSize: 13),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xl),
 
-                  // Error Banner
                   if (_errorMessage != null) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: AppTheme.roseDanger.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.4)),
+                        color: AppTheme.roseDanger.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.control),
+                        border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.35)),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.error_outline_rounded, color: AppTheme.roseDanger, size: 18),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
                               _errorMessage!,
-                              style: const TextStyle(color: Colors.white, fontSize: 11),
+                              style: TextStyle(color: textPrimary, fontSize: 13),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
 
-                  // Form Container
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceGlass,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.cardBorder),
-                    ),
+                    padding: const EdgeInsets.all(AppSpacing.xl),
+                    decoration: AppTheme.glassBox(radius: AppRadius.card),
                     child: Column(
                       children: [
-                        // Họ và tên
                         _buildInputField(
                           controller: _fullNameController,
                           label: "Họ và tên chủ hộ *",
                           hint: "Nguyễn Văn An",
                           icon: Icons.person_outline_rounded,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Số điện thoại
                         _buildInputField(
                           controller: _phoneController,
-                          label: "Số điện thoại liên hệ *",
+                          label: "Số điện thoại *",
                           hint: "0912 345 678",
                           icon: Icons.phone_android_rounded,
                           keyboardType: TextInputType.phone,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Email
                         _buildInputField(
                           controller: _emailController,
-                          label: "Địa chỉ Email *",
+                          label: "Email *",
                           hint: "nguyenvana@gmail.com",
                           icon: Icons.mail_outline_rounded,
                           keyboardType: TextInputType.emailAddress,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Tỉnh thành dropdown
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
+                            Text(
                               "Tỉnh / Thành phố lắp đặt",
-                              style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
+                              style: TextStyle(color: textMuted, fontSize: 12),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: AppSpacing.xs),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: AppTheme.surface,
-                                borderRadius: BorderRadius.circular(12),
+                                color: raised,
+                                borderRadius: BorderRadius.circular(AppRadius.control),
+                                border: Border.all(color: hairline),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
                                   value: _selectedProvince,
                                   isExpanded: true,
-                                  dropdownColor: AppTheme.surfaceDark,
-                                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                                  dropdownColor: surface,
+                                  style: TextStyle(color: textPrimary, fontSize: 14),
                                   items: _provinces.map((p) {
                                     return DropdownMenuItem<String>(
                                       value: p,
@@ -250,68 +250,86 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Địa chỉ
                         _buildInputField(
                           controller: _addressController,
-                          label: "Địa chỉ lắp đặt / Nhà riêng",
+                          label: "Địa chỉ lắp đặt",
                           hint: "Số 45 Lê Duẩn, P. Bến Nghé",
                           icon: Icons.location_on_outlined,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Mật khẩu
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          style: TextStyle(color: textPrimary, fontSize: 14),
                           decoration: InputDecoration(
-                            labelText: "Mật khẩu (Tối thiểu 6 ký tự) *",
-                            labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.cyanAccent, size: 18),
+                            labelText: "Mật khẩu (tối thiểu 6 ký tự) *",
+                            labelStyle: TextStyle(color: textMuted, fontSize: 13),
+                            prefixIcon: Icon(Icons.lock_outline_rounded, color: textMuted, size: 18),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: AppTheme.textMuted,
-                                size: 16,
+                                color: textMuted,
+                                size: 18,
                               ),
                               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            fillColor: raised,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: accent, width: 1.5),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: AppSpacing.md),
 
-                        // Xác nhận mật khẩu
                         TextField(
                           controller: _confirmPasswordController,
                           obscureText: _obscureConfirmPassword,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                          style: TextStyle(color: textPrimary, fontSize: 14),
                           decoration: InputDecoration(
-                            labelText: "Xác nhận lại mật khẩu *",
-                            labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                            prefixIcon: const Icon(Icons.lock_reset_rounded, color: AppTheme.cyanAccent, size: 18),
+                            labelText: "Xác nhận mật khẩu *",
+                            labelStyle: TextStyle(color: textMuted, fontSize: 13),
+                            prefixIcon: Icon(Icons.lock_reset_rounded, color: textMuted, size: 18),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: AppTheme.textMuted,
-                                size: 16,
+                                color: textMuted,
+                                size: 18,
                               ),
                               onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
                             ),
                             filled: true,
-                            fillColor: AppTheme.surface,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            fillColor: raised,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: hairline),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppRadius.control),
+                              borderSide: BorderSide(color: accent, width: 1.5),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
 
-                        // Điều khoản
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -321,70 +339,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: Checkbox(
                                 value: _agreeTerms,
                                 onChanged: (v) => setState(() => _agreeTerms = v ?? true),
-                                activeColor: AppTheme.cyanAccent,
-                                checkColor: Colors.black,
+                                activeColor: accent,
+                                checkColor: Colors.white,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Expanded(
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
                               child: Text(
-                                "Tôi cam kết tuân thủ Điều khoản sử dụng và Chính sách bảo mật dữ liệu IoT Austec",
-                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+                                "Tôi đồng ý với Điều khoản sử dụng và Chính sách bảo mật dữ liệu Austec",
+                                style: TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: AppSpacing.xl),
 
-                        // Nút Đăng ký
                         SizedBox(
                           width: double.infinity,
-                          height: 46,
+                          height: 48,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.cyanAccent,
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 4,
+                              backgroundColor: accent,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
                             ),
                             onPressed: _isLoading ? null : _handleRegister,
                             child: _isLoading
-                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                                 : const Text(
-                                    "HOÀN TẤT ĐĂNG KÝ NGAY",
-                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                                    "Hoàn tất đăng ký",
+                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                   ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: AppSpacing.xl),
 
-                  // Back to login
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text(
+                      Text(
                         "Đã có tài khoản? ",
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                        style: TextStyle(color: textSecondary, fontSize: 13),
                       ),
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const Text(
+                        child: Text(
                           "Đăng nhập",
                           style: TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppTheme.cyanAccent,
+                            color: accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: AppSpacing.xl),
                 ],
               ),
             ),
@@ -401,20 +416,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
   }) {
+    final raised = AppTheme.dynamicSurfaceRaised;
+    final hairline = AppTheme.dynamicHairline;
+    final textPrimary = AppTheme.dynamicTextPrimary;
+    final textMuted = AppTheme.dynamicTextMuted;
+    final accent = AppTheme.dynamicAccent;
+
     return TextField(
       controller: controller,
-      style: const TextStyle(color: Colors.white, fontSize: 12),
+      style: TextStyle(color: textPrimary, fontSize: 14),
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
-        hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-        labelStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 11),
-        prefixIcon: Icon(icon, color: AppTheme.cyanAccent, size: 18),
+        hintStyle: TextStyle(color: textMuted, fontSize: 13),
+        labelStyle: TextStyle(color: textMuted, fontSize: 13),
+        prefixIcon: Icon(icon, color: textMuted, size: 18),
         filled: true,
-        fillColor: AppTheme.surface,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        fillColor: raised,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          borderSide: BorderSide(color: hairline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          borderSide: BorderSide(color: hairline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          borderSide: BorderSide(color: accent, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
       ),
     );
   }

@@ -320,9 +320,8 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Top Bar
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -330,22 +329,22 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "GIAN HÀNG THIẾT BỊ",
+                        "Gian hàng thiết bị",
                         style: TextStyle(
                           color: textCol,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.8,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        "Thiết bị chính hãng Austec • Bảo hành điện tử",
-                        style: TextStyle(color: subTextCol, fontSize: 11),
+                        "Thiết bị chính hãng Austec · Bảo hành điện tử",
+                        style: TextStyle(color: subTextCol, fontSize: 12),
                       ),
                     ],
                   ),
                   IconButton(
-                    icon: Icon(Icons.refresh_rounded, color: textCol, size: 20),
+                    icon: Icon(Icons.refresh_rounded, color: subTextCol, size: 20),
                     onPressed: _fetchProductsFromBackend,
                     tooltip: "Làm mới",
                   ),
@@ -353,22 +352,21 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
               ),
             ),
 
-            // Search Bar Input
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
               child: Container(
                 decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cardBorder),
+                  color: AppTheme.dynamicSurfaceRaised,
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  border: Border.all(color: AppTheme.dynamicHairline),
                 ),
                 child: TextField(
                   controller: _searchController,
-                  style: TextStyle(color: textCol, fontSize: 13),
+                  style: TextStyle(color: textCol, fontSize: 14),
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: "Tìm kiếm sản phẩm, thiết bị...",
-                    hintStyle: TextStyle(color: subTextCol, fontSize: 12.5),
+                    hintText: "Tìm sản phẩm, thiết bị",
+                    hintStyle: TextStyle(color: subTextCol, fontSize: 13),
                     prefixIcon: Icon(Icons.search_rounded, color: subTextCol, size: 18),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
@@ -381,7 +379,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
                         : null,
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                   ),
                 ),
               ),

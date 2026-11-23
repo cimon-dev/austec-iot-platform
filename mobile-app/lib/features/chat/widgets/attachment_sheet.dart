@@ -108,7 +108,7 @@ class _AttachmentSelectionSheetState extends State<AttachmentSelectionSheet> {
   }) async {
     setState(() {
       _isUploading = true;
-      _uploadStatusText = "Đang tải $filename lên Cloudflare R2...";
+      _uploadStatusText = "Đang tải tệp lên...";
       _uploadError = null;
     });
 
@@ -122,7 +122,7 @@ class _AttachmentSelectionSheetState extends State<AttachmentSelectionSheet> {
       } else {
         setState(() {
           _isUploading = false;
-          _uploadError = "Không thể tải lên Cloudflare R2. Vui lòng kiểm tra kết nối mạng!";
+          _uploadError = "Không thể tải tệp lên. Vui lòng kiểm tra kết nối.";
         });
       }
     } catch (e) {
