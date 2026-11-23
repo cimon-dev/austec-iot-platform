@@ -27,6 +27,7 @@ export class NotificationsController {
         userId: req.query.userId ? String(req.query.userId) : undefined,
         model: req.query.model ? String(req.query.model) : undefined,
         role: req.query.role ? String(req.query.role) : 'CUSTOMER',
+        campaignType: req.query.campaignType ? String(req.query.campaignType) : undefined,
       };
       const notifications = await this.service.getPublicNotifications(filter);
       res.json({ success: true, notifications });

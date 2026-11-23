@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
@@ -241,6 +242,8 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
         return Icons.warning_amber_rounded;
       case 'PROMO':
         return Icons.card_giftcard_rounded;
+      case 'AD_BANNER':
+        return Icons.campaign_rounded;
       default:
         return Icons.notifications_active_rounded;
     }
@@ -256,9 +259,245 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
         return Colors.redAccent;
       case 'PROMO':
         return AppTheme.emeraldSuccess;
+      case 'AD_BANNER':
+        return AppTheme.brandBlue;
       default:
         return AppTheme.brandBlue;
     }
+  }
+
+  String _resolveNotiMediaUrl(dynamic raw) {
+    final s = raw?.toString().trim() ?? '';
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://')) return s;
+    return '${ApiConfig.baseUrl}${s.startsWith('/') ? s : '/$s'}';
+  }
+
+  String _getNotiBadgeLabel(Map<String, dynamic> noti) {
+    final meta = noti['metadata'];
+    if (meta is Map && (meta['badgeText']?.toString().trim().isNotEmpty ?? false)) {
+      return meta['badgeText'].toString().trim();
+    }
+    switch (noti['campaignType']?.toString()) {
+      case 'NEW_DEVICE':
+        return 'Thiết bị mới';
+      case 'PROMO_BANNER':
+        return 'Quảng cáo';
+      case 'CAMPAIGN':
+        return 'Chiến dịch';
+      default:
+        return '';
+    }
+  }
+
+  Future<void> _handleNotiAction(Map<String, dynamic> noti) async {
+    final actionType = noti['actionType']?.toString() ?? 'NONE';
+    final actionValue = noti['actionValue']?.toString().trim() ?? '';
+    final title = noti['title']?.toString() ?? 'chương trình ưu đãi';
+
+    if (actionType == 'OPEN_SHOP') {
+      if (mounted) {
+        setState(() => _selectedBottomNavIndex = 1);
+      }
+      return;
+    }
+
+    if (actionType == 'OPEN_CHAT') {
+      if (mounted) {
+        setState(() {
+          _cskhPrefilledDevice = null;
+          _cskhPrefilledPrompt = actionValue.isNotEmpty
+              ? actionValue
+              : 'Xin chào CSKH Austec! Tôi cần tư vấn thêm về: $title.';
+          _selectedBottomNavIndex = 2;
+        });
+      }
+      return;
+    }
+
+    if (actionType == 'OPEN_URL' && actionValue.isNotEmpty) {
+      final uri = Uri.tryParse(actionValue);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        AppToast.showWarning('Không thể mở liên kết này.');
+      }
+    }
+  }
+
+  void _openNotificationDetail(Map<String, dynamic> noti) {
+    final isDark = AppTheme.isDarkMode;
+    final title = noti['title']?.toString() ?? 'Thông báo hệ thống';
+    final message = noti['message']?.toString() ?? '';
+    final time = noti['sentAt']?.toString() ?? noti['createdAt']?.toString() ?? '';
+    final bannerUrl = _resolveNotiMediaUrl(noti['bannerUrl']);
+    final imageUrl = _resolveNotiMediaUrl(noti['imageUrl']);
+    final mediaUrl = bannerUrl.isNotEmpty ? bannerUrl : imageUrl;
+    final badgeLabel = _getNotiBadgeLabel(noti);
+    final actionType = noti['actionType']?.toString() ?? 'NONE';
+    final ctaLabel = (noti['ctaLabel']?.toString().trim().isNotEmpty ?? false)
+        ? noti['ctaLabel'].toString().trim()
+        : (actionType == 'OPEN_SHOP'
+            ? 'Xem gian hàng'
+            : actionType == 'OPEN_CHAT'
+                ? 'Tư vấn ngay'
+                : 'Tìm hiểu thêm');
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => Dialog(
+        backgroundColor: isDark ? AppTheme.surface : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (mediaUrl.isNotEmpty)
+                Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image.network(
+                        mediaUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppTheme.dynamicSurfaceRaised,
+                          child: const Center(
+                            child: Icon(Icons.broken_image_outlined, color: AppTheme.textMuted, size: 36),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (badgeLabel.isNotEmpty)
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.brandBlue,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            badgeLabel,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: InkWell(
+                        onTap: () => Navigator.of(dlgCtx).pop(),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.55),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (mediaUrl.isEmpty)
+                          InkWell(
+                            onTap: () => Navigator.of(dlgCtx).pop(),
+                            child: Icon(Icons.close_rounded,
+                                color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary, size: 20),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      time,
+                      style: TextStyle(
+                        color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                    if (message.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        message,
+                        style: TextStyle(
+                          color: isDark ? AppTheme.textSecondary : const Color(0xFF334155),
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(dlgCtx).pop(),
+                          child: Text(
+                            'Đóng',
+                            style: TextStyle(color: isDark ? AppTheme.textMuted : AppTheme.lightTextSecondary),
+                          ),
+                        ),
+                        if (actionType != 'NONE') ...[
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.brandBlue,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () {
+                              Navigator.of(dlgCtx).pop();
+                              _handleNotiAction(noti);
+                            },
+                            icon: Icon(
+                              actionType == 'OPEN_SHOP'
+                                  ? Icons.storefront_rounded
+                                  : actionType == 'OPEN_CHAT'
+                                      ? Icons.support_agent_rounded
+                                      : Icons.open_in_new_rounded,
+                              size: 15,
+                            ),
+                            label: Text(ctaLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openNotificationCenter() {
@@ -271,17 +510,17 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
       isScrollControlled: true,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) => Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.75,
+            maxHeight: MediaQuery.of(context).size.height * 0.80,
           ),
           decoration: BoxDecoration(
             color: isDark ? AppTheme.surface : AppTheme.lightSurface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
             border: Border(
                 top: BorderSide(
                     color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder,
-                    width: 1.5)),
+                    width: 1.2)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -289,7 +528,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
             children: [
               Center(
                 child: Container(
-                  width: 40,
+                  width: 38,
                   height: 4,
                   decoration: BoxDecoration(
                     color: isDark ? AppTheme.textMuted : Colors.grey[400],
@@ -297,14 +536,14 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.notifications_active,
-                          color: AppTheme.cyanAccent, size: 20),
+                      const Icon(Icons.notifications_active_rounded,
+                          color: AppTheme.brandBlue, size: 20),
                       const SizedBox(width: 8),
                       Text(
                         AppTheme.t("notifications"),
@@ -322,23 +561,23 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppTheme.cyanAccent.withValues(alpha: 0.15),
+                        color: AppTheme.brandBlue.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         "${_realNotifications.length} thông báo",
-                        style: const TextStyle(
-                          color: AppTheme.cyanAccent,
+                        style: TextStyle(
+                          color: isDark ? const Color(0xFF60A5FA) : AppTheme.brandBlue,
                           fontSize: 11,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
 
-              // Danh sách thông báo thực từ API
+              // Danh sách thông báo thực từ API (hỗ trợ hình ảnh & banner quảng cáo)
               if (_realNotifications.isEmpty)
                 Center(
                   child: Padding(
@@ -348,7 +587,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                       children: [
                         Icon(
                           Icons.notifications_none_rounded,
-                          size: 42,
+                          size: 40,
                           color: isDark ? AppTheme.textMuted : Colors.grey[400],
                         ),
                         const SizedBox(height: 10),
@@ -362,17 +601,6 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Bạn đã cập nhật tất cả thông tin mới nhất từ hệ thống.",
-                          style: TextStyle(
-                            color: isDark
-                                ? AppTheme.textMuted
-                                : AppTheme.lightTextSecondary,
-                            fontSize: 11,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   ),
@@ -383,7 +611,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                     shrinkWrap: true,
                     itemCount: _realNotifications.length,
                     itemBuilder: (context, index) {
-                      final noti = _realNotifications[index];
+                      final noti = Map<String, dynamic>.from(_realNotifications[index] as Map);
                       final title =
                           noti['title']?.toString() ?? 'Thông báo hệ thống';
                       final message = noti['message']?.toString() ?? '';
@@ -393,23 +621,38 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                       final category = noti['category']?.toString() ?? 'SYSTEM';
                       final isRead = noti['isRead'] == true;
                       final id = noti['id'];
+                      final bannerUrl = _resolveNotiMediaUrl(noti['bannerUrl']);
+                      final imageUrl = _resolveNotiMediaUrl(noti['imageUrl']);
+                      final badgeLabel = _getNotiBadgeLabel(noti);
+                      final actionType = noti['actionType']?.toString() ?? 'NONE';
+                      final ctaLabel = (noti['ctaLabel']?.toString().trim().isNotEmpty ?? false)
+                          ? noti['ctaLabel'].toString().trim()
+                          : (actionType == 'OPEN_SHOP'
+                              ? 'Xem gian hàng'
+                              : actionType == 'OPEN_CHAT'
+                                  ? 'Tư vấn ngay'
+                                  : 'Xem thêm');
+
+                      void markReadAndOpen() {
+                        if (!isRead && id != null) {
+                          ApiClient().put('/api/notifications/$id/read');
+                          setSheetState(() {
+                            _realNotifications[index]['isRead'] = true;
+                          });
+                          setState(() {
+                            _realNotifications[index]['isRead'] = true;
+                          });
+                        }
+                        Navigator.of(ctx).pop();
+                        _openNotificationDetail(noti);
+                      }
 
                       return InkWell(
-                        onTap: () {
-                          if (!isRead && id != null) {
-                            ApiClient().put('/api/notifications/$id/read');
-                            setSheetState(() {
-                              noti['isRead'] = true;
-                            });
-                            setState(() {
-                              noti['isRead'] = true;
-                            });
-                          }
-                        },
+                        onTap: markReadAndOpen,
                         borderRadius: BorderRadius.circular(12),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(12),
+                          clipBehavior: Clip.antiAlias,
                           decoration: BoxDecoration(
                             color: isDark
                                 ? AppTheme.background
@@ -420,84 +663,197 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
                                   ? (isDark
                                       ? AppTheme.cardBorder
                                       : AppTheme.lightBorder)
-                                  : AppTheme.cyanAccent.withValues(alpha: 0.4),
-                              width: isRead ? 1.0 : 1.5,
+                                  : AppTheme.brandBlue.withValues(alpha: 0.45),
+                              width: isRead ? 1.0 : 1.3,
                             ),
                           ),
-                          child: Row(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: _getNotiColor(category)
-                                      .withValues(alpha: 0.12),
-                                  shape: BoxShape.circle,
+                              // Banner quảng cáo khổ ngang nếu có
+                              if (bannerUrl.isNotEmpty)
+                                Stack(
+                                  children: [
+                                    AspectRatio(
+                                      aspectRatio: 16 / 7.5,
+                                      child: Image.network(
+                                        bannerUrl,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                                      ),
+                                    ),
+                                    if (badgeLabel.isNotEmpty)
+                                      Positioned(
+                                        top: 8,
+                                        left: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.brandBlue,
+                                            borderRadius: BorderRadius.circular(5),
+                                          ),
+                                          child: Text(
+                                            badgeLabel,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                                child: Icon(
-                                  _getNotiIcon(category),
-                                  color: _getNotiColor(category),
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
+
+                              Padding(
+                                padding: const EdgeInsets.all(11),
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            title,
-                                            style: TextStyle(
-                                              color: isDark
-                                                  ? Colors.white
-                                                  : AppTheme.lightTextPrimary,
-                                              fontSize: 12,
-                                              fontWeight: isRead
-                                                  ? FontWeight.w500
-                                                  : FontWeight.bold,
-                                            ),
+                                    if (bannerUrl.isEmpty && imageUrl.isNotEmpty) ...[
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          imageUrl,
+                                          width: 52,
+                                          height: 52,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 52,
+                                            height: 52,
+                                            color: AppTheme.brandBlue.withValues(alpha: 0.1),
+                                            child: Icon(_getNotiIcon(category), color: _getNotiColor(category), size: 22),
                                           ),
                                         ),
-                                        if (!isRead)
-                                          Container(
-                                            width: 6,
-                                            height: 6,
-                                            margin:
-                                                const EdgeInsets.only(left: 6),
-                                            decoration: const BoxDecoration(
-                                              color: AppTheme.cyanAccent,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                    if (message.isNotEmpty &&
-                                        message != title) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        message,
-                                        style: TextStyle(
-                                          color: isDark
-                                              ? AppTheme.textMuted
-                                              : AppTheme.lightTextSecondary,
-                                          fontSize: 11,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
+                                      const SizedBox(width: 10),
+                                    ] else if (bannerUrl.isEmpty) ...[
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: _getNotiColor(category)
+                                              .withValues(alpha: 0.12),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          _getNotiIcon(category),
+                                          color: _getNotiColor(category),
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
                                     ],
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      time,
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? AppTheme.textMuted
-                                                .withValues(alpha: 0.7)
-                                            : Colors.grey[500],
-                                        fontSize: 10,
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              if (bannerUrl.isEmpty && badgeLabel.isNotEmpty) ...[
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                                  margin: const EdgeInsets.only(right: 6),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.brandBlue.withValues(alpha: 0.14),
+                                                    borderRadius: BorderRadius.circular(4),
+                                                  ),
+                                                  child: Text(
+                                                    badgeLabel,
+                                                    style: TextStyle(
+                                                      color: isDark ? const Color(0xFF60A5FA) : AppTheme.brandBlue,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                              Expanded(
+                                                child: Text(
+                                                  title,
+                                                  style: TextStyle(
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : AppTheme.lightTextPrimary,
+                                                    fontSize: 12.5,
+                                                    fontWeight: isRead
+                                                        ? FontWeight.w600
+                                                        : FontWeight.w700,
+                                                  ),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (!isRead)
+                                                Container(
+                                                  width: 7,
+                                                  height: 7,
+                                                  margin: const EdgeInsets.only(left: 6),
+                                                  decoration: const BoxDecoration(
+                                                    color: AppTheme.brandBlue,
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          if (message.isNotEmpty && message != title) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              message,
+                                              style: TextStyle(
+                                                color: isDark
+                                                    ? AppTheme.textMuted
+                                                    : AppTheme.lightTextSecondary,
+                                                fontSize: 11.5,
+                                                height: 1.3,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                time,
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? AppTheme.textMuted.withValues(alpha: 0.7)
+                                                      : Colors.grey[500],
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                              if (actionType != 'NONE')
+                                                InkWell(
+                                                  onTap: () {
+                                                    if (!isRead && id != null) {
+                                                      ApiClient().put('/api/notifications/$id/read');
+                                                      _realNotifications[index]['isRead'] = true;
+                                                    }
+                                                    Navigator.of(ctx).pop();
+                                                    _handleNotiAction(noti);
+                                                  },
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: AppTheme.brandBlue,
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: Text(
+                                                      ctaLabel,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10.5,
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],

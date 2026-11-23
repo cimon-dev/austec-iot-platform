@@ -8,7 +8,12 @@ export class NotificationsService {
     return this.repo.getAll();
   }
 
-  public async getPublicNotifications(filter?: { role?: string; userId?: string; model?: string }): Promise<NotificationEntity[]> {
+  public async getPublicNotifications(filter?: {
+    role?: string;
+    userId?: string;
+    model?: string;
+    campaignType?: string;
+  }): Promise<NotificationEntity[]> {
     return this.repo.getPublicNotifications(filter);
   }
 

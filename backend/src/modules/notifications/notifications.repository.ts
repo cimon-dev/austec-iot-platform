@@ -1,5 +1,10 @@
 import { PostgresClient } from '../../core/database/postgres.client.js';
-import { CreateNotificationDto } from './notifications.dto.js';
+import {
+  CreateNotificationDto,
+  NotificationActionType,
+  NotificationCampaignType,
+  NotificationMetadata,
+} from './notifications.dto.js';
 
 export interface NotificationEntity {
   id: number;
@@ -19,6 +24,16 @@ export interface NotificationEntity {
   scheduledAt?: string | null;
   sentAt: string;
   createdAt: string;
+  // Media & Advertisement / Campaign fields
+  imageUrl?: string | null;
+  bannerUrl?: string | null;
+  campaignType: NotificationCampaignType | string;
+  actionType: NotificationActionType | string;
+  actionValue?: string | null;
+  ctaLabel?: string | null;
+  priority: number;
+  expiresAt?: string | null;
+  metadata: NotificationMetadata;
 }
 
 export class NotificationsRepository {
@@ -54,11 +69,63 @@ export class NotificationsRepository {
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_rate FLOAT DEFAULT 0;
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS scheduled_at VARCHAR(50);
         ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_model VARCHAR(100);
+        -- Media, Banner & Ad Campaign extensions
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS image_url TEXT;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS banner_url TEXT;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS campaign_type VARCHAR(50) DEFAULT 'STANDARD';
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_type VARCHAR(50) DEFAULT 'NONE';
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_value TEXT;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS cta_label VARCHAR(100);
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS priority INT DEFAULT 0;
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS expires_at VARCHAR(50);
+        ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}'::jsonb;
       `);
       this.schemaChecked = true;
     } catch (e: any) {
       console.warn('[NotificationsRepository] ensureSchema warning:', e.message);
     }
+  }
+
+  private mapRow(row: any): NotificationEntity {
+    let parsedMetadata: NotificationMetadata = {};
+    if (row.metadata && typeof row.metadata === 'object') {
+      parsedMetadata = row.metadata;
+    } else if (typeof row.metadata === 'string' && row.metadata.trim()) {
+      try {
+        parsedMetadata = JSON.parse(row.metadata);
+      } catch {
+        parsedMetadata = {};
+      }
+    }
+
+    return {
+      id: row.id,
+      title: row.title,
+      message: row.message || '',
+      category: row.category || 'SYSTEM',
+      channel: row.channel || 'APP_PUSH',
+      target: row.target || row.target_role || 'Tất cả khách hàng (Toàn hệ thống)',
+      targetRole: row.target_role || 'ALL',
+      targetUserId: row.target_user_id || null,
+      targetModel: row.target_model || null,
+      status: row.status || 'SENT',
+      type: row.type || 'INFO',
+      isRead: Boolean(row.is_read),
+      readRate: row.read_rate !== undefined && row.read_rate !== null ? Number(row.read_rate) : 0,
+      deliveredCount: row.delivered_count !== undefined && row.delivered_count !== null ? Number(row.delivered_count) : 0,
+      scheduledAt: row.scheduled_at || null,
+      sentAt: row.created_at || new Date().toISOString(),
+      createdAt: row.created_at || new Date().toISOString(),
+      imageUrl: row.image_url || null,
+      bannerUrl: row.banner_url || null,
+      campaignType: row.campaign_type || 'STANDARD',
+      actionType: row.action_type || 'NONE',
+      actionValue: row.action_value || null,
+      ctaLabel: row.cta_label || null,
+      priority: row.priority !== undefined && row.priority !== null ? Number(row.priority) : 0,
+      expiresAt: row.expires_at || null,
+      metadata: parsedMetadata,
+    };
   }
 
   public async syncScheduledNotifications(): Promise<void> {
@@ -68,7 +135,8 @@ export class NotificationsRepository {
       const nowIso = now.toISOString();
       const nowStr = nowIso.replace('T', ' ').slice(0, 19);
       // Auto-transition SCHEDULED notifications whose scheduled_at <= now to SENT
-      await this.client.query(`
+      await this.client.query(
+        `
         UPDATE notifications
         SET status = 'SENT',
             created_at = COALESCE(scheduled_at, created_at)
@@ -77,7 +145,9 @@ export class NotificationsRepository {
             (scheduled_at IS NOT NULL AND (scheduled_at <= $1 OR scheduled_at <= $2))
             OR (scheduled_at IS NULL AND (created_at <= $1 OR created_at <= $2))
           )
-      `, [nowIso, nowStr]);
+      `,
+        [nowIso, nowStr]
+      );
     } catch (e: any) {
       console.warn('[NotificationsRepository] syncScheduledNotifications warning:', e.message);
     }
@@ -88,39 +158,28 @@ export class NotificationsRepository {
     await this.syncScheduledNotifications();
     try {
       const res = await this.client.query(
-        'SELECT * FROM notifications ORDER BY id DESC'
+        'SELECT * FROM notifications ORDER BY priority DESC, id DESC'
       );
-      return res.rows.map(row => ({
-        id: row.id,
-        title: row.title,
-        message: row.message || '',
-        category: row.category || 'SYSTEM',
-        channel: row.channel || 'APP_PUSH',
-        target: row.target || row.target_role || 'Tất cả khách hàng (Toàn hệ thống)',
-        targetRole: row.target_role || 'ALL',
-        targetUserId: row.target_user_id || null,
-        targetModel: row.target_model || null,
-        status: row.status || 'SENT',
-        type: row.type || 'INFO',
-        isRead: Boolean(row.is_read),
-        readRate: row.read_rate !== undefined && row.read_rate !== null ? Number(row.read_rate) : 0,
-        deliveredCount: row.delivered_count !== undefined && row.delivered_count !== null ? Number(row.delivered_count) : 0,
-        scheduledAt: row.scheduled_at || null,
-        sentAt: row.created_at || new Date().toISOString(),
-        createdAt: row.created_at || new Date().toISOString(),
-      }));
+      return res.rows.map(row => this.mapRow(row));
     } catch (e: any) {
       console.error('[NotificationsRepository] getAll error:', e.message);
       return [];
     }
   }
 
-  public async getPublicNotifications(filter?: { role?: string; userId?: string; model?: string }): Promise<NotificationEntity[]> {
+  public async getPublicNotifications(filter?: {
+    role?: string;
+    userId?: string;
+    model?: string;
+    campaignType?: string;
+  }): Promise<NotificationEntity[]> {
     await this.ensureSchema();
     await this.syncScheduledNotifications();
     try {
-      let sql = "SELECT * FROM notifications WHERE status = 'SENT'";
-      const params: any[] = [];
+      const nowIso = new Date().toISOString();
+      const nowStr = nowIso.replace('T', ' ').slice(0, 19);
+      const params: any[] = [nowIso, nowStr];
+      let sql = `SELECT * FROM notifications WHERE status = 'SENT' AND (expires_at IS NULL OR expires_at = '' OR expires_at >= $1 OR expires_at >= $2)`;
 
       if (filter?.userId) {
         params.push(filter.userId);
@@ -132,28 +191,15 @@ export class NotificationsRepository {
         sql += ` AND (target_model IS NULL OR target_model = '' OR target_model = $${params.length} OR target ILIKE '%' || $${params.length} || '%' OR target_role = 'ALL')`;
       }
 
-      sql += ' ORDER BY id DESC LIMIT 50';
+      if (filter?.campaignType) {
+        params.push(filter.campaignType);
+        sql += ` AND campaign_type = $${params.length}`;
+      }
+
+      sql += ' ORDER BY priority DESC, id DESC LIMIT 50';
 
       const res = await this.client.query(sql, params);
-      return res.rows.map(row => ({
-        id: row.id,
-        title: row.title,
-        message: row.message || '',
-        category: row.category || 'SYSTEM',
-        channel: row.channel || 'APP_PUSH',
-        target: row.target || row.target_role || 'Tất cả khách hàng (Toàn hệ thống)',
-        targetRole: row.target_role || 'ALL',
-        targetUserId: row.target_user_id || null,
-        targetModel: row.target_model || null,
-        status: row.status || 'SENT',
-        type: row.type || 'INFO',
-        isRead: Boolean(row.is_read),
-        readRate: row.read_rate !== undefined && row.read_rate !== null ? Number(row.read_rate) : 0,
-        deliveredCount: row.delivered_count !== undefined && row.delivered_count !== null ? Number(row.delivered_count) : 0,
-        scheduledAt: row.scheduled_at || null,
-        sentAt: row.created_at || new Date().toISOString(),
-        createdAt: row.created_at || new Date().toISOString(),
-      }));
+      return res.rows.map(row => this.mapRow(row));
     } catch (e: any) {
       console.error('[NotificationsRepository] getPublicNotifications error:', e.message);
       return [];
@@ -166,15 +212,23 @@ export class NotificationsRepository {
     const message = (dto.message || dto.body || dto.title).trim();
     const category = dto.category || 'SYSTEM';
     const channel = dto.channel || 'APP_PUSH';
-    const target = dto.target || (dto.targetRole === 'ALL' || !dto.targetRole ? 'Tất cả khách hàng (Toàn hệ thống)' : dto.targetRole);
+    const target =
+      dto.target ||
+      (dto.targetRole === 'ALL' || !dto.targetRole
+        ? 'Tất cả khách hàng (Toàn hệ thống)'
+        : dto.targetRole);
     const targetRole = dto.targetRole || (target.includes('Tất cả') ? 'ALL' : 'CUSTOMER');
     const targetUserId = dto.targetUserId || null;
-    const targetModel = dto.targetModel || (target.startsWith('Model: ') ? target.replace('Model: ', '').trim() : null);
+    const targetModel =
+      dto.targetModel || (target.startsWith('Model: ') ? target.replace('Model: ', '').trim() : null);
 
-    const scheduledAt = dto.scheduleTime && dto.scheduleTime.trim().length > 0 ? dto.scheduleTime.trim() : null;
+    const scheduledAt =
+      dto.scheduleTime && dto.scheduleTime.trim().length > 0 ? dto.scheduleTime.trim() : null;
     let status = dto.status || 'SENT';
     if (scheduledAt && status !== 'DRAFT') {
-      const scheduledDate = new Date(scheduledAt.includes('T') ? scheduledAt : scheduledAt.replace(' ', 'T'));
+      const scheduledDate = new Date(
+        scheduledAt.includes('T') ? scheduledAt : scheduledAt.replace(' ', 'T')
+      );
       if (!isNaN(scheduledDate.getTime()) && scheduledDate.getTime() > Date.now()) {
         status = 'SCHEDULED';
       } else {
@@ -187,10 +241,34 @@ export class NotificationsRepository {
     const deliveredCount = target.includes('Tất cả') ? 4300 : 1200;
     const readRate = 0;
 
+    // Media & Advertisement / Campaign fields
+    const imageUrl = dto.imageUrl?.trim() || null;
+    const bannerUrl = dto.bannerUrl?.trim() || null;
+    const campaignType =
+      dto.campaignType ||
+      (category === 'AD_BANNER'
+        ? 'PROMO_BANNER'
+        : bannerUrl
+        ? 'PROMO_BANNER'
+        : 'STANDARD');
+    const actionType = dto.actionType || 'NONE';
+    const actionValue = dto.actionValue?.trim() || null;
+    const ctaLabel = dto.ctaLabel?.trim() || null;
+    const priority = typeof dto.priority === 'number' && !isNaN(dto.priority) ? dto.priority : 0;
+    const expiresAt = dto.expiresAt?.trim() || null;
+    const metadata =
+      dto.metadata && typeof dto.metadata === 'object' ? JSON.stringify(dto.metadata) : '{}';
+
     const res = await this.client.query(
       `INSERT INTO notifications (
-        title, message, category, channel, target, target_role, target_user_id, target_model, status, type, is_read, delivered_count, read_rate, scheduled_at, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, false, $11, $12, $13, $14)
+        title, message, category, channel, target, target_role, target_user_id, target_model,
+        status, type, is_read, delivered_count, read_rate, scheduled_at, created_at,
+        image_url, banner_url, campaign_type, action_type, action_value, cta_label, priority, expires_at, metadata
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, false, $11, $12, $13, $14,
+        $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb
+      )
       RETURNING *`,
       [
         title,
@@ -207,29 +285,19 @@ export class NotificationsRepository {
         readRate,
         scheduledAt,
         createdAt,
+        imageUrl,
+        bannerUrl,
+        campaignType,
+        actionType,
+        actionValue,
+        ctaLabel,
+        priority,
+        expiresAt,
+        metadata,
       ]
     );
 
-    const row = res.rows[0];
-    return {
-      id: row.id,
-      title: row.title,
-      message: row.message,
-      category: row.category,
-      channel: row.channel,
-      target: row.target,
-      targetRole: row.target_role,
-      targetUserId: row.target_user_id,
-      targetModel: row.target_model,
-      status: row.status,
-      type: row.type,
-      isRead: Boolean(row.is_read),
-      readRate: Number(row.read_rate || 0),
-      deliveredCount: Number(row.delivered_count || 0),
-      scheduledAt: row.scheduled_at || null,
-      sentAt: row.created_at,
-      createdAt: row.created_at,
-    };
+    return this.mapRow(res.rows[0]);
   }
 
   public async delete(id: number): Promise<boolean> {
@@ -246,7 +314,9 @@ export class NotificationsRepository {
   public async markAsRead(id: number): Promise<boolean> {
     await this.ensureSchema();
     try {
-      const res = await this.client.query('UPDATE notifications SET is_read = true WHERE id = $1', [id]);
+      const res = await this.client.query('UPDATE notifications SET is_read = true WHERE id = $1', [
+        id,
+      ]);
       return (res.rowCount || 0) > 0;
     } catch (e: any) {
       console.error('[NotificationsRepository] markAsRead error:', e.message);
