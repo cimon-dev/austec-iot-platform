@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
@@ -305,27 +306,11 @@ class _RollerDoorControlScreenState extends State<RollerDoorControlScreen> with 
               _device.name,
               style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 7,
-                  height: 7,
-                  decoration: BoxDecoration(
-                    color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  _device.isOnline ? "Trực tuyến" : "Ngoại tuyến",
-                  style: TextStyle(
-                    color: _device.isOnline ? AppTheme.emeraldSuccess : AppTheme.amberWarning,
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 2),
+            DeviceOnlineStatusRow(
+              isOnline: _device.isOnline,
+              center: true,
+              fontSize: 11.5,
             ),
           ],
         ),

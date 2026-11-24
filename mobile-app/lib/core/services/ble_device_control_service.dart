@@ -192,12 +192,16 @@ class BleDeviceControlService {
   }) async {
     if (kIsWeb) return false;
 
-    // Chuẩn hóa mã lệnh theo ocammoi (case 13: BAT, case 14: TAT, case 3: dung)
-    final String socketCode = (actionNumber == "TURN_ON" || actionNumber == "ON" || actionNumber == "13" || actionNumber == "1" || actionNumber == "3")
+    // Chuẩn hóa mã lệnh theo ocammoi (13: BAT, 14: TAT, 3: dung, 11: RF_SETUP, 12: RF_CLEAR)
+    final String socketCode = (actionNumber == "TURN_ON" || actionNumber == "ON" || actionNumber == "13" || actionNumber == "1")
         ? "13"
-        : (actionNumber == "STOP" || actionNumber == "DUNG")
+        : (actionNumber == "STOP" || actionNumber == "DUNG" || actionNumber == "3")
             ? "3"
-            : "14";
+            : (actionNumber == "RF_SETUP" || actionNumber == "RF_PAIR_NEW" || actionNumber == "11")
+                ? "11"
+                : (actionNumber == "RF_CLEAR" || actionNumber == "RF_CLEAR_ALL" || actionNumber == "12")
+                    ? "12"
+                    : "14";
 
     final String uid = (userId != null && userId.isNotEmpty)
         ? userId
@@ -226,6 +230,29 @@ class BleDeviceControlService {
             break;
           }
         }
+      }
+
+      // Nếu chưa có trong cache, quét nhanh 1.5s để bắt sóng BLE ổ cắm ở gần
+      if (targetDevice == null) {
+        try {
+          if (FlutterBluePlus.isScanningNow) {
+            await FlutterBluePlus.stopScan();
+          }
+          await FlutterBluePlus.startScan(
+            timeout: const Duration(milliseconds: 1500),
+          );
+          final freshResults = await FlutterBluePlus.scanResults.first.timeout(
+            const Duration(milliseconds: 1600),
+            onTimeout: () => FlutterBluePlus.lastScanResults,
+          );
+          for (final r in freshResults) {
+            final n = (r.device.platformName.isNotEmpty ? r.device.platformName : r.advertisementData.advName).toLowerCase();
+            if (n == hardwareId.toLowerCase() || n.contains(hardwareId.toLowerCase())) {
+              targetDevice = r.device;
+              break;
+            }
+          }
+        } catch (_) {}
       }
 
       if (targetDevice != null) {

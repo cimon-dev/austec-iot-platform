@@ -125,7 +125,30 @@ export class MqttGateway {
   }
 
   /**
-   * Thực thi quét và kiểm tra trạng thái Online/Offline thực tế bằng mã chuẩn 295
+   * Đánh dấu thiết bị OFFLINE ngay lập tức (khi không điều khiển được / mất phản hồi)
+   */
+  public async markDeviceOffline(hwId: string): Promise<void> {
+    try {
+      if (this.postgresService && typeof this.postgresService.query === 'function') {
+        await this.postgresService.query(
+          `UPDATE device_instances SET is_online = false, updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+          [hwId]
+        );
+      }
+      await this.hotCache.setDeviceState(hwId, { isOnline: false });
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(hwId, { isOnline: false });
+      }
+    } catch (e: any) {
+      console.warn(`[MQTT Gateway] Lỗi đánh dấu offline [${hwId}]:`, e.message);
+    }
+  }
+
+  /**
+   * Thực thi quét và kiểm tra trạng thái Online/Offline bằng cơ chế sẵn có của firmware gốc (không dùng mã 295):
+   * - SmartMetter & BMS: dựa trên gói telemetry định kỳ 1s (quá 25s không có telemetry -> OFFLINE)
+   * - Cửa cuốn & Ổ cắm: gửi sub/isonline, firmware gốc trả "1" lên pub/isonline
+   * - Camera: giữ trạng thái theo kết nối/stream, chỉ báo OFFLINE khi điều khiển/stream thất bại
    */
   public async runHeartbeatScan() {
     try {
@@ -133,30 +156,46 @@ export class MqttGateway {
       const res = await this.postgresService.query(`SELECT hardware_id, owner_id, last_heartbeat, is_online FROM device_instances`);
       if (!res || !res.rows) return;
 
+      const nowMs = Date.now();
       for (const row of res.rows) {
-        const hwId = row.hardware_id;
+        const hwId: string = row.hardware_id;
         if (!hwId) continue;
 
-        // Đăng ký chờ phản hồi đúng mã 295 TRƯỚC khi phát gói tin để tránh race condition
-        const ackPromise = this.waitForActionAck(hwId, ['295'], 2500);
+        const upperHw = hwId.toUpperCase();
+        const isSocket = upperHw.startsWith('OCAM') || upperHw.includes('SOCKET') || upperHw.startsWith('SMARTSW');
+        const isCamera = !isSocket && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
+        const isBms = !isSocket && !isCamera && upperHw.includes('BMS');
+        const isMeter = !isSocket && !isCamera && !isBms && (upperHw.startsWith('SMARTMETTER') || upperHw.startsWith('SMARTMETER') || upperHw.includes('METER') || upperHw.includes('CONGTO'));
 
-        // Gửi mã chuẩn 295 thăm dò trạng thái trực tuyến xuống toàn bộ các kênh thiết bị
-        await this.publishAction(row.owner_id || 'system-ping', hwId, '295');
-        await this.publishMessage(`austec/${hwId}/command`, '295');
-        await this.publishMessage(`devices/${hwId}/camera/cmd`, '295');
-        await this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295');
-        await this.publishMessage(`amtuong/${hwId}/sub/isonline`, '295');
-        if (row.owner_id) {
-          await this.publishMessage(`${row.owner_id}/${hwId}/sub/isonline`, '295');
+        // Camera bản gốc không có ping định kỳ -> không tự đánh dấu offline trong vòng quét này
+        if (isCamera) continue;
+
+        let isActuallyOnline = false;
+
+        if (isMeter || isBms) {
+          // SmartMetter & BMS gốc gửi telemetry mỗi 1s -> kiểm tra lastHeartbeat trong 25s gần nhất
+          const cacheState = await this.hotCache.getDeviceState(hwId);
+          const lastHbRaw = cacheState?.lastHeartbeat || row.last_heartbeat;
+          if (lastHbRaw) {
+            const hbTime = new Date(lastHbRaw).getTime();
+            if (!isNaN(hbTime) && (nowMs - hbTime) <= 25000) {
+              isActuallyOnline = true;
+            }
+          }
+        } else {
+          // Cửa cuốn & Ổ cắm gốc: nhận sub/isonline -> trả "1" lên pub/isonline
+          const ackPromise = this.waitForActionAck(hwId, ['1'], 2500);
+          await this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1');
+          await this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1');
+          if (row.owner_id) {
+            await this.publishMessage(`${row.owner_id}/${hwId}/sub/isonline`, '1');
+          }
+          const ack = await ackPromise;
+          isActuallyOnline = Boolean(ack.success && ack.payload?.trim() === '1');
         }
 
-        // Chờ nhận phản hồi đúng mã 295 trong 2.5 giây
-        const ack = await ackPromise;
-
-        const isActuallyOnline = Boolean(ack.success && ack.payload?.trim() === '295');
-
         if (row.is_online !== isActuallyOnline) {
-          console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}] (Mã 295): ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
+          console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}]: ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
           await this.postgresService.query(
             `UPDATE device_instances SET is_online = $1, ${isActuallyOnline ? 'last_heartbeat = NOW()::text,' : ''} updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($2)`,
             [isActuallyOnline, hwId]
@@ -888,23 +927,20 @@ export class MqttGateway {
     });
     if (hasRecentMsg) return true;
 
-    // Chủ động phát gói thăm dò mã 295 xuống phần cứng thực tế
+    // Chủ động phát gói thăm dò sub/isonline theo firmware gốc (nhận lại "1" trên pub/isonline)
     try {
-      const ackPromise = this.waitForActionAck(hwId, ['295'], 2000);
-      await this.publishAction(userId || 'system-ping', hwId, '295');
-      this.publishMessage(`austec/${hwId}/command`, '295').catch(() => { });
-      this.publishMessage(`devices/${hwId}/camera/cmd`, '295').catch(() => { });
-      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '295').catch(() => { });
-      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '295').catch(() => { });
-      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '295').catch(() => { });
-      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '295').catch(() => { });
+      const ackPromise = this.waitForActionAck(hwId, ['1'], 2000);
+      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1').catch(() => { });
+      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '1').catch(() => { });
 
       if (userId && userId.trim().length > 0) {
-        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '295').catch(() => { });
+        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => { });
       }
 
       const ack = await ackPromise;
-      if (ack.success && ack.payload?.trim() === '295') {
+      if (ack.success && ack.payload?.trim() === '1') {
         return true;
       }
     } catch (_) { }

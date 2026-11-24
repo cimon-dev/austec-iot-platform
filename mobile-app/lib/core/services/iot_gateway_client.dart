@@ -898,121 +898,184 @@ class IoTGatewayClient {
       }
     }
 
-    // 1. Kênh Bluetooth BLE: Phát trực tiếp xuống rơ-le bo mạch ESP32 nếu ở gần (tạo tiếng tạch tạch rơ-le tức thì)
+    // 1. Phân loại thiết bị & chuẩn bị kênh điều khiển Bluetooth BLE dự phòng tầm gần
     final upperHwId = hardwareId.toUpperCase();
     final isSocket = upperHwId.startsWith("OCAM") || upperHwId.contains("SOCKET");
+    final isMeter = upperHwId.contains("SMARTMETTER") || upperHwId.contains("SMARTMETER") || upperHwId.contains("METER");
+    final isBms = upperHwId.contains("BMS") || (device?.modelCode.toUpperCase().contains("BMS") ?? false);
+    final isCamera = upperHwId.startsWith("CAM") || device?.category == DeviceCategory.camera;
+
     String resolvedSocketAction = action;
     if (action == "TOGGLE_RELAY") {
       resolvedSocketAction = (device != null && device.isRelayOn) ? "TURN_OFF" : "TURN_ON";
     }
 
-    final isMeter = upperHwId.contains("SMARTMETTER") || upperHwId.contains("SMARTMETER") || upperHwId.contains("METER");
+    Future<bool> trySendBleFallback() async {
+      if (isSocket) {
+        final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "13" || resolvedSocketAction == "1")
+            ? "13"
+            : (resolvedSocketAction == "STOP" || resolvedSocketAction == "3")
+                ? "3"
+                : (resolvedSocketAction == "RF_SETUP" || resolvedSocketAction == "RF_PAIR_NEW" || resolvedSocketAction == "11")
+                    ? "11"
+                    : (resolvedSocketAction == "RF_CLEAR" || resolvedSocketAction == "RF_CLEAR_ALL" || resolvedSocketAction == "12")
+                        ? "12"
+                        : "14";
+        return BleDeviceControlService().sendSocketAction(
+          hardwareId: hardwareId,
+          actionNumber: sAction,
+          userId: device?.ownerId ?? AuthService().currentUser?.id,
+        );
+      } else if (isBms) {
+        final bmsCmd = parameters?['raw_command']?.toString() ?? action;
+        return BleDeviceControlService().sendBmsCommand(
+          hardwareId: hardwareId,
+          command: bmsCmd,
+        );
+      } else if (!isMeter && !isCamera) {
+        final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1")
+            ? "1"
+            : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2")
+                ? "2"
+                : (action == "STOP_DOOR" || action == "STOP" || action == "3")
+                    ? "3"
+                    : (action == "RF_SETUP" || action == "RF_PAIR_NEW" || action == "11")
+                        ? "11"
+                        : (action == "RF_CLEAR" || action == "RF_CLEAR_ALL" || action == "12")
+                            ? "12"
+                            : null;
+        if (bleAction != null) {
+          return BleDeviceControlService().sendDoorAction(
+            hardwareId: hardwareId,
+            actionNumber: bleAction,
+          );
+        }
+      }
+      return false;
+    }
 
-    if (isSocket) {
-      final sAction = (resolvedSocketAction == "TURN_ON" || resolvedSocketAction == "ON" || resolvedSocketAction == "13" || resolvedSocketAction == "1") ? "13"
-          : (resolvedSocketAction == "STOP" || resolvedSocketAction == "3") ? "3"
-          : (resolvedSocketAction == "RF_SETUP" || resolvedSocketAction == "RF_PAIR_NEW" || resolvedSocketAction == "11") ? "11"
-          : (resolvedSocketAction == "RF_CLEAR" || resolvedSocketAction == "RF_CLEAR_ALL" || resolvedSocketAction == "12") ? "12"
-          : "14";
-      unawaited(BleDeviceControlService().sendSocketAction(
-        hardwareId: hardwareId,
-        actionNumber: sAction,
-        userId: device?.ownerId ?? AuthService().currentUser?.id,
-      ));
-    } else if (!isMeter) {
-      final String? bleAction = (action == "OPEN_DOOR" || action == "OPEN" || action == "1") ? "1"
-          : (action == "CLOSE_DOOR" || action == "CLOSE" || action == "2") ? "2"
-          : (action == "STOP_DOOR" || action == "STOP" || action == "3") ? "3"
-          : null;
-      if (bleAction != null) {
-        unawaited(BleDeviceControlService().sendDoorAction(hardwareId: hardwareId, actionNumber: bleAction));
+    final bool supportsBleControl = isSocket || isBms || (!isMeter && !isCamera);
+    bool triedBle = false;
+    bool bleSuccess = false;
+
+    // Nếu thiết bị đang biết là Ngoại tuyến Wi-Fi và hỗ trợ BLE -> ưu tiên điều khiển BLE ngay (không phải chờ Cloud timeout 6s)
+    if (supportsBleControl && device != null && !device.isOnline) {
+      triedBle = true;
+      bleSuccess = await trySendBleFallback();
+      if (bleSuccess) {
+        netLatency = 35;
       }
     }
 
-    // 2. Kênh Cloud MQTT Gateway: Cập nhật CSDL PostgreSQL & đồng bộ Web Admin qua API
-    try {
-      final beAction = action == "OPEN_DOOR"
-          ? "OPEN"
-          : action == "CLOSE_DOOR"
-              ? "CLOSE"
-              : action == "STOP_DOOR"
-                  ? "STOP"
-                  : action == "TOGGLE_RELAY"
-                      ? resolvedSocketAction
-                      : action;
+    // 2. Kênh Cloud MQTT Gateway (chỉ gọi nếu chưa điều khiển xong qua BLE)
+    if (!bleSuccess) {
+      try {
+        final beAction = action == "OPEN_DOOR"
+            ? "OPEN"
+            : action == "CLOSE_DOOR"
+                ? "CLOSE"
+                : action == "STOP_DOOR"
+                    ? "STOP"
+                    : action == "TOGGLE_RELAY"
+                        ? resolvedSocketAction
+                        : action;
 
-      final isRfCmd = beAction == "RF_SETUP" || beAction == "RF_PAIR_NEW" || beAction == "RF_CLEAR" || beAction == "RF_CLEAR_ALL" || beAction == "11" || beAction == "12";
-      final userToken = AuthService().token ?? 'austec-customer-token';
-      final res = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $userToken',
-        },
-        body: jsonEncode({
-          'hardwareId': hardwareId,
-          'command': beAction,
-          'action': beAction,
-          'parameters': parameters ?? {},
-        }),
-      ).timeout(Duration(milliseconds: isRfCmd ? 12000 : 6000));
+        final isRfCmd = beAction == "RF_SETUP" || beAction == "RF_PAIR_NEW" || beAction == "RF_CLEAR" || beAction == "RF_CLEAR_ALL" || beAction == "11" || beAction == "12";
+        final userToken = AuthService().token ?? 'austec-customer-token';
+        final res = await http.post(
+          Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $userToken',
+          },
+          body: jsonEncode({
+            'hardwareId': hardwareId,
+            'command': beAction,
+            'action': beAction,
+            'parameters': parameters ?? {},
+          }),
+        ).timeout(Duration(milliseconds: isRfCmd ? 12000 : 6000));
 
-      bool isSuccess = false;
-      String? errorMessage;
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final innerResult = data['result'] is Map ? data['result'] as Map : null;
-        if (data['cryptoSignature'] != null) {
-          cryptoSig = data['cryptoSignature'].toString();
-        }
-        if (data['latencyMs'] != null) {
-          netLatency = (data['latencyMs'] as num).toInt();
-        } else if (innerResult?['latencyMs'] != null) {
-          netLatency = (innerResult!['latencyMs'] as num).toInt();
-        }
-        final bool outerOk = data['success'] == true;
-        final bool innerOk = innerResult == null || innerResult['success'] != false;
-        if (outerOk && innerOk) {
-          isSuccess = true;
-        } else {
-          errorMessage = data['error'] ?? innerResult?['message'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng kiểm tra kết nối.';
-        }
-      } else if (res.statusCode == 403) {
-        final data = jsonDecode(res.body);
-        return CommandResult(
-          success: false,
-          latencyMs: 25,
-          message: data['error'] ?? 'Bạn không có quyền thực hiện thao tác này',
-          cryptoSignature: cryptoSig,
-        );
-      } else {
-        try {
+        bool isSuccess = false;
+        String? errorMessage;
+        if (res.statusCode == 200) {
           final data = jsonDecode(res.body);
-          errorMessage = data['error'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
-        } catch (_) {
-          errorMessage = 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
+          final innerResult = data['result'] is Map ? data['result'] as Map : null;
+          if (data['cryptoSignature'] != null) {
+            cryptoSig = data['cryptoSignature'].toString();
+          }
+          if (data['latencyMs'] != null) {
+            netLatency = (data['latencyMs'] as num).toInt();
+          } else if (innerResult?['latencyMs'] != null) {
+            netLatency = (innerResult!['latencyMs'] as num).toInt();
+          }
+          final bool outerOk = data['success'] == true;
+          final bool innerOk = innerResult == null || innerResult['success'] != false;
+          if (outerOk && innerOk) {
+            isSuccess = true;
+          } else {
+            errorMessage = data['error'] ?? innerResult?['message'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng kiểm tra kết nối.';
+          }
+        } else if (res.statusCode == 403) {
+          // Lỗi phân quyền / ngoài khung giờ -> KHÔNG fallback BLE
+          final data = jsonDecode(res.body);
+          return CommandResult(
+            success: false,
+            latencyMs: 25,
+            message: data['error'] ?? 'Bạn không có quyền thực hiện thao tác này',
+            cryptoSignature: cryptoSig,
+          );
+        } else {
+          try {
+            final data = jsonDecode(res.body);
+            errorMessage = data['error'] ?? data['message'] ?? 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
+          } catch (_) {
+            errorMessage = 'Không thể điều khiển thiết bị. Vui lòng thử lại.';
+          }
         }
-      }
 
-      // Nếu máy chủ báo lệnh không thành công do phần cứng không có ACK thực tế -> dừng ngay, KHÔNG sửa trạng thái ảo
-      if (!isSuccess) {
-        return CommandResult(
-          success: false,
-          latencyMs: netLatency,
-          message: errorMessage ?? 'Thiết bị không phản hồi. Vui lòng kiểm tra kết nối.',
-          cryptoSignature: cryptoSig,
-        );
-      }
-    } catch (e) {
-      // Chỉ khi thiết bị ngoại tuyến nhưng điều khiển trực tiếp qua BLE tầm gần
-      final isBleDevice = device != null && !device.isOnline;
-      if (!isBleDevice) {
-        return CommandResult(
-          success: false,
-          latencyMs: 120,
-          message: 'Không thể kết nối tới thiết bị hoặc thiết bị đang ngoại tuyến',
-          cryptoSignature: cryptoSig,
-        );
+        // Cloud không nhận được ACK từ thiết bị (VD: thiết bị mất Wi-Fi đã tự bật BLE) -> tự động chuyển sang BLE!
+        if (!isSuccess) {
+          if (supportsBleControl && !triedBle) {
+            triedBle = true;
+            bleSuccess = await trySendBleFallback();
+          }
+          if (!bleSuccess) {
+            // Không điều khiển được cả Cloud lẫn BLE -> báo Ngoại tuyến ngay lập tức trên UI
+            if (device != null && device.isOnline) {
+              device.isOnline = false;
+              _deviceUpdateStream.add(device);
+            }
+            return CommandResult(
+              success: false,
+              latencyMs: netLatency,
+              message: supportsBleControl
+                  ? 'Thiết bị không phản hồi qua mạng và không tìm thấy qua Bluetooth gần đây.'
+                  : (errorMessage ?? 'Thiết bị đang ngoại tuyến hoặc không phản hồi.'),
+              cryptoSignature: cryptoSig,
+            );
+          }
+        }
+      } catch (e) {
+        // Điện thoại mất mạng hoặc không kết nối được Cloud -> tự động chuyển sang BLE!
+        if (supportsBleControl && !triedBle) {
+          triedBle = true;
+          bleSuccess = await trySendBleFallback();
+        }
+        if (!bleSuccess) {
+          if (device != null && device.isOnline) {
+            device.isOnline = false;
+            _deviceUpdateStream.add(device);
+          }
+          return CommandResult(
+            success: false,
+            latencyMs: 120,
+            message: supportsBleControl
+                ? 'Không có kết nối mạng và không tìm thấy thiết bị qua Bluetooth tầm gần.'
+                : 'Thiết bị đang ngoại tuyến hoặc mất kết nối mạng.',
+            cryptoSignature: cryptoSig,
+          );
+        }
       }
     }
 

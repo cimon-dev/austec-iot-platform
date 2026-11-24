@@ -83,10 +83,7 @@ export class CommandService {
     const isMeter = !isSocket && !isCamera && !isBms && (upperHwId.startsWith('SMARTMETTER') || upperHwId.startsWith('SMARTMETER') || upperHwId.includes('METER') || upperHwId.includes('CONGTO'));
 
     let actionCode = req.command;
-    // Bắt mã lệnh thăm dò Online/Offline chuẩn 295 toàn hệ thống (áp dụng cho cả 5 loại thiết bị kể cả Camera)
-    if (req.command === 'CHECK_ONLINE' || req.command === 'PROBE_ONLINE' || req.command === 'PING' || req.command === '295' || req.command === 'HEARTBEAT') {
-      actionCode = '295';
-    } else if (isBms) {
+    if (isBms) {
       // Pin lưu trữ BMS: giữ nguyên mã chuỗi lệnh chuẩn (SET_LFP, SET_LIION, SET_LTO, CLEAR_LOG, CFG:...)
       actionCode = req.command.trim();
     } else if (isMeter) {
@@ -156,12 +153,29 @@ export class CommandService {
     }
 
     // Riêng lệnh học/xóa tay cầm RF (11, 12) mạch có delay 7s nên nâng timeout lên 10s
-    const ackTimeoutMs = (actionCode === '11' || actionCode === '12')
-      ? 10000
-      : (actionCode === '295' ? 2500 : 3500);
+    const ackTimeoutMs = (actionCode === '11' || actionCode === '12') ? 10000 : 3500;
 
-    // Camera: vẫn giữ Strict ACK cho mã 295 (Online/Offline), nhưng KHÔNG chặn cứng MQTT ACK cho lệnh stream 13/14
-    const skipStrictAck = isCamera && (actionCode === '13' || actionCode === '14');
+    // Firmware gốc:
+    // - Cửa cuốn & Ổ cắm: có echo mã lệnh trên pub/action -> bắt ACK chặt 2 chiều
+    // - SmartMetter & BMS: bản gốc không có topic /ack (chỉ gửi telemetry 1s) -> kiểm tra telemetry gần đây (25s), nếu mất telemetry -> báo OFFLINE ngay
+    // - Camera: bản gốc không có /camera/ack -> phát lệnh stream 13/14 trực tiếp
+    if ((isMeter || isBms) && this.mqttGateway) {
+      const lastHbRaw = currentState?.lastHeartbeat;
+      const hbTime = lastHbRaw ? new Date(lastHbRaw).getTime() : 0;
+      const isTelemetryAlive = Boolean(currentState?.isOnline && hbTime > 0 && (Date.now() - hbTime) <= 25000);
+      if (!isTelemetryAlive) {
+        await this.mqttGateway.markDeviceOffline(req.hardwareId);
+        const latencyMs = Math.round(performance.now() - startTime);
+        return {
+          success: false,
+          ackStatus: 'TIMEOUT',
+          latencyMs,
+          message: 'Thiết bị đang ngoại tuyến hoặc không phản hồi.',
+        };
+      }
+    }
+
+    const skipStrictAck = isCamera || isMeter || isBms;
 
     if (this.mqttGateway) {
       // Nếu là lệnh bật stream camera ("13") và Backend có MEDIAMTX_HOST từ .env -> đẩy động xuống ESP32 qua MQTT
@@ -185,6 +199,8 @@ export class CommandService {
       // Chờ phản hồi ACK 2 chiều khớp chính xác mã từ thiết bị phần cứng
       const ack = await ackPromise;
       if (!ack.success) {
+        // Không điều khiển được -> đánh dấu OFFLINE ngay lập tức
+        await this.mqttGateway.markDeviceOffline(req.hardwareId);
         const latencyMs = Math.round(performance.now() - startTime);
         this.blackboxService.logCommand({
           hardwareId: req.hardwareId,
@@ -201,7 +217,7 @@ export class CommandService {
           success: false,
           ackStatus: 'TIMEOUT',
           latencyMs,
-          message: 'Không thể điều khiển thiết bị. Thiết bị không phản hồi, vui lòng kiểm tra kết nối.',
+          message: 'Không thể điều khiển thiết bị. Thiết bị đã chuyển sang ngoại tuyến.',
         };
       }
     } else {

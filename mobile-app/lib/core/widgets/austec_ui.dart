@@ -165,3 +165,58 @@ class AustecInfoRow extends StatelessWidget {
   }
 }
 
+/// Dòng trạng thái Online/Offline đồng nhất toàn ứng dụng (đặt ngay dưới tên thiết bị)
+class DeviceOnlineStatusRow extends StatelessWidget {
+  final bool isOnline;
+  final String? suffix;
+  final double fontSize;
+  final bool center;
+
+  const DeviceOnlineStatusRow({
+    super.key,
+    required this.isOnline,
+    this.suffix,
+    this.fontSize = 11,
+    this.center = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor =
+        isOnline ? AppTheme.emeraldSuccess : const Color(0xFF94A3B8);
+    final label = isOnline ? "Trực tuyến" : "Ngoại tuyến";
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment:
+          center ? MainAxisAlignment.center : MainAxisAlignment.start,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: statusColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Flexible(
+          child: Text(
+            (suffix != null && suffix!.isNotEmpty)
+                ? "$label · $suffix"
+                : label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: statusColor,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+

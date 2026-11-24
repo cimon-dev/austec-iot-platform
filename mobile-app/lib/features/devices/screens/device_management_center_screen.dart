@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/services/auth_service.dart';
@@ -601,30 +602,17 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          dev.name,
-                          style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: dev.isOnline ? AppTheme.emeraldSuccess : Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ),
                     Text(
-                      "${dev.roomName} • ID: ${dev.hardwareId}",
-                      style: TextStyle(
-                        color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary,
-                        fontSize: 10.5,
-                        fontFamily: "monospace",
-                      ),
+                      dev.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: textCol, fontSize: 13.5, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 2),
+                    DeviceOnlineStatusRow(
+                      isOnline: dev.isOnline,
+                      suffix: dev.roomName.isNotEmpty ? dev.roomName : null,
+                      fontSize: 11,
                     ),
                   ],
                 ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
@@ -235,11 +236,13 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           children: [
             Text(
               _device.name,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
             ),
-            Text(
-              "${_device.roomName.isNotEmpty ? '${_device.roomName} • ' : ''}${_device.hardwareId}",
-              style: const TextStyle(color: AppTheme.cyanAccent, fontSize: 10.5, fontFamily: "monospace"),
+            const SizedBox(height: 2),
+            DeviceOnlineStatusRow(
+              isOnline: _device.isOnline,
+              center: true,
+              fontSize: 11.5,
             ),
           ],
         ),
@@ -577,16 +580,101 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
 
               const SizedBox(height: 14),
 
-              // Đèn LED báo nguồn & Trạng thái
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _buildLedIndicator("NGUỒN", const Color(0xFF22C55E), true),
-                  const SizedBox(width: 36),
-                  _buildLedIndicator("ON/OFF", _isMeterOn ? const Color(0xFF22C55E) : const Color(0xFFEF4444), true),
-                  const SizedBox(width: 36),
-                  _buildLedIndicator("CÀI ĐẶT", _isSettingPower ? const Color(0xFFF59E0B) : const Color(0xFF334155), _isSettingPower),
-                ],
+              // Nút Toggle Bật/Tắt nguồn công tơ (đồng bộ với danh sách preview) & LED Cài đặt
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF0F172A).withValues(alpha: 0.7)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: _isMeterOn
+                        ? AppTheme.emeraldSuccess.withValues(alpha: 0.35)
+                        : AppTheme.roseDanger.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _isMeterOn
+                              ? Icons.power_settings_new_rounded
+                              : Icons.power_off_rounded,
+                          color: _isMeterOn
+                              ? AppTheme.emeraldSuccess
+                              : AppTheme.roseDanger,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Nguồn công tơ",
+                              style: TextStyle(
+                                color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              _isMeterOn ? "Đang cấp điện" : "Đang ngắt điện",
+                              style: TextStyle(
+                                color: _isMeterOn
+                                    ? AppTheme.emeraldSuccess
+                                    : AppTheme.roseDanger,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        if (_isSettingPower) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.amberWarning.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.5)),
+                            ),
+                            child: const Text(
+                              "CÀI ĐẶT",
+                              style: TextStyle(
+                                color: AppTheme.amberWarning,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                        Switch(
+                          value: _isMeterOn,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: AppTheme.emeraldSuccess,
+                          inactiveThumbColor: Colors.white,
+                          inactiveTrackColor: AppTheme.roseDanger.withValues(alpha: 0.6),
+                          onChanged: _isBusy
+                              ? null
+                              : (val) {
+                                  if (val) {
+                                    _turnOnMeter();
+                                  } else {
+                                    _turnOffMeter();
+                                  }
+                                },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -635,31 +723,11 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text(
-            "Nhấn OK: Bật/Lưu cài công suất • Giữ OK > 5s: Tắt công tơ • RESET: Xóa cảnh báo & đóng điện",
+            "Nhấn OK: Cài công suất bảo vệ • RESET: Xóa cảnh báo & cấp điện lại",
             textAlign: TextAlign.center,
             style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildLedIndicator(String label, Color color, bool isOn) {
-    return Column(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: isOn ? color : const Color(0xFF1E293B),
-            shape: BoxShape.circle,
-            boxShadow: isOn
-                ? [BoxShadow(color: color.withValues(alpha: 0.8), blurRadius: 8, spreadRadius: 1)]
-                : null,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 9.5, fontWeight: FontWeight.bold)),
       ],
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/services/ble_device_control_service.dart';
@@ -135,27 +136,25 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
           ),
           const SizedBox(width: 14),
 
-          // Tên sản phẩm & Tiêu đề Tab
-          const Text(
-            "AUSTEC",
-            style: TextStyle(
-              color: AppTheme.brandBlue,
-              fontWeight: FontWeight.w900,
-              fontSize: 16,
-              letterSpacing: 1.2,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(width: 1, height: 16, color: Colors.white24),
-          const SizedBox(width: 8),
-          Text(
-            _getTabTitle(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
+          // Tên thiết bị + Trạng thái Online/Offline đồng bộ ngay dưới tên
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                widget.device.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              DeviceOnlineStatusRow(
+                isOnline: widget.device.isOnline,
+                suffix: _getTabTitle(),
+                fontSize: 10.5,
+              ),
+            ],
           ),
 
           const Spacer(),

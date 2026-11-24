@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import 'device_detail_screen.dart';
@@ -524,38 +525,24 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Dòng 1: Tên thiết bị + Nút 3 chấm
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Dòng 1: Tên thiết bị + Trạng thái Online/Offline đồng nhất ngay dưới tên
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  device.name,
-                  style: TextStyle(
-                    color: textCol,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                device.name,
+                style: TextStyle(
+                  color: textCol,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.bold,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                decoration: BoxDecoration(
-                  color: (device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A)).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A), width: 0.8),
-                ),
-                child: Text(
-                  device.isOnline ? "ON" : "OFF",
-                  style: TextStyle(
-                    color: device.isOnline ? AppTheme.emeraldSuccess : const Color(0xFF71717A),
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+              const SizedBox(height: 2),
+              DeviceOnlineStatusRow(
+                isOnline: device.isOnline,
+                fontSize: 10,
               ),
             ],
           ),
@@ -782,32 +769,20 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: device.isOnline
-                                ? AppTheme.emeraldSuccess
-                                : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            device.name,
-                            style: TextStyle(
-                              color: textCol,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      device.name,
+                      style: TextStyle(
+                        color: textCol,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    DeviceOnlineStatusRow(
+                      isOnline: device.isOnline,
+                      fontSize: 11,
                     ),
                     const SizedBox(height: 3),
                     Row(
@@ -1202,7 +1177,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 3),
+                    DeviceOnlineStatusRow(
+                      isOnline: device.isOnline,
+                      fontSize: 11,
+                    ),
+                    const SizedBox(height: 4),
 
                     // Hàng tag Âm tường + Mã phần cứng + Trạng thái tóm tắt
                     Row(
@@ -1856,12 +1836,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                             fontSize: 14.5,
                             fontWeight: FontWeight.bold),
                       ),
-                      Text(
-                        device.hardwareId,
-                        style: const TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 10.5,
-                            fontFamily: "monospace"),
+                      const SizedBox(height: 2),
+                      DeviceOnlineStatusRow(
+                        isOnline: device.isOnline,
+                        fontSize: 11,
                       ),
                     ],
                   ),
@@ -2183,12 +2161,10 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                             fontSize: 14.5,
                             fontWeight: FontWeight.bold),
                       ),
-                      Text(
-                        device.hardwareId,
-                        style: const TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 10.5,
-                            fontFamily: "monospace"),
+                      const SizedBox(height: 2),
+                      DeviceOnlineStatusRow(
+                        isOnline: device.isOnline,
+                        fontSize: 11,
                       ),
                     ],
                   ),
@@ -2308,31 +2284,23 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                         constraints:
                             const BoxConstraints(minWidth: 28, minHeight: 28),
                       ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: (isOn
-                                  ? AppTheme.emeraldSuccess
-                                  : AppTheme.crimsonDanger)
-                              .withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                              color: isOn
-                                  ? AppTheme.emeraldSuccess
-                                  : AppTheme.crimsonDanger),
-                        ),
-                        child: Text(
-                          isOn ? "ON" : "OFF",
-                          style: TextStyle(
-                            color: isOn
-                                ? AppTheme.emeraldSuccess
-                                : AppTheme.crimsonDanger,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+                      const SizedBox(width: 4),
+                      Switch(
+                        value: isOn,
+                        activeThumbColor: Colors.white,
+                        activeTrackColor: AppTheme.emeraldSuccess,
+                        inactiveThumbColor: Colors.white,
+                        inactiveTrackColor: AppTheme.crimsonDanger.withValues(alpha: 0.6),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        onChanged: _isProcessing
+                            ? null
+                            : (val) async {
+                                await _executePreviewAction(
+                                  device,
+                                  val ? "METER_POWER_ON" : "METER_POWER_OFF",
+                                );
+                                if (mounted) setState(() {});
+                              },
                       ),
                     ],
                   ),

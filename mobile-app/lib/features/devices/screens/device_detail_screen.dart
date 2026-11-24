@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
+import '../../../core/widgets/austec_ui.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/iot_gateway_client.dart';
@@ -120,11 +121,10 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
               _device.name,
               style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w600),
             ),
-            Text(
-              "${_device.roomName.isNotEmpty ? '${_device.roomName} · ' : ''}${_device.hardwareId}",
-              style: AppTheme.tabular(
-                const TextStyle(color: AppTheme.cyanAccent, fontSize: 11, fontFamily: "monospace"),
-              ),
+            const SizedBox(height: 2),
+            DeviceOnlineStatusRow(
+              isOnline: _device.isOnline,
+              fontSize: 11.5,
             ),
           ],
         ),
