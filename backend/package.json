@@ -17,19 +17,24 @@
     "@types/node": "^22.7.5",
     "@types/pg": "^8.23.1",
     "@types/ws": "^8.5.12",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "google-auth-library": "^11.3.4",
     "jsonwebtoken": "^9.0.2",
     "mqtt": "^5.16.1",
     "multer": "^2.5.0",
+    "nodemailer": "^10.6.1",
     "pg": "^8.23.1",
     "typescript": "^5.6.3",
     "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/multer": "^2.3.0",
+    "@types/nodemailer": "^8.0.2",
     "tsx": "^4.19.1"
   }
 }

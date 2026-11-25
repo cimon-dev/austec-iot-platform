@@ -3,6 +3,19 @@ import { Request, Response, NextFunction } from 'express';
 
 export type UserRole = 'ADMIN' | 'CSKH' | 'CUSTOMER';
 
+export type StepUpPurpose =
+  | 'ADMIN_LOGIN_2FA'
+  | 'CHANGE_PASSWORD'
+  | 'FORGOT_PASSWORD'
+  | 'UPDATE_CONTACT'
+  | 'UNLINK_GOOGLE'
+  | 'DELETE_ACCOUNT'
+  | 'TRANSFER_DEVICE'
+  | 'UNPAIR_DEVICE'
+  | 'OTA_ADMIN'
+  | 'ADMIN_ROLE_CHANGE'
+  | 'SYSTEM_SETTINGS';
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -14,12 +27,37 @@ export interface AuthUser {
   province?: string;
 }
 
+export interface PreAuthPayload {
+  scope: 'ADMIN_2FA_PENDING';
+  userId: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface StepUpTokenPayload {
+  scope: 'STEPUP_VERIFIED';
+  userId: string;
+  purpose: StepUpPurpose;
+  channel: 'EMAIL' | 'ZALO';
+  verifiedAt: string;
+}
+
 export interface AuthenticatedRequest extends Request {
   user?: AuthUser;
+  stepUp?: StepUpTokenPayload;
 }
 
 function getJwtSecret(): string {
   return process.env.JWT_SECRET || 'austec-jwt-secret-key-super-secure-2026';
+}
+
+function getStepUpSecret(): string {
+  return process.env.STEPUP_JWT_SECRET || `${getJwtSecret()}-stepup`;
+}
+
+export function getStepUpTtlMinutes(): number {
+  const parsed = Number(process.env.STEPUP_TTL_MINUTES || 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10;
 }
 
 export class AuthService {
@@ -42,18 +80,83 @@ export class AuthService {
 
   public static verifyToken(token: string): AuthUser | null {
     try {
-      return jwt.verify(token, getJwtSecret()) as AuthUser;
-    } catch {
-      try {
-        return jwt.verify(token, 'austec-super-secret-jwt-key-2026') as AuthUser;
-      } catch {
+      const decoded = jwt.verify(token, getJwtSecret()) as any;
+      if (!decoded || decoded.scope === 'ADMIN_2FA_PENDING' || decoded.scope === 'STEPUP_VERIFIED') {
         return null;
       }
+      if (!decoded.id || !decoded.role) {
+        return null;
+      }
+      return decoded as AuthUser;
+    } catch {
+      return null;
+    }
+  }
+
+  public static signPreAuthToken(user: { id: string; email: string; role: UserRole }): string {
+    const payload: PreAuthPayload = {
+      scope: 'ADMIN_2FA_PENDING',
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    };
+    return jwt.sign(payload, getStepUpSecret(), { expiresIn: '10m' });
+  }
+
+  public static verifyPreAuthToken(token: string): PreAuthPayload | null {
+    try {
+      const decoded = jwt.verify(token, getStepUpSecret()) as PreAuthPayload;
+      if (!decoded || decoded.scope !== 'ADMIN_2FA_PENDING' || !decoded.userId) {
+        return null;
+      }
+      return decoded;
+    } catch {
+      return null;
+    }
+  }
+
+  public static signStepUpToken(
+    userId: string,
+    purpose: StepUpPurpose,
+    channel: 'EMAIL' | 'ZALO'
+  ): { token: string; expiresInSeconds: number } {
+    const ttlMinutes = getStepUpTtlMinutes();
+    const payload: StepUpTokenPayload = {
+      scope: 'STEPUP_VERIFIED',
+      userId,
+      purpose,
+      channel,
+      verifiedAt: new Date().toISOString(),
+    };
+    const token = jwt.sign(payload, getStepUpSecret(), {
+      expiresIn: `${ttlMinutes}m`,
+    });
+    return { token, expiresInSeconds: ttlMinutes * 60 };
+  }
+
+  public static verifyStepUpToken(
+    token: string,
+    expectedUserId: string,
+    expectedPurpose: StepUpPurpose
+  ): StepUpTokenPayload | null {
+    try {
+      const decoded = jwt.verify(token, getStepUpSecret()) as StepUpTokenPayload;
+      if (
+        !decoded ||
+        decoded.scope !== 'STEPUP_VERIFIED' ||
+        decoded.userId !== expectedUserId ||
+        decoded.purpose !== expectedPurpose
+      ) {
+        return null;
+      }
+      return decoded;
+    } catch {
+      return null;
     }
   }
 
   /**
-   * Middleware xác thực Token
+   * Middleware xác thực Bearer JWT thực tế (không còn token bypass mẫu)
    */
   public static authenticate(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;
@@ -62,25 +165,18 @@ export class AuthService {
       return;
     }
 
-    const token = authHeader.split(' ')[1];
-    if (token === 'austec-admin-super-token') {
-      req.user = { id: 'admin-001', email: 'austec.admin@gmail.com', role: 'ADMIN', fullName: 'Hệ Thống Quản Trị Austec' };
-      return next();
-    }
-    if (token === 'austec-customer-token') {
-      req.user = { 
-        id: 'USR-330967', 
-        email: 'ducduc02092005@gmail.com', 
-        role: 'CUSTOMER', 
-        fullName: 'Nguyễn Mạnh Đức',
-        phoneNumber: '0944102588',
-      };
-      return next();
+    const token = authHeader.split(' ')[1]?.trim();
+    if (!token) {
+      res.status(401).json({ success: false, error: 'Unauthorized: Token trống' });
+      return;
     }
 
     const user = AuthService.verifyToken(token);
     if (!user) {
-      res.status(401).json({ success: false, error: 'Unauthorized: Token không hợp lệ hoặc đã hết hạn' });
+      res.status(401).json({
+        success: false,
+        error: 'Unauthorized: Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.',
+      });
       return;
     }
 

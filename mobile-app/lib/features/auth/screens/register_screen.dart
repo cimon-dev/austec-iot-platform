@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/iot_gateway_client.dart';
 import '../../devices/screens/orbital_hub_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -107,6 +108,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } else {
       setState(() => _errorMessage = res.error ?? "Đăng ký thất bại");
+    }
+  }
+
+  Future<void> _handleGoogleRegister() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final res = await AuthService().signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (res.success) {
+      IoTGatewayClient().clearAllDevices();
+      await IoTGatewayClient().fetchDevicesFromBackend(token: res.user?.token);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message ?? "Đăng ký bằng Google thành công!"),
+          backgroundColor: AppTheme.emeraldSuccess,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const OrbitalHubScreen()),
+        (route) => false,
+      );
+    } else {
+      setState(() => _errorMessage = res.error ?? "Đăng ký bằng Google thất bại");
     }
   }
 
@@ -372,6 +403,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     "Hoàn tất đăng ký",
                                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                                   ),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: textPrimary,
+                              side: BorderSide(color: hairline),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.control)),
+                            ),
+                            onPressed: _isLoading ? null : _handleGoogleRegister,
+                            icon: const Icon(Icons.g_mobiledata_rounded,
+                                color: Color(0xFF4285F4), size: 26),
+                            label: Text(
+                              "Đăng ký nhanh bằng Google (Gmail)",
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                       ],

@@ -1,4 +1,5 @@
 export type UserRole = 'ADMIN' | 'CSKH' | 'CUSTOMER';
+export type ApprovalStatus = 'APPROVED' | 'PENDING' | 'REJECTED';
 
 export interface UserEntity {
   id: string;
@@ -14,6 +15,12 @@ export interface UserEntity {
   province?: string;
   avatarUrl?: string;
   password?: string;
+  googleId?: string;
+  authProvider?: string;
+  hasPassword?: boolean;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  approvalStatus?: ApprovalStatus;
   isActive: boolean;
   registeredAt: string;
   updatedAt?: string;

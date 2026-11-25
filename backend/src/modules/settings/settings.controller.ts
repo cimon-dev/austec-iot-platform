@@ -3,7 +3,12 @@ import path from 'path';
 import fs from 'fs';
 import { SettingsService } from './settings.service.js';
 import { Controller, Get, Put } from '../../core/decorators/index.js';
-import { authenticate, requireRole } from '../../core/middlewares/auth.middleware.js';
+import {
+  authenticate,
+  AuthenticatedRequest,
+  requireRole,
+  assertStepUpFromRequest,
+} from '../../core/middlewares/auth.middleware.js';
 
 @Controller()
 export class SettingsController {
@@ -22,9 +27,25 @@ export class SettingsController {
 
   @Put('/admin/settings', authenticate, requireRole(['ADMIN']))
   @Put('/settings', authenticate, requireRole(['ADMIN']))
-  public async updateSettings(req: Request, res: Response) {
+  public async updateSettings(req: AuthenticatedRequest, res: Response) {
     try {
-      const settings = await this.settingsService.updateSettings(req.body);
+      // Chức năng #10: Bắt buộc Step-up OTP khi thay đổi cấu hình hạ tầng MQTT (Broker, Port, TLS, KeepAlive)
+      const current = await this.settingsService.getSettings();
+      const body = req.body || {};
+      const mqttChanged =
+        (body.mqttBrokerUrl !== undefined && body.mqttBrokerUrl !== current?.mqttBrokerUrl) ||
+        (body.mqttPort !== undefined && Number(body.mqttPort) !== Number(current?.mqttPort)) ||
+        (body.tlsEnabled !== undefined && Boolean(body.tlsEnabled) !== Boolean(current?.tlsEnabled)) ||
+        (body.keepAliveSeconds !== undefined &&
+          Number(body.keepAliveSeconds) !== Number(current?.keepAliveSeconds));
+
+      if (mqttChanged) {
+        if (!assertStepUpFromRequest(req, res, 'SYSTEM_SETTINGS')) {
+          return;
+        }
+      }
+
+      const settings = await this.settingsService.updateSettings(body);
       res.json({
         success: true,
         message: 'Cập nhật thiết lập hệ thống thành công!',

@@ -3,6 +3,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../core/services/auth_service.dart';
+import '../../../core/services/biometric_auth_service.dart';
 import '../../cskh/screens/customer_support_tickets_screen.dart';
 import '../../devices/devices.dart';
 import '../../family_sharing/screens/family_sharing_screen.dart';
@@ -26,13 +27,76 @@ class AppSettingsScreen extends StatefulWidget {
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
   bool _pushNotifications = true;
-  bool _biometricLock = true;
+  bool _biometricLock = false;
+  bool _biometricSupported = false;
   String _currentVersionText = "Đang tải...";
 
   @override
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final supported = await BiometricAuthService().isHardwareAvailable();
+    final enabled = await BiometricAuthService().isEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricSupported = supported;
+        _biometricLock = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometricLock(bool enable) async {
+    if (!enable) {
+      await BiometricAuthService().disable();
+      if (mounted) {
+        setState(() => _biometricLock = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Đã tắt đăng nhập nhanh bằng sinh trắc học.")),
+        );
+      }
+      return;
+    }
+
+    final auth = AuthService();
+    final tok = auth.token;
+    final user = auth.currentUser;
+    if (tok == null || tok.isEmpty || user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Vui lòng đăng nhập lại trước khi bật sinh trắc học."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+      return;
+    }
+
+    final res = await BiometricAuthService().enable(
+      token: tok,
+      identifier: user.email.isNotEmpty ? user.email : user.phoneNumber,
+      displayName: user.fullName,
+    );
+
+    if (!mounted) return;
+    if (res.success) {
+      setState(() => _biometricLock = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Đã bật đăng nhập nhanh bằng Vân tay / FaceID thành công!"),
+          backgroundColor: AppTheme.emeraldSuccess,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.error ?? "Không thể bật sinh trắc học."),
+          backgroundColor: AppTheme.roseDanger,
+        ),
+      );
+    }
   }
 
   Future<void> _loadAppVersion() async {
@@ -419,7 +483,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                         value: _biometricLock,
                         activeThumbColor: Colors.white,
                         activeTrackColor: AppTheme.brandBlue,
-                        onChanged: (val) => setState(() => _biometricLock = val),
+                        onChanged: _biometricSupported ? _toggleBiometricLock : null,
                       ),
                     ],
                   ),

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { getApiBaseUrl } from "./apiConfig";
 
 export interface AuthUser {
@@ -11,16 +11,43 @@ export interface AuthUser {
   phoneNumber?: string;
   role: "ADMIN" | "CSKH" | "CUSTOMER";
   avatarUrl?: string;
-  twoFactorEnabled: boolean;
+  company?: string;
+  department?: string;
+  empID?: string;
+  googleLinked?: boolean;
+  hasPassword?: boolean;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  approvalStatus?: "APPROVED" | "PENDING" | "REJECTED";
   lastLoginAt?: string;
   sessionToken?: string;
 }
 
+export interface AvailableChannels {
+  email: {
+    available: boolean;
+    maskedTarget: string;
+  };
+  zalo: {
+    available: boolean;
+    enabledOnServer: boolean;
+    hasPhone: boolean;
+    maskedTarget: string;
+  };
+}
+
+export interface PublicAuthConfig {
+  googleWebClientId: string;
+  googleAuthEnabled: boolean;
+  emailOtpEnabled: boolean;
+  emailSmtpConfigured: boolean;
+  zaloOtpEnabled: boolean;
+  devConsoleOtpMode: boolean;
+}
+
 export interface LoginParams {
-  identifier: string; // Email or Phone
-  password?: string;
-  otp?: string;
-  role?: "ADMIN" | "CSKH" | "CUSTOMER";
+  identifier: string;
+  password: string;
   rememberMe?: boolean;
 }
 
@@ -28,178 +55,283 @@ export interface RegisterParams {
   fullName: string;
   email: string;
   phoneNumber: string;
-  password?: string;
-  role?: "ADMIN" | "CSKH" | "CUSTOMER";
+  password: string;
+  department?: string;
+  company?: string;
+}
+
+export interface LoginResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  require2FA?: boolean;
+  preAuthToken?: string;
+  channels?: AvailableChannels;
+  pendingApproval?: boolean;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
+  authConfig: PublicAuthConfig;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (params: LoginParams) => Promise<{ success: boolean; error?: string; require2FA?: boolean }>;
-  register: (params: RegisterParams) => Promise<{ success: boolean; error?: string }>;
-  verify2FA: (otp: string) => Promise<{ success: boolean; error?: string }>;
+  login: (params: LoginParams) => Promise<LoginResult>;
+  loginWithGoogle: (idToken: string) => Promise<LoginResult>;
+  verifyAdmin2FA: (preAuthToken: string, code: string, challengeId?: string) => Promise<{ success: boolean; error?: string }>;
+  register: (params: RegisterParams) => Promise<{ success: boolean; pendingApproval?: boolean; message?: string; error?: string }>;
+  registerWithGoogle: (idToken: string, extra?: { phoneNumber?: string; department?: string; company?: string }) => Promise<{ success: boolean; pendingApproval?: boolean; message?: string; error?: string }>;
+  refreshUser: () => Promise<void>;
   logout: () => void;
-  quickSwitchRole: (role: "ADMIN" | "CSKH" | "CUSTOMER") => void;
 }
 
-const DEFAULT_ADMIN: AuthUser = {
-  id: "USR-AUSTEC-001",
-  fullName: "Austec Master Administrator",
-  email: "austec.admin@gmail.com",
-  phoneNumber: "0944102588",
-  role: "ADMIN",
-  twoFactorEnabled: true,
-  lastLoginAt: "2026-10-18 09:30:15",
-  sessionToken: "sec_tok_live_sha256_austec_admin_valid",
+const DEFAULT_PUBLIC_CONFIG: PublicAuthConfig = {
+  googleWebClientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+  googleAuthEnabled: Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID),
+  emailOtpEnabled: true,
+  emailSmtpConfigured: false,
+  zaloOtpEnabled: false,
+  devConsoleOtpMode: false,
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [authConfig, setAuthConfig] = useState<PublicAuthConfig>(DEFAULT_PUBLIC_CONFIG);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [pending2FAUser, setPending2FAUser] = useState<AuthUser | null>(null);
   const router = useRouter();
-  const pathname = usePathname();
+
+  const saveSession = useCallback((token: string, rawUser: any) => {
+    const authedUser: AuthUser = {
+      id: rawUser.id,
+      fullName: rawUser.fullName || rawUser.name || "Quản Trị Viên",
+      email: rawUser.email || "",
+      phoneNumber: rawUser.phoneNumber || rawUser.phone || "",
+      role: rawUser.role,
+      avatarUrl: rawUser.avatarUrl,
+      company: rawUser.company,
+      department: rawUser.department,
+      empID: rawUser.empID,
+      googleLinked: Boolean(rawUser.googleLinked),
+      hasPassword: rawUser.hasPassword !== false,
+      emailVerified: Boolean(rawUser.emailVerified),
+      phoneVerified: Boolean(rawUser.phoneVerified),
+      approvalStatus: rawUser.approvalStatus || "APPROVED",
+      lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
+      sessionToken: token,
+    };
+    setUser(authedUser);
+    try {
+      localStorage.setItem("austec_auth_user", JSON.stringify(authedUser));
+      localStorage.setItem("austec_auth_token", token);
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const clearSession = useCallback(() => {
+    setUser(null);
+    try {
+      localStorage.removeItem("austec_auth_user");
+      localStorage.removeItem("austec_auth_token");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const savedToken = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") : null;
+    if (!savedToken) {
+      clearSession();
+      return;
+    }
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${savedToken}` },
+      });
+      if (res.status === 401) {
+        clearSession();
+        if (
+          typeof window !== "undefined" &&
+          window.location.pathname !== "/login" &&
+          window.location.pathname !== "/register"
+        ) {
+          window.location.replace("/login");
+        }
+        return;
+      }
+      const data = await res.json();
+      if (data.success && data.user) {
+        if (data.user.role === "CUSTOMER") {
+          clearSession();
+          return;
+        }
+        saveSession(savedToken, data.user);
+      }
+    } catch (err) {
+      console.warn("[AuthContext] Không kết nối được API làm mới phiên:", err);
+    }
+  }, [clearSession, saveSession]);
 
   useEffect(() => {
     const initAuth = async () => {
+      // 1. Nạp public auth config từ Backend (Google Client ID, trạng thái Zalo ZNS...)
+      try {
+        const cfgRes = await fetch(`${getApiBaseUrl()}/api/auth/public-config`);
+        if (cfgRes.ok) {
+          const cfgData = await cfgRes.json();
+          if (cfgData.success) {
+            setAuthConfig({
+              googleWebClientId:
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || cfgData.googleWebClientId || "",
+              googleAuthEnabled:
+                Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) || Boolean(cfgData.googleAuthEnabled),
+              emailOtpEnabled: cfgData.emailOtpEnabled !== false,
+              emailSmtpConfigured: Boolean(cfgData.emailSmtpConfigured),
+              zaloOtpEnabled: Boolean(cfgData.zaloOtpEnabled),
+              devConsoleOtpMode: Boolean(cfgData.devConsoleOtpMode),
+            });
+          }
+        }
+      } catch {
+        // giữ default config
+      }
+
+      // 2. Kiểm tra phiên đăng nhập thực tế với Backend
       try {
         const savedUser = localStorage.getItem("austec_auth_user");
         const savedToken = localStorage.getItem("austec_auth_token");
         if (savedUser && savedToken) {
           const parsedUser = JSON.parse(savedUser);
-          setUser(parsedUser);
-
-          // Xác thực tính hợp lệ của Token với Backend
-          if (savedToken !== "austec-admin-super-token") {
-            try {
-              const res = await fetch(`${getApiBaseUrl()}/api/auth/me`, {
-                headers: { Authorization: `Bearer ${savedToken}` },
-              });
-              if (res.status === 401) {
-                console.warn("[AuthContext] Phiên đăng nhập đã hết hạn (401), chuyển hướng về /login...");
-                localStorage.removeItem("austec_auth_user");
-                localStorage.removeItem("austec_auth_token");
-                setUser(null);
-                if (typeof window !== "undefined" && window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-                  window.location.replace("/login");
-                }
-                return;
-              }
-              const data = await res.json();
-              if (data.success && data.user) {
-                const updated = { ...parsedUser, ...data.user };
-                setUser(updated);
-                localStorage.setItem("austec_auth_user", JSON.stringify(updated));
-              }
-            } catch (err) {
-              console.warn("[AuthContext] Không kết nối được API kiểm tra token:", err);
-            }
+          if (parsedUser?.role === "CUSTOMER") {
+            clearSession();
+          } else {
+            setUser(parsedUser);
+            await refreshUser();
           }
         } else {
-          // Require explicit login
           setUser(null);
         }
       } catch {
-        setUser(null);
+        clearSession();
       } finally {
         setIsLoading(false);
       }
     };
 
     initAuth();
-  }, []);
+  }, [clearSession, refreshUser]);
 
-  const login = async (params: LoginParams): Promise<{ success: boolean; error?: string; require2FA?: boolean }> => {
-    const { identifier, password, role } = params;
-
-    if (!identifier || identifier.trim().length === 0) {
-      return { success: false, error: "Vui lòng nhập Email hoặc Số điện thoại" };
+  const login = async (params: LoginParams): Promise<LoginResult> => {
+    const { identifier, password } = params;
+    if (!identifier || !identifier.trim()) {
+      return { success: false, error: "Vui lòng nhập Email hoặc Số điện thoại." };
     }
-
-    if (password && password.length < 6) {
-      return { success: false, error: "Mật khẩu bảo mật phải có ít nhất 6 ký tự" };
+    if (!password || password.length < 6) {
+      return { success: false, error: "Vui lòng nhập mật khẩu (tối thiểu 6 ký tự)." };
     }
-
-    const assignedRole = role || (identifier.includes("cskh") ? "CSKH" : identifier.includes("admin") ? "ADMIN" : "ADMIN");
 
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier, password, role: assignedRole }),
+        body: JSON.stringify({
+          identifier: identifier.trim(),
+          password,
+          portal: "admin",
+        }),
       });
       const data = await res.json();
-      if (res.ok && data.success && data.token) {
-        const authedUser: AuthUser = {
-          id: data.user?.id || `USR-${Math.floor(100000 + Math.random() * 900000)}`,
-          fullName: data.user?.fullName || (assignedRole === "ADMIN" ? "Quản Trị Viên Cao Cấp" : "Chuyên Viên CSKH"),
-          email: data.user?.email || (identifier.includes("@") ? identifier : `${identifier}@phone.austec.vn`),
-          phoneNumber: data.user?.phoneNumber || identifier,
-          role: data.user?.role || assignedRole,
-          twoFactorEnabled: true,
-          lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-          sessionToken: data.token,
-        };
-        setUser(authedUser);
-        localStorage.setItem("austec_auth_user", JSON.stringify(authedUser));
-        localStorage.setItem("austec_auth_token", data.token);
-        return { success: true };
-      } else if (!res.ok && data?.error) {
-        return { success: false, error: data.error };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data?.error || "Đăng nhập thất bại." };
       }
-    } catch (netErr) {
-      console.warn("Backend auth offline, using local fallback token:", netErr);
+
+      if (data.require2FA && data.preAuthToken) {
+        return {
+          success: true,
+          require2FA: true,
+          preAuthToken: data.preAuthToken,
+          channels: data.channels,
+          message: data.message,
+        };
+      }
+
+      if (data.token && data.user) {
+        saveSession(data.token, data.user);
+        return { success: true };
+      }
+      return { success: false, error: "Phản hồi máy chủ không hợp lệ." };
+    } catch (netErr: any) {
+      return { success: false, error: `Không thể kết nối máy chủ xác thực: ${netErr.message}` };
     }
+  };
 
-    const authedUser: AuthUser = {
-      id: `USR-${Math.floor(100000 + Math.random() * 900000)}`,
-      fullName: assignedRole === "ADMIN" ? "Quản Trị Viên Cao Cấp" : assignedRole === "CSKH" ? "Chuyên Viên CSKH" : "Khách Hàng Sở Hữu",
-      email: identifier.includes("@") ? identifier : `${identifier.replace(/\D/g, "")}@phone.austec.vn`,
-      phoneNumber: identifier.includes("@") ? "0944102588" : identifier,
-      role: assignedRole,
-      twoFactorEnabled: true,
-      lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-      sessionToken: "austec-admin-super-token",
-    };
-
-    setUser(authedUser);
+  const loginWithGoogle = async (idToken: string): Promise<LoginResult> => {
     try {
-      localStorage.setItem("austec_auth_user", JSON.stringify(authedUser));
-      localStorage.setItem("austec_auth_token", authedUser.sessionToken!);
-    } catch {
-      // ignore
-    }
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, portal: "admin", mode: "login" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data?.error || "Đăng nhập Google thất bại." };
+      }
 
-    return { success: true };
+      if (data.require2FA && data.preAuthToken) {
+        return {
+          success: true,
+          require2FA: true,
+          preAuthToken: data.preAuthToken,
+          channels: data.channels,
+          message: data.message,
+        };
+      }
+
+      if (data.token && data.user) {
+        saveSession(data.token, data.user);
+        return { success: true };
+      }
+      return { success: false, error: "Phản hồi xác thực Google không hợp lệ." };
+    } catch (netErr: any) {
+      return { success: false, error: `Lỗi kết nối xác thực Google: ${netErr.message}` };
+    }
   };
 
-  const verify2FA = async (otp: string): Promise<{ success: boolean; error?: string }> => {
-    if (!pending2FAUser) {
-      return { success: false, error: "Không tìm thấy phiên đăng nhập chờ xác thực" };
+  const verifyAdmin2FA = async (
+    preAuthToken: string,
+    code: string,
+    challengeId?: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/login/verify-2fa`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preAuthToken, code: code.trim(), challengeId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.token && data.user) {
+        saveSession(data.token, data.user);
+        return { success: true };
+      }
+      return { success: false, error: data?.error || "Mã xác thực 2FA không chính xác." };
+    } catch (netErr: any) {
+      return { success: false, error: `Lỗi kết nối xác thực 2FA: ${netErr.message}` };
     }
-    if (otp !== "123456" && otp.length !== 6) {
-      return { success: false, error: "Mã OTP bảo mật không hợp lệ (Mã thử nghiệm: 123456)" };
-    }
-
-    setUser(pending2FAUser);
-    localStorage.setItem("austec_auth_user", JSON.stringify(pending2FAUser));
-    localStorage.setItem("austec_auth_token", pending2FAUser.sessionToken!);
-    setPending2FAUser(null);
-    return { success: true };
   };
 
-  const register = async (params: RegisterParams): Promise<{ success: boolean; error?: string }> => {
+  const register = async (params: RegisterParams) => {
     if (!params.fullName || params.fullName.trim().length < 2) {
-      return { success: false, error: "Họ và tên không được để trống" };
+      return { success: false, error: "Họ và tên không được để trống." };
     }
     if (!params.email || !params.email.includes("@")) {
-      return { success: false, error: "Địa chỉ email không đúng định dạng" };
+      return { success: false, error: "Địa chỉ email không đúng định dạng." };
     }
-    if (!params.phoneNumber || params.phoneNumber.length < 8) {
-      return { success: false, error: "Số điện thoại di động không hợp lệ" };
+    if (!params.phoneNumber || params.phoneNumber.replace(/\D/g, "").length < 9) {
+      return { success: false, error: "Số điện thoại di động không hợp lệ." };
+    }
+    if (!params.password || params.password.length < 6) {
+      return { success: false, error: "Mật khẩu phải có ít nhất 6 ký tự." };
     }
 
     try {
@@ -210,76 +342,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fullName: params.fullName.trim(),
           email: params.email.trim(),
           phoneNumber: params.phoneNumber.trim(),
-          password: params.password || "Austec123!@#",
-          role: params.role || "CUSTOMER",
+          password: params.password,
+          department: params.department?.trim(),
+          company: params.company?.trim(),
+          portal: "admin",
         }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
-        const authedUser: AuthUser = {
-          id: data.user?.id || `USR-${Math.floor(100000 + Math.random() * 900000)}`,
-          fullName: data.user?.fullName || params.fullName,
-          email: data.user?.email || params.email,
-          phoneNumber: data.user?.phoneNumber || params.phoneNumber,
-          role: (data.user?.role as any) || params.role || "CUSTOMER",
-          twoFactorEnabled: true,
-          lastLoginAt: new Date().toISOString().replace("T", " ").substring(0, 19),
-          sessionToken: data.token,
+        return {
+          success: true,
+          pendingApproval: Boolean(data.pendingApproval),
+          message: data.message,
         };
-
-        setUser(authedUser);
-        try {
-          localStorage.setItem("austec_auth_user", JSON.stringify(authedUser));
-          if (data.token) {
-            localStorage.setItem("austec_auth_token", data.token);
-          }
-        } catch {
-          // ignore
-        }
-        return { success: true };
-      } else {
-        return { success: false, error: data?.error || "Không thể đăng ký tài khoản trên máy chủ" };
       }
+      return { success: false, error: data?.error || "Không thể gửi yêu cầu đăng ký." };
     } catch (netErr: any) {
-      return { success: false, error: "Lỗi kết nối máy chủ xác thực: " + netErr.message };
+      return { success: false, error: `Lỗi kết nối máy chủ: ${netErr.message}` };
+    }
+  };
+
+  const registerWithGoogle = async (
+    idToken: string,
+    extra?: { phoneNumber?: string; department?: string; company?: string }
+  ) => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idToken,
+          portal: "admin",
+          mode: "register",
+          phoneNumber: extra?.phoneNumber,
+          department: extra?.department,
+          company: extra?.company,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        return {
+          success: true,
+          pendingApproval: Boolean(data.pendingApproval),
+          message: data.message,
+        };
+      }
+      return { success: false, error: data?.error || "Không thể đăng ký bằng Google." };
+    } catch (netErr: any) {
+      return { success: false, error: `Lỗi kết nối máy chủ: ${netErr.message}` };
     }
   };
 
   const logout = () => {
-    setUser(null);
-    try {
-      localStorage.removeItem("austec_auth_user");
-      localStorage.removeItem("austec_auth_token");
-    } catch {
-      // ignore
-    }
+    clearSession();
     router.push("/login");
-  };
-
-  const quickSwitchRole = (newRole: "ADMIN" | "CSKH" | "CUSTOMER") => {
-    if (!user) return;
-    const updated: AuthUser = {
-      ...user,
-      role: newRole,
-      fullName: newRole === "ADMIN" ? "Austec Master Administrator" : newRole === "CSKH" ? "Chuyên Viên Kỹ Thuật CSKH" : "Khách Hàng Nhà Thông Minh",
-      email: newRole === "ADMIN" ? "austec.admin@gmail.com" : newRole === "CSKH" ? "cskh.austec01@austec.vn" : "nguyen.vannam@gmail.com",
-    };
-    setUser(updated);
-    localStorage.setItem("austec_auth_user", JSON.stringify(updated));
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        authConfig,
         isAuthenticated: !!user,
         isLoading,
         login,
+        loginWithGoogle,
+        verifyAdmin2FA,
         register,
-        verify2FA,
+        registerWithGoogle,
+        refreshUser,
         logout,
-        quickSwitchRole,
       }}
     >
       {children}

@@ -457,7 +457,7 @@ export function DeviceImportTab({
     setImportStatus("SAVING");
     try {
       const apiBase = getApiBaseUrl();
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       
       const payload = nonDuplicateRows.map(r => ({
         hwId: r.hardwareId,

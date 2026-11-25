@@ -10,11 +10,17 @@ export const settingsService = {
     return null;
   },
 
-  async updateSettings(settings: Partial<SystemSettings>): Promise<{ success: boolean; error?: string }> {
-    const res = await apiClient.put<{ message?: string }>("/api/admin/settings", settings);
+  async updateSettings(
+    settings: Partial<SystemSettings>,
+    stepUpToken?: string
+  ): Promise<{ success: boolean; error?: string; requireStepUp?: boolean }> {
+    const res = await apiClient.put<{ message?: string }>("/api/admin/settings", settings, {
+      stepUpToken,
+    });
     return {
       success: !!res.success,
       error: res.error,
+      requireStepUp: res.requireStepUp,
     };
   },
 };

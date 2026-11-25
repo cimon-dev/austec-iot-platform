@@ -1,9 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { usePermissions } from "../../context/PermissionContext";
 import { AccessDenied } from "../../components/AccessDenied";
+import {
+  StepUpVerifyModal,
+  getCachedStepUpToken,
+  clearCachedStepUpToken,
+} from "@/components/StepUpVerifyModal";
 import { settingsService } from "./settings-service";
 import {
   SettingsHeader,
@@ -15,7 +20,6 @@ import {
 export default function SystemSettingsPage() {
   const { canView, canUpdate } = usePermissions();
 
-  // Settings State
   const [expiryNotificationDays, setExpiryNotificationDays] = useState<number>(30);
   const [trialExpiryPeriod, setTrialExpiryPeriod] = useState<number>(15);
   const [notificationFrequency, setNotificationFrequency] = useState<string>("daily");
@@ -30,9 +34,16 @@ export default function SystemSettingsPage() {
   const [supportEmail, setSupportEmail] = useState("support@austec.vn");
   const [timezone, setTimezone] = useState("Asia/Ho_Chi_Minh (GMT+7)");
 
-  const [isSaving, setIsSaving] = useState(false);
+  const initialMqttRef = useRef({
+    mqttBrokerUrl: "mqtt://broker.austec.vn",
+    mqttPort: 8883,
+    tlsEnabled: true,
+    keepAliveSeconds: 60,
+  });
 
-  // Nạp dữ liệu thực tế từ PostgreSQL khi mở trang
+  const [isSaving, setIsSaving] = useState(false);
+  const [showStepUpModal, setShowStepUpModal] = useState(false);
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -49,6 +60,13 @@ export default function SystemSettingsPage() {
           if (s.hotline) setHotline(s.hotline);
           if (s.supportEmail) setSupportEmail(s.supportEmail);
           if (s.timezone) setTimezone(s.timezone);
+
+          initialMqttRef.current = {
+            mqttBrokerUrl: s.mqttBrokerUrl ?? "mqtt://broker.austec.vn",
+            mqttPort: s.mqttPort ?? 8883,
+            tlsEnabled: s.tlsEnabled ?? true,
+            keepAliveSeconds: s.keepAliveSeconds ?? 60,
+          };
         }
       } catch (err: any) {
         console.warn("Lỗi nạp cài đặt hệ thống:", err.message);
@@ -58,30 +76,39 @@ export default function SystemSettingsPage() {
     fetchSettings();
   }, []);
 
-  // Lưu dữ liệu thực tế xuống Database PostgreSQL
-  const handleSave = async () => {
-    if (!canUpdate("mod_setting")) {
-      toast.error("Bạn không có quyền cập nhật cấu hình hệ thống!");
-      return;
-    }
-
+  const executeSave = async (stepUpToken?: string) => {
     setIsSaving(true);
     try {
-      const res = await settingsService.updateSettings({
-        expiryNotificationDays,
-        trialExpiryPeriod,
-        notificationFrequency,
-        mqttBrokerUrl,
-        mqttPort,
-        tlsEnabled,
-        keepAliveSeconds,
-        companyName,
-        hotline,
-        supportEmail,
-        timezone,
-      });
+      const res = await settingsService.updateSettings(
+        {
+          expiryNotificationDays,
+          trialExpiryPeriod,
+          notificationFrequency,
+          mqttBrokerUrl,
+          mqttPort,
+          tlsEnabled,
+          keepAliveSeconds,
+          companyName,
+          hotline,
+          supportEmail,
+          timezone,
+        },
+        stepUpToken
+      );
+
+      if (res.requireStepUp) {
+        clearCachedStepUpToken("SYSTEM_SETTINGS");
+        setShowStepUpModal(true);
+        return;
+      }
 
       if (res.success) {
+        initialMqttRef.current = {
+          mqttBrokerUrl,
+          mqttPort,
+          tlsEnabled,
+          keepAliveSeconds,
+        };
         toast.success("Đã lưu các thiết lập cấu hình hệ thống thành công!");
       } else {
         toast.error(res.error || "Lỗi lưu cấu hình!");
@@ -91,6 +118,31 @@ export default function SystemSettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!canUpdate("mod_setting")) {
+      toast.error("Bạn không có quyền cập nhật cấu hình hệ thống!");
+      return;
+    }
+
+    const mqttChanged =
+      mqttBrokerUrl !== initialMqttRef.current.mqttBrokerUrl ||
+      Number(mqttPort) !== Number(initialMqttRef.current.mqttPort) ||
+      Boolean(tlsEnabled) !== Boolean(initialMqttRef.current.tlsEnabled) ||
+      Number(keepAliveSeconds) !== Number(initialMqttRef.current.keepAliveSeconds);
+
+    if (mqttChanged) {
+      const cached = getCachedStepUpToken("SYSTEM_SETTINGS");
+      if (cached) {
+        await executeSave(cached);
+      } else {
+        setShowStepUpModal(true);
+      }
+      return;
+    }
+
+    await executeSave();
   };
 
   const handleReset = () => {
@@ -114,8 +166,6 @@ export default function SystemSettingsPage() {
 
   return (
     <div className="h-full flex flex-col min-h-0 space-y-3 overflow-hidden">
-
-      {/* Header Bar */}
       <SettingsHeader
         canUpdate={canUpdate("mod_setting")}
         isSaving={isSaving}
@@ -123,7 +173,6 @@ export default function SystemSettingsPage() {
         onSave={handleSave}
       />
 
-      {/* Settings Form Body */}
       <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
         <WarrantyPolicyCard
           expiryNotificationDays={expiryNotificationDays}
@@ -156,6 +205,25 @@ export default function SystemSettingsPage() {
           onChangeTimezone={setTimezone}
         />
       </div>
+
+      <StepUpVerifyModal
+        isOpen={showStepUpModal}
+        purpose="SYSTEM_SETTINGS"
+        title="Xác Thực Thay Đổi Hạ Tầng MQTT Hệ Thống"
+        badgeText="Ảnh hưởng toàn bộ thiết bị IoT"
+        badgeType="danger"
+        warningDetail="Thay đổi địa chỉ MQTT Broker, Port hoặc TLS có thể làm mất kết nối toàn bộ thiết bị cửa cuốn và cảm biến đang vận hành. Vui lòng xác thực OTP qua Gmail hoặc Zalo để xác nhận."
+        summaryRows={[
+          { label: "MQTT Broker", value: mqttBrokerUrl },
+          { label: "Port / TLS", value: `${mqttPort} (${tlsEnabled ? "TLS Bật" : "TLS Tắt"})` },
+          { label: "KeepAlive", value: `${keepAliveSeconds}s` },
+        ]}
+        onClose={() => setShowStepUpModal(false)}
+        onVerified={async (token) => {
+          setShowStepUpModal(false);
+          await executeSave(token);
+        }}
+      />
     </div>
   );
 }

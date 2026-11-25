@@ -29,6 +29,12 @@ import { getApiBaseUrl } from "@/context/apiConfig";
 import { toast } from "sonner";
 import { usePermissions } from "@/context/PermissionContext";
 import { AccessDenied } from "@/components/AccessDenied";
+import {
+  StepUpVerifyModal,
+  getCachedStepUpToken,
+  clearCachedStepUpToken,
+} from "@/components/StepUpVerifyModal";
+import { getAuthHeaderRecord } from "@/services/api-client";
 
 interface FirmwareRelease {
   id: number;
@@ -466,11 +472,10 @@ export default function FirmwareOtaPage() {
   const [activeCodeFileIndex, setActiveCodeFileIndex] = useState<number>(0);
 
   // =========================================================================
-  // POPUP CẢNH BÁO AN TOÀN & XÁC THỰC QUẢN TRỊ VIÊN (ADMIN 2FA CHO TẤT CẢ HÀNH ĐỘNG QUAN TRỌNG)
+  // POPUP CẢNH BÁO AN TOÀN & XÁC THỰC QUẢN TRỊ VIÊN THẬT (STEP-UP OTP GMAIL / ZALO)
   // =========================================================================
   const [securityModal, setSecurityModal] = useState<SecurityActionConfig | null>(null);
-  const [otpCode, setOtpCode] = useState<string>("");
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState<boolean>(false);
+  const [otaStepUpToken, setOtaStepUpToken] = useState<string>("");
 
   // Modal Cấu hình thông số nạp OTA (chọn bản, phạm vi)
   const [showDeployConfigModal, setShowDeployConfigModal] = useState<boolean>(false);
@@ -483,10 +488,7 @@ export default function FirmwareOtaPage() {
   const [newChangelog, setNewChangelog] = useState<string>("");
   const [newType, setNewType] = useState<string>("STABLE");
 
-  const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
-    return { Authorization: `Bearer ${token}` };
-  };
+  const getAuthHeaders = (stepUpToken?: string) => getAuthHeaderRecord(stepUpToken);
 
   const fetchData = async () => {
     try {
@@ -569,7 +571,7 @@ export default function FirmwareOtaPage() {
   // 1. Mở cảnh báo phát lệnh nạp OTA
   const triggerDeployOtaWithSecurity = (targetVersion?: string) => {
     const v = targetVersion || deployVersion || currentModel.currentStableVersion;
-    setSecurityModal({
+    const cfg: SecurityActionConfig = {
       actionType: "DEPLOY_OTA",
       title: "Cảnh Báo Phát Lệnh Nạp Firmware Không Dây (OTA)",
       badgeText: "Hành động có tác động phần cứng thực tế",
@@ -582,34 +584,44 @@ export default function FirmwareOtaPage() {
         modelName: currentModel.name,
         modelCode: currentModel.modelCode,
         version: v,
-        scope: deployMode === "ALL" ? "Toàn bộ thiết bị thuộc Model này" : "Thử nghiệm 10% (Canary)"
-      }
-    });
-    setOtpCode("");
+        scope: deployMode === "ALL" ? "Toàn bộ thiết bị thuộc Model này" : "Thử nghiệm 10% (Canary)",
+      },
+    };
+    const cached = getCachedStepUpToken("OTA_ADMIN");
+    if (cached) {
+      executeSecurityAction(cfg, cached);
+    } else {
+      setSecurityModal(cfg);
+    }
   };
 
   // 2. Mở cảnh báo thêm Firmware mới
   const triggerUploadFwWithSecurity = () => {
+    const cached = getCachedStepUpToken("OTA_ADMIN");
+    if (cached) {
+      setOtaStepUpToken(cached);
+      setShowUploadModal(true);
+      return;
+    }
     setSecurityModal({
       actionType: "UPLOAD_FW",
       title: "Xác Thực Bảo Mật Thêm Bản Phát Hành Firmware",
       badgeText: "Bản phát hành chính thức hệ thống",
       badgeType: "info",
       warningTitle: "Kiểm tra tính tương thích trước khi tải lên",
-      warningDetail: `Tệp nhị phân .bin bạn chuẩn bị tải lên sẽ trở thành phiên bản firmware khả dụng trên máy chủ để nạp cho các thiết bị thuộc mẫu ${currentModel.name}. Bạn cần xác thực quyền Quản trị viên để tiếp tục.`,
+      warningDetail: `Tệp nhị phân .bin bạn chuẩn bị tải lên sẽ trở thành phiên bản firmware khả dụng trên máy chủ để nạp cho các thiết bị thuộc mẫu ${currentModel.name}. Bạn cần xác thực OTP Quản trị viên để tiếp tục.`,
       confirmBtnLabel: "Xác nhận & Mở form tải lên",
       confirmBtnClass: "bg-cyan-600 hover:bg-cyan-700 text-white",
       metadata: {
         modelName: currentModel.name,
-        modelCode: currentModel.modelCode
-      }
+        modelCode: currentModel.modelCode,
+      },
     });
-    setOtpCode("");
   };
 
   // 3. Mở cảnh báo xóa Firmware
   const triggerDeleteFwWithSecurity = (fw: FirmwareRelease) => {
-    setSecurityModal({
+    const cfg: SecurityActionConfig = {
       actionType: "DELETE_FW",
       title: "Cảnh Báo Nghiêm Trọng: Xóa Bản Phát Hành Firmware",
       badgeText: "Hành động nguy hiểm - Không thể hoàn tác",
@@ -622,151 +634,125 @@ export default function FirmwareOtaPage() {
         modelName: currentModel.name,
         modelCode: currentModel.modelCode,
         version: fw.version,
-        firmwareTarget: fw
-      }
-    });
-    setOtpCode("");
-  };
-
-  // 4. Mở cảnh báo xem mã nguồn Firmware
-  const triggerViewCodeWithSecurity = () => {
-    setSecurityModal({
-      actionType: "VIEW_CODE",
-      title: "Xác Thực An Ninh: Mở Khóa Xem Mã Nguồn Cốt Lõi",
-      badgeText: "Bảo vệ tài sản trí tuệ cấp cao",
-      badgeType: "warning",
-      warningTitle: "Bảo mật mã nguồn nhúng C/C++",
-      warningDetail: `Mã nguồn điều khiển mạch vi điều khiển và thuật toán dừng khẩn cấp chống kẹt cửa là bí mật công nghệ cốt lõi. Yêu cầu xác thực OTP Quản trị viên. Mọi lượt mở khóa xem mã nguồn đều được lưu vết trong Hộp đen kiểm toán.`,
-      confirmBtnLabel: "Xác nhận & Mở khóa xem Code",
-      confirmBtnClass: "bg-slate-900 hover:bg-black dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900",
-      metadata: {
-        modelName: currentModel.name,
-        modelCode: currentModel.modelCode
-      }
-    });
-    setOtpCode("");
-  };
-
-  // 5. Mở cảnh báo thử lại thiết bị nạp lỗi
-  const triggerRetryDeviceWithSecurity = (rec: OtaDeviceRecord) => {
-    setSecurityModal({
-      actionType: "RETRY_DEVICE",
-      title: "Xác Nhận Phát Lại Lệnh Nạp Cho Thiết Bị",
-      badgeText: "Kích hoạt nạp lại phần cứng",
-      badgeType: "info",
-      warningTitle: "Gửi lại gói tin OTA xuống thiết bị",
-      warningDetail: `Hệ thống sẽ gửi lại yêu cầu nạp firmware ${rec.targetVersion} tới thiết bị mang mã ${rec.hardwareId} của khách hàng ${rec.customerName}. Mạch phần cứng sẽ tiến hành kết nối máy chủ và tải lại file .bin.`,
-      confirmBtnLabel: "Xác nhận & Gửi lại lệnh nạp",
-      confirmBtnClass: "bg-blue-600 hover:bg-blue-700 text-white",
-      metadata: {
-        recordId: rec.id,
-        hardwareId: rec.hardwareId,
-        customerName: rec.customerName,
-        version: rec.targetVersion
-      }
-    });
-    setOtpCode("");
-  };
-
-  // Nút Demo tự động điền mã xác thực
-  const handleAutoFillDemoOtp = () => {
-    setOtpCode("882391");
-    toast.info("Đã điền mã xác thực thử nghiệm: 882391");
-  };
-
-  // Xử lý xác nhận OTP và thi hành hành động tương ứng
-  const handleConfirmSecurityAction = async () => {
-    if (!otpCode || otpCode.trim().length < 6) {
-      toast.error("Vui lòng nhập đủ mã xác thực 6 chữ số!");
-      return;
+        firmwareTarget: fw,
+      },
+    };
+    const cached = getCachedStepUpToken("OTA_ADMIN");
+    if (cached) {
+      executeSecurityAction(cfg, cached);
+    } else {
+      setSecurityModal(cfg);
     }
+  };
 
-    if (!securityModal) return;
-    setIsVerifyingOtp(true);
+  // 4. Mở xem mã nguồn Firmware
+  const triggerViewCodeWithSecurity = () => {
+    setIsCodeUnlocked(true);
+    setActiveRightTab("code");
+  };
 
-    setTimeout(async () => {
-      const action = securityModal.actionType;
-      const meta = securityModal.metadata;
+  // 5. Thử lại thiết bị nạp lỗi
+  const triggerRetryDeviceWithSecurity = async (rec: OtaDeviceRecord) => {
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${rec.id}`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRecords((prev) =>
+          prev.map((r) =>
+            r.id === rec.id ? { ...r, status: "DOWNLOADING", progressPct: 35, errorReason: null } : r
+          )
+        );
+        toast.success(`Đã gửi lại lệnh nạp cho thiết bị ${rec.hardwareId}!`);
+      } else {
+        toast.error(data.error || "Không thể gửi lại lệnh nạp.");
+      }
+    } catch (e: any) {
+      toast.error(`Lỗi gửi lại lệnh nạp: ${e.message}`);
+    }
+  };
 
-      try {
-        if (action === "DEPLOY_OTA") {
-          // Thi hành nạp OTA
-          const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/deploy`, {
-            method: "POST",
-            headers: { 
-              "Content-Type": "application/json",
-              ...getAuthHeaders()
-            },
-            body: JSON.stringify({
-              name: `Chiến dịch phát hành ${meta?.version || deployVersion} cho ${currentModel.modelCode}`,
-              targetModel: currentModel.modelCode,
-              targetVersion: meta?.version || deployVersion,
-              rolloutType: deployMode
-            })
-          });
+  // Thi hành hành động OTA đã được Backend xác thực Step-up OTP
+  const executeSecurityAction = async (cfg: SecurityActionConfig, stepUpToken: string) => {
+    const action = cfg.actionType;
+    const meta = cfg.metadata;
+    setOtaStepUpToken(stepUpToken);
+
+    try {
+      if (action === "DEPLOY_OTA") {
+        const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/deploy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(stepUpToken),
+          },
+          body: JSON.stringify({
+            name: `Chiến dịch phát hành ${meta?.version || deployVersion} cho ${currentModel.modelCode}`,
+            targetModel: currentModel.modelCode,
+            targetVersion: meta?.version || deployVersion,
+            rolloutType: deployMode,
+          }),
+        });
+        const data = await res.json();
+        if (data.requireStepUp) {
+          clearCachedStepUpToken("OTA_ADMIN");
+          setSecurityModal(cfg);
+          return;
+        }
+        if (data.success) {
+          toast.success(`Đã khởi tạo chiến dịch nạp OTA cho ${currentModel.name}!`);
+          setShowDeployConfigModal(false);
+          fetchData();
+        } else {
+          toast.error(data.error || "Không thể khởi chạy chiến dịch");
+        }
+      } else if (action === "UPLOAD_FW") {
+        setShowUploadModal(true);
+      } else if (action === "DELETE_FW") {
+        if (meta?.firmwareTarget) {
+          const res = await fetch(
+            `${getApiBaseUrl()}/api/admin/firmware/${meta.firmwareTarget.id}`,
+            {
+              method: "DELETE",
+              headers: getAuthHeaders(stepUpToken),
+            }
+          );
           const data = await res.json();
+          if (data.requireStepUp) {
+            clearCachedStepUpToken("OTA_ADMIN");
+            setSecurityModal(cfg);
+            return;
+          }
           if (data.success) {
-            toast.success(`Đã khởi tạo chiến dịch nạp OTA cho ${currentModel.name}!`);
-            setShowDeployConfigModal(false);
-            fetchData();
+            setFirmwares((prev) => prev.filter((f) => f.id !== meta.firmwareTarget?.id));
+            toast.success(`Đã xóa vĩnh viễn bản phát hành ${meta.firmwareTarget.version}!`);
           } else {
-            toast.error(data.error || "Không thể khởi chạy chiến dịch");
-          }
-        } else if (action === "UPLOAD_FW") {
-          // Mở form upload
-          setShowUploadModal(true);
-        } else if (action === "DELETE_FW") {
-          // Thi hành xóa firmware
-          if (meta?.firmwareTarget) {
-            const res = await fetch(`${getApiBaseUrl()}/api/admin/firmware/${meta.firmwareTarget.id}`, { 
-              method: 'DELETE',
-              headers: getAuthHeaders()
-            });
-            const data = await res.json();
-            if (data.success) {
-              setFirmwares(prev => prev.filter(f => f.id !== meta.firmwareTarget?.id));
-              toast.success(`Đã xóa vĩnh viễn bản phát hành ${meta.firmwareTarget.version}!`);
-            } else {
-              toast.error(data.error || "Lỗi khi xóa firmware");
-            }
-          }
-        } else if (action === "VIEW_CODE") {
-          // Mở khóa xem code
-          setIsCodeUnlocked(true);
-          setActiveRightTab("code");
-          toast.success("Đã mở khóa xem mã nguồn cốt lõi!");
-        } else if (action === "RETRY_DEVICE") {
-          // Thi hành retry thiết bị
-          if (meta?.recordId) {
-            const res = await fetch(`${getApiBaseUrl()}/api/admin/ota/retry/${meta.recordId}`, {
-              method: "POST",
-              headers: getAuthHeaders()
-            });
-            const data = await res.json();
-            if (data.success) {
-              setRecords(prev => prev.map(r => r.id === meta.recordId ? { ...r, status: "DOWNLOADING", progressPct: 35, errorReason: null } : r));
-              toast.success(`Đã gửi lại lệnh nạp cho thiết bị ${meta.hardwareId}!`);
-            }
+            toast.error(data.error || "Lỗi khi xóa firmware");
           }
         }
-      } catch (e: any) {
-        toast.error(`Lỗi thực hiện: ${e.message}`);
-      } finally {
-        setIsVerifyingOtp(false);
-        setSecurityModal(null);
       }
-    }, 500);
+    } catch (e: any) {
+      toast.error(`Lỗi thực hiện: ${e.message}`);
+    }
   };
 
   // Thi hành lưu firmware mới vào máy chủ
   const handleCreateRelease = async (e: React.FormEvent) => {
     e.preventDefault();
+    const token = otaStepUpToken || getCachedStepUpToken("OTA_ADMIN") || "";
+    if (!token) {
+      setShowUploadModal(false);
+      triggerUploadFwWithSecurity();
+      return;
+    }
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/admin/firmware`, {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders()
+          ...getAuthHeaders(token),
         },
         body: JSON.stringify({
           version: newVersion,
@@ -776,10 +762,16 @@ export default function FirmwareOtaPage() {
           fileSizeBytes: 1612000,
           sha256Checksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           releaseType: newType,
-          changelog: newChangelog || "Cập nhật tính năng & nâng cao độ ổn định cho thiết bị"
-        })
+          changelog: newChangelog || "Cập nhật tính năng & nâng cao độ ổn định cho thiết bị",
+        }),
       });
       const data = await res.json();
+      if (data.requireStepUp) {
+        clearCachedStepUpToken("OTA_ADMIN");
+        setShowUploadModal(false);
+        triggerUploadFwWithSecurity();
+        return;
+      }
       if (data.success) {
         toast.success(`Đã phát hành firmware ${newVersion} cho ${currentModel.name}!`);
         setShowUploadModal(false);
@@ -1319,147 +1311,38 @@ export default function FirmwareOtaPage() {
       {/* POPUP CẢNH BÁO AN TOÀN & XÁC THỰC QUẢN TRỊ VIÊN (ADMIN 2FA CHO TẤT CẢ HÀNH ĐỘNG QUAN TRỌNG) */}
       {/* ========================================================================= */}
       {securityModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-4 md:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-150">
-            
-            {/* Header Cảnh báo */}
-            <div className="flex items-start justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
-              <div className="flex items-start gap-2.5">
-                <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                  securityModal.badgeType === "danger" 
-                    ? "bg-red-100 text-red-600 dark:bg-red-950/80 dark:text-red-400"
-                    : securityModal.badgeType === "warning"
-                    ? "bg-amber-100 text-amber-600 dark:bg-amber-950/80 dark:text-amber-400"
-                    : "bg-blue-100 text-blue-600 dark:bg-blue-950/80 dark:text-blue-400"
-                }`}>
-                  {securityModal.badgeType === "danger" ? (
-                    <AlertTriangle className="w-5 h-5" />
-                  ) : securityModal.badgeType === "warning" ? (
-                    <ShieldAlert className="w-5 h-5" />
-                  ) : (
-                    <ShieldCheck className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <div className={`inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider mb-1 ${
-                    securityModal.badgeType === "danger"
-                      ? "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
-                      : securityModal.badgeType === "warning"
-                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-                      : "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-                  }`}>
-                    {securityModal.badgeText}
-                  </div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white leading-tight">
-                    {securityModal.title}
-                  </h3>
-                </div>
-              </div>
-              <button
-                onClick={() => setSecurityModal(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-sm p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Nội dung cảnh báo chi tiết & Thông tin đối tượng */}
-            <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-lg bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-amber-900 dark:text-amber-200/90 leading-relaxed space-y-1">
-                <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
-                  <Info className="w-3.5 h-3.5 shrink-0" />
-                  {securityModal.warningTitle}
-                </div>
-                <p className="text-[11px] leading-relaxed">
-                  {securityModal.warningDetail}
-                </p>
-              </div>
-
-              {/* Tóm tắt thông tin đối tượng thao tác */}
-              {securityModal.metadata && (
-                <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-1 text-[11px]">
-                  {securityModal.metadata.modelName && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Mẫu sản phẩm:</span>
-                      <strong className="text-slate-800 dark:text-slate-200 font-medium">
-                        {securityModal.metadata.modelName} ({securityModal.metadata.modelCode})
-                      </strong>
-                    </div>
-                  )}
-                  {securityModal.metadata.version && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Phiên bản Firmware:</span>
-                      <strong className="text-cyan-600 dark:text-cyan-400 font-mono">
-                        {securityModal.metadata.version}
-                      </strong>
-                    </div>
-                  )}
-                  {securityModal.metadata.scope && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Phạm vi áp dụng:</span>
-                      <span className="text-slate-700 dark:text-slate-300">
-                        {securityModal.metadata.scope}
-                      </span>
-                    </div>
-                  )}
-                  {securityModal.metadata.hardwareId && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-500">Mã phần cứng (ID):</span>
-                      <strong className="text-slate-800 dark:text-slate-200 font-mono">
-                        {securityModal.metadata.hardwareId} ({securityModal.metadata.customerName})
-                      </strong>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Thông tin xác thực email */}
-              <div className="pt-1">
-                <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                  <span>Mã OTP bảo mật được gửi đến:</span>
-                  <span className="font-mono font-bold text-slate-700 dark:text-slate-300">admin@austec.vn</span>
-                </div>
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="Nhập mã xác thực OTP 6 số..."
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  className="w-full text-center tracking-widest text-base font-mono font-bold py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-slate-500"
-                />
-              </div>
-
-              {/* Nút Demo Tự Động Điền Mã Xác Thực */}
-              <button
-                type="button"
-                onClick={handleAutoFillDemoOtp}
-                className="w-full py-1 text-[11px] font-semibold rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <KeyRound className="w-3 h-3 text-amber-500" />
-                Tự động điền mã xác thực (Demo: 882391)
-              </button>
-            </div>
-
-            {/* Nút hành động Xác nhận & Hủy */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setSecurityModal(null)}
-                className="flex-1 py-1.5 text-xs font-semibold rounded border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                Hủy bỏ
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmSecurityAction}
-                disabled={isVerifyingOtp}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded shadow-xs transition flex items-center justify-center gap-1 cursor-pointer ${securityModal.confirmBtnClass}`}
-              >
-                {isVerifyingOtp ? "Đang xác thực..." : securityModal.confirmBtnLabel}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StepUpVerifyModal
+          isOpen={true}
+          purpose="OTA_ADMIN"
+          title={securityModal.title}
+          badgeText={securityModal.badgeText}
+          badgeType={securityModal.badgeType}
+          warningTitle={securityModal.warningTitle}
+          warningDetail={securityModal.warningDetail}
+          confirmBtnLabel={securityModal.confirmBtnLabel}
+          summaryRows={[
+            ...(securityModal.metadata?.modelName
+              ? [
+                  {
+                    label: "Mẫu sản phẩm",
+                    value: `${securityModal.metadata.modelName} (${securityModal.metadata.modelCode})`,
+                  },
+                ]
+              : []),
+            ...(securityModal.metadata?.version
+              ? [{ label: "Phiên bản Firmware", value: securityModal.metadata.version }]
+              : []),
+            ...(securityModal.metadata?.scope
+              ? [{ label: "Phạm vi áp dụng", value: securityModal.metadata.scope }]
+              : []),
+          ]}
+          onClose={() => setSecurityModal(null)}
+          onVerified={async (token) => {
+            const cfg = securityModal;
+            setSecurityModal(null);
+            await executeSecurityAction(cfg, token);
+          }}
+        />
       )}
 
       {/* ========================================================================= */}

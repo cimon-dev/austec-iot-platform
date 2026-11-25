@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/services/auth_service.dart';
 import '../domain/entities/member_permission_entity.dart';
 
 class FamilySharingService {
@@ -87,48 +86,20 @@ class FamilySharingService {
     }
   }
 
-  List<MemberPermission> getOfflineFallbackMembers(String hwId) {
-    final curUser = AuthService().currentUser;
-    final ownerName = (curUser != null && curUser.fullName.isNotEmpty)
-        ? "${curUser.fullName} (Chủ nhà)"
-        : "Chủ nhà";
-    final ownerPhone = curUser?.phoneNumber ?? "0944102588";
-    return [
-      MemberPermission(
-        id: "PERM-01",
-        hardwareId: hwId,
-        userId: curUser?.id ?? "USER-OWNER",
-        memberName: ownerName,
-        phoneNumber: ownerPhone,
-        role: "OWNER",
-        canControl: true,
-        canViewHistory: true,
-        canChildLock: true,
-        canConfig: true,
-        createdAt: "2026-09-01",
-      ),
-      MemberPermission(
-        id: "PERM-02",
-        hardwareId: hwId,
-        userId: "USER-SUB-001",
-        memberName: "Trần Thu Hà (Vợ)",
-        phoneNumber: "0988776655",
-        role: "MEMBER",
-        canControl: true,
-        canViewHistory: true,
-        canChildLock: true,
-        canConfig: false,
-        createdAt: "2026-09-02",
-      ),
-    ];
-  }
-
-  Future<Map<String, dynamic>?> createTransferOtp(String hardwareId) async {
+  /// Chức năng #6: Tạo mã OTP chuyển giao quyền sở hữu (kèm X-StepUp-Token đã xác thực qua Gmail / Zalo)
+  Future<Map<String, dynamic>?> createTransferOtp(
+    String hardwareId, {
+    required String stepUpToken,
+  }) async {
     try {
-      final res = await ApiClient().post('/api/devices/$hardwareId/transfer/create');
-      if (res.success && res.data is Map) {
+      final res = await ApiClient().post(
+        '/api/devices/$hardwareId/transfer/create',
+        headers: {'X-StepUp-Token': stepUpToken},
+      );
+      if (res.data is Map) {
         return Map<String, dynamic>.from(res.data);
       }
+      return {'success': res.success, 'error': res.message};
     } catch (e) {
       debugPrint('[FamilySharingService] createTransferOtp error: $e');
     }
@@ -147,43 +118,17 @@ class FamilySharingService {
 
   Future<Map<String, dynamic>?> claimDeviceByOtp(String otpCode) async {
     try {
-      final res = await ApiClient().post('/api/devices/transfer/claim', body: {'otpCode': otpCode});
-      if (res.success && res.data is Map) {
+      final res = await ApiClient().post(
+        '/api/devices/transfer/claim',
+        body: {'otpCode': otpCode},
+      );
+      if (res.data is Map) {
         return Map<String, dynamic>.from(res.data);
       }
+      return {'success': res.success, 'error': res.message};
     } catch (e) {
       debugPrint('[FamilySharingService] claimDeviceByOtp error: $e');
     }
     return null;
-  }
-
-  List<SuggestedMember> getOfflineFallbackSuggestions(String hwId) {
-    return [
-      SuggestedMember(
-        userId: "USER-SUB-002",
-        memberName: "Nguyễn Minh Khang (Con trai)",
-        phoneNumber: "0977112233",
-        role: "MEMBER",
-        canControl: true,
-        canViewHistory: true,
-        canChildLock: false,
-        canConfig: false,
-        sourceDeviceNames: ["Cửa cuốn Gia đình"],
-      ),
-      SuggestedMember(
-        userId: "USER-SUB-003",
-        memberName: "Lê Văn Toàn (Tài xế / Khách)",
-        phoneNumber: "0911223344",
-        role: "GUEST",
-        canControl: true,
-        canViewHistory: false,
-        canChildLock: false,
-        canConfig: false,
-        scheduleLimitActive: true,
-        accessStartTime: "07:30",
-        accessEndTime: "18:30",
-        sourceDeviceNames: ["Cửa cuốn Gia đình"],
-      ),
-    ];
   }
 }

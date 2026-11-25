@@ -30,7 +30,7 @@ export function EditDeviceModal({
     if (deviceTypes && deviceTypes.length > 0) {
       setInternalTypes(deviceTypes);
     } else {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -113,7 +113,7 @@ export function EditDeviceModal({
     };
 
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hardwareId}`, {
         method: "PUT",
         headers: {

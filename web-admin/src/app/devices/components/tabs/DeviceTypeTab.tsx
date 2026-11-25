@@ -85,7 +85,7 @@ export function DeviceTypeTab({
   const handleBulkDelete = async () => {
     if (selectedTypeIds.size === 0) return;
     setIsBulkDeleting(true);
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const ids = Array.from(selectedTypeIds);
     let deleted = 0;
 
@@ -138,7 +138,7 @@ export function DeviceTypeTab({
   const fetchTypes = async () => {
     setIsLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -161,7 +161,7 @@ export function DeviceTypeTab({
 
   const fetchProperties = async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -265,7 +265,7 @@ export function DeviceTypeTab({
 
     setIsCreating(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
         method: "POST",
         headers: {
@@ -327,7 +327,7 @@ export function DeviceTypeTab({
 
     setIsUpdating(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types/${editItem.id}`, {
         method: "PUT",
         headers: {
@@ -364,7 +364,7 @@ export function DeviceTypeTab({
 
     setIsDeleting(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/device-types/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

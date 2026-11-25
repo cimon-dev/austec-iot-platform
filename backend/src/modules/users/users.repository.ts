@@ -1,5 +1,5 @@
 import { postgresClient, PostgresClient } from '../../core/database/postgres.client.js';
-import { UserEntity, SystemRoleEntity } from './entities/user.entity.js';
+import { UserEntity } from './entities/user.entity.js';
 import { DeviceMemberPermission } from '@austec/database';
 
 export class UsersRepository {
@@ -27,7 +27,10 @@ export class UsersRepository {
   public async getStaff(): Promise<UserEntity[]> {
     try {
       const res = await this.client.query(
-        "SELECT * FROM public.users WHERE role IN ('ADMIN', 'CSKH') ORDER BY registered_at DESC"
+        `SELECT * FROM public.users
+         WHERE role IN ('ADMIN', 'CSKH')
+           AND COALESCE(approval_status, 'APPROVED') = 'APPROVED'
+         ORDER BY registered_at DESC`
       );
       if (res.rows.length > 0) {
         return res.rows.map(r => this.mapRowToEntity(r));
@@ -35,7 +38,76 @@ export class UsersRepository {
     } catch (e: any) {
       console.warn('[UsersRepository] getStaff DB query failed, fallback:', e.message);
     }
-    return this.usersStore.filter(u => u.role === 'ADMIN' || u.role === 'CSKH');
+    return this.usersStore.filter(
+      u => (u.role === 'ADMIN' || u.role === 'CSKH') && (u.approvalStatus || 'APPROVED') === 'APPROVED'
+    );
+  }
+
+  public async getPendingStaff(): Promise<UserEntity[]> {
+    try {
+      const res = await this.client.query(
+        `SELECT * FROM public.users
+         WHERE role IN ('ADMIN', 'CSKH')
+           AND approval_status = 'PENDING'
+         ORDER BY registered_at DESC`
+      );
+      return res.rows.map(r => this.mapRowToEntity(r));
+    } catch (e: any) {
+      console.warn('[UsersRepository] getPendingStaff DB query failed:', e.message);
+      return this.usersStore.filter(
+        u => (u.role === 'ADMIN' || u.role === 'CSKH') && u.approvalStatus === 'PENDING'
+      );
+    }
+  }
+
+  public async approvePendingStaff(
+    id: string,
+    approverEmail: string,
+    empId?: string
+  ): Promise<UserEntity | null> {
+    const today = new Date().toISOString().split('T')[0];
+    const res = await this.client.query(
+      `UPDATE public.users SET
+         approval_status = 'APPROVED',
+         is_active = true,
+         emp_id = COALESCE(emp_id, $1),
+         updated_at = $2,
+         updated_by = $3
+       WHERE id = $4 AND approval_status = 'PENDING'
+       RETURNING *`,
+      [empId || null, today, approverEmail, id]
+    );
+    if (res.rows.length === 0) {
+      return null;
+    }
+    const entity = this.mapRowToEntity(res.rows[0]);
+    this.syncMemoryUser(entity);
+    this.onPersist?.();
+    return entity;
+  }
+
+  public async rejectPendingStaff(id: string, approverEmail: string): Promise<boolean> {
+    const today = new Date().toISOString().split('T')[0];
+    const res = await this.client.query(
+      `UPDATE public.users SET
+         approval_status = 'REJECTED',
+         is_active = false,
+         updated_at = $1,
+         updated_by = $2
+       WHERE id = $3 AND approval_status = 'PENDING'
+       RETURNING id`,
+      [today, approverEmail, id]
+    );
+    if (res.rows.length === 0) return false;
+    const mem = this.usersStore.find(u => u.id === id);
+    if (mem) {
+      mem.approvalStatus = 'REJECTED';
+      mem.isActive = false;
+      mem.updatedAt = today;
+      mem.updatedBy = approverEmail;
+    }
+    this.onPersist?.();
+    return true;
   }
 
   public async getCustomers(): Promise<UserEntity[]> {
@@ -58,15 +130,13 @@ export class UsersRepository {
 
   public async findByIdAsync(id: string): Promise<UserEntity | null> {
     try {
-      const res = await this.client.query('SELECT * FROM public.users WHERE id = $1 OR emp_id = $1 LIMIT 1', [id]);
+      const res = await this.client.query(
+        'SELECT * FROM public.users WHERE id = $1 OR emp_id = $1 LIMIT 1',
+        [id]
+      );
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
-        const idx = this.usersStore.findIndex(u => u.id === entity.id);
-        if (idx >= 0) {
-          this.usersStore[idx] = entity;
-        } else {
-          this.usersStore.push(entity);
-        }
+        this.syncMemoryUser(entity);
         return entity;
       }
     } catch (e: any) {
@@ -75,41 +145,62 @@ export class UsersRepository {
     return this.usersStore.find(u => u.id === id || u.empID === id) || null;
   }
 
+  public async findByGoogleIdAsync(googleId: string): Promise<UserEntity | null> {
+    if (!googleId) return null;
+    try {
+      const res = await this.client.query(
+        'SELECT * FROM public.users WHERE google_id = $1 LIMIT 1',
+        [googleId]
+      );
+      if (res.rows.length > 0) {
+        const entity = this.mapRowToEntity(res.rows[0]);
+        this.syncMemoryUser(entity);
+        return entity;
+      }
+    } catch (e: any) {
+      console.warn('[UsersRepository] findByGoogleIdAsync DB error:', e.message);
+    }
+    return this.usersStore.find(u => u.googleId === googleId) || null;
+  }
+
   public findByEmailOrPhone(email?: string, phone?: string): UserEntity | undefined {
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanPhone = (phone || '').replace(/[\s.-]/g, '');
-    return this.usersStore.find(u =>
-      (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
-      (cleanPhone && u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
+    return this.usersStore.find(
+      u =>
+        (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+        (cleanPhone && u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
     );
   }
 
-  public async findByEmailOrPhoneAsync(email?: string, phone?: string): Promise<UserEntity | null> {
+  public async findByEmailOrPhoneAsync(
+    email?: string,
+    phone?: string,
+    excludeUserId?: string
+  ): Promise<UserEntity | null> {
     const cleanEmail = (email || '').toLowerCase().trim();
     const cleanPhone = (phone || '').replace(/[\s.-]/g, '');
 
     try {
       const res = await this.client.query(
-        `SELECT * FROM public.users 
-         WHERE (LOWER(email) = $1 AND $1 != '') 
-            OR (REPLACE(REPLACE(phone_number, ' ', ''), '-', '') = $2 AND $2 != '') 
+        `SELECT * FROM public.users
+         WHERE (
+           (LOWER(email) = $1 AND $1 != '')
+           OR (REPLACE(REPLACE(phone_number, ' ', ''), '-', '') = $2 AND $2 != '')
+         )
+         AND ($3 = '' OR id != $3)
          LIMIT 1`,
-        [cleanEmail, cleanPhone]
+        [cleanEmail, cleanPhone, excludeUserId || '']
       );
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
-        const idx = this.usersStore.findIndex(u => u.id === entity.id);
-        if (idx >= 0) {
-          this.usersStore[idx] = entity;
-        } else {
-          this.usersStore.push(entity);
-        }
+        this.syncMemoryUser(entity);
         return entity;
       }
     } catch (e: any) {
       console.warn('[UsersRepository] findByEmailOrPhoneAsync error:', e.message);
     }
-    return this.findByEmailOrPhone(email, phone) || null;
+    return null;
   }
 
   public async findUserForAuthAsync(identifier: string, cleanPhone: string): Promise<UserEntity | null> {
@@ -118,8 +209,8 @@ export class UsersRepository {
 
     try {
       const res = await this.client.query(
-        `SELECT * FROM public.users 
-         WHERE (LOWER(email) = $1 AND $1 != '') 
+        `SELECT * FROM public.users
+         WHERE (LOWER(email) = $1 AND $1 != '')
             OR (REPLACE(REPLACE(phone_number, ' ', ''), '-', '') = $2 AND $2 != '')
             OR (LOWER(id) = $1 AND $1 != '')
             OR (LOWER(emp_id) = $1 AND $1 != '')
@@ -128,31 +219,33 @@ export class UsersRepository {
       );
       if (res.rows.length > 0) {
         const entity = this.mapRowToEntity(res.rows[0]);
-        const idx = this.usersStore.findIndex(u => u.id === entity.id);
-        if (idx >= 0) {
-          this.usersStore[idx] = entity;
-        } else {
-          this.usersStore.push(entity);
-        }
+        this.syncMemoryUser(entity);
         return entity;
       }
     } catch (e: any) {
       console.warn('[UsersRepository] findUserForAuthAsync DB error:', e.message);
     }
 
-    return this.usersStore.find(u =>
-      (cleanId && u.email && u.email.toLowerCase() === cleanId) ||
-      (phone && u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === phone) ||
-      (cleanId && u.empID && u.empID.toLowerCase() === cleanId) ||
-      (cleanId && u.id && u.id.toLowerCase() === cleanId)
-    ) || null;
+    return (
+      this.usersStore.find(
+        u =>
+          (cleanId && u.email && u.email.toLowerCase() === cleanId) ||
+          (phone && u.phoneNumber && u.phoneNumber.replace(/[\s.-]/g, '') === phone) ||
+          (cleanId && u.empID && u.empID.toLowerCase() === cleanId) ||
+          (cleanId && u.id && u.id.toLowerCase() === cleanId)
+      ) || null
+    );
   }
 
   public async add(user: UserEntity): Promise<void> {
     try {
       await this.client.query(
-        `INSERT INTO public.users (id, emp_id, full_name, email, phone_number, company, department, role, role_title, password, address, province, avatar_url, is_active, registered_at, updated_at, updated_by, devices)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        `INSERT INTO public.users (
+           id, emp_id, full_name, email, phone_number, company, department, role, role_title,
+           password, google_id, auth_provider, has_password, email_verified, phone_verified, approval_status,
+           address, province, avatar_url, is_active, registered_at, updated_at, updated_by, devices
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
          ON CONFLICT (id) DO UPDATE SET
            full_name = EXCLUDED.full_name,
            email = EXCLUDED.email,
@@ -161,10 +254,16 @@ export class UsersRepository {
            department = EXCLUDED.department,
            role = EXCLUDED.role,
            role_title = EXCLUDED.role_title,
-           password = EXCLUDED.password,
+           password = COALESCE(EXCLUDED.password, public.users.password),
+           google_id = COALESCE(EXCLUDED.google_id, public.users.google_id),
+           auth_provider = EXCLUDED.auth_provider,
+           has_password = EXCLUDED.has_password,
+           email_verified = EXCLUDED.email_verified,
+           phone_verified = EXCLUDED.phone_verified,
+           approval_status = EXCLUDED.approval_status,
            address = EXCLUDED.address,
            province = EXCLUDED.province,
-           avatar_url = EXCLUDED.avatar_url,
+           avatar_url = COALESCE(EXCLUDED.avatar_url, public.users.avatar_url),
            is_active = EXCLUDED.is_active,
            updated_at = EXCLUDED.updated_at,
            updated_by = EXCLUDED.updated_by`,
@@ -178,7 +277,13 @@ export class UsersRepository {
           user.department || null,
           user.role,
           user.roleTitle || null,
-          user.password || 'Austec123!@#',
+          user.password ?? null,
+          user.googleId || null,
+          user.authProvider || (user.googleId ? 'google' : 'local'),
+          user.hasPassword !== undefined ? user.hasPassword : Boolean(user.password),
+          Boolean(user.emailVerified),
+          Boolean(user.phoneVerified),
+          user.approvalStatus || 'APPROVED',
           user.address || null,
           user.province || null,
           user.avatarUrl || null,
@@ -194,12 +299,7 @@ export class UsersRepository {
       throw e;
     }
 
-    const idx = this.usersStore.findIndex(u => u.id === user.id || (u.email && u.email === user.email));
-    if (idx !== -1) {
-      this.usersStore[idx] = user;
-    } else {
-      this.usersStore.unshift(user);
-    }
+    this.syncMemoryUser(user, true);
     this.onPersist?.();
   }
 
@@ -222,12 +322,14 @@ export class UsersRepository {
            department = COALESCE($5, department),
            role = COALESCE($6, role),
            role_title = COALESCE($7, role_title),
-           address = COALESCE($8, address),
-           province = COALESCE($9, province),
-           avatar_url = COALESCE($10, avatar_url),
-           is_active = COALESCE($11, is_active),
-           updated_at = NOW()
-         WHERE id = $12 OR emp_id = $12`,
+           password = COALESCE($8, password),
+           has_password = COALESCE($9, has_password),
+           address = COALESCE($10, address),
+           province = COALESCE($11, province),
+           avatar_url = COALESCE($12, avatar_url),
+           is_active = COALESCE($13, is_active),
+           updated_at = NOW()::text
+         WHERE id = $14 OR emp_id = $14`,
         [
           updates.fullName ?? null,
           updates.email ? updates.email.trim().toLowerCase() : null,
@@ -236,6 +338,8 @@ export class UsersRepository {
           updates.department ?? null,
           updates.role ?? null,
           updates.roleTitle ?? null,
+          updates.password ?? null,
+          updates.password ? true : updates.hasPassword ?? null,
           updates.address ?? null,
           updates.province ?? null,
           updates.avatarUrl ?? null,
@@ -252,32 +356,100 @@ export class UsersRepository {
     return user || null;
   }
 
-  public async changePassword(userId: string, currentPass: string, newPass: string): Promise<boolean> {
-    const res = await this.client.query('SELECT password FROM public.users WHERE id = $1 LIMIT 1', [userId]);
-    if (res.rows.length === 0) {
-      throw new Error('Không tìm thấy tài khoản người dùng');
-    }
-    const currentDbPass = res.rows[0].password || 'Austec123!@#';
-    if (currentDbPass !== currentPass) {
-      throw new Error('Mật khẩu hiện tại không chính xác!');
-    }
-    await this.client.query('UPDATE public.users SET password = $1, updated_at = NOW() WHERE id = $2', [newPass, userId]);
+  public async updatePasswordHash(userId: string, passwordHash: string): Promise<void> {
+    await this.client.query(
+      'UPDATE public.users SET password = $1, has_password = true, updated_at = NOW()::text WHERE id = $2',
+      [passwordHash, userId]
+    );
     const memUser = this.usersStore.find(u => u.id === userId);
     if (memUser) {
-      memUser.password = newPass;
+      memUser.password = passwordHash;
+      memUser.hasPassword = true;
     }
     this.onPersist?.();
-    return true;
   }
 
-  public async updateProfile(userId: string, data: { fullName?: string; phoneNumber?: string; address?: string; province?: string; avatarUrl?: string }): Promise<UserEntity | null> {
+  public async linkGoogleAccount(
+    userId: string,
+    googleId: string,
+    avatarUrl?: string
+  ): Promise<UserEntity | null> {
+    const res = await this.client.query(
+      `UPDATE public.users SET
+         google_id = $1,
+         email_verified = true,
+         auth_provider = CASE WHEN has_password THEN 'local+google' ELSE 'google' END,
+         avatar_url = COALESCE(avatar_url, $2),
+         updated_at = NOW()::text
+       WHERE id = $3
+       RETURNING *`,
+      [googleId, avatarUrl || null, userId]
+    );
+    if (res.rows.length === 0) return null;
+    const entity = this.mapRowToEntity(res.rows[0]);
+    this.syncMemoryUser(entity);
+    this.onPersist?.();
+    return entity;
+  }
+
+  public async unlinkGoogleAccount(userId: string): Promise<UserEntity | null> {
+    const res = await this.client.query(
+      `UPDATE public.users SET
+         google_id = NULL,
+         auth_provider = 'local',
+         updated_at = NOW()::text
+       WHERE id = $1
+       RETURNING *`,
+      [userId]
+    );
+    if (res.rows.length === 0) return null;
+    const entity = this.mapRowToEntity(res.rows[0]);
+    this.syncMemoryUser(entity);
+    this.onPersist?.();
+    return entity;
+  }
+
+  public async updateContact(
+    userId: string,
+    data: { email?: string; phoneNumber?: string; emailVerified?: boolean; phoneVerified?: boolean }
+  ): Promise<UserEntity | null> {
+    const res = await this.client.query(
+      `UPDATE public.users SET
+         email = COALESCE($1, email),
+         phone_number = COALESCE($2, phone_number),
+         email_verified = COALESCE($3, email_verified),
+         phone_verified = COALESCE($4, phone_verified),
+         updated_at = NOW()::text
+       WHERE id = $5
+       RETURNING *`,
+      [
+        data.email ? data.email.trim().toLowerCase() : null,
+        data.phoneNumber !== undefined ? data.phoneNumber.trim() : null,
+        data.emailVerified ?? null,
+        data.phoneVerified ?? null,
+        userId,
+      ]
+    );
+    if (res.rows.length === 0) return null;
+    const entity = this.mapRowToEntity(res.rows[0]);
+    this.syncMemoryUser(entity);
+    this.onPersist?.();
+    return entity;
+  }
+
+  /**
+   * Chỉ cập nhật thông tin cơ bản (KHÔNG cho phép sửa SĐT/Email qua endpoint này — phải qua /auth/contact có Step-up OTP)
+   */
+  public async updateProfile(
+    userId: string,
+    data: { fullName?: string; address?: string; province?: string; avatarUrl?: string }
+  ): Promise<UserEntity | null> {
     let user = this.findById(userId);
     if (!user) {
       user = (await this.findByIdAsync(userId)) || undefined;
     }
     if (user) {
       if (data.fullName !== undefined) user.fullName = data.fullName;
-      if (data.phoneNumber !== undefined) user.phoneNumber = data.phoneNumber;
       if (data.address !== undefined) user.address = data.address;
       if (data.province !== undefined) user.province = data.province;
       if (data.avatarUrl !== undefined) user.avatarUrl = data.avatarUrl;
@@ -286,15 +458,13 @@ export class UsersRepository {
     await this.client.query(
       `UPDATE public.users SET
          full_name = COALESCE($1, full_name),
-         phone_number = COALESCE($2, phone_number),
-         address = COALESCE($3, address),
-         province = COALESCE($4, province),
-         avatar_url = COALESCE($5, avatar_url),
-         updated_at = NOW()
-       WHERE id = $6 OR emp_id = $6`,
+         address = COALESCE($2, address),
+         province = COALESCE($3, province),
+         avatar_url = COALESCE($4, avatar_url),
+         updated_at = NOW()::text
+       WHERE id = $5 OR emp_id = $5`,
       [
         data.fullName ?? null,
-        data.phoneNumber ?? null,
         data.address ?? null,
         data.province ?? null,
         data.avatarUrl ?? null,
@@ -307,11 +477,10 @@ export class UsersRepository {
   }
 
   public async deleteOwnAccount(
-    userId: string,
-    password: string
+    userId: string
   ): Promise<{ deletedUserId: string; email: string }> {
     const userRes = await this.client.query(
-      'SELECT id, email, phone_number, role, password, is_active FROM public.users WHERE id = $1 LIMIT 1',
+      'SELECT id, email, phone_number, role, is_active FROM public.users WHERE id = $1 LIMIT 1',
       [userId]
     );
     if (userRes.rows.length === 0) {
@@ -319,14 +488,10 @@ export class UsersRepository {
     }
 
     const row = userRes.rows[0];
-    const currentDbPass = row.password || '';
-    if (!password || currentDbPass !== password) {
-      throw new Error('Mật khẩu xác nhận không chính xác!');
-    }
 
     if (row.role === 'ADMIN') {
       const adminCountRes = await this.client.query(
-        "SELECT COUNT(*)::int AS cnt FROM public.users WHERE role = 'ADMIN' AND is_active = true AND id != $1",
+        "SELECT COUNT(*)::int AS cnt FROM public.users WHERE role = 'ADMIN' AND is_active = true AND COALESCE(approval_status, 'APPROVED') = 'APPROVED' AND id != $1",
         [userId]
       );
       if ((adminCountRes.rows[0]?.cnt ?? 0) === 0) {
@@ -353,7 +518,8 @@ export class UsersRepository {
         .slice(0, 3)
         .map((d: any) => d.custom_name || d.hardware_id)
         .join(', ');
-      const suffix = ownedRes.rows.length > 3 ? ` và ${ownedRes.rows.length - 3} thiết bị khác` : '';
+      const suffix =
+        ownedRes.rows.length > 3 ? ` và ${ownedRes.rows.length - 3} thiết bị khác` : '';
       throw new Error(
         `Tài khoản vẫn đang là Chủ sở hữu của ${ownedRes.rows.length} thiết bị (${names}${suffix}). Vui lòng chuyển giao quyền sở hữu hoặc hủy ghép nối toàn bộ thiết bị trước khi xóa tài khoản vĩnh viễn.`
       );
@@ -367,10 +533,10 @@ export class UsersRepository {
             OR (REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $3 AND $3 != '')`,
         [userId, userPhone, cleanPhone]
       );
-      await client.query(
-        'DELETE FROM public.device_ownership_transfers WHERE from_user_id = $1',
-        [userId]
-      );
+      await client.query('DELETE FROM public.device_ownership_transfers WHERE from_user_id = $1', [
+        userId,
+      ]);
+      await client.query('DELETE FROM public.otp_verifications WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM public.chat_messages WHERE sender_id = $1', [userId]);
       await client.query('DELETE FROM public.chat_participants WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM public.users WHERE id = $1', [userId]);
@@ -396,15 +562,21 @@ export class UsersRepository {
 
   public async remove(id: string): Promise<boolean> {
     try {
-      await this.client.query('DELETE FROM public.users WHERE id = $1', [id]);
+      await this.client.transaction(async client => {
+        await client.query('DELETE FROM public.otp_verifications WHERE user_id = $1', [id]);
+        await client.query('DELETE FROM public.chat_messages WHERE sender_id = $1', [id]);
+        await client.query('DELETE FROM public.chat_participants WHERE user_id = $1', [id]);
+        await client.query('DELETE FROM public.users WHERE id = $1', [id]);
+      });
     } catch (e: any) {
       console.error('[UsersRepository] DB delete user failed:', e.message);
       throw e;
     }
 
     const idx = this.usersStore.findIndex(u => u.id === id || u.empID === id);
-    if (idx === -1) return false;
-    this.usersStore.splice(idx, 1);
+    if (idx !== -1) {
+      this.usersStore.splice(idx, 1);
+    }
     this.onPersist?.();
     return true;
   }
@@ -413,9 +585,8 @@ export class UsersRepository {
     try {
       const roleRes = await this.client.query('SELECT * FROM system_roles ORDER BY id ASC');
       if (roleRes.rows.length > 0) {
-        // Query user counts grouped by role
         const countRes = await this.client.query(
-          "SELECT role, COUNT(*)::int as count FROM public.users GROUP BY role"
+          "SELECT role, COUNT(*)::int as count FROM public.users WHERE COALESCE(approval_status, 'APPROVED') = 'APPROVED' GROUP BY role"
         );
         const countMap: Record<string, number> = {};
         for (const row of countRes.rows) {
@@ -435,7 +606,8 @@ export class UsersRepository {
             roleCode: r.role_code,
             description: r.description,
             isSystem: Boolean(r.is_system),
-            userCount: countMap[r.role_code] || (r.role_code === 'ROLE_ADMIN' ? countMap['ADMIN'] || 0 : 0),
+            userCount:
+              countMap[r.role_code] || (r.role_code === 'ROLE_ADMIN' ? countMap['ADMIN'] || 0 : 0),
             permissions: permRes.rows.map(p => ({
               id: p.module_id,
               name: p.module_name,
@@ -483,12 +655,17 @@ export class UsersRepository {
   public async saveRoles(roles: any[]): Promise<void> {
     for (const r of roles) {
       if (r.id && Number(r.id) < 1000000000) {
-        await this.client.query('UPDATE system_roles SET role_name = $1 WHERE id = $2', [r.name || r.roleName, r.id]);
+        await this.client.query('UPDATE system_roles SET role_name = $1 WHERE id = $2', [
+          r.name || r.roleName,
+          r.id,
+        ]);
         if (Array.isArray(r.permissions)) {
           await this.updateRolePermissions(Number(r.id), r.permissions);
         }
       } else {
-        const code = (r.roleCode || `ROLE_${(r.name || 'NEW').toUpperCase().replace(/[^A-Z0-9]/g, '_')}`).slice(0, 50);
+        const code = (
+          r.roleCode || `ROLE_${(r.name || 'NEW').toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+        ).slice(0, 50);
         const res = await this.client.query(
           `INSERT INTO system_roles (role_code, role_name, description, is_system, created_at)
            VALUES ($1, $2, $3, false, $4) RETURNING id`,
@@ -502,7 +679,10 @@ export class UsersRepository {
     }
   }
 
-  public async updateRole(roleId: number, data: { name: string; description?: string }): Promise<any> {
+  public async updateRole(
+    roleId: number,
+    data: { name: string; description?: string }
+  ): Promise<any> {
     try {
       const res = await this.client.query(
         `UPDATE system_roles SET
@@ -588,6 +768,17 @@ export class UsersRepository {
     return this.permissionsStore;
   }
 
+  private syncMemoryUser(entity: UserEntity, prepend = false) {
+    const idx = this.usersStore.findIndex(u => u.id === entity.id);
+    if (idx >= 0) {
+      this.usersStore[idx] = entity;
+    } else if (prepend) {
+      this.usersStore.unshift(entity);
+    } else {
+      this.usersStore.push(entity);
+    }
+  }
+
   private mapRowToEntity(r: any): UserEntity {
     return {
       id: r.id,
@@ -599,7 +790,13 @@ export class UsersRepository {
       roleTitle: r.role_title || undefined,
       company: r.company || undefined,
       department: r.department || undefined,
-      password: r.password,
+      password: r.password || undefined,
+      googleId: r.google_id || undefined,
+      authProvider: r.auth_provider || (r.google_id ? 'google' : 'local'),
+      hasPassword: r.has_password !== undefined ? Boolean(r.has_password) : Boolean(r.password),
+      emailVerified: Boolean(r.email_verified),
+      phoneVerified: Boolean(r.phone_verified),
+      approvalStatus: r.approval_status || 'APPROVED',
       address: r.address || undefined,
       province: r.province || undefined,
       avatarUrl: r.avatar_url || undefined,
@@ -607,7 +804,7 @@ export class UsersRepository {
       registeredAt: r.registered_at || new Date().toISOString(),
       updatedAt: r.updated_at || undefined,
       updatedBy: r.updated_by || undefined,
-      devices: typeof r.devices === 'string' ? JSON.parse(r.devices) : (r.devices || []),
+      devices: typeof r.devices === 'string' ? JSON.parse(r.devices) : r.devices || [],
     };
   }
 }

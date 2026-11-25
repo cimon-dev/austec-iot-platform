@@ -1,7 +1,13 @@
-import { Request, Response, NextFunction } from 'express';
-import { AuthService, AuthenticatedRequest, UserRole, AuthUser } from '../../services/auth.service.js';
+import {
+  AuthService,
+  AuthenticatedRequest,
+  UserRole,
+  AuthUser,
+  StepUpPurpose,
+} from '../../services/auth.service.js';
+import { requireStepUp, assertStepUpFromRequest } from './stepup.middleware.js';
 
-export { AuthenticatedRequest, UserRole, AuthUser };
+export { AuthenticatedRequest, UserRole, AuthUser, StepUpPurpose, requireStepUp, assertStepUpFromRequest };
 
 export const authenticate = AuthService.authenticate;
 export const requireRole = AuthService.requireRole;

@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ShieldAlert, ArrowLeft, RefreshCw, KeyRound } from "lucide-react";
+import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { usePermissions } from "../context/PermissionContext";
 
@@ -14,16 +14,16 @@ interface AccessDeniedProps {
   requiredPermission?: string;
 }
 
-export function AccessDenied({ 
-  moduleName, 
-  moduleTitle, 
-  moduleId, 
-  requiredModule, 
-  requiredPermission 
+export function AccessDenied({
+  moduleName,
+  moduleTitle,
+  moduleId,
+  requiredModule,
+  requiredPermission,
 }: AccessDeniedProps) {
   const title = moduleTitle || moduleName || "Phân hệ này";
   const id = moduleId || requiredModule || requiredPermission || "RESTRICTED";
-  const { user, quickSwitchRole } = useAuth();
+  const { user } = useAuth();
   const { currentRoleName } = usePermissions();
 
   return (
@@ -41,14 +41,21 @@ export function AccessDenied({
             Quyền Truy Cập Bị Giới Hạn
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-            Tài khoản của bạn đang đăng nhập với vai trò <strong className="text-slate-900 dark:text-white font-semibold">{currentRoleName}</strong> ({user?.role}), không được cấp quyền truy cập vào <strong>{title}</strong> theo chính sách bảo mật RBAC của hệ thống.
+            Tài khoản của bạn đang đăng nhập với vai trò{" "}
+            <strong className="text-slate-900 dark:text-white font-semibold">
+              {currentRoleName}
+            </strong>{" "}
+            ({user?.role}), không được cấp quyền truy cập vào <strong>{title}</strong> theo chính
+            sách bảo mật RBAC của hệ thống.
           </p>
         </div>
 
         <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 text-left text-xs space-y-1.5">
           <div className="flex justify-between text-slate-500 dark:text-slate-400">
             <span>Tài khoản hiện tại:</span>
-            <span className="font-mono text-slate-800 dark:text-slate-200 truncate max-w-[200px]">{user?.email}</span>
+            <span className="font-mono text-slate-800 dark:text-slate-200 truncate max-w-[200px]">
+              {user?.email}
+            </span>
           </div>
           <div className="flex justify-between text-slate-500 dark:text-slate-400">
             <span>Mã định danh module:</span>
@@ -56,25 +63,14 @@ export function AccessDenied({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 pt-2">
+        <div className="flex pt-2">
           <Link
             href="/"
             className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Về Dashboard</span>
+            <span>Quay về Dashboard</span>
           </Link>
-
-          {user?.role !== "ADMIN" && (
-            <button
-              type="button"
-              onClick={() => quickSwitchRole("ADMIN")}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors cursor-pointer shadow-xs"
-            >
-              <KeyRound className="w-3.5 h-3.5" />
-              <span>Chuyển Sang Admin</span>
-            </button>
-          )}
         </div>
       </div>
     </div>

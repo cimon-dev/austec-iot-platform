@@ -51,7 +51,7 @@ class _DeviceHistoryScreenState extends State<DeviceHistoryScreen> {
 
   Future<void> _fetchLiveHistory() async {
     setState(() => _isLoading = true);
-    final token = AuthService().token ?? 'austec-customer-token';
+    final token = AuthService().token ?? '';
     try {
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/${widget.device.hardwareId}/history'),

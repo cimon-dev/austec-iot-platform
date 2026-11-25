@@ -82,6 +82,8 @@
 	<string>Ứng dụng cần quyền truy cập Thư viện ảnh để chọn ảnh và video đính kèm khi nhắn tin và gửi yêu cầu kỹ thuật.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Ứng dụng cần quyền Microphone để quay video hiện trường kèm âm thanh khi gửi hỗ trợ kỹ thuật.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Ứng dụng sử dụng FaceID / TouchID để đăng nhập nhanh và bảo vệ tài khoản Austec Smart Home.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

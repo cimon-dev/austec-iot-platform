@@ -100,7 +100,7 @@ export function DeviceModelTab({
   const handleBulkDelete = async () => {
     if (selectedModelIds.size === 0) return;
     setIsBulkDeleting(true);
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const ids = Array.from(selectedModelIds);
     let deleted = 0;
 
@@ -165,7 +165,7 @@ export function DeviceModelTab({
   const fetchModels = async () => {
     setIsLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/models`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -183,7 +183,7 @@ export function DeviceModelTab({
   // Fetch Properties Dictionary
   const fetchProperties = async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -198,7 +198,7 @@ export function DeviceModelTab({
 
   // Fetch Types & Groups
   const fetchSupportingData = async () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const headers = { Authorization: `Bearer ${token}` };
 
     try {
@@ -395,7 +395,7 @@ export function DeviceModelTab({
 
     setIsCreating(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/models`, {
         method: "POST",
         headers: {
@@ -469,7 +469,7 @@ export function DeviceModelTab({
 
     setIsUpdating(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/models/${editItem.id}`, {
         method: "PUT",
         headers: {
@@ -510,7 +510,7 @@ export function DeviceModelTab({
 
     setIsDeleting(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/models/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

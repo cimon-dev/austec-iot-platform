@@ -4,29 +4,52 @@ export interface ApiResponse<T = any> {
   success: boolean;
   message?: string;
   error?: string;
+  requireStepUp?: boolean;
+  stepUpPurpose?: string;
   data?: T;
   [key: string]: any;
 }
 
-class ApiClient {
-  private getToken(): string {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
-    }
-    return "austec-admin-super-token";
-  }
+export interface ApiRequestOptions {
+  stepUpToken?: string;
+  headers?: Record<string, string>;
+}
 
+export function getStoredAuthToken(): string {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("austec_auth_token") || "";
+  }
+  return "";
+}
+
+export function getAuthHeaderRecord(stepUpToken?: string): Record<string, string> {
+  const token = getStoredAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  if (stepUpToken) {
+    headers["X-StepUp-Token"] = stepUpToken;
+  }
+  return headers;
+}
+
+class ApiClient {
   private async request<T = any>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    extra?: ApiRequestOptions
   ): Promise<ApiResponse<T>> {
     const baseUrl = getApiBaseUrl();
-    const url = path.startsWith("http") ? path : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
+    const url = path.startsWith("http")
+      ? path
+      : `${baseUrl}${path.startsWith("/") ? "" : "/"}${path}`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${this.getToken()}`,
+      ...getAuthHeaderRecord(extra?.stepUpToken),
       ...(options.headers as Record<string, string>),
+      ...(extra?.headers || {}),
     };
 
     try {
@@ -34,6 +57,16 @@ class ApiClient {
         ...options,
         headers,
       });
+
+      if (response.status === 401 && typeof window !== "undefined") {
+        const isAuthPath =
+          window.location.pathname === "/login" || window.location.pathname === "/register";
+        if (!isAuthPath && !path.includes("/api/auth/")) {
+          localStorage.removeItem("austec_auth_user");
+          localStorage.removeItem("austec_auth_token");
+          window.location.replace("/login");
+        }
+      }
 
       const json = await response.json().catch(() => ({
         success: response.ok,
@@ -54,7 +87,11 @@ class ApiClient {
     }
   }
 
-  public async get<T = any>(path: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+  public async get<T = any>(
+    path: string,
+    params?: Record<string, any>,
+    extra?: ApiRequestOptions
+  ): Promise<ApiResponse<T>> {
     let fullPath = path;
     if (params) {
       const query = new URLSearchParams();
@@ -68,25 +105,44 @@ class ApiClient {
         fullPath += (fullPath.includes("?") ? "&" : "?") + qs;
       }
     }
-    return this.request<T>(fullPath, { method: "GET" });
+    return this.request<T>(fullPath, { method: "GET" }, extra);
   }
 
-  public async post<T = any>(path: string, body?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(path, {
-      method: "POST",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  public async post<T = any>(
+    path: string,
+    body?: any,
+    extra?: ApiRequestOptions
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>(
+      path,
+      {
+        method: "POST",
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      extra
+    );
   }
 
-  public async put<T = any>(path: string, body?: any): Promise<ApiResponse<T>> {
-    return this.request<T>(path, {
-      method: "PUT",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+  public async put<T = any>(
+    path: string,
+    body?: any,
+    extra?: ApiRequestOptions
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>(
+      path,
+      {
+        method: "PUT",
+        body: body ? JSON.stringify(body) : undefined,
+      },
+      extra
+    );
   }
 
-  public async delete<T = any>(path: string): Promise<ApiResponse<T>> {
-    return this.request<T>(path, { method: "DELETE" });
+  public async delete<T = any>(
+    path: string,
+    extra?: ApiRequestOptions
+  ): Promise<ApiResponse<T>> {
+    return this.request<T>(path, { method: "DELETE" }, extra);
   }
 }
 

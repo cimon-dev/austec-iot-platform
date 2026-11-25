@@ -125,8 +125,8 @@ export default function NotificationsManagementPage() {
       setIsLoading(true);
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token"
-          : "austec-admin-super-token";
+          ? localStorage.getItem("austec_auth_token") || ""
+          : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -179,8 +179,8 @@ export default function NotificationsManagementPage() {
       setUploadingField(field);
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token"
-          : "austec-admin-super-token";
+          ? localStorage.getItem("austec_auth_token") || ""
+          : "";
 
       const formData = new FormData();
       formData.append("file", file);
@@ -226,8 +226,8 @@ export default function NotificationsManagementPage() {
       setIsSubmitting(true);
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token"
-          : "austec-admin-super-token";
+          ? localStorage.getItem("austec_auth_token") || ""
+          : "";
 
       const metadata: Record<string, any> = {};
       if (composeForm.badgeText.trim()) metadata.badgeText = composeForm.badgeText.trim();
@@ -295,8 +295,8 @@ export default function NotificationsManagementPage() {
     try {
       const token =
         typeof window !== "undefined"
-          ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token"
-          : "austec-admin-super-token";
+          ? localStorage.getItem("austec_auth_token") || ""
+          : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/notifications/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

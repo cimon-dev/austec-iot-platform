@@ -55,7 +55,7 @@ export function DevicePropertyTab({
   const handleBulkDelete = async () => {
     if (selectedPropertyIds.size === 0) return;
     setIsBulkDeleting(true);
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const ids = Array.from(selectedPropertyIds);
     let deleted = 0;
 
@@ -112,7 +112,7 @@ export function DevicePropertyTab({
   const fetchProperties = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -147,7 +147,7 @@ export function DevicePropertyTab({
 
     setIsCreating(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties`, {
         method: "POST",
         headers: {
@@ -214,7 +214,7 @@ export function DevicePropertyTab({
 
     setIsUpdating(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties/${editItem.id}`, {
         method: "PUT",
         headers: {
@@ -251,7 +251,7 @@ export function DevicePropertyTab({
 
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/properties/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

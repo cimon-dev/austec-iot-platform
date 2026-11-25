@@ -99,7 +99,13 @@ export class PostgresService {
         department VARCHAR(255),
         role VARCHAR(50) NOT NULL,
         role_title VARCHAR(100),
-        password VARCHAR(255) NOT NULL DEFAULT 'Austec123!@#',
+        password VARCHAR(255),
+        google_id VARCHAR(255) UNIQUE,
+        auth_provider VARCHAR(30) DEFAULT 'local',
+        has_password BOOLEAN DEFAULT TRUE,
+        email_verified BOOLEAN DEFAULT FALSE,
+        phone_verified BOOLEAN DEFAULT FALSE,
+        approval_status VARCHAR(20) DEFAULT 'APPROVED',
         address TEXT,
         province VARCHAR(100),
         avatar_url TEXT,
@@ -109,6 +115,14 @@ export class PostgresService {
         updated_by VARCHAR(255),
         devices JSONB DEFAULT '[]'::jsonb
       );
+      ALTER TABLE users ALTER COLUMN password DROP NOT NULL;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS google_id VARCHAR(255);
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(30) DEFAULT 'local';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS has_password BOOLEAN DEFAULT TRUE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'APPROVED';
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id) WHERE google_id IS NOT NULL;
 
       -- 2. BẢNG NHÓM SẢN PHẨM (DEVICE GROUPS)
       CREATE TABLE IF NOT EXISTS device_groups (
@@ -547,10 +561,39 @@ export class PostgresService {
         created_at VARCHAR(50)
       );
 
+      -- 29. BẢNG MÃ OTP XÁC THỰC NÂNG CAO (GMAIL / ZALO ZNS)
+      CREATE TABLE IF NOT EXISTS otp_verifications (
+        id VARCHAR(100) PRIMARY KEY,
+        user_id VARCHAR(100),
+        identifier VARCHAR(255),
+        purpose VARCHAR(60) NOT NULL,
+        channel VARCHAR(20) NOT NULL,
+        target VARCHAR(255) NOT NULL,
+        code_hash VARCHAR(255) NOT NULL,
+        attempts INT DEFAULT 0,
+        max_attempts INT DEFAULT 5,
+        expires_at TIMESTAMP NOT NULL,
+        consumed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+
+      -- 30. BẢNG LƯU TRỮ & XOAY VÒNG TOKEN ZALO OA (ZNS OTP)
+      CREATE TABLE IF NOT EXISTS zalo_oa_tokens (
+        id SERIAL PRIMARY KEY,
+        oa_id VARCHAR(100) UNIQUE NOT NULL,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- INDEXES TĂNG TỐC TRUY VẤN TOÀN HỆ THỐNG
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
       CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+      CREATE INDEX IF NOT EXISTS idx_users_approval ON users(approval_status);
+      CREATE INDEX IF NOT EXISTS idx_otp_user_purpose ON otp_verifications(user_id, purpose, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_otp_expires ON otp_verifications(expires_at);
       CREATE INDEX IF NOT EXISTS idx_devices_owner ON device_instances(owner_id);
       CREATE INDEX IF NOT EXISTS idx_devices_online ON device_instances(is_online);
       CREATE INDEX IF NOT EXISTS idx_inventory_status ON device_inventory(status);

@@ -8,6 +8,11 @@ class UserModel {
   final String role;
   final String? avatarUrl;
   final String token;
+  final bool googleLinked;
+  final bool hasPassword;
+  final bool emailVerified;
+  final bool phoneVerified;
+  final String approvalStatus;
 
   const UserModel({
     required this.id,
@@ -19,6 +24,11 @@ class UserModel {
     this.role = 'CUSTOMER',
     this.avatarUrl,
     required this.token,
+    this.googleLinked = false,
+    this.hasPassword = true,
+    this.emailVerified = false,
+    this.phoneVerified = false,
+    this.approvalStatus = 'APPROVED',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json, {String? token}) {
@@ -32,6 +42,11 @@ class UserModel {
       role: json['role']?.toString() ?? 'CUSTOMER',
       avatarUrl: json['avatarUrl']?.toString() ?? json['avatar_url']?.toString(),
       token: token ?? json['token']?.toString() ?? '',
+      googleLinked: json['googleLinked'] == true || json['google_id'] != null,
+      hasPassword: json['hasPassword'] != false,
+      emailVerified: json['emailVerified'] == true || json['email_verified'] == true,
+      phoneVerified: json['phoneVerified'] == true || json['phone_verified'] == true,
+      approvalStatus: json['approvalStatus']?.toString() ?? 'APPROVED',
     );
   }
 
@@ -45,6 +60,11 @@ class UserModel {
     'role': role,
     'avatarUrl': avatarUrl,
     'token': token,
+    'googleLinked': googleLinked,
+    'hasPassword': hasPassword,
+    'emailVerified': emailVerified,
+    'phoneVerified': phoneVerified,
+    'approvalStatus': approvalStatus,
   };
 
   UserModel copyWith({
@@ -57,6 +77,11 @@ class UserModel {
     String? role,
     String? avatarUrl,
     String? token,
+    bool? googleLinked,
+    bool? hasPassword,
+    bool? emailVerified,
+    bool? phoneVerified,
+    String? approvalStatus,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -68,6 +93,11 @@ class UserModel {
       role: role ?? this.role,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       token: token ?? this.token,
+      googleLinked: googleLinked ?? this.googleLinked,
+      hasPassword: hasPassword ?? this.hasPassword,
+      emailVerified: emailVerified ?? this.emailVerified,
+      phoneVerified: phoneVerified ?? this.phoneVerified,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
     );
   }
 }

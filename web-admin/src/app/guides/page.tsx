@@ -66,7 +66,7 @@ export default function InstallationGuidesPage() {
   const [editResetSeconds, setEditResetSeconds] = useState<number>(10);
 
   const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     return { Authorization: `Bearer ${token}` };
   };
 

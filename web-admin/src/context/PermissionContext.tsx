@@ -42,7 +42,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
 
   const fetchRolesFromApi = useCallback(async () => {
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
+      if (!token) return;
       const res = await fetch(`${getApiBaseUrl()}/api/admin/roles`, {
         headers: { Authorization: `Bearer ${token}` }
       });

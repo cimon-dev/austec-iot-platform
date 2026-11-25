@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { DevicesService } from './devices.service.js';
 import { Controller, Get, Post, Put, Delete } from '../../core/decorators/index.js';
-import { authenticate, requireRole } from '../../core/middlewares/auth.middleware.js';
+import { authenticate, requireRole, requireStepUp } from '../../core/middlewares/auth.middleware.js';
 
 @Controller('/admin')
 export class DevicesController {
@@ -273,7 +273,7 @@ export class DevicesController {
     }
   }
 
-  @Post('/firmware', authenticate, requireRole(['ADMIN']))
+  @Post('/firmware', authenticate, requireRole(['ADMIN']), requireStepUp('OTA_ADMIN'))
   public async createFirmwareRelease(req: Request, res: Response) {
     try {
       const release = await this.service.createFirmwareRelease(req.body);
@@ -283,7 +283,7 @@ export class DevicesController {
     }
   }
 
-  @Delete('/firmware/:id', authenticate, requireRole(['ADMIN']))
+  @Delete('/firmware/:id', authenticate, requireRole(['ADMIN']), requireStepUp('OTA_ADMIN'))
   public async deleteFirmwareRelease(req: Request, res: Response) {
     try {
       await this.service.deleteFirmwareRelease(Number(req.params.id));
@@ -318,7 +318,7 @@ export class DevicesController {
     }
   }
 
-  @Post('/ota/deploy', authenticate, requireRole(['ADMIN']))
+  @Post('/ota/deploy', authenticate, requireRole(['ADMIN']), requireStepUp('OTA_ADMIN'))
   public async deployOtaCampaign(req: Request, res: Response) {
     try {
       const campaign = await this.service.createOtaCampaign(req.body);

@@ -59,7 +59,7 @@ export function DeviceGroupTab({
   const handleBulkDelete = async () => {
     if (selectedGroupIds.size === 0) return;
     setIsBulkDeleting(true);
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const ids = Array.from(selectedGroupIds);
     let deleted = 0;
 
@@ -110,7 +110,7 @@ export function DeviceGroupTab({
   const fetchGroups = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/groups`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -151,7 +151,7 @@ export function DeviceGroupTab({
 
     setIsCreating(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/groups`, {
         method: "POST",
         headers: {
@@ -200,7 +200,7 @@ export function DeviceGroupTab({
 
     setIsUpdating(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/groups/${editItem.id}`, {
         method: "PUT",
         headers: {
@@ -236,7 +236,7 @@ export function DeviceGroupTab({
 
     setIsDeleting(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/groups/${deleteTarget.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

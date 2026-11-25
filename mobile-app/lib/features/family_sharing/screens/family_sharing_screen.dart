@@ -3,6 +3,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../auth/auth.dart';
 import '../domain/entities/member_permission_entity.dart';
 import '../services/family_sharing_service.dart';
 import '../widgets/member_permission_card.dart';
@@ -198,13 +199,31 @@ class _FamilySharingScreenState extends State<FamilySharingScreen> {
 
   Future<void> _generateTransferOtp() async {
     if (_selectedDevice == null) return;
-    final res = await _service.createTransferOtp(_selectedDevice!.hardwareId);
+
+    // Chức năng #6: Yêu cầu xác thực Step-up OTP (Gmail hoặc Zalo ZNS) của chủ sở hữu hiện tại
+    final stepUpToken = await StepUpVerifySheet.show(
+      context,
+      purpose: 'TRANSFER_DEVICE',
+      title: 'Xác thực Chuyển giao quyền sở hữu',
+      warningDetail:
+          "Bạn đang tạo mã chuyển giao toàn bộ quyền Chủ sở hữu thiết bị '${_selectedDevice!.name}' (${_selectedDevice!.hardwareId}). Vui lòng xác thực OTP qua Gmail hoặc Zalo.",
+      isDanger: true,
+    );
+    if (stepUpToken == null || !mounted) return;
+
+    final res = await _service.createTransferOtp(
+      _selectedDevice!.hardwareId,
+      stepUpToken: stepUpToken,
+    );
     if (!mounted) return;
     if (res != null && res['otpCode'] != null) {
       setState(() => _transferOtp = res['otpCode'].toString());
       _showTransferOtpDialog();
     } else {
-      AppToast.showWarning("Không thể tạo mã OTP. Vui lòng kiểm tra lại quyền Chủ sở hữu.");
+      AppToast.showWarning(
+        res?['error']?.toString() ??
+            "Không thể tạo mã chuyển giao. Vui lòng kiểm tra lại quyền Chủ sở hữu.",
+      );
     }
   }
 

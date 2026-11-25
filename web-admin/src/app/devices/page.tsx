@@ -49,7 +49,7 @@ function DevicesManagementContent() {
   const loadMasterData = async () => {
     setIsLoading(true);
     const apiBase = getApiBaseUrl();
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const headers = { Authorization: `Bearer ${token}` };
 
     const handleApiResponse = async (res: Response) => {

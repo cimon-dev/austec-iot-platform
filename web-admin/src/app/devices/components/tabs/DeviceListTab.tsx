@@ -73,7 +73,7 @@ export function DeviceListTab({
     if (deviceTypes && deviceTypes.length > 0) {
       setInternalTypes(deviceTypes);
     } else {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       fetch(`${getApiBaseUrl()}/api/admin/device-types`, {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -263,7 +263,7 @@ export function DeviceListTab({
   const handleBulkDelete = async () => {
     if (selectedHwIds.size === 0) return;
     setIsBulkDeleting(true);
-    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+    const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
     const idsToDelete = Array.from(selectedHwIds);
     let deletedCount = 0;
 
@@ -305,7 +305,7 @@ export function DeviceListTab({
   const handleToggleDoor = async (hwId: string, newState: string) => {
     setControlLoading(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const action = newState === "OPENED" ? "OPEN" : newState === "CLOSED" ? "CLOSE" : newState === "STOPPED" ? "STOP" : newState;
       await fetch(`${getApiBaseUrl()}/api/devices/control`, {
         method: "POST",
@@ -343,7 +343,7 @@ export function DeviceListTab({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer austec-admin-super-token"
+          "Authorization": `Bearer ${localStorage.getItem("austec_auth_token") || ""}`
         },
         body: JSON.stringify({ months, isPerpetual })
       }).catch(() => null);
@@ -385,7 +385,7 @@ export function DeviceListTab({
     const hwId = getHwId(deletingDevice);
     setIsDeleting(true);
     try {
-      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "austec-admin-super-token" : "austec-admin-super-token";
+      const token = typeof window !== "undefined" ? localStorage.getItem("austec_auth_token") || "" : "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/devices/${hwId}`, {
         method: "DELETE",
         headers: {

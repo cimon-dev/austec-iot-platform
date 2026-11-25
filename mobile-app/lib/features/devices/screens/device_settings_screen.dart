@@ -3,6 +3,7 @@ import '../../../core/constants/app_theme.dart';
 import '../../../core/models/device_model.dart';
 import '../../../core/services/iot_gateway_client.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../auth/auth.dart';
 import '../../family_sharing/screens/family_sharing_screen.dart';
 
 class DeviceSettingsScreen extends StatefulWidget {
@@ -162,15 +163,33 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.crimsonDanger, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.of(ctx).pop();
+
+              String? stepUpToken;
+              // Chức năng #7: Nếu là Chủ sở hữu (OWNER) hủy ghép nối & Factory Reset -> bắt buộc Step-up OTP Gmail/Zalo
+              if (widget.device.userRole == FamilyRole.owner) {
+                stepUpToken = await StepUpVerifySheet.show(
+                  context,
+                  purpose: 'UNPAIR_DEVICE',
+                  title: 'Xác thực Hủy ghép nối & Reset thiết bị',
+                  warningDetail:
+                      "Thao tác này sẽ xóa toàn bộ thành viên gia đình và gửi lệnh Factory Reset xuống thiết bị '${widget.device.name}' (${widget.device.hardwareId}). Vui lòng xác thực OTP qua Gmail hoặc Zalo.",
+                  isDanger: true,
+                );
+                if (stepUpToken == null || !mounted) return;
+              }
+
               setState(() => _isDeleting = true);
-              final ok = await _gateway.unpairDevice(widget.device.hardwareId);
+              final ok = await _gateway.unpairDevice(
+                widget.device.hardwareId,
+                stepUpToken: stepUpToken,
+              );
               if (mounted) {
                 setState(() => _isDeleting = false);
-                Navigator.of(context).pop(true);
                 if (ok) {
+                  Navigator.of(context).pop(true);
                   AppToast.showSuccess("Đã xóa và hủy ghép nối thiết bị thành công!");
                 } else {
-                  AppToast.showInfo("Đã gỡ thiết bị khỏi danh sách.");
+                  AppToast.showError("Không thể hủy ghép nối thiết bị. Vui lòng kiểm tra mạng hoặc xác thực lại.");
                 }
               }
             },

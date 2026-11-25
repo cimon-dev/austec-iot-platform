@@ -67,7 +67,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
     });
 
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/shop/products'),
         headers: {'Authorization': 'Bearer $token'},
@@ -218,7 +218,7 @@ class _NativeShopScreenState extends State<NativeShopScreen> {
     );
 
     final curUser = AuthService().currentUser;
-    final authToken = AuthService().token ?? 'austec-customer-token';
+    final authToken = AuthService().token ?? '';
     try {
       final res = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/api/shop/orders'),
@@ -785,7 +785,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
   Future<void> _fetchReviews() async {
     setState(() => _isLoadingReviews = true);
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/shop/products/${widget.product.id}/reviews?includeHidden=true'),
         headers: {'Authorization': 'Bearer $token'},
@@ -945,7 +945,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                               }
 
                               setModalState(() => isSubmitting = true);
-                              final token = AuthService().token ?? 'austec-customer-token';
+                              final token = AuthService().token ?? '';
 
                               try {
                                 http.Response res;
@@ -1019,7 +1019,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
   }
 
   Future<void> _toggleReviewVisibility(ShopReviewItem review) async {
-    final token = AuthService().token ?? 'austec-customer-token';
+    final token = AuthService().token ?? '';
     try {
       final res = await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/api/shop/admin/reviews/${review.id}/toggle-visibility'),

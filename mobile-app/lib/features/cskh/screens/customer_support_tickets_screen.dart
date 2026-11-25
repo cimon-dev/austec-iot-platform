@@ -85,7 +85,7 @@ class _CustomerSupportTicketsScreenState extends State<CustomerSupportTicketsScr
 
   Future<void> _fetchMyTickets() async {
     setState(() => _isLoading = true);
-    final token = AuthService().token ?? 'austec-customer-token';
+    final token = AuthService().token ?? '';
 
     try {
       final res = await http.get(

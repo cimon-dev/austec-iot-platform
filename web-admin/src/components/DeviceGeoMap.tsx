@@ -84,7 +84,7 @@ export function DeviceGeoMap({ refreshTrigger = 0, onDeviceStateChange }: Device
   const fetchLiveDevices = useCallback(async (silent = false) => {
     if (!silent) setIsLoadingDevices(true);
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/admin/devices?limit=500`, {
         headers: { Authorization: `Bearer ${token}` }
       });

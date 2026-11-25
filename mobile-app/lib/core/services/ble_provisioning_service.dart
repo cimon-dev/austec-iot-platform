@@ -285,7 +285,7 @@ class BleProvisioningService {
     final currentUserName = (currentUser != null && currentUser.fullName.isNotEmpty)
         ? currentUser.fullName
         : (currentUser?.email.isNotEmpty == true ? currentUser!.email : 'Chủ sở hữu');
-    final authToken = AuthService().token ?? 'austec-customer-token';
+    final authToken = AuthService().token ?? '';
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 

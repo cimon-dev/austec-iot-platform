@@ -1,7 +1,12 @@
+import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { WebSocket } from 'ws';
 import { Controller, Get, Post, Put, Patch, Delete } from '../../core/decorators/index.js';
-import { authenticate, AuthenticatedRequest } from '../../core/middlewares/auth.middleware.js';
+import {
+  authenticate,
+  AuthenticatedRequest,
+  assertStepUpFromRequest,
+} from '../../core/middlewares/auth.middleware.js';
 import { PostgresClient, postgresClient } from '../../core/database/postgres.client.js';
 
 export interface DeviceOperationsDependencies {
@@ -687,6 +692,13 @@ export class DeviceOperationsController {
           );
           if (permCheck.rows.length === 0) {
             res.status(403).json({ success: false, error: 'Bạn không có quyền gỡ bỏ thiết bị này' });
+            return;
+          }
+        }
+
+        // Chức năng #7: Khi Chủ sở hữu (OWNER) hủy ghép nối & Factory Reset thiết bị -> bắt buộc Step-up OTP (Gmail/Zalo)
+        if (isOwner) {
+          if (!assertStepUpFromRequest(req, res, 'UNPAIR_DEVICE')) {
             return;
           }
         }
@@ -1894,6 +1906,219 @@ export class DeviceOperationsController {
       }
 
       res.status(500).json({ success: false, error: 'Database chưa kết nối' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/devices/:hardwareId/transfer/create
+   * Chức năng #6: Tạo mã chuyển giao quyền sở hữu thiết bị (bắt buộc OWNER + Step-up OTP Gmail/Zalo)
+   */
+  @Post('/:hardwareId/transfer/create', authenticate)
+  public async createOwnershipTransfer(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const hardwareId = String(req.params.hardwareId || '').trim();
+      const targetUser = req.user!;
+      if (!hardwareId) {
+        res.status(400).json({ success: false, error: 'Thiếu mã thiết bị (hardwareId).' });
+        return;
+      }
+
+      if (!assertStepUpFromRequest(req, res, 'TRANSFER_DEVICE')) {
+        return;
+      }
+
+      if (!this.client.getConnected()) {
+        res.status(500).json({ success: false, error: 'Cơ sở dữ liệu chưa kết nối.' });
+        return;
+      }
+
+      const cleanPhone = (targetUser.phoneNumber || '').replace(/[\s.-]/g, '');
+      const devRes = await this.client.query(
+        `SELECT di.hardware_id, di.custom_name, di.owner_id, di.owner_phone, dp.role
+         FROM device_instances di
+         LEFT JOIN device_permissions dp
+           ON LOWER(dp.hardware_id) = LOWER(di.hardware_id)
+          AND (dp.user_id = $2 OR (REPLACE(REPLACE(dp.phone_number, ' ', ''), '.', '') = $3 AND $3 != ''))
+         WHERE LOWER(di.hardware_id) = LOWER($1)
+         LIMIT 1`,
+        [hardwareId, targetUser.id, cleanPhone]
+      );
+
+      if (devRes.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Không tìm thấy thiết bị.' });
+        return;
+      }
+
+      const dev = devRes.rows[0];
+      const isOwner =
+        dev.owner_id === targetUser.id ||
+        (cleanPhone && dev.owner_phone && dev.owner_phone.replace(/[\s.-]/g, '') === cleanPhone) ||
+        dev.role === 'OWNER';
+
+      if (!isOwner && targetUser.role !== 'ADMIN') {
+        res.status(403).json({
+          success: false,
+          error: 'Chỉ Chủ sở hữu (OWNER) mới được phép tạo mã chuyển giao quyền sở hữu thiết bị.',
+        });
+        return;
+      }
+
+      const otpCode = String(crypto.randomInt(100000, 1000000));
+      const transferId = `TRF-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      await this.client.query(
+        `UPDATE device_ownership_transfers
+         SET status = 'CANCELLED'
+         WHERE LOWER(hardware_id) = LOWER($1) AND status = 'PENDING'`,
+        [dev.hardware_id]
+      );
+
+      await this.client.query(
+        `INSERT INTO device_ownership_transfers (id, hardware_id, from_user_id, otp_code, status, expires_at, created_at)
+         VALUES ($1, $2, $3, $4, 'PENDING', $5, NOW())`,
+        [transferId, dev.hardware_id, targetUser.id, otpCode, expiresAt]
+      );
+
+      res.json({
+        success: true,
+        transferId,
+        hardwareId: dev.hardware_id,
+        deviceName: dev.custom_name || dev.hardware_id,
+        otpCode,
+        expiresAt: expiresAt.toISOString(),
+        message: 'Đã tạo mã chuyển giao quyền sở hữu (hiệu lực 15 phút).',
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/devices/:hardwareId/transfer/cancel
+   * Hủy mã chuyển giao quyền sở hữu đang chờ
+   */
+  @Post('/:hardwareId/transfer/cancel', authenticate)
+  public async cancelOwnershipTransfer(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const hardwareId = String(req.params.hardwareId || '').trim();
+      const targetUser = req.user!;
+      if (!this.client.getConnected()) {
+        res.status(500).json({ success: false, error: 'Cơ sở dữ liệu chưa kết nối.' });
+        return;
+      }
+
+      await this.client.query(
+        `UPDATE device_ownership_transfers
+         SET status = 'CANCELLED'
+         WHERE LOWER(hardware_id) = LOWER($1) AND from_user_id = $2 AND status = 'PENDING'`,
+        [hardwareId, targetUser.id]
+      );
+
+      res.json({ success: true, message: 'Đã hủy mã chuyển giao quyền sở hữu.' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+
+  /**
+   * POST /api/devices/transfer/claim
+   * Tiếp nhận quyền sở hữu thiết bị bằng mã chuyển nhượng 6 chữ số
+   */
+  @Post('/transfer/claim', authenticate)
+  public async claimOwnershipTransfer(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const otpCode = String(req.body?.otpCode || '').trim();
+      const targetUser = req.user!;
+
+      if (!/^\d{6}$/.test(otpCode)) {
+        res.status(400).json({ success: false, error: 'Mã chuyển nhượng phải gồm 6 chữ số.' });
+        return;
+      }
+
+      if (!this.client.getConnected()) {
+        res.status(500).json({ success: false, error: 'Cơ sở dữ liệu chưa kết nối.' });
+        return;
+      }
+
+      const trfRes = await this.client.query(
+        `SELECT * FROM device_ownership_transfers
+         WHERE otp_code = $1 AND status = 'PENDING'
+         ORDER BY created_at DESC LIMIT 1`,
+        [otpCode]
+      );
+
+      if (trfRes.rows.length === 0) {
+        res.status(400).json({ success: false, error: 'Mã chuyển nhượng không hợp lệ hoặc đã được sử dụng.' });
+        return;
+      }
+
+      const trf = trfRes.rows[0];
+      if (new Date(trf.expires_at).getTime() < Date.now()) {
+        await this.client.query(
+          `UPDATE device_ownership_transfers SET status = 'EXPIRED' WHERE id = $1`,
+          [trf.id]
+        );
+        res.status(400).json({ success: false, error: 'Mã chuyển nhượng đã hết hạn (quá 15 phút).' });
+        return;
+      }
+
+      if (trf.from_user_id === targetUser.id) {
+        res.status(400).json({ success: false, error: 'Bạn đang là chủ sở hữu hiện tại của thiết bị này.' });
+        return;
+      }
+
+      const uRes = await this.client.query(
+        'SELECT id, full_name, phone_number, email FROM users WHERE id = $1 LIMIT 1',
+        [targetUser.id]
+      );
+      const newOwner = uRes.rows[0];
+      const newOwnerName = newOwner?.full_name || targetUser.fullName || targetUser.email;
+      const newOwnerPhone = newOwner?.phone_number || targetUser.phoneNumber || '';
+
+      await this.client.transaction(async client => {
+        // Cập nhật chủ sở hữu mới trên device_instances
+        await client.query(
+          `UPDATE device_instances
+           SET owner_id = $1, owner_name = $2, owner_phone = $3
+           WHERE LOWER(hardware_id) = LOWER($4)`,
+          [targetUser.id, newOwnerName, newOwnerPhone, trf.hardware_id]
+        );
+
+        // Gỡ quyền OWNER cũ và xóa bản ghi quyền trùng của người nhận (nếu từng là MEMBER)
+        await client.query(
+          `DELETE FROM device_permissions
+           WHERE LOWER(hardware_id) = LOWER($1) AND (user_id = $2 OR user_id = $3 OR role = 'OWNER')`,
+          [trf.hardware_id, trf.from_user_id, targetUser.id]
+        );
+
+        const newPermId = `PERM-${String(trf.hardware_id).replace(/-/g, '').slice(-6)}-${targetUser.id.slice(-6)}`;
+        await client.query(
+          `INSERT INTO device_permissions (
+             id, hardware_id, user_id, member_name, phone_number, role,
+             can_control, can_view_history, can_child_lock, can_config, created_at
+           )
+           VALUES ($1, $2, $3, $4, $5, 'OWNER', true, true, true, true, NOW()::text)
+           ON CONFLICT (id) DO UPDATE SET
+             role = 'OWNER', can_control = true, can_view_history = true, can_child_lock = true, can_config = true`,
+          [newPermId, trf.hardware_id, targetUser.id, newOwnerName, newOwnerPhone]
+        );
+
+        await client.query(
+          `UPDATE device_ownership_transfers
+           SET status = 'CLAIMED', claimed_by_user_id = $1, claimed_at = NOW()
+           WHERE id = $2`,
+          [targetUser.id, trf.id]
+        );
+      });
+
+      res.json({
+        success: true,
+        hardwareId: trf.hardware_id,
+        message: `Chúc mừng! Bạn đã tiếp nhận quyền Chủ sở hữu thiết bị [${trf.hardware_id}] thành công!`,
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }

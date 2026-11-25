@@ -582,17 +582,19 @@ class IoTGatewayClient {
     }
   }
 
-  /// Xóa / Hủy liên kết thiết bị khỏi tài khoản (API thực tế)
-  Future<bool> unpairDevice(String hardwareId) async {
+  /// Xóa / Hủy liên kết thiết bị khỏi tài khoản (API thực tế, hỗ trợ X-StepUp-Token khi OWNER xóa & Factory Reset)
+  Future<bool> unpairDevice(String hardwareId, {String? stepUpToken}) async {
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
+      if (token.isEmpty) return false;
       final res = await http.delete(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId'),
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
+          if (stepUpToken != null && stepUpToken.isNotEmpty) 'X-StepUp-Token': stepUpToken,
         },
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
         removeDevice(hardwareId);
@@ -601,14 +603,13 @@ class IoTGatewayClient {
     } catch (e) {
       debugPrint('[IoTGatewayClient] unpairDevice error: $e');
     }
-    removeDevice(hardwareId);
     return false;
   }
 
   /// Đổi tên hiển thị thiết bị (API thực tế)
   Future<bool> updateDeviceName(String hardwareId, String newName) async {
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
       final res = await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId'),
         headers: {
@@ -633,7 +634,7 @@ class IoTGatewayClient {
   /// Đổi vị trí / phòng đặt thiết bị (API thực tế lưu CSDL)
   Future<bool> updateDeviceLocation(String hardwareId, String newLocation) async {
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
       final res = await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId'),
         headers: {
@@ -664,7 +665,7 @@ class IoTGatewayClient {
   /// Cập nhật các thông số cài đặt / thuộc tính động của thiết bị (API thực tế)
   Future<bool> updateDeviceProperties(String hardwareId, Map<String, dynamic> properties) async {
     try {
-      final token = AuthService().token ?? 'austec-customer-token';
+      final token = AuthService().token ?? '';
       final res = await http.patch(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/$hardwareId/properties'),
         headers: {
@@ -705,7 +706,7 @@ class IoTGatewayClient {
 
     // 2. Thử đồng bộ từ Backend Cloud / PostgreSQL
     try {
-      final authToken = token ?? (AuthService().token ?? 'austec-customer-token');
+      final authToken = token ?? (AuthService().token ?? '');
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/my'),
         headers: {'Authorization': 'Bearer $authToken'},
@@ -755,7 +756,7 @@ class IoTGatewayClient {
   /// Nạp danh sách camera phân trang theo yêu cầu (mỗi lượt 4-6 cái)
   Future<List<DeviceItem>> fetchCamerasPaged({int limit = 6, int offset = 0, String? token}) async {
     try {
-      final authToken = token ?? (AuthService().token ?? 'austec-customer-token');
+      final authToken = token ?? (AuthService().token ?? '');
       final res = await http.get(
         Uri.parse('${ApiConfig.baseUrl}/api/devices/my?category=camera&limit=$limit&offset=$offset'),
         headers: {'Authorization': 'Bearer $authToken'},
@@ -1096,7 +1097,7 @@ class IoTGatewayClient {
                         : action;
 
         final isRfCmd = beAction == "RF_SETUP" || beAction == "RF_PAIR_NEW" || beAction == "RF_CLEAR" || beAction == "RF_CLEAR_ALL" || beAction == "11" || beAction == "12";
-        final userToken = AuthService().token ?? 'austec-customer-token';
+        final userToken = AuthService().token ?? '';
         final res = await http.post(
           Uri.parse('${ApiConfig.baseUrl}/api/devices/control'),
           headers: {

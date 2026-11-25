@@ -42,7 +42,7 @@ export interface UnifiedUser {
   id: string;
   fullName: string;
   email: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   role: 'ADMIN' | 'CSKH' | 'CUSTOMER';
   empID?: string;
   roleTitle?: string;
@@ -51,6 +51,12 @@ export interface UnifiedUser {
   address?: string;
   province?: string;
   password?: string;
+  googleId?: string;
+  authProvider?: string;
+  hasPassword?: boolean;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
+  approvalStatus?: 'APPROVED' | 'PENDING' | 'REJECTED';
   avatarUrl?: string;
   isActive: boolean;
   registeredAt: string;
@@ -123,7 +129,13 @@ export function createApp() {
                   department: r.department || undefined,
                   role: r.role,
                   roleTitle: r.role_title || undefined,
-                  password: r.password,
+                  password: r.password || undefined,
+                  googleId: r.google_id || undefined,
+                  authProvider: r.auth_provider || 'local',
+                  hasPassword: r.has_password !== undefined ? Boolean(r.has_password) : Boolean(r.password),
+                  emailVerified: Boolean(r.email_verified),
+                  phoneVerified: Boolean(r.phone_verified),
+                  approvalStatus: r.approval_status || 'APPROVED',
                   address: r.address || undefined,
                   province: r.province || undefined,
                   avatarUrl: r.avatar_url || undefined,

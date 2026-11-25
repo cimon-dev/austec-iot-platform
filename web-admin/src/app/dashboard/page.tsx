@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const token = localStorage.getItem("austec_auth_token") || "";
       const res = await fetch(`${getApiBaseUrl()}/api/dashboard/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
