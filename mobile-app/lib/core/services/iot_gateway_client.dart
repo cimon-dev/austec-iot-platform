@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../models/device_model.dart';
 import '../constants/api_config.dart';
 import 'auth_service.dart';
@@ -106,6 +107,120 @@ class IoTGatewayClient {
   final StreamController<DeviceItem> _deviceUpdateStream = StreamController<DeviceItem>.broadcast();
   Stream<DeviceItem> get onDeviceUpdated => _deviceUpdateStream.stream;
   final Map<String, Timer> _doorMotionTimers = {};
+
+  // Đồng bộ trạng thái thiết bị thời gian thực (WebSocket + Polling dự phòng 20s)
+  WebSocketChannel? _statusWsChannel;
+  StreamSubscription? _statusWsSub;
+  Timer? _statusWsReconnectTimer;
+  Timer? _periodicSyncTimer;
+  bool _realtimeSyncActive = false;
+
+  /// Bắt đầu lắng nghe trạng thái Online/Offline liên tục từ Backend
+  void startRealtimeStatusSync() {
+    if (_realtimeSyncActive) return;
+    _realtimeSyncActive = true;
+    _connectStatusWebSocket();
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (_realtimeSyncActive && AuthService().isLoggedIn) {
+        fetchDevicesFromBackend(token: AuthService().token);
+      }
+    });
+  }
+
+  /// Dừng đồng bộ trạng thái liên tục (khi thoát màn hình chính / đăng xuất)
+  void stopRealtimeStatusSync() {
+    _realtimeSyncActive = false;
+    _periodicSyncTimer?.cancel();
+    _periodicSyncTimer = null;
+    _statusWsReconnectTimer?.cancel();
+    _statusWsReconnectTimer = null;
+    _statusWsSub?.cancel();
+    _statusWsSub = null;
+    try {
+      _statusWsChannel?.sink.close();
+    } catch (_) {}
+    _statusWsChannel = null;
+  }
+
+  void _connectStatusWebSocket() {
+    if (!_realtimeSyncActive) return;
+    _statusWsSub?.cancel();
+    try {
+      _statusWsChannel?.sink.close();
+    } catch (_) {}
+
+    try {
+      final wsUri = Uri.parse(ApiConfig.wsChatUrl);
+      _statusWsChannel = WebSocketChannel.connect(wsUri);
+      _statusWsSub = _statusWsChannel!.stream.listen(
+        (raw) {
+          try {
+            final msg = jsonDecode(raw.toString());
+            if (msg is Map && msg['type'] == 'DEVICE_STATE_CHANGE') {
+              final hwId = msg['hardwareId']?.toString() ?? '';
+              final state = msg['state'];
+              if (hwId.isNotEmpty && state is Map) {
+                _applyRealtimeStateUpdate(hwId, Map<String, dynamic>.from(state));
+              }
+            }
+          } catch (_) {}
+        },
+        onError: (_) => _scheduleStatusWsReconnect(),
+        onDone: () => _scheduleStatusWsReconnect(),
+      );
+    } catch (_) {
+      _scheduleStatusWsReconnect();
+    }
+  }
+
+  void _scheduleStatusWsReconnect() {
+    if (!_realtimeSyncActive) return;
+    _statusWsReconnectTimer?.cancel();
+    _statusWsReconnectTimer = Timer(const Duration(seconds: 5), () {
+      if (_realtimeSyncActive) {
+        _connectStatusWebSocket();
+      }
+    });
+  }
+
+  void _applyRealtimeStateUpdate(String hardwareId, Map<String, dynamic> state) {
+    final device = findByHardwareId(hardwareId);
+    if (device == null) return;
+
+    bool changed = false;
+    if (state.containsKey('isOnline')) {
+      final nextOnline = state['isOnline'] == true;
+      if (device.isOnline != nextOnline) {
+        device.isOnline = nextOnline;
+        changed = true;
+      }
+    } else if (!device.isOnline) {
+      // Nhận được gói telemetry/action mới từ thiết bị -> thiết bị đang Online
+      device.isOnline = true;
+      changed = true;
+    }
+
+    if (state.containsKey('is_relay_on')) {
+      final nextRelay = state['is_relay_on'] == true;
+      if (device.isRelayOn != nextRelay) {
+        device.isRelayOn = nextRelay;
+        changed = true;
+      }
+    }
+
+    // Cập nhật các thông số telemetry động (Công tơ, BMS, Cửa cuốn...)
+    state.forEach((key, value) {
+      if (key != 'isOnline' && device.currentProperties[key] != value) {
+        device.currentProperties[key] = value;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      _deviceUpdateStream.add(device);
+    }
+  }
 
   List<DeviceItem> get devices => List.unmodifiable(_devices);
 
@@ -807,7 +922,7 @@ class IoTGatewayClient {
           (d['installationAddress'] is Map
               ? d['installationAddress']['fullText']
               : d['installationAddress']) ?? "").toString(),
-      isOnline: d['isOnline'] == true || d['is_online'] == true || d['status'] == 'ONLINE' || d['status'] == 'online' || d['status'] == 'ACTIVE',
+      isOnline: d['isOnline'] == true || d['is_online'] == true || d['status'] == 'ONLINE' || d['status'] == 'online',
       userRole: uRole,
       canControl: canControl,
       canViewHistory: canViewHistory,

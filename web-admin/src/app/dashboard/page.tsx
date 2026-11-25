@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useLanguage } from "../../context/LanguageContext";
 import { usePermissions } from "../../context/PermissionContext";
@@ -49,10 +49,16 @@ export default function DashboardPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const debounceStatsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const formatNum = (num: number) => (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const parsePct = (pct?: string) => {
+    const val = parseFloat(pct || "0");
+    return Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : 0;
+  };
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
       const res = await fetch(`${getApiBaseUrl()}/api/dashboard/stats`, {
@@ -67,16 +73,27 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStats();
     const timer = setInterval(fetchStats, 15000);
-    return () => clearInterval(timer);
-  }, []);
+    return () => {
+      clearInterval(timer);
+      if (debounceStatsRef.current) clearTimeout(debounceStatsRef.current);
+    };
+  }, [fetchStats]);
+
+  const handleDeviceStateChange = useCallback(() => {
+    if (debounceStatsRef.current) clearTimeout(debounceStatsRef.current);
+    debounceStatsRef.current = setTimeout(() => {
+      fetchStats();
+    }, 400);
+  }, [fetchStats]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
+    setRefreshTrigger(prev => prev + 1);
     await fetchStats();
     setTimeout(() => {
       setIsRefreshing(false);
@@ -175,19 +192,19 @@ export default function DashboardPage() {
               {/* Dòng 2: Offline */}
               <Link
                 href="/devices?tab=list&status=offline"
-                className="p-2 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-500/20 hover:border-rose-500/40 flex items-center justify-between transition-colors group cursor-pointer"
+                className="p-2 rounded-lg bg-red-50/60 dark:bg-red-950/25 border border-red-500/25 hover:border-red-500/50 flex items-center justify-between transition-colors group cursor-pointer"
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-500"></span>
-                  <span className="font-semibold text-rose-800 dark:text-rose-300">Ngoại Tuyến (Offline)</span>
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span className="font-semibold text-red-700 dark:text-red-400">Ngoại Tuyến (Offline)</span>
                 </div>
                 <div className="flex items-center gap-2 font-mono">
                   {isLoading || !stats ? (
-                    <span className="inline-block w-10 h-3.5 bg-rose-200/50 dark:bg-rose-900/50 rounded animate-pulse"></span>
+                    <span className="inline-block w-10 h-3.5 bg-red-200/50 dark:bg-red-900/50 rounded animate-pulse"></span>
                   ) : (
                     <>
-                      <span className="font-bold text-rose-700 dark:text-rose-300">{formatNum(stats.offline)}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-700 dark:text-rose-300 font-bold">{stats.offlinePct}</span>
+                      <span className="font-bold text-red-600 dark:text-red-400">{formatNum(stats.offline)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-bold">{stats.offlinePct}</span>
                     </>
                   )}
                 </div>
@@ -234,7 +251,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }} title="Online"></div>
-                  <div className="bg-rose-500 h-full" style={{ width: stats.offlinePct }} title="Offline"></div>
+                  <div className="bg-red-500 h-full" style={{ width: stats.offlinePct }} title="Offline"></div>
                   <div className="bg-slate-400 h-full" style={{ width: stats.inStockPct }} title="Tồn kho"></div>
                 </>
               )}
@@ -271,7 +288,7 @@ export default function DashboardPage() {
                         fill="none"
                         stroke="#10b981"
                         strokeWidth="12"
-                        strokeDasharray={`${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)} 289`}
+                        strokeDasharray={`${(parsePct(stats.onlinePct) * 2.89).toFixed(1)} 289`}
                         strokeDashoffset="0"
                         className="transition-all duration-700"
                       />
@@ -283,8 +300,8 @@ export default function DashboardPage() {
                         fill="none"
                         stroke="#64748b"
                         strokeWidth="12"
-                        strokeDasharray={`${((parseFloat(stats.inStockPct) || 10) * 2.89).toFixed(1)} 289`}
-                        strokeDashoffset={`-${((parseFloat(stats.onlinePct) || 85) * 2.89).toFixed(1)}`}
+                        strokeDasharray={`${(parsePct(stats.inStockPct) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${(parsePct(stats.onlinePct) * 2.89).toFixed(1)}`}
                         className="transition-all duration-700"
                       />
                       {/* Offline Segment */}
@@ -293,10 +310,10 @@ export default function DashboardPage() {
                         cy="60"
                         r="46"
                         fill="none"
-                        stroke="#f43f5e"
+                        stroke="#ef4444"
                         strokeWidth="12"
-                        strokeDasharray={`${((parseFloat(stats.offlinePct) || 5) * 2.89).toFixed(1)} 289`}
-                        strokeDashoffset={`-${(((parseFloat(stats.onlinePct) || 85) + (parseFloat(stats.inStockPct) || 10)) * 2.89).toFixed(1)}`}
+                        strokeDasharray={`${(parsePct(stats.offlinePct) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${((parsePct(stats.onlinePct) + parsePct(stats.inStockPct)) * 2.89).toFixed(1)}`}
                         className="transition-all duration-700"
                       />
                     </svg>
@@ -335,10 +352,10 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-sm bg-rose-500"></span>
-                        <span className="text-slate-600 dark:text-slate-300">Offline</span>
+                        <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span>
+                        <span className="text-red-600 dark:text-red-400 font-medium">Offline</span>
                       </div>
-                      <span className="font-mono font-bold text-rose-600 dark:text-rose-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
+                      <span className="font-mono font-bold text-red-600 dark:text-red-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
                     </div>
                   </>
                 )}
@@ -385,11 +402,11 @@ export default function DashboardPage() {
 
                 <div>
                   <div className="flex justify-between text-[11px] mb-0.5">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">Ngoại tuyến (Offline)</span>
-                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.offline)} TB ({stats.offlinePct})</span>
+                    <span className="font-semibold text-red-600 dark:text-red-400">Ngoại tuyến (Offline)</span>
+                    <span className="font-mono text-red-600 dark:text-red-400 font-semibold">{formatNum(stats.offline)} TB ({stats.offlinePct})</span>
                   </div>
                   <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
-                    <div className="bg-rose-500 h-full" style={{ width: stats.offlinePct }}></div>
+                    <div className="bg-red-500 h-full" style={{ width: stats.offlinePct }}></div>
                   </div>
                 </div>
 
@@ -414,7 +431,10 @@ export default function DashboardPage() {
         {/* ============================================================== */}
         {/* PHẦN 2: BẢN ĐỒ PHÂN BỐ CỤM THIẾT BỊ SỬ DỤNG LEAFLET MAP */}
         {/* ============================================================== */}
-        <DeviceGeoMap />
+        <DeviceGeoMap
+          refreshTrigger={refreshTrigger}
+          onDeviceStateChange={handleDeviceStateChange}
+        />
 
         {/* ============================================================== */}
         {/* PHẦN 3: SỨC KHỎE HẠ TẦNG, CẢNH BÁO KỸ THUẬT & SLA */}

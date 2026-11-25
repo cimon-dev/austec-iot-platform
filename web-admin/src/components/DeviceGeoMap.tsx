@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   MapPin, 
@@ -21,7 +21,7 @@ import {
   X,
   Loader2
 } from "lucide-react";
-import { getApiBaseUrl } from "@/context/apiConfig";
+import { getApiBaseUrl, getWsChatUrl } from "@/context/apiConfig";
 
 export interface DeviceGeoLocation {
   hardwareId: string;
@@ -55,12 +55,19 @@ const PROVINCE_COORDS: Record<string, { lat: number; lng: number }> = {
   "Cần Thơ": { lat: 10.0452, lng: 105.7469 },
 };
 
-export function DeviceGeoMap() {
+interface DeviceGeoMapProps {
+  refreshTrigger?: number;
+  onDeviceStateChange?: () => void;
+}
+
+export function DeviceGeoMap({ refreshTrigger = 0, onDeviceStateChange }: DeviceGeoMapProps = {}) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
   const tileLayerRef = useRef<any>(null);
   const leafletLibRef = useRef<any>(null);
+  const onDeviceStateChangeRef = useRef(onDeviceStateChange);
+  onDeviceStateChangeRef.current = onDeviceStateChange;
 
   const [mapStyle, setMapStyle] = useState<"google" | "satellite" | "osm">("google");
   const [deviceList, setDeviceList] = useState<DeviceGeoLocation[]>([]);
@@ -74,70 +81,166 @@ export function DeviceGeoMap() {
   const [mobileMapTab, setMobileMapTab] = useState<"map" | "inspector">("map");
 
   // Fetch live PostgreSQL devices - 100% BE data
-  useEffect(() => {
-    let isMounted = true;
-    const fetchLiveDevices = async () => {
-      setIsLoadingDevices(true);
-      try {
-        const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
-        const res = await fetch(`${getApiBaseUrl()}/api/admin/devices`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.success && Array.isArray(data.devices)) {
-          const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any) => {
-            const provinceName = d.province || "Hà Nội";
-            const defCoords = PROVINCE_COORDS[provinceName] || { lat: 21.0285, lng: 105.8542 };
-            const rawStatus = String(d.status || (d.isOnline ? 'ONLINE' : 'OFFLINE')).toUpperCase();
-            const normalizedStatus: "ONLINE" | "OFFLINE" | "IN_STOCK" =
-              rawStatus === 'ONLINE' || rawStatus === 'TRUE' ? 'ONLINE' :
-              rawStatus === 'OFFLINE' || rawStatus === 'FALSE' ? 'OFFLINE' : 'IN_STOCK';
+  const fetchLiveDevices = useCallback(async (silent = false) => {
+    if (!silent) setIsLoadingDevices(true);
+    try {
+      const token = localStorage.getItem("austec_auth_token") || "austec-admin-super-token";
+      const res = await fetch(`${getApiBaseUrl()}/api/admin/devices?limit=500`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.devices)) {
+        const geoMapped: DeviceGeoLocation[] = data.devices.map((d: any) => {
+          const provinceName = d.province || "Hà Nội";
+          const defCoords = PROVINCE_COORDS[provinceName] || { lat: 21.0285, lng: 105.8542 };
+          const rawStatus = String(d.status || '').toUpperCase();
+          const normalizedStatus: "ONLINE" | "OFFLINE" | "IN_STOCK" =
+            d.isOnline === true || rawStatus === 'ONLINE' || rawStatus === 'TRUE'
+              ? 'ONLINE'
+              : (rawStatus === 'IN_STOCK' || rawStatus === 'MANUFACTURED' || rawStatus === 'IN_WAREHOUSE')
+              ? 'IN_STOCK'
+              : 'OFFLINE';
 
-            return {
-              hardwareId: d.hardwareId || d.hwId || '',
-              serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId || ''}`,
-              deviceName: d.name || d.customName || 'Thiết bị Austec',
-              deviceType: (d.typeName?.includes('Khóa') ? 'Khóa thông minh' : d.typeName?.includes('Lưu điện') ? 'Bộ lưu điện' : 'Cửa cuốn') as any,
-              modelName: d.modelName || 'Austec Smart Series',
-              status: normalizedStatus,
-              ownerName: d.ownerName || 'Chưa gán',
-              phoneNumber: d.ownerPhone || '---',
-              lat: typeof d.lat === 'number' ? d.lat : defCoords.lat,
-              lng: typeof d.lng === 'number' ? d.lng : defCoords.lng,
-              streetAddress: d.address || '',
-              ward: d.ward || '',
-              district: d.district || '',
-              province: provinceName,
-              formattedAddress: d.address || [d.district, d.province].filter(Boolean).join(', ') || 'Chưa cập nhật địa chỉ',
-              lastTelemetryAt: d.lastHeartbeat ? new Date(d.lastHeartbeat).toLocaleTimeString() : 'Chưa có viễn thám',
-              batteryLevel: typeof d.batteryLevel === 'number' ? d.batteryLevel : 100,
-              signalDbm: typeof d.rssiSignal === 'number' ? d.rssiSignal : -70,
-            };
-          });
-          if (isMounted) {
-            setDeviceList(geoMapped);
-            setSelectedDevice(geoMapped.length > 0 ? geoMapped[0] : null);
+          return {
+            hardwareId: d.hardwareId || d.hwId || '',
+            serialNumber: d.serialNumber || `SN-${d.hardwareId || d.hwId || ''}`,
+            deviceName: d.name || d.customName || 'Thiết bị Austec',
+            deviceType: (d.typeName?.includes('Khóa') ? 'Khóa thông minh' : d.typeName?.includes('Lưu điện') ? 'Bộ lưu điện' : 'Cửa cuốn') as any,
+            modelName: d.modelName || 'Austec Smart Series',
+            status: normalizedStatus,
+            ownerName: d.ownerName || 'Chưa gán',
+            phoneNumber: d.ownerPhone || '---',
+            lat: typeof d.lat === 'number' ? d.lat : defCoords.lat,
+            lng: typeof d.lng === 'number' ? d.lng : defCoords.lng,
+            streetAddress: d.address || '',
+            ward: d.ward || '',
+            district: d.district || '',
+            province: provinceName,
+            formattedAddress: d.address || [d.district, d.province].filter(Boolean).join(', ') || 'Chưa cập nhật địa chỉ',
+            lastTelemetryAt: d.lastHeartbeat ? new Date(d.lastHeartbeat).toLocaleTimeString() : 'Chưa có viễn thám',
+            batteryLevel: typeof d.batteryLevel === 'number' ? d.batteryLevel : 100,
+            signalDbm: typeof d.rssiSignal === 'number' ? d.rssiSignal : -70,
+          };
+        });
+
+        setDeviceList(geoMapped);
+        setSelectedDevice(prev => {
+          if (geoMapped.length === 0) return null;
+          if (!prev) return geoMapped[0];
+          const updatedMatch = geoMapped.find(item => item.hardwareId.toLowerCase() === prev.hardwareId.toLowerCase());
+          return updatedMatch || geoMapped[0];
+        });
+      } else if (!silent) {
+        setDeviceList([]);
+        setSelectedDevice(null);
+      }
+    } catch (e) {
+      console.warn("Lỗi tải danh sách thiết bị trên bản đồ:", e);
+      if (!silent) {
+        setDeviceList([]);
+        setSelectedDevice(null);
+      }
+    } finally {
+      if (!silent) {
+        setIsLoadingDevices(false);
+      }
+    }
+  }, []);
+
+  // Initial load + periodic background sync (15s)
+  useEffect(() => {
+    fetchLiveDevices(false);
+    const interval = setInterval(() => {
+      fetchLiveDevices(true);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [fetchLiveDevices]);
+
+  // Manual refresh from Dashboard header button
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchLiveDevices(true);
+    }
+  }, [refreshTrigger, fetchLiveDevices]);
+
+  // Realtime WebSocket sync for instant Online/Offline updates
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let isDisposed = false;
+
+    const connectWs = () => {
+      if (isDisposed) return;
+      try {
+        ws = new WebSocket(getWsChatUrl());
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg?.type === "DEVICE_STATE_CHANGE" && msg.hardwareId && msg.state && typeof msg.state.isOnline === "boolean") {
+              const targetHw = String(msg.hardwareId).toLowerCase();
+              const nextOnline: boolean = msg.state.isOnline;
+              const nextStatus: "ONLINE" | "OFFLINE" = nextOnline ? "ONLINE" : "OFFLINE";
+              const nextTime = msg.state.lastHeartbeat
+                ? new Date(msg.state.lastHeartbeat).toLocaleTimeString()
+                : (nextOnline ? new Date().toLocaleTimeString() : undefined);
+
+              setDeviceList(prev => {
+                let changed = false;
+                const next = prev.map(item => {
+                  if (item.hardwareId.toLowerCase() === targetHw) {
+                    if (item.status !== nextStatus || (nextTime && item.lastTelemetryAt !== nextTime)) {
+                      changed = true;
+                      return {
+                        ...item,
+                        status: nextStatus,
+                        lastTelemetryAt: nextTime || item.lastTelemetryAt,
+                      };
+                    }
+                  }
+                  return item;
+                });
+                return changed ? next : prev;
+              });
+
+              setSelectedDevice(prev => {
+                if (prev && prev.hardwareId.toLowerCase() === targetHw) {
+                  return {
+                    ...prev,
+                    status: nextStatus,
+                    lastTelemetryAt: nextTime || prev.lastTelemetryAt,
+                  };
+                }
+                return prev;
+              });
+
+              onDeviceStateChangeRef.current?.();
+            }
+          } catch (_) {
+            // ignore non-JSON frames
           }
-        } else {
-          if (isMounted) {
-            setDeviceList([]);
-            setSelectedDevice(null);
+        };
+        ws.onclose = () => {
+          if (!isDisposed) {
+            reconnectTimer = setTimeout(connectWs, 5000);
           }
-        }
-      } catch (e) {
-        console.warn("Lỗi tải danh sách thiết bị trên bản đồ:", e);
-        if (isMounted) {
-          setDeviceList([]);
-          setSelectedDevice(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingDevices(false);
+        };
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch (_) {
+        if (!isDisposed) {
+          reconnectTimer = setTimeout(connectWs, 5000);
         }
       }
     };
-    fetchLiveDevices();
-    return () => { isMounted = false; };
+
+    connectWs();
+    return () => {
+      isDisposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
   }, []);
 
   // Re-fit Leaflet map bounds when toggling fullscreen dialog mode
@@ -315,7 +418,7 @@ export function DeviceGeoMap() {
             <div style="color: #475569; margin-bottom: 6px; line-height: 1.35;">📍 ${device.formattedAddress}</div>
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
               <span style="font-weight: bold; color: ${isOnline ? "#059669" : isOffline ? "#dc2626" : "#0284c7"}">
-                ● ${isOnline ? "Trực tuyến" : isOffline ? "Ngoại tuyến (Offline)" : "Tồn kho"}
+                ● ${isOnline ? "Trực tuyến" : isOffline ? "Ngoại tuyến" : "Tồn kho"}
               </span>
               <span style="font-size: 9px; color: #64748b; font-family: monospace;">${device.lat.toFixed(4)}, ${device.lng.toFixed(4)}</span>
             </div>
@@ -551,7 +654,7 @@ export function DeviceGeoMap() {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-              <span className="text-red-600 dark:text-red-400 font-semibold">Ngoại tuyến (Đỏ)</span>
+              <span className="text-red-600 dark:text-red-400 font-semibold">Ngoại tuyến</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
@@ -598,13 +701,25 @@ export function DeviceGeoMap() {
               </div>
             ) : selectedDevice ? (
               <>
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-1.5">
+                <div className={`p-2 rounded-lg border space-y-1.5 ${
+                  selectedDevice.status === "OFFLINE"
+                    ? "bg-red-50/60 dark:bg-red-950/25 border-red-200 dark:border-red-900/60"
+                    : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800"
+                }`}>
                   <div className="flex items-start justify-between gap-1">
                     <div>
-                      <div className="font-bold text-slate-900 dark:text-white text-xs leading-tight">
+                      <div className={`font-bold text-xs leading-tight ${
+                        selectedDevice.status === "OFFLINE"
+                          ? "text-red-700 dark:text-red-400"
+                          : "text-slate-900 dark:text-white"
+                      }`}>
                         {selectedDevice.deviceName}
                       </div>
-                      <div className="text-[10px] font-mono text-slate-600 dark:text-slate-400 font-semibold mt-0.5">
+                      <div className={`text-[10px] font-mono font-semibold mt-0.5 ${
+                        selectedDevice.status === "OFFLINE"
+                          ? "text-red-600/80 dark:text-red-400/80"
+                          : "text-slate-600 dark:text-slate-400"
+                      }`}>
                         {selectedDevice.hardwareId} • {selectedDevice.modelName}
                       </div>
                     </div>
@@ -612,10 +727,10 @@ export function DeviceGeoMap() {
                       selectedDevice.status === "ONLINE"
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                         : selectedDevice.status === "OFFLINE"
-                        ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"
-                        : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600"
+                        ? "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30"
+                        : "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
                     }`}>
-                      {selectedDevice.status === "ONLINE" ? "Online" : selectedDevice.status === "OFFLINE" ? "Offline" : "Tồn Kho"}
+                      {selectedDevice.status === "ONLINE" ? "Trực tuyến" : selectedDevice.status === "OFFLINE" ? "Ngoại tuyến" : "Tồn kho"}
                     </span>
                   </div>
 
@@ -680,25 +795,43 @@ export function DeviceGeoMap() {
                   <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1">
                     Danh sách thiết bị trong khu vực ({filteredDevices.length})
                   </span>
-                  <div className="space-y-1 max-h-24 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {filteredDevices.map(d => (
-                      <button
-                        key={d.hardwareId}
-                        type="button"
-                        onClick={() => handleSelectDevice(d)}
-                        className={`w-full text-left p-1 rounded flex items-center justify-between text-[10px] transition-colors cursor-pointer ${
-                          selectedDevice.hardwareId === d.hardwareId
-                            ? "bg-zinc-200 dark:bg-zinc-800 text-slate-900 dark:text-white font-bold"
-                            : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.status === "ONLINE" ? "bg-emerald-500" : d.status === "OFFLINE" ? "bg-red-500" : "bg-sky-500"}`} />
-                          <span className="font-mono">{d.hardwareId}</span>
-                        </div>
-                        <span className="truncate max-w-[110px] text-slate-400">{d.province}</span>
-                      </button>
-                    ))}
+                  <div className="space-y-1 max-h-36 overflow-y-auto pr-0.5">
+                    {filteredDevices.map(d => {
+                      const isRowOffline = d.status === "OFFLINE";
+                      const isRowOnline = d.status === "ONLINE";
+                      const isRowSelected = selectedDevice.hardwareId === d.hardwareId;
+                      return (
+                        <button
+                          key={d.hardwareId}
+                          type="button"
+                          onClick={() => handleSelectDevice(d)}
+                          className={`w-full text-left px-1.5 py-1 rounded flex items-center justify-between gap-1.5 text-[10px] transition-colors cursor-pointer border ${
+                            isRowOffline
+                              ? isRowSelected
+                                ? "bg-red-100 dark:bg-red-950/70 border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 font-bold"
+                                : "bg-red-50/70 dark:bg-red-950/30 border-red-200/80 dark:border-red-900/50 hover:bg-red-100/80 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 font-semibold"
+                              : isRowSelected
+                              ? "bg-zinc-200 dark:bg-zinc-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-bold"
+                              : "border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${isRowOnline ? "bg-emerald-500" : isRowOffline ? "bg-red-500" : "bg-sky-500"}`} />
+                            <span className="font-mono truncate">{d.hardwareId}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isRowOffline && (
+                              <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/25">
+                                Ngoại tuyến
+                              </span>
+                            )}
+                            <span className={`truncate max-w-[85px] ${isRowOffline ? "text-red-500/80 dark:text-red-400/80" : "text-slate-400"}`}>
+                              {d.province}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>

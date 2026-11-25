@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/austec_ui.dart';
@@ -30,11 +31,19 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
   bool _isBusy = false;
   bool _isStreamActive = true;
   int _streamReloadNonce = 0;
+  StreamSubscription<DeviceItem>? _deviceUpdateSub;
 
   @override
   void initState() {
     super.initState();
     _device = widget.device;
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((updated) {
+      if (updated.hardwareId.toLowerCase() == _device.hardwareId.toLowerCase() && mounted) {
+        setState(() {
+          _device = updated;
+        });
+      }
+    });
 
     if (_device.category == DeviceCategory.camera) {
       if (_device.canViewCameraStream) {
@@ -48,6 +57,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
 
   @override
   void dispose() {
+    _deviceUpdateSub?.cancel();
     if (!widget.isAlreadyStreaming && _device.category == DeviceCategory.camera) {
       // Dừng stream nếu màn hình này tự phát stream
       _gateway.sendCommand(hardwareId: _device.hardwareId, action: "STREAM_STOP");

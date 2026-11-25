@@ -522,7 +522,9 @@ export class DevicesRepository {
       if (status === 'online') {
         query += ` AND di.is_online = true`;
       } else if (status === 'offline') {
-        query += ` AND di.is_online = false`;
+        query += ` AND COALESCE(di.is_online, false) = false AND (di.owner_id IS NOT NULL OR (di.owner_name IS NOT NULL AND TRIM(di.owner_name) <> '' AND di.owner_name <> 'Chưa gán') OR di.last_heartbeat IS NOT NULL)`;
+      } else if (status === 'in_stock') {
+        query += ` AND COALESCE(di.is_online, false) = false AND di.owner_id IS NULL AND (di.owner_name IS NULL OR TRIM(di.owner_name) = '' OR di.owner_name = 'Chưa gán') AND di.last_heartbeat IS NULL`;
       }
 
       if (search) {
@@ -563,7 +565,9 @@ export class DevicesRepository {
         productionDate: r.production_date || '',
         macAddress: r.mac_address || '',
         isOnline: !!r.is_online,
-        status: r.is_online ? 'online' : (r.resolved_owner_name && r.resolved_owner_name !== 'Chưa gán' ? 'offline' : 'in_stock'),
+        status: r.is_online
+          ? 'online'
+          : (r.owner_id || (r.resolved_owner_name && r.resolved_owner_name !== 'Chưa gán') || r.last_heartbeat ? 'offline' : 'in_stock'),
         lastHeartbeat: r.last_heartbeat,
         currentProperties: r.current_properties || {},
         battery: (r.current_properties && r.current_properties.battery_level) || 100,
@@ -777,7 +781,9 @@ export class DevicesRepository {
         ownerName: r.owner_name || owner || 'Chưa gán',
         phone: r.owner_phone || phone || '---',
         ownerPhone: r.owner_phone || phone || '---',
-        status: r.is_online ? 'online' : (r.owner_name && r.owner_name !== 'Chưa gán' ? 'offline' : 'in_stock'),
+        status: r.is_online
+          ? 'online'
+          : (r.owner_id || (r.owner_name && r.owner_name !== 'Chưa gán') || r.last_heartbeat ? 'offline' : 'in_stock'),
         isOnline: !!r.is_online,
         battery: 100,
         openState: r.is_online ? 'CLOSED' : 'STOCK',

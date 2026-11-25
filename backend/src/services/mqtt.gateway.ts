@@ -22,6 +22,7 @@ export class MqttGateway {
     timer: NodeJS.Timeout;
   }>> = new Map();
   private heartbeatTimer: NodeJS.Timeout | null = null;
+  private isScanningHeartbeat: boolean = false;
 
   constructor(
     private postgresService: PostgresService,
@@ -114,11 +115,14 @@ export class MqttGateway {
   }
 
   /**
-   * Khởi động cơ chế quét trạng thái thiết bị định kỳ (5 phút / lần)
+   * Khởi động cơ chế quét trạng thái thiết bị định kỳ (30 giây / lần, chạy ngay lượt đầu sau 5s)
    */
-  public startHeartbeatScanner(intervalMs: number = 300000) {
+  public startHeartbeatScanner(intervalMs: number = 30000) {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
-    console.log(`[MQTT Gateway] ⏱️ Đã kích hoạt cơ chế quét trạng thái thiết bị định kỳ (${intervalMs / 1000}s/lần)`);
+    console.log(`[MQTT Gateway] ⏱️ Đã kích hoạt cơ chế quét trạng thái thiết bị liên tục (${intervalMs / 1000}s/lần)`);
+    setTimeout(() => {
+      this.runHeartbeatScan().catch(() => { });
+    }, 5000);
     this.heartbeatTimer = setInterval(async () => {
       await this.runHeartbeatScan();
     }, intervalMs);
@@ -136,6 +140,8 @@ export class MqttGateway {
         );
       }
       await this.hotCache.setDeviceState(hwId, { isOnline: false });
+      await this.hotCache.setDeviceState(hwId.toLowerCase(), { isOnline: false });
+      await this.hotCache.setDeviceState(hwId.toUpperCase(), { isOnline: false });
       if (this.onStateChangeCallback) {
         this.onStateChangeCallback(hwId, { isOnline: false });
       }
@@ -145,21 +151,23 @@ export class MqttGateway {
   }
 
   /**
-   * Thực thi quét và kiểm tra trạng thái Online/Offline bằng cơ chế sẵn có của firmware gốc (không dùng mã 295):
+   * Thực thi quét song song và kiểm tra trạng thái Online/Offline bằng cơ chế sẵn có của firmware gốc (không dùng mã 295):
    * - SmartMetter & BMS: dựa trên gói telemetry định kỳ 1s (quá 25s không có telemetry -> OFFLINE)
    * - Cửa cuốn & Ổ cắm: gửi sub/isonline, firmware gốc trả "1" lên pub/isonline
-   * - Camera: giữ trạng thái theo kết nối/stream, chỉ báo OFFLINE khi điều khiển/stream thất bại
+   * - Camera: giữ trạng thái theo kết nối/stream & sự kiện broker disconnected
    */
   public async runHeartbeatScan() {
+    if (this.isScanningHeartbeat) return;
+    this.isScanningHeartbeat = true;
     try {
       if (!this.postgresService || typeof this.postgresService.query !== 'function') return;
       const res = await this.postgresService.query(`SELECT hardware_id, owner_id, last_heartbeat, is_online FROM device_instances`);
       if (!res || !res.rows) return;
 
       const nowMs = Date.now();
-      for (const row of res.rows) {
+      await Promise.allSettled(res.rows.map(async (row: any) => {
         const hwId: string = row.hardware_id;
-        if (!hwId) continue;
+        if (!hwId) return;
 
         const upperHw = hwId.toUpperCase();
         const isSocket = upperHw.startsWith('OCAM') || upperHw.includes('SOCKET') || upperHw.startsWith('SMARTSW');
@@ -168,13 +176,13 @@ export class MqttGateway {
         const isMeter = !isSocket && !isCamera && !isBms && (upperHw.startsWith('SMARTMETTER') || upperHw.startsWith('SMARTMETER') || upperHw.includes('METER') || upperHw.includes('CONGTO'));
 
         // Camera bản gốc không có ping định kỳ -> không tự đánh dấu offline trong vòng quét này
-        if (isCamera) continue;
+        if (isCamera) return;
 
         let isActuallyOnline = false;
+        const cacheState = await this.hotCache.getDeviceState(hwId);
 
         if (isMeter || isBms) {
           // SmartMetter & BMS gốc gửi telemetry mỗi 1s -> kiểm tra lastHeartbeat trong 25s gần nhất
-          const cacheState = await this.hotCache.getDeviceState(hwId);
           const lastHbRaw = cacheState?.lastHeartbeat || row.last_heartbeat;
           if (lastHbRaw) {
             const hbTime = new Date(lastHbRaw).getTime();
@@ -184,30 +192,45 @@ export class MqttGateway {
           }
         } else {
           // Cửa cuốn & Ổ cắm gốc: nhận sub/isonline -> trả "1" lên pub/isonline
+          const prefixes = new Set<string>([
+            'USR-330967',
+            'amtuong',
+            'austec',
+            '00000000-0000-0000-0000-000000000001',
+          ]);
+          if (row.owner_id) prefixes.add(String(row.owner_id).trim());
+          const cachedOwner = (cacheState?.currentProperties as any)?.ownerId;
+          if (cachedOwner) prefixes.add(String(cachedOwner).trim());
+
           const ackPromise = this.waitForActionAck(hwId, ['1'], 2500);
-          await this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1');
-          await this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1');
-          if (row.owner_id) {
-            await this.publishMessage(`${row.owner_id}/${hwId}/sub/isonline`, '1');
+          for (const prefix of prefixes) {
+            if (!prefix) continue;
+            this.publishMessage(`${prefix}/${hwId}/sub/isonline`, '1').catch(() => { });
           }
           const ack = await ackPromise;
           isActuallyOnline = Boolean(ack.success && ack.payload?.trim() === '1');
         }
 
-        if (row.is_online !== isActuallyOnline) {
+        const wasOnline = row.is_online === true;
+        if (wasOnline !== isActuallyOnline) {
           console.log(`[MQTT Gateway] 🔄 Cập nhật trạng thái định kỳ [${hwId}]: ${isActuallyOnline ? 'ONLINE' : 'OFFLINE'}`);
           await this.postgresService.query(
             `UPDATE device_instances SET is_online = $1, ${isActuallyOnline ? 'last_heartbeat = NOW()::text,' : ''} updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($2)`,
             [isActuallyOnline, hwId]
           );
-          await this.hotCache.setDeviceState(hwId, { isOnline: isActuallyOnline, ...(isActuallyOnline ? { lastHeartbeat: new Date().toISOString() } : {}) });
+          const nextState = { isOnline: isActuallyOnline, ...(isActuallyOnline ? { lastHeartbeat: new Date().toISOString() } : {}) };
+          await this.hotCache.setDeviceState(hwId, nextState);
+          await this.hotCache.setDeviceState(hwId.toLowerCase(), nextState);
+          await this.hotCache.setDeviceState(hwId.toUpperCase(), nextState);
           if (this.onStateChangeCallback) {
             this.onStateChangeCallback(hwId, { isOnline: isActuallyOnline });
           }
         }
-      }
+      }));
     } catch (e: any) {
       console.warn(`[MQTT Gateway] Lỗi khi quét trạng thái thiết bị định kỳ:`, e.message);
+    } finally {
+      this.isScanningHeartbeat = false;
     }
   }
 
@@ -240,12 +263,13 @@ export class MqttGateway {
           'devices/+/status',
           'esp32/+/status',
           'esp32/+/photo',
+          '$SYS/brokers/+/clients/+/disconnected',
         ], (err) => {
           if (!err) {
             console.log('[MQTT Gateway] 📡 Đã kích hoạt lắng nghe Topic Cửa cuốn, Camera AI & Ổ cắm Austec trên EMQX!');
           }
         });
-        this.startHeartbeatScanner(300000);
+        this.startHeartbeatScanner(30000);
         resolve(true);
       });
 
@@ -265,7 +289,18 @@ export class MqttGateway {
   }
 
   private async handleIncomingMessage(topic: string, message: Buffer) {
-    if (topic.startsWith('$SYS')) return;
+    // Bắt sự kiện Broker báo thiết bị ngắt kết nối TCP/Keep-Alive ($SYS/brokers/+/clients/{clientId}/disconnected)
+    if (topic.startsWith('$SYS')) {
+      if (topic.includes('/clients/') && topic.endsWith('/disconnected')) {
+        const parts = topic.split('/');
+        const clientId = parts[parts.length - 2];
+        if (clientId && !clientId.startsWith('austec_backend')) {
+          console.log(`[MQTT Gateway] 🔌 Broker báo thiết bị ngắt kết nối [${clientId}] -> Đánh dấu OFFLINE`);
+          await this.markDeviceOffline(clientId);
+        }
+      }
+      return;
+    }
 
     // A. XỬ LÝ KHUNG HÌNH CAMERA (JPEG BINARY BUFFER từ espcam.pdf và platform)
     if (topic.includes('/camera/photo') || (topic.startsWith('esp32/') && topic.endsWith('/photo'))) {
@@ -449,7 +484,7 @@ export class MqttGateway {
               );
             } catch (_) { }
             if (this.onStateChangeCallback) {
-              this.onStateChangeCallback(hwId, bmsState.currentProperties);
+              this.onStateChangeCallback(hwId, { ...bmsState.currentProperties, isOnline: true, lastHeartbeat: bmsState.lastHeartbeat });
             }
             return;
           }
@@ -486,7 +521,7 @@ export class MqttGateway {
             );
           } catch (_) { }
           if (this.onStateChangeCallback) {
-            this.onStateChangeCallback(hwId, meterState.currentProperties);
+            this.onStateChangeCallback(hwId, { ...meterState.currentProperties, isOnline: true, lastHeartbeat: meterState.lastHeartbeat });
           }
           return;
         } else if (sub === 'daily_report') {
@@ -559,7 +594,7 @@ export class MqttGateway {
           } catch (_) { }
 
           if (this.onStateChangeCallback) {
-            this.onStateChangeCallback(hwId, alarmState.currentProperties);
+            this.onStateChangeCallback(hwId, { ...alarmState.currentProperties, isOnline: true, lastHeartbeat: alarmState.lastHeartbeat });
           }
           this.resolvePendingAck(hwId, payload);
           return;
@@ -614,7 +649,7 @@ export class MqttGateway {
             latencyMs: 25,
           });
           if (this.onStateChangeCallback) {
-            this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+            this.onStateChangeCallback(hwId, { isOnline: true, is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF', lastHeartbeat: new Date().toISOString() });
           }
           this.resolvePendingAck(hwId, payload);
           return;
@@ -692,7 +727,7 @@ export class MqttGateway {
             );
           } catch (_) { }
           if (this.onStateChangeCallback) {
-            this.onStateChangeCallback(hwId, { is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF' });
+            this.onStateChangeCallback(hwId, { isOnline: true, is_relay_on: isRelayOn, relay_state: isRelayOn ? 'ON' : 'OFF', lastHeartbeat: new Date().toISOString() });
           }
           this.resolvePendingAck(hwId, payload);
           return;
@@ -723,8 +758,15 @@ export class MqttGateway {
           latencyMs: 35,
         });
 
+        try {
+          await this.postgresService.query(
+            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
+            [hwId]
+          );
+        } catch (_) { }
+
         if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(hwId, { open_state: openState, action: payload });
+          this.onStateChangeCallback(hwId, { isOnline: true, open_state: openState, action: payload, lastHeartbeat: new Date().toISOString() });
         }
         this.resolvePendingAck(hwId, payload);
       }
@@ -909,34 +951,69 @@ export class MqttGateway {
     };
   }
 
-  public async isHardwareOnline(hwId: string, userId?: string): Promise<boolean> {
+  public async isHardwareOnline(hwId: string, userId?: string, forceProbe: boolean = false): Promise<boolean> {
     const cleanId = hwId.trim().toLowerCase();
+    const upperHw = hwId.trim().toUpperCase();
+    const isSocket = upperHw.startsWith('OCAM') || upperHw.includes('SOCKET') || upperHw.startsWith('SMARTSW');
+    const isCamera = !isSocket && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
+    const isBms = !isSocket && !isCamera && upperHw.includes('BMS');
+    const isMeter = !isSocket && !isCamera && !isBms && (upperHw.startsWith('SMARTMETTER') || upperHw.startsWith('SMARTMETER') || upperHw.includes('METER') || upperHw.includes('CONGTO'));
+
+    const nowMs = Date.now();
+    const FRESH_WINDOW_MS = 25000;
+
+    // 1. Kiểm tra HotCache (CHỈ tin khi lastHeartbeat còn mới trong vòng 25s, hoặc Camera)
+    let cachedOwner: string | undefined;
     try {
       const state = (await this.hotCache.getDeviceState(hwId)) ||
         (await this.hotCache.getDeviceState(cleanId)) ||
-        (await this.hotCache.getDeviceState(hwId.toUpperCase()));
-      if (state && state.isOnline) return true;
+        (await this.hotCache.getDeviceState(upperHw));
+      cachedOwner = (state?.currentProperties as any)?.ownerId;
+      if (state && state.isOnline && !forceProbe) {
+        if (isCamera) return true;
+        if (state.lastHeartbeat) {
+          const hbMs = new Date(state.lastHeartbeat).getTime();
+          if (!isNaN(hbMs) && (nowMs - hbMs) <= FRESH_WINDOW_MS) {
+            return true;
+          }
+        }
+      }
     } catch (_) { }
 
+    // 2. Kiểm tra gói tin INCOMING thực sự GẦN ĐÂY (trong 25 giây gần nhất - sửa bug tin cũ hàng giờ)
     const hasRecentMsg = this.messageHistory.some((m) => {
+      if (m.direction !== 'INCOMING') return false;
+      const msgTime = new Date(m.timestamp).getTime();
+      if (isNaN(msgTime) || (nowMs - msgTime) > FRESH_WINDOW_MS) return false;
       const top = m.topic.toLowerCase();
       return (
-        m.direction === 'INCOMING' &&
-        (top.includes(`/${cleanId}/`) || top.startsWith(`${cleanId}/`) || top.includes(cleanId))
+        top.includes(`/${cleanId}/`) || top.startsWith(`${cleanId}/`) || top.includes(cleanId)
       );
     });
     if (hasRecentMsg) return true;
 
-    // Chủ động phát gói thăm dò sub/isonline theo firmware gốc (nhận lại "1" trên pub/isonline)
-    try {
-      const ackPromise = this.waitForActionAck(hwId, ['1'], 2000);
-      this.publishMessage(`USR-330967/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`USR-330967/${cleanId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`amtuong/${hwId}/sub/isonline`, '1').catch(() => { });
-      this.publishMessage(`amtuong/${cleanId}/sub/isonline`, '1').catch(() => { });
+    // SmartMetter & BMS gốc chỉ báo sống qua telemetry 1s -> quá 25s không có gói là OFFLINE
+    if (isMeter || isBms) return false;
+    // Camera gốc không trả lời sub/isonline -> giữ trạng thái đã có
+    if (isCamera) return false;
 
-      if (userId && userId.trim().length > 0) {
-        this.publishMessage(`${userId.trim()}/${hwId}/sub/isonline`, '1').catch(() => { });
+    // 3. Cửa cuốn & Ổ cắm gốc: chủ động hỏi sub/isonline, đợi trả "1" trên pub/isonline
+    try {
+      const prefixes = new Set<string>([
+        'USR-330967',
+        'amtuong',
+        'austec',
+        '00000000-0000-0000-0000-000000000001',
+      ]);
+      if (userId && userId.trim().length > 0) prefixes.add(userId.trim());
+      if (cachedOwner) prefixes.add(cachedOwner.trim());
+
+      const ackPromise = this.waitForActionAck(hwId, ['1'], 2000);
+      for (const prefix of prefixes) {
+        this.publishMessage(`${prefix}/${hwId}/sub/isonline`, '1').catch(() => { });
+        if (cleanId !== hwId) {
+          this.publishMessage(`${prefix}/${cleanId}/sub/isonline`, '1').catch(() => { });
+        }
       }
 
       const ack = await ackPromise;

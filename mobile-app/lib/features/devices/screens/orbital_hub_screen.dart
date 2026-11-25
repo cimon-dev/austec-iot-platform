@@ -116,6 +116,9 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
       if (mounted) setState(() {});
     });
 
+    // Bật đồng bộ trạng thái thiết bị liên tục (WebSocket + Polling dự phòng)
+    _gateway.startRealtimeStatusSync();
+
     // Tự động kiểm tra bản cập nhật mới và hiển thị popup tải OTA nếu có
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
@@ -144,6 +147,7 @@ class _OrbitalHubScreenState extends State<OrbitalHubScreen>
     _clockTimer.cancel();
     _notiTimer?.cancel();
     _deviceUpdateSub?.cancel();
+    _gateway.stopRealtimeStatusSync();
     super.dispose();
   }
 

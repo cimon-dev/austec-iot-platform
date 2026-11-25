@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/widgets/austec_ui.dart';
@@ -19,6 +20,22 @@ class _DeviceManagementCenterScreenState extends State<DeviceManagementCenterScr
   final IoTGatewayClient _gateway = IoTGatewayClient();
   String _selectedCategoryFilter = "ALL"; // 'ALL', 'rollerDoor', 'lightSwitch', ...
   String? _transferOtp;
+  StreamSubscription<DeviceItem>? _deviceUpdateSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _deviceUpdateSub = _gateway.onDeviceUpdated.listen((_) {
+      if (mounted) setState(() {});
+    });
+    _gateway.fetchDevicesFromBackend();
+  }
+
+  @override
+  void dispose() {
+    _deviceUpdateSub?.cancel();
+    super.dispose();
+  }
 
   void _showRenameDialog(DeviceItem device) {
     final controller = TextEditingController(text: device.name);

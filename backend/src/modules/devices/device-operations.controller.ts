@@ -190,11 +190,33 @@ export class DeviceOperationsController {
             }
 
             let isOnline = r.is_online === true;
-            if (!isOnline && this.mqttGateway) {
+            const hwCheckLower = (r.hardware_id || '').toLowerCase().trim();
+            const isMeterOrBms = hwCheckLower.includes('smartmetter') || hwCheckLower.includes('smartmeter') || hwCheckLower.includes('bms');
+            const isCamCheck = !hwCheckLower.includes('ocam') && !hwCheckLower.includes('smartsw') && hwCheckLower.includes('cam');
+
+            if (this.mqttGateway && !isCamCheck) {
               try {
-                isOnline = Boolean(await this.mqttGateway.isHardwareOnline(r.hardware_id, targetUser.id));
-                if (isOnline) {
-                  this.client.query('UPDATE device_instances SET is_online = true WHERE hardware_id = $1', [r.hardware_id]).catch(() => {});
+                if (isMeterOrBms) {
+                  // Công tơ & BMS: luôn kiểm tra 2 chiều theo telemetry 25s gần nhất
+                  const realOnline = Boolean(await this.mqttGateway.isHardwareOnline(r.hardware_id, r.owner_id || targetUser.id));
+                  if (realOnline !== isOnline) {
+                    isOnline = realOnline;
+                    this.client.query('UPDATE device_instances SET is_online = $1 WHERE hardware_id = $2', [isOnline, r.hardware_id]).catch(() => {});
+                  }
+                } else {
+                  // Cửa cuốn & Ổ cắm: nếu đang offline HOẶC last_heartbeat đã cũ hơn 45s -> xác thực lại 2 chiều
+                  const hbMs = r.last_heartbeat ? new Date(r.last_heartbeat).getTime() : 0;
+                  const isStale = !hbMs || isNaN(hbMs) || (Date.now() - hbMs) > 45000;
+                  if (!isOnline || isStale) {
+                    const realOnline = Boolean(await this.mqttGateway.isHardwareOnline(r.hardware_id, r.owner_id || targetUser.id, isStale));
+                    if (realOnline !== isOnline) {
+                      isOnline = realOnline;
+                      this.client.query(
+                        `UPDATE device_instances SET is_online = $1${isOnline ? ', last_heartbeat = NOW()::text' : ''} WHERE hardware_id = $2`,
+                        [isOnline, r.hardware_id]
+                      ).catch(() => {});
+                    }
+                  }
                 }
               } catch (_) {}
             }

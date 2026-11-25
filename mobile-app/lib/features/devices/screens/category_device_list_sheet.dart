@@ -52,6 +52,9 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       }
     });
 
+    // Tự động làm mới trạng thái thiết bị ngay khi mở danh sách preview
+    _gateway.fetchDevicesFromBackend();
+
     if (widget.categoryMeta.category == DeviceCategory.camera) {
       final localCams = _gateway.getDevicesByCategory(DeviceCategory.camera);
       for (final cam in localCams) {

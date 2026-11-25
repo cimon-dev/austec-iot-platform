@@ -10,15 +10,31 @@ export class DashboardRepository {
 
   public async getStats(): Promise<DashboardStatsEntity> {
     try {
-      const activeRes = await this.client.query('SELECT COUNT(*) FROM device_instances');
-      const onlineRes = await this.client.query('SELECT COUNT(*) FROM device_instances WHERE is_online = true');
-      const stockRes = await this.client.query("SELECT COUNT(*) FROM device_inventory WHERE status = 'MANUFACTURED'");
+      const assignedExpr = `(owner_id IS NOT NULL OR (owner_name IS NOT NULL AND TRIM(owner_name) <> '' AND owner_name <> 'Chưa gán') OR last_heartbeat IS NOT NULL)`;
+      const instanceRes = await this.client.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE is_online = true) AS online_count,
+          COUNT(*) FILTER (WHERE COALESCE(is_online, false) = false AND ${assignedExpr}) AS offline_count,
+          COUNT(*) FILTER (WHERE COALESCE(is_online, false) = false AND NOT ${assignedExpr}) AS instock_instance_count
+        FROM device_instances
+      `);
+      const extraStockRes = await this.client.query(`
+        SELECT COUNT(*) AS extra_stock_count
+        FROM device_inventory inv
+        WHERE inv.status IN ('MANUFACTURED', 'IN_WAREHOUSE')
+          AND NOT EXISTS (
+            SELECT 1 FROM device_instances di
+            WHERE LOWER(di.hardware_id) = LOWER(inv.hardware_id)
+          )
+      `);
 
-      const totalActive = parseInt(activeRes.rows[0]?.count || '0', 10);
-      const online = parseInt(onlineRes.rows[0]?.count || '0', 10);
-      const offline = Math.max(0, totalActive - online);
-      const inStock = parseInt(stockRes.rows[0]?.count || '0', 10);
-      const total = totalActive + inStock;
+      const row = instanceRes.rows[0] || {};
+      const online = parseInt(row.online_count || '0', 10);
+      const offline = parseInt(row.offline_count || '0', 10);
+      const inStockFromInstances = parseInt(row.instock_instance_count || '0', 10);
+      const extraInStock = parseInt(extraStockRes.rows[0]?.extra_stock_count || '0', 10);
+      const inStock = inStockFromInstances + extraInStock;
+      const total = online + offline + inStock;
 
       if (total > 0) {
         const onlinePct = `${((online / total) * 100).toFixed(1)}%`;
