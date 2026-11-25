@@ -342,6 +342,50 @@ class AuthService {
     return null;
   }
 
+  /// Xóa tài khoản vĩnh viễn
+  Future<Map<String, dynamic>> deleteAccount({
+    required String password,
+    String? reason,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/api/auth/delete-account'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ${_token ?? ""}',
+        },
+        body: jsonEncode({
+          'password': password,
+          if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+        }),
+      ).timeout(const Duration(seconds: 20));
+
+      if (res.body.isEmpty) {
+        return {'success': false, 'error': 'Máy chủ phản hồi rỗng (HTTP ${res.statusCode})'};
+      }
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200 && data['success'] == true) {
+        await logout();
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('austec_last_identifier');
+        } catch (_) {}
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Tài khoản đã được xóa vĩnh viễn.',
+        };
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Không thể xóa tài khoản. Vui lòng thử lại.',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Lỗi kết nối máy chủ: $e'};
+    }
+  }
+
   /// Đăng xuất tài khoản
   Future<void> logout() async {
     _currentUser = null;

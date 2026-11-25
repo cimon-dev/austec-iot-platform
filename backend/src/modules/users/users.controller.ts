@@ -87,6 +87,25 @@ export class UsersController {
     }
   }
 
+  @Delete('/auth/account', authenticate)
+  @Post('/auth/delete-account', authenticate)
+  public async deleteAccount(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { password } = req.body || {};
+      if (!password) {
+        res.status(400).json({ success: false, error: 'Vui lòng nhập mật khẩu hiện tại để xác nhận xóa tài khoản' });
+        return;
+      }
+      await this.service.deleteOwnAccount(req.user!.id, String(password));
+      res.json({
+        success: true,
+        message: 'Tài khoản của bạn đã được xóa vĩnh viễn khỏi hệ thống.',
+      });
+    } catch (e: any) {
+      res.status(400).json({ success: false, error: e.message });
+    }
+  }
+
   // ==========================================
   // STAFF MANAGEMENT
   // ==========================================

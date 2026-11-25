@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_theme.dart';
 import '../../../core/constants/api_config.dart';
 import '../../../core/services/auth_service.dart';
+import '../../auth/auth.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -208,6 +209,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _showDeleteAccountDialog() async {
+    final deletedMessage = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+
+    if (deletedMessage != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(deletedMessage),
+          backgroundColor: AppTheme.emeraldSuccess,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -445,7 +468,65 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+
+            const SizedBox(height: 20),
+
+            // 4. Khối Xóa Tài Khoản Vĩnh Viễn (Dưới cùng)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: cardBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppTheme.roseDanger.withValues(alpha: 0.35),
+                  width: 1.0,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: AppTheme.roseDanger, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        "Xóa tài khoản vĩnh viễn",
+                        style: TextStyle(
+                          color: AppTheme.roseDanger,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "Xóa vĩnh viễn tài khoản và dữ liệu cá nhân khỏi hệ thống Austec. Hành động này không thể hoàn tác.",
+                    style: TextStyle(color: subTextCol, fontSize: 11.5, height: 1.35),
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.roseDanger,
+                        side: const BorderSide(color: AppTheme.roseDanger, width: 1.2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: _showDeleteAccountDialog,
+                      icon: const Icon(Icons.delete_forever_rounded, size: 19),
+                      label: const Text(
+                        "Xóa tài khoản vĩnh viễn",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -503,6 +584,212 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           borderSide: const BorderSide(color: AppTheme.cyanAccent),
         ),
       ),
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final TextEditingController _passwordController = TextEditingController();
+  bool _obscurePwd = true;
+  bool _confirmedUnderstand = false;
+  bool _isDeleting = false;
+  String? _dialogError;
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submitDelete() async {
+    setState(() {
+      _isDeleting = true;
+      _dialogError = null;
+    });
+
+    final res = await AuthService().deleteAccount(
+      password: _passwordController.text.trim(),
+    );
+
+    if (!mounted) return;
+    if (res['success'] == true) {
+      Navigator.of(context).pop(
+        res['message']?.toString() ?? "Tài khoản đã được xóa vĩnh viễn.",
+      );
+    } else {
+      setState(() {
+        _isDeleting = false;
+        _dialogError = res['error']?.toString() ?? "Không thể xóa tài khoản.";
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppTheme.isDarkMode;
+    final textCol = isDark ? Colors.white : AppTheme.lightTextPrimary;
+    final subTextCol = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+    return AlertDialog(
+      backgroundColor: isDark ? const Color(0xFF141924) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: AppTheme.roseDanger.withValues(alpha: 0.4)),
+      ),
+      title: const Row(
+        children: [
+          Icon(Icons.delete_forever_rounded, color: AppTheme.roseDanger, size: 22),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Xóa tài khoản vĩnh viễn",
+              style: TextStyle(
+                color: AppTheme.roseDanger,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.roseDanger.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                "• Toàn bộ hồ sơ, lịch sử và quyền thành viên của bạn sẽ bị xóa vĩnh viễn và không thể khôi phục.\n"
+                "• Nếu bạn đang là Chủ sở hữu thiết bị, hãy chuyển giao quyền sở hữu hoặc hủy ghép nối hết thiết bị trước khi xóa.",
+                style: TextStyle(color: textCol, fontSize: 12, height: 1.45),
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (_dialogError != null) ...[
+              Container(
+                padding: const EdgeInsets.all(10),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.roseDanger.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.roseDanger.withValues(alpha: 0.45)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppTheme.roseDanger, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _dialogError!,
+                        style: TextStyle(color: textCol, fontSize: 12, height: 1.35),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            TextField(
+              controller: _passwordController,
+              obscureText: _obscurePwd,
+              enabled: !_isDeleting,
+              style: TextStyle(color: textCol, fontSize: 13),
+              onChanged: (_) => setState(() => _dialogError = null),
+              decoration: InputDecoration(
+                labelText: "Nhập mật khẩu để xác nhận",
+                labelStyle: TextStyle(color: subTextCol, fontSize: 12),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.roseDanger, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePwd ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                    color: subTextCol,
+                    size: 18,
+                  ),
+                  onPressed: () => setState(() => _obscurePwd = !_obscurePwd),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: isDark ? const Color(0xFF2E3D5B) : const Color(0xFFCBD5E1)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: AppTheme.roseDanger),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: _isDeleting
+                  ? null
+                  : () => setState(() => _confirmedUnderstand = !_confirmedUnderstand),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: Checkbox(
+                      value: _confirmedUnderstand,
+                      activeColor: AppTheme.roseDanger,
+                      onChanged: _isDeleting
+                          ? null
+                          : (v) => setState(() => _confirmedUnderstand = v ?? false),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Tôi hiểu hành động này là vĩnh viễn và không thể hoàn tác.",
+                      style: TextStyle(color: subTextCol, fontSize: 12, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isDeleting ? null : () => Navigator.of(context).pop(),
+          child: Text("Hủy", style: TextStyle(color: subTextCol)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.roseDanger,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: AppTheme.roseDanger.withValues(alpha: 0.35),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            elevation: 0,
+          ),
+          onPressed: (!_confirmedUnderstand || _passwordController.text.trim().isEmpty || _isDeleting)
+              ? null
+              : _submitDelete,
+          child: _isDeleting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text("Xóa vĩnh viễn", style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      ],
     );
   }
 }

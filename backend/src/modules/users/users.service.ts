@@ -98,6 +98,13 @@ export class UsersService {
     };
   }
 
+  public async deleteOwnAccount(userId: string, password: string) {
+    if (!password || !password.trim()) {
+      throw new Error('Vui lòng nhập mật khẩu hiện tại để xác nhận xóa tài khoản');
+    }
+    return this.repo.deleteOwnAccount(userId, password);
+  }
+
   public async register(dto: RegisterDto) {
     const cleanEmail = (dto.email || '').trim().toLowerCase();
     const cleanPhone = (dto.phoneNumber || '').trim().replace(/[\s.-]/g, '');

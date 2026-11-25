@@ -306,6 +306,94 @@ export class UsersRepository {
     return user || (await this.findByIdAsync(userId));
   }
 
+  public async deleteOwnAccount(
+    userId: string,
+    password: string
+  ): Promise<{ deletedUserId: string; email: string }> {
+    const userRes = await this.client.query(
+      'SELECT id, email, phone_number, role, password, is_active FROM public.users WHERE id = $1 LIMIT 1',
+      [userId]
+    );
+    if (userRes.rows.length === 0) {
+      throw new Error('Không tìm thấy tài khoản người dùng');
+    }
+
+    const row = userRes.rows[0];
+    const currentDbPass = row.password || '';
+    if (!password || currentDbPass !== password) {
+      throw new Error('Mật khẩu xác nhận không chính xác!');
+    }
+
+    if (row.role === 'ADMIN') {
+      const adminCountRes = await this.client.query(
+        "SELECT COUNT(*)::int AS cnt FROM public.users WHERE role = 'ADMIN' AND is_active = true AND id != $1",
+        [userId]
+      );
+      if ((adminCountRes.rows[0]?.cnt ?? 0) === 0) {
+        throw new Error('Không thể xóa tài khoản Quản trị viên duy nhất đang hoạt động của hệ thống.');
+      }
+    }
+
+    const userEmail = (row.email || '').trim().toLowerCase();
+    const userPhone = (row.phone_number || '').trim();
+    const cleanPhone = userPhone.replace(/[\s.-]/g, '');
+
+    const ownedRes = await this.client.query(
+      `SELECT hardware_id, custom_name, device_type
+       FROM public.device_instances
+       WHERE owner_id = $1
+          OR (LOWER(owner_id) = $2 AND $2 != '')
+          OR (owner_phone = $3 AND $3 != '')
+          OR (REPLACE(REPLACE(owner_phone, ' ', ''), '.', '') = $4 AND $4 != '')`,
+      [userId, userEmail, userPhone, cleanPhone]
+    );
+
+    if (ownedRes.rows.length > 0) {
+      const names = ownedRes.rows
+        .slice(0, 3)
+        .map((d: any) => d.custom_name || d.hardware_id)
+        .join(', ');
+      const suffix = ownedRes.rows.length > 3 ? ` và ${ownedRes.rows.length - 3} thiết bị khác` : '';
+      throw new Error(
+        `Tài khoản vẫn đang là Chủ sở hữu của ${ownedRes.rows.length} thiết bị (${names}${suffix}). Vui lòng chuyển giao quyền sở hữu hoặc hủy ghép nối toàn bộ thiết bị trước khi xóa tài khoản vĩnh viễn.`
+      );
+    }
+
+    await this.client.transaction(async client => {
+      await client.query(
+        `DELETE FROM public.device_permissions
+         WHERE user_id = $1
+            OR (phone_number = $2 AND $2 != '')
+            OR (REPLACE(REPLACE(phone_number, ' ', ''), '.', '') = $3 AND $3 != '')`,
+        [userId, userPhone, cleanPhone]
+      );
+      await client.query(
+        'DELETE FROM public.device_ownership_transfers WHERE from_user_id = $1',
+        [userId]
+      );
+      await client.query('DELETE FROM public.chat_messages WHERE sender_id = $1', [userId]);
+      await client.query('DELETE FROM public.chat_participants WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM public.users WHERE id = $1', [userId]);
+    });
+
+    const userIdx = this.usersStore.findIndex(u => u.id === userId);
+    if (userIdx !== -1) {
+      this.usersStore.splice(userIdx, 1);
+    }
+    for (let i = this.permissionsStore.length - 1; i >= 0; i--) {
+      const p = this.permissionsStore[i];
+      if (
+        p.userId === userId ||
+        (cleanPhone && p.phoneNumber && p.phoneNumber.replace(/[\s.-]/g, '') === cleanPhone)
+      ) {
+        this.permissionsStore.splice(i, 1);
+      }
+    }
+    this.onPersist?.();
+
+    return { deletedUserId: userId, email: row.email };
+  }
+
   public async remove(id: string): Promise<boolean> {
     try {
       await this.client.query('DELETE FROM public.users WHERE id = $1', [id]);
