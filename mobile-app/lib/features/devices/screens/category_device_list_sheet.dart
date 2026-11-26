@@ -528,26 +528,14 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Dòng 1: Tên thiết bị + Trạng thái Online/Offline đồng nhất ngay dưới tên
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                device.name,
-                style: TextStyle(
-                  color: textCol,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              DeviceOnlineStatusRow(
-                isOnline: device.isOnline,
-                fontSize: 10,
-              ),
-            ],
+          // Dòng 1: Header chuẩn đồng nhất (Icon + Tên thiết bị + Trực tuyến thẳng hàng dọc)
+          DevicePreviewHeader(
+            icon: Icons.power_settings_new_rounded,
+            iconColor: isOn ? AppTheme.brandBlueDark : AppTheme.dynamicTextMuted,
+            name: device.name,
+            isOnline: device.isOnline,
+            isDark: isDark,
+            textColor: textCol,
           ),
 
           // Dòng 2: Nút Switch và Trạng thái BẬT/TẮT cân xứng 2 bên (Ẩn và báo khi ngoài khung giờ / tạm khóa)
@@ -750,149 +738,25 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tiêu đề & 3-dots popup menu
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.cyanAccent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                      color: AppTheme.cyanAccent.withValues(alpha: 0.35)),
-                ),
-                child: const Icon(Icons.videocam_rounded,
-                    color: AppTheme.cyanAccent, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      device.name,
-                      style: TextStyle(
-                        color: textCol,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    DeviceOnlineStatusRow(
-                      isOnline: device.isOnline,
+          // Header chuẩn đồng nhất BMS (bỏ pill ON/OFF & tag CAMERA thừa)
+          DevicePreviewHeader(
+            icon: Icons.videocam_rounded,
+            iconColor: AppTheme.brandBlueDark,
+            name: device.name,
+            isOnline: device.isOnline,
+            statusSuffix: device.roomName.isNotEmpty ? device.roomName : device.hardwareId,
+            isDark: isDark,
+            textColor: textCol,
+            trailing: !device.canViewCameraStream
+                ? Text(
+                    "Giới hạn giờ",
+                    style: const TextStyle(
+                      color: AppTheme.amberWarning,
                       fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.cyanAccent.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            "CAMERA",
-                            style: TextStyle(
-                              color: AppTheme.cyanAccent,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          device.hardwareId,
-                          style: const TextStyle(
-                            color: AppTheme.cyanAccent,
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: (device.isOnline
-                              ? AppTheme.emeraldSuccess
-                              : const Color(0xFF71717A))
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: device.isOnline
-                            ? AppTheme.emeraldSuccess
-                            : const Color(0xFF71717A),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Text(
-                      device.isOnline ? "ON" : "OFF",
-                      style: TextStyle(
-                        color: device.isOnline
-                            ? AppTheme.emeraldSuccess
-                            : const Color(0xFF71717A),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: !device.canViewCameraStream
-                          ? AppTheme.amberWarning.withValues(alpha: 0.15)
-                          : AppTheme.emeraldSuccess.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: !device.canViewCameraStream
-                              ? AppTheme.amberWarning.withValues(alpha: 0.5)
-                              : AppTheme.emeraldSuccess.withValues(alpha: 0.35)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: !device.canViewCameraStream
-                                  ? AppTheme.amberWarning
-                                  : AppTheme.emeraldSuccess),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          !device.canViewCameraStream ? "GIỚI HẠN GIỜ" : "LIVE",
-                          style: TextStyle(
-                              color: !device.canViewCameraStream
-                                  ? AppTheme.amberWarning
-                                  : AppTheme.emeraldSuccess,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  )
+                : null,
           ),
 
           const SizedBox(height: 12),
@@ -1132,222 +996,71 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tiêu đề thiết bị & 3-dots popup menu
-          // Hàng 1 & 2: Icon đại diện + Tên thiết bị (Full Width, maxLines: 2) + Tag Âm tường + ID + Trạng thái tóm tắt
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Icon đại diện (Monochrome B&W)
-              Container(
-                width: 42,
-                height: 42,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF27272A)
-                      : const Color(0xFFE4E4E7),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark
-                        ? const Color(0xFF3F3F46)
-                        : const Color(0xFFD4D4D8),
-                    width: 1.0,
-                  ),
-                ),
-                child: Icon(
-                  device.category == DeviceCategory.rollerDoor
-                      ? Icons.roller_shades_closed_outlined
-                      : Icons.device_hub_rounded,
-                  color: isDark ? Colors.white : const Color(0xFF090A0C),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Tên thiết bị chiếm toàn bộ không gian, cho phép 2 dòng nếu tên dài
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      device.name,
-                      style: TextStyle(
-                        color: textCol,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.bold,
-                        height: 1.25,
+          // Header chuẩn đồng nhất BMS (gọn gàng, KHÔNG lặp tag ON/OFF)
+          DevicePreviewHeader(
+            icon: device.category == DeviceCategory.rollerDoor
+                ? Icons.roller_shades_closed_outlined
+                : device.category == DeviceCategory.environment
+                    ? Icons.thermostat_rounded
+                    : Icons.device_hub_rounded,
+            iconColor: device.isOnline
+                ? AppTheme.brandBlueDark
+                : AppTheme.dynamicTextMuted,
+            name: device.name,
+            isOnline: device.isOnline,
+            statusSuffix: device.hardwareId,
+            isDark: isDark,
+            textColor: textCol,
+            trailing: device.isOnline
+                ? Text(
+                    device.stateSummary,
+                    style: AppTheme.tabular(
+                      TextStyle(
+                        color: isDark
+                            ? AppTheme.textSecondary
+                            : AppTheme.lightTextSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
-                    DeviceOnlineStatusRow(
-                      isOnline: device.isOnline,
-                      fontSize: 11,
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Hàng tag Âm tường + Mã phần cứng + Trạng thái tóm tắt
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF27272A)
-                                : const Color(0xFFE4E4E7),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF3F3F46)
-                                  : const Color(0xFFD4D4D8),
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Text(
-                            device.badgeText.isNotEmpty
-                                ? device.badgeText
-                                : (device.category == DeviceCategory.rollerDoor
-                                    ? "AUSTEC"
-                                    : "SMART"),
-                            style: TextStyle(
-                              color: isDark
-                                  ? const Color(0xFFA1A1AA)
-                                  : const Color(0xFF52525B),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          device.hardwareId,
-                          style: TextStyle(
-                            color: isDark
-                                ? const Color(0xFFA1A1AA)
-                                : const Color(0xFF71717A),
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        // Trạng thái tóm tắt (Monochrome B&W)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF27272A)
-                                : const Color(0xFFF4F4F5),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF3F3F46)
-                                  : const Color(0xFFD4D4D8),
-                              width: 1.0,
-                            ),
-                          ),
-                          child: Text(
-                            device.stateSummary,
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white
-                                  : const Color(0xFF090A0C),
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  )
+                : null,
           ),
 
-          // DẢI THÔNG TIN QUẢN TRỊ: TRẠNG THÁI ON/OFF (CÓ MÀU DUY NHẤT), AI SỞ HỮU, HẠN BẢO HÀNH
-          Container(
-            margin: const EdgeInsets.only(top: 10, bottom: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppTheme.surface.withValues(alpha: 0.6)
-                  : AppTheme.lightBackground,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                  color: isDark ? AppTheme.cardBorder : AppTheme.lightBorder),
-            ),
+          // Dòng thông tin gọn (Chủ sở hữu & Hạn bảo hành — bỏ hoàn toàn tag ON/OFF trùng lặp)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 1. Trạng thái ON / OFF (DUY NHẤT CÓ MÀU THEO YÊU CẦU CỦA USER)
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: device.isOnline
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFF71717A),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      device.isOnline ? "ON" : "OFF",
-                      style: TextStyle(
-                        color: device.isOnline
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFF71717A),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                // 2. Ai sở hữu (Monochrome B&W)
                 Row(
                   children: [
                     Icon(
                       Icons.person_outline_rounded,
                       size: 13,
-                      color: isDark ? Colors.white60 : Colors.black54,
+                      color: isDark ? AppTheme.textMuted : AppTheme.lightTextMuted,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       device.ownerName,
                       style: TextStyle(
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? AppTheme.textSecondary
+                            : AppTheme.lightTextSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
-                // 3. Ngày gia hạn / bảo hành (Monochrome B&W)
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_month_rounded,
-                      size: 12,
-                      color: isDark ? Colors.white60 : Colors.black54,
+                Text(
+                  "BH: ${device.warrantyUntil.length >= 10 ? device.warrantyUntil.substring(0, 10) : device.warrantyUntil}",
+                  style: AppTheme.tabular(
+                    TextStyle(
+                      color: isDark ? AppTheme.textMuted : AppTheme.lightTextMuted,
+                      fontSize: 11,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      "Hạn: ${device.warrantyUntil.length >= 10 ? device.warrantyUntil.substring(0, 10) : device.warrantyUntil}",
-                      style: TextStyle(
-                        color: isDark
-                            ? AppTheme.textSecondary
-                            : AppTheme.lightTextSecondary,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -1796,6 +1509,16 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
     final isCharging = p['isCharging'] == true ||
         (p['packCurrent'] is num && (p['packCurrent'] as num) > 0.3);
 
+    final totalV = (p['total_voltage'] ?? p['packVoltage'] ?? 52.8) as num;
+    final avgCellV = (p['avg_cell_voltage'] ?? (totalV / 16)) as num;
+    final currentA = (p['current_a'] ?? p['packCurrent'] ?? -68.5) as num;
+    final limitA = (p['current_limit_a'] ?? 150.0) as num;
+    final powerKw = (p['power_kw'] ?? ((totalV * currentA.abs()) / 1000)) as num;
+    final capCur = (p['capacity_current_ah'] ?? 142.5) as num;
+    final capTot = (p['capacity_total_ah'] ?? 150.0) as num;
+    final tempC = (p['temp_c'] ?? p['mosTemp'] ?? 34.5) as num;
+    final deltaV = (p['delta_v'] ?? 0.012) as num;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -1807,94 +1530,29 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: Logo/Title + Trạng thái ON/OFF & Nạp/Xả
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: (isBmsOn ? AppTheme.emeraldSuccess : const Color(0xFF64748B))
-                          .withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+          // Header chuẩn đồng nhất (bỏ tag ON/OFF trùng lặp, chỉ giữ trạng thái nạp/xả gọn nhẹ)
+          DevicePreviewHeader(
+            icon: isBmsOn
+                ? Icons.battery_charging_full_rounded
+                : Icons.battery_alert_rounded,
+            iconColor: isBmsOn ? AppTheme.emeraldSuccess : const Color(0xFF64748B),
+            name: device.name,
+            isOnline: device.isOnline,
+            isDark: isDark,
+            textColor: textCol,
+            trailing: isBmsOn && (isCharging || isDischarging)
+                ? Text(
+                    isCharging ? "Đang nạp" : "Đang xả",
+                    style: const TextStyle(
+                      color: AppTheme.cyanAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
-                    child: Icon(
-                      isBmsOn
-                          ? Icons.battery_charging_full_rounded
-                          : Icons.battery_alert_rounded,
-                      color: isBmsOn ? AppTheme.emeraldSuccess : const Color(0xFF64748B),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        device.name,
-                        style: TextStyle(
-                            color: textCol,
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      DeviceOnlineStatusRow(
-                        isOnline: device.isOnline,
-                        fontSize: 11,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              // Badge trạng thái ON / OFF / ĐANG NẠP / ĐANG XẢ
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isBmsOn
-                      ? AppTheme.cyanAccent.withValues(alpha: 0.15)
-                      : const Color(0xFF64748B).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isBmsOn ? AppTheme.cyanAccent : const Color(0xFF64748B),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isBmsOn
-                            ? AppTheme.emeraldSuccess
-                            : const Color(0xFF64748B),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      isBmsOn
-                          ? (isCharging
-                              ? "ĐANG NẠP"
-                              : (isDischarging ? "ĐANG XẢ" : "ON"))
-                          : "OFF",
-                      style: TextStyle(
-                          color: isBmsOn
-                              ? AppTheme.cyanAccent
-                              : const Color(0xFF94A3B8),
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
-          // Giữa: Vòng đo Bán Tròn SOC (Arc Gauge) + Thông số chính
+          // Giữa: Vòng đo Bán Tròn SOC (Arc Gauge) + Thông số thật từ currentProperties
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -1930,31 +1588,32 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                           children: [
                             if (!isBmsOn) ...[
                               const Text(
-                                "OFF",
+                                "NGẮT",
                                 style: TextStyle(
                                   color: Color(0xFF94A3B8),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.5,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                               const Text(
-                                "NGẮT NGUỒN",
+                                "Nguồn pin",
                                 style: TextStyle(
                                   color: Color(0xFF64748B),
-                                  fontSize: 8.5,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ] else ...[
                               Text(
                                 "$soc%",
-                                style: TextStyle(
-                                  color: soc > 20
-                                      ? AppTheme.emeraldSuccess
-                                      : AppTheme.amberWarning,
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.bold,
+                                style: AppTheme.tabular(
+                                  TextStyle(
+                                    color: soc > 20
+                                        ? AppTheme.emeraldSuccess
+                                        : AppTheme.amberWarning,
+                                    fontSize: 21,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               const Text(
@@ -1962,7 +1621,7 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                                 style: TextStyle(
                                   color: AppTheme.amberWarning,
                                   fontSize: 9.5,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -1973,20 +1632,28 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                   ),
                 ),
                 const SizedBox(width: 14),
-                // 4 thông số gọn gàng 2 cột
+                // 4 thông số gọn gàng 2 cột (dữ liệu động thật)
                 Expanded(
                   child: Column(
                     children: [
                       Row(
                         children: [
                           Expanded(
-                            child: _buildBmsMiniStat("ĐIỆN ÁP TỔNG", "52.8 V",
-                                "16S | TB: 3.30V", isDark),
+                            child: _buildBmsMiniStat(
+                              "Điện áp tổng",
+                              "${totalV.toStringAsFixed(1)} V",
+                              "16S · TB ${avgCellV.toStringAsFixed(2)}V",
+                              isDark,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: _buildBmsMiniStat(
-                                "DÒNG ĐIỆN", "-68.5 A", "GH: 150A", isDark),
+                              "Dòng điện",
+                              "${currentA.toStringAsFixed(1)} A",
+                              "GH: ${limitA.toStringAsFixed(0)}A",
+                              isDark,
+                            ),
                           ),
                         ],
                       ),
@@ -1995,12 +1662,20 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
                         children: [
                           Expanded(
                             child: _buildBmsMiniStat(
-                                "CÔNG SUẤT", "3.62 kW", "142.5/150Ah", isDark),
+                              "Công suất",
+                              "${powerKw.toStringAsFixed(2)} kW",
+                              "${capCur.toStringAsFixed(1)}/${capTot.toStringAsFixed(0)}Ah",
+                              isDark,
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Expanded(
                             child: _buildBmsMiniStat(
-                                "NHIỆT & LỆCH", "34.5°C", "ΔV: 0.012V", isDark),
+                              "Nhiệt & lệch áp",
+                              "${tempC.toStringAsFixed(1)}°C",
+                              "ΔV: ${deltaV.toStringAsFixed(3)}V",
+                              isDark,
+                            ),
                           ),
                         ],
                       ),
@@ -2127,6 +1802,12 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
         isDark ? const Color(0xFF26324A) : const Color(0xFFE2E8F0);
     final isOn = device.currentProperties['is_meter_on'] != false;
 
+    final p = device.currentProperties;
+    final kwhVal = (p['kwh'] ?? p['total_kwh'] ?? 123.45) as num;
+    final vVal = (p['voltage_v'] ?? p['voltage'] ?? 220.5) as num;
+    final aVal = (p['current_a'] ?? p['current'] ?? 12.4) as num;
+    final kwVal = (p['power_kw'] ?? ((p['power'] is num) ? (p['power'] as num) / 1000 : 2.73)) as num;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -2138,67 +1819,18 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.amberWarning.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.bolt_rounded,
-                        color: AppTheme.amberWarning, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        device.name,
-                        style: TextStyle(
-                            color: textCol,
-                            fontSize: 14.5,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 2),
-                      DeviceOnlineStatusRow(
-                        isOnline: device.isOnline,
-                        fontSize: 11,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: isOn
-                      ? AppTheme.emeraldSuccess.withValues(alpha: 0.15)
-                      : AppTheme.crimsonDanger.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                      color: isOn
-                          ? AppTheme.emeraldSuccess
-                          : AppTheme.crimsonDanger),
-                ),
-                child: Text(
-                  isOn ? "ĐANG CẤP ĐIỆN" : "ĐÃ NGẮT ĐIỆN",
-                  style: TextStyle(
-                      color: isOn
-                          ? AppTheme.emeraldSuccess
-                          : AppTheme.crimsonDanger,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
+          // Header chuẩn đồng nhất BMS (bỏ pill lặp trạng thái cấp điện vì đã có dòng điều khiển dưới)
+          DevicePreviewHeader(
+            icon: Icons.bolt_rounded,
+            iconColor: AppTheme.amberWarning,
+            name: device.name,
+            isOnline: device.isOnline,
+            statusSuffix: device.hardwareId,
+            isDark: isDark,
+            textColor: textCol,
           ),
           const SizedBox(height: 12),
-          // LCD Tóm tắt
+          // LCD Tóm tắt (dữ liệu động thật từ currentProperties)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -2210,13 +1842,13 @@ class _CategoryDeviceListSheetState extends State<CategoryDeviceListSheet>
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildMetterStatItem(
-                    "ĐIỆN NĂNG", "1,482.6", "kWh", const Color(0xFF38BDF8)),
+                    "Điện năng", kwhVal.toStringAsFixed(2), "kWh", const Color(0xFF38BDF8)),
                 _buildMetterStatItem(
-                    "ĐIỆN ÁP", "221.8", "V", const Color(0xFF34D399)),
+                    "Điện áp", vVal.toStringAsFixed(1), "V", const Color(0xFF34D399)),
                 _buildMetterStatItem(
-                    "DÒNG ĐIỆN", "18.4", "A", const Color(0xFFFBBF24)),
+                    "Dòng điện", aVal.toStringAsFixed(1), "A", const Color(0xFFFBBF24)),
                 _buildMetterStatItem(
-                    "CÔNG SUẤT", "4.08", "kW", const Color(0xFFF43F5E)),
+                    "Công suất", kwVal.toStringAsFixed(2), "kW", const Color(0xFFF43F5E)),
               ],
             ),
           ),

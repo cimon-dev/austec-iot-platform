@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import "@fontsource-variable/manrope";
+import "@fontsource-variable/geist-mono";
 import "./globals.css";
 import { AppProviders } from "../components/AppProviders";
 import { AppShell } from "../components/AppShell";
 
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
-  display: "swap",
-  variable: "--font-inter",
-});
-
 export const metadata: Metadata = {
-  title: "Austec IoT Platform - Modern Cloud Management",
-  description: "Hệ thống Quản trị & Vận hành Thiết bị Thông minh Austec - Enterprise Grade IoT Platform",
+  title: "Austec Smart Home — Hệ sinh thái IoT Thông minh",
+  description: "Nền tảng điều khiển nhà thông minh và quản trị thiết bị IoT Austec",
   icons: {
     icon: "/logo-app.webp",
     shortcut: "/logo-app.webp",
@@ -26,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={inter.variable} suppressHydrationWarning>
-      <body className={`${inter.className} antialiased font-sans`} suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning>
+      <body className="antialiased font-sans overflow-hidden" suppressHydrationWarning>
         <AppProviders>
           <AppShell>{children}</AppShell>
         </AppProviders>

@@ -124,20 +124,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _device.name,
-              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 2),
-            DeviceOnlineStatusRow(
-              isOnline: _device.isOnline,
-              fontSize: 11.5,
-            ),
-          ],
+        title: DeviceDetailAppBarTitle(
+          name: _device.name,
+          isOnline: _device.isOnline,
         ),
+        centerTitle: false,
         actions: [
           if (_device.canViewHistory)
             IconButton(
@@ -319,42 +310,43 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
     );
   }
 
-  // 1. Thẻ bảo hành & trạng thái kết nối (Graphite Neutral + Live Status Dot)
+  // 1. Thẻ thông tin bảo hành & model (gọn gàng như màn hình Cửa, không lặp dòng Trực tuyến đã có ở AppBar)
   Widget _buildWarrantyAndStatusCard() {
     final textPrimary = AppTheme.dynamicTextPrimary;
     final textSecondary = AppTheme.dynamicTextSecondary;
-    final textMuted = AppTheme.dynamicTextMuted;
     final raised = AppTheme.dynamicSurfaceRaised;
     final hairline = AppTheme.dynamicHairline;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
       decoration: AppTheme.glassBox(radius: AppRadius.card),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : textMuted,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _device.modelName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    _device.isOnline ? "Trực tuyến" : "Ngoại tuyến (BLE khả dụng)",
-                    style: TextStyle(
-                      color: _device.isOnline ? AppTheme.emeraldSuccess : textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 2),
+                    Text(
+                      "${_device.hardwareId} · BH: ${_device.warrantyUntil.length >= 10 ? _device.warrantyUntil.substring(0, 10) : _device.warrantyUntil}",
+                      style: AppTheme.tabular(
+                        TextStyle(color: textSecondary, fontSize: 11, fontFamily: "monospace"),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
@@ -364,55 +356,35 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   border: Border.all(color: hairline),
                 ),
                 child: Text(
-                  _device.modelName,
-                  style: TextStyle(color: textPrimary, fontSize: 11, fontWeight: FontWeight.w500),
+                  _device.roomName.isNotEmpty ? _device.roomName : _device.warrantyCode,
+                  style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
           ),
-
           if (!_device.isOnline) ...[
             const SizedBox(height: AppSpacing.sm),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
               decoration: BoxDecoration(
-                color: raised,
+                color: AppTheme.amberWarning.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(AppRadius.inner),
-                border: Border.all(color: hairline),
+                border: Border.all(color: AppTheme.amberWarning.withValues(alpha: 0.3)),
               ),
-              child: Row(
+              child: const Row(
                 children: [
-                  Icon(Icons.bluetooth_searching_rounded, color: textSecondary, size: 16),
-                  const SizedBox(width: AppSpacing.sm),
+                  Icon(Icons.bluetooth_audio_rounded, color: AppTheme.amberWarning, size: 15),
+                  SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
-                      "Ngoại tuyến Wi-Fi. Đến gần (< 15m) để điều khiển trực tiếp qua BLE",
-                      style: TextStyle(color: textSecondary, fontSize: 12),
+                      "Ngoại tuyến Wi-Fi · Điều khiển trực tiếp qua Bluetooth tầm gần",
+                      style: TextStyle(color: AppTheme.amberWarning, fontSize: 11.5, fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
               ),
             ),
           ],
-
-          const SizedBox(height: AppSpacing.md),
-          Divider(color: hairline, height: 1),
-          const SizedBox(height: AppSpacing.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Mã bảo hành: ${_device.warrantyCode}",
-                style: AppTheme.tabular(
-                  TextStyle(color: textSecondary, fontSize: 12, fontFamily: "monospace"),
-                ),
-              ),
-              Text(
-                "Hạn BH: ${_device.warrantyUntil.length >= 10 ? _device.warrantyUntil.substring(0, 10) : _device.warrantyUntil}",
-                style: AppTheme.tabular(TextStyle(color: textSecondary, fontSize: 12)),
-              ),
-            ],
-          ),
         ],
       ),
     );

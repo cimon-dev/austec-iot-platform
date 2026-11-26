@@ -153,10 +153,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearSession();
         if (
           typeof window !== "undefined" &&
-          window.location.pathname !== "/login" &&
-          window.location.pathname !== "/register"
+          window.location.pathname.startsWith("/admin") &&
+          window.location.pathname !== "/admin/login" &&
+          window.location.pathname !== "/admin/register"
         ) {
-          window.location.replace("/login");
+          window.location.replace("/admin/login");
         }
         return;
       }
@@ -395,7 +396,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     clearSession();
-    router.push("/login");
+    router.push("/admin/login");
   };
 
   return (

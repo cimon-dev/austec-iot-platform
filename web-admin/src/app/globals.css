@@ -1,91 +1,142 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
+@import "react-grid-layout/css/styles.css";
 
 @theme {
-  --font-sans: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Manrope Variable", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-weight-normal: 460;
+  --font-weight-medium: 540;
+  --font-weight-semibold: 640;
+  --font-weight-bold: 700;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f6f7f9;
+  --foreground: #11161f;
   --card: #ffffff;
-  --card-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --border: #e2e8f0;
+  --card-foreground: #11161f;
+  --muted: #eef1f5;
+  --muted-foreground: #525d6f;
+  --border: #e2e6ec;
   --sidebar: #ffffff;
+  --ease-craft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
-  --background: #090d16;
-  --foreground: #f1f5f9;
-  --card: #0f172a;
-  --card-foreground: #f1f5f9;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --border: #1e293b;
-  --sidebar: #0f172a;
+  --background: #0d1015;
+  --foreground: #f3f5f8;
+  --card: #151a22;
+  --card-foreground: #f3f5f8;
+  --muted: #1c232e;
+  --muted-foreground: #9ba4b2;
+  --border: #252d3a;
+  --sidebar: #11151c;
 }
 
+html,
 body {
+  height: 100%;
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
+  font-family: "Manrope Variable", "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 460;
+  overflow: hidden;
 }
 
-/* Custom scrollbars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom ultra-thin scrollbars for internal section scrolling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 4px;
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(155, 164, 178, 0.22);
+  border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(155, 164, 178, 0.42);
+}
+:not(.dark) ::-webkit-scrollbar-thumb {
+  background: rgba(82, 93, 111, 0.22);
+  border-radius: 999px;
+}
+:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 93, 111, 0.4);
 }
 
-/* Adaptive Glassmorphism & Surface Helpers */
+/* React-Grid-Layout polish (quiet hairline placeholder & subtle resize grip) */
+.react-grid-layout {
+  position: relative;
+  transition: height 200ms var(--ease-craft);
+}
+.react-grid-item {
+  transition: transform 220ms var(--ease-craft), opacity 200ms var(--ease-craft);
+}
+.react-grid-item.cssTransforms {
+  transition-property: transform;
+}
+.react-grid-item.resizing,
+.react-grid-item.react-draggable-dragging {
+  z-index: 30;
+  transition: none;
+}
+.react-grid-item.react-grid-placeholder {
+  background: rgba(37, 99, 235, 0.1) !important;
+  border: 1.5px dashed rgba(59, 130, 246, 0.55) !important;
+  border-radius: 14px !important;
+  opacity: 1 !important;
+}
+.react-resizable-handle {
+  opacity: 0.35;
+  transition: opacity 150ms ease;
+}
+.react-grid-item:hover .react-resizable-handle {
+  opacity: 0.9;
+}
+.dark .react-resizable-handle::after {
+  border-right-color: rgba(155, 164, 178, 0.6) !important;
+  border-bottom-color: rgba(155, 164, 178, 0.6) !important;
+}
+
+/* Adaptive Glassmorphism & Surface Helpers (preserved for Admin CMS) */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
 }
-
 .dark .glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  border: 1px solid rgba(51, 65, 85, 0.5);
+  background: #151a22;
+  border: 1px solid rgba(243, 245, 248, 0.08);
   box-shadow: none;
 }
-
 .glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
+  background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 }
-
 .dark .glass-card {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(71, 85, 105, 0.4);
+  background: #1c232e;
+  border: 1px solid rgba(243, 245, 248, 0.08);
 }
 
-/* Light mode scrollbars */
-:not(.dark)::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-:not(.dark)::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-}
-:not(.dark)::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

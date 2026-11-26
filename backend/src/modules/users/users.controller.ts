@@ -10,12 +10,15 @@ import { EmailOtpService } from '../../services/email-otp.service.js';
 import { ZaloZnsService } from '../../services/zalo-zns.service.js';
 import { OtpChannel, VerificationService } from '../../services/verification.service.js';
 import { Controller, Get, Post, Put, Delete } from '../../core/decorators/index.js';
+import { postgresClient } from '../../core/database/postgres.client.js';
 import {
   authenticate,
   requireRole,
   requireStepUp,
   assertStepUpFromRequest,
 } from '../../core/middlewares/auth.middleware.js';
+
+const memoryPreferencesStore = new Map<string, { dashboardLayout: any; updatedAt: string }>();
 
 @Controller()
 export class UsersController {
@@ -133,6 +136,75 @@ export class UsersController {
       }
     } catch (_) {}
     res.json({ success: true, user: req.user });
+  }
+
+  // ==========================================
+  // USER UI PREFERENCES (DASHBOARD LAYOUT SYNC)
+  // ==========================================
+  @Get('/auth/preferences', authenticate)
+  public async getPreferences(req: AuthenticatedRequest, res: Response) {
+    const userId = req.user!.id;
+    try {
+      if (postgresClient.getConnected()) {
+        await postgresClient.query(`
+          CREATE TABLE IF NOT EXISTS user_ui_preferences (
+            user_id VARCHAR(100) PRIMARY KEY,
+            dashboard_layout JSONB DEFAULT '{}'::jsonb,
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        const r = await postgresClient.query(
+          'SELECT dashboard_layout, updated_at FROM user_ui_preferences WHERE user_id = $1',
+          [userId]
+        );
+        if (r.rows.length > 0) {
+          res.json({
+            success: true,
+            dashboardLayout: r.rows[0].dashboard_layout || null,
+            updatedAt: r.rows[0].updated_at,
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+
+    const mem = memoryPreferencesStore.get(userId);
+    res.json({
+      success: true,
+      dashboardLayout: mem?.dashboardLayout || null,
+      updatedAt: mem?.updatedAt || null,
+    });
+  }
+
+  @Put('/auth/preferences', authenticate)
+  public async savePreferences(req: AuthenticatedRequest, res: Response) {
+    const userId = req.user!.id;
+    const { dashboardLayout } = req.body || {};
+    const nowIso = new Date().toISOString();
+
+    memoryPreferencesStore.set(userId, { dashboardLayout, updatedAt: nowIso });
+
+    try {
+      if (postgresClient.getConnected()) {
+        await postgresClient.query(`
+          CREATE TABLE IF NOT EXISTS user_ui_preferences (
+            user_id VARCHAR(100) PRIMARY KEY,
+            dashboard_layout JSONB DEFAULT '{}'::jsonb,
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await postgresClient.query(
+          `INSERT INTO user_ui_preferences (user_id, dashboard_layout, updated_at)
+           VALUES ($1, $2::jsonb, NOW())
+           ON CONFLICT (user_id)
+           DO UPDATE SET dashboard_layout = EXCLUDED.dashboard_layout, updated_at = NOW()`,
+          [userId, JSON.stringify(dashboardLayout || {})]
+        );
+      }
+      res.json({ success: true, updatedAt: nowIso, message: 'Đã lưu bố cục giao diện.' });
+    } catch (e: any) {
+      res.json({ success: true, updatedAt: nowIso, message: 'Đã lưu bố cục tạm thời.' });
+    }
   }
 
   // ==========================================

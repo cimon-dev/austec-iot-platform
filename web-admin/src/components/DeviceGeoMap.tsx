@@ -847,7 +847,7 @@ export function DeviceGeoMap({ refreshTrigger = 0, onDeviceStateChange }: Device
             <div className="p-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between shrink-0">
               <span className="text-[10px] text-slate-400 font-mono">SLA &lt; 250ms</span>
               <Link
-                href={`/devices?tab=list&search=${selectedDevice.hardwareId}`}
+                href={`/admin/devices?tab=list&search=${selectedDevice.hardwareId}`}
                 className="flex items-center gap-1 text-[11px] font-bold text-cyan-600 dark:text-cyan-400 hover:text-cyan-500"
               >
                 <span>Xem trong danh mục</span>

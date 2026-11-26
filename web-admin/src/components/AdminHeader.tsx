@@ -48,7 +48,7 @@ export function AdminHeader() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    router.push(`/devices?tab=list&search=${encodeURIComponent(searchQuery.trim())}`);
+    router.push(`/admin/devices?tab=list&search=${encodeURIComponent(searchQuery.trim())}`);
   };
 
   // Close popovers on click outside

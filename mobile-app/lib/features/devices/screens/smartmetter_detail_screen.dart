@@ -232,21 +232,11 @@ class _SmartMetterDetailScreenState extends State<SmartMetterDetailScreen> {
           icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Column(
-          children: [
-            Text(
-              _device.name,
-              style: const TextStyle(color: Colors.white, fontSize: 15.5, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 2),
-            DeviceOnlineStatusRow(
-              isOnline: _device.isOnline,
-              center: true,
-              fontSize: 11.5,
-            ),
-          ],
+        title: DeviceDetailAppBarTitle(
+          name: _device.name,
+          isOnline: _device.isOnline,
         ),
-        centerTitle: true,
+        centerTitle: false,
         actions: [
           // 1. Icon Biểu đồ Dashboard tiêu thụ điện
           if (_device.canViewHistory)

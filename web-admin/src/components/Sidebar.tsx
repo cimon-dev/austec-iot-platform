@@ -53,20 +53,20 @@ function SidebarNavigation({
   const [userMenuOpen, setUserMenuOpen] = useState(true);
 
   const deviceSubmodules = [
-    { id: "groups", label: language === "vi" ? "Nhóm sản phẩm" : "Product Groups", href: "/devices?tab=groups", perm: canView("mod_dev") },
-    { id: "types", label: language === "vi" ? "Loại phần cứng" : "Hardware Types", href: "/devices?tab=types", perm: canView("mod_dev") },
-    { id: "properties", label: language === "vi" ? "Từ điển thuộc tính" : "Schema Properties", href: "/devices?tab=properties", perm: canView("mod_dev") },
-    { id: "models", label: language === "vi" ? "Mẫu thương phẩm" : "Device Models", href: "/devices?tab=models", perm: canView("mod_dev") },
-    { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/devices?tab=import", perm: canView("mod_dev") },
-    { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/devices?tab=list", perm: canView("mod_dev") },
-    { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/devices/firmware", perm: canView("mod_ota") || canView("mod_dev") },
+    { id: "groups", label: language === "vi" ? "Nhóm sản phẩm" : "Product Groups", href: "/admin/devices?tab=groups", perm: canView("mod_dev") },
+    { id: "types", label: language === "vi" ? "Loại phần cứng" : "Hardware Types", href: "/admin/devices?tab=types", perm: canView("mod_dev") },
+    { id: "properties", label: language === "vi" ? "Từ điển thuộc tính" : "Schema Properties", href: "/admin/devices?tab=properties", perm: canView("mod_dev") },
+    { id: "models", label: language === "vi" ? "Mẫu thương phẩm" : "Device Models", href: "/admin/devices?tab=models", perm: canView("mod_dev") },
+    { id: "import", label: language === "vi" ? "Nhập kho & Tem QR" : "Excel & QR Decals", href: "/admin/devices?tab=import", perm: canView("mod_dev") },
+    { id: "list", label: language === "vi" ? "Danh sách thiết bị" : "Device Inventory", href: "/admin/devices?tab=list", perm: canView("mod_dev") },
+    { id: "firmware", label: language === "vi" ? "Quản lý Firmware & OTA" : "Firmware & OTA", href: "/admin/devices/firmware", perm: canView("mod_ota") || canView("mod_dev") },
   ].filter(s => s.perm);
 
   const userSubmodules = [
-    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/users/admin", perm: canView("mod_user") },
-    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/users/roles", perm: canView("mod_user") },
-    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/customers?tab=accounts", perm: canView("mod_customer") || canView("mod_user") },
-    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/customers?tab=matrix", perm: canView("mod_customer") || canView("mod_user") },
+    { label: language === "vi" ? "Cán bộ quản trị" : "Admin Staff", href: "/admin/users/admin", perm: canView("mod_user") },
+    { label: language === "vi" ? "Vai trò & Phân quyền" : "Roles & Permissions", href: "/admin/users/roles", perm: canView("mod_user") },
+    { label: language === "vi" ? "Khách hàng" : "Customers", href: "/admin/customers?tab=accounts", perm: canView("mod_customer") || canView("mod_user") },
+    { label: language === "vi" ? "Phân quyền Gia đình & TB" : "Family Access & RBAC", href: "/admin/customers?tab=matrix", perm: canView("mod_customer") || canView("mod_user") },
   ].filter(s => s.perm);
 
   return (
@@ -75,15 +75,15 @@ function SidebarNavigation({
       {canView("mod_dash") && (
         <div>
           <Link
-            href="/dashboard"
+            href="/admin/dashboard"
             onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group relative ${
-              pathname === "/dashboard" 
+              pathname === "/admin/dashboard" 
                 ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs" 
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
-            <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+            <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/admin/dashboard" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
             {!isCollapsed && <span className="truncate">{t("dashboard", "Dashboard Tổng quan")}</span>}
           </Link>
         </div>
@@ -109,7 +109,10 @@ function SidebarNavigation({
               {deviceMenuOpen && (
                 <div className="mt-0.5 space-y-0.5 pl-2 border-l border-slate-200 dark:border-slate-800 ml-2.5">
                   {deviceSubmodules.map((sub) => {
-                    const isSubActive = pathname === "/devices" && currentTab === sub.id;
+                    const isSubActive =
+                      sub.id === "firmware"
+                        ? pathname === "/admin/devices/firmware"
+                        : pathname === "/admin/devices" && currentTab === sub.id;
                     return (
                       <Link
                         key={sub.id}
@@ -130,11 +133,11 @@ function SidebarNavigation({
             </div>
           ) : (
             <Link
-              href="/devices?tab=list"
+              href="/admin/devices?tab=list"
               onClick={onNavigate}
               title="Quản lý thiết bị"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
-                pathname.startsWith("/devices")
+                pathname.startsWith("/admin/devices")
                   ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
                   : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
@@ -166,7 +169,7 @@ function SidebarNavigation({
                 <div className="mt-0.5 space-y-0.5 pl-2 border-l border-slate-200 dark:border-slate-800 ml-2.5">
                   {userSubmodules.map((sub) => {
                     const isSubActive = sub.href.includes("?tab=")
-                      ? pathname === "/customers" && (searchParams.get("tab") || "accounts") === sub.href.split("tab=")[1]
+                      ? pathname === "/admin/customers" && (searchParams.get("tab") || "accounts") === sub.href.split("tab=")[1]
                       : pathname === sub.href;
                     return (
                       <Link
@@ -188,11 +191,11 @@ function SidebarNavigation({
             </div>
           ) : (
             <Link
-              href="/users/admin"
+              href="/admin/users/admin"
               onClick={onNavigate}
               title="Quản lý người dùng"
               className={`flex items-center justify-center p-2 rounded-lg transition-colors ${
-                pathname.startsWith("/users") || pathname === "/customers"
+                pathname.startsWith("/admin/users") || pathname === "/admin/customers"
                   ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950"
                   : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
               }`}
@@ -207,16 +210,16 @@ function SidebarNavigation({
       {canView("mod_noti") && (
         <div>
           <Link
-            href="/notifications"
+            href="/admin/notifications"
             onClick={onNavigate}
             className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all group ${
-              pathname === "/notifications"
+              pathname === "/admin/notifications"
                 ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
             <div className="flex items-center gap-2.5 overflow-hidden">
-              <Bell className={`w-4 h-4 shrink-0 ${pathname === "/notifications" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+              <Bell className={`w-4 h-4 shrink-0 ${pathname === "/admin/notifications" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
               {!isCollapsed && <span className="truncate">Thông Báo (Push Hub)</span>}
             </div>
           </Link>
@@ -235,16 +238,16 @@ function SidebarNavigation({
           <div className="space-y-0.5">
             {canView("mod_cskh") && (
               <Link
-                href="/cskh"
+                href="/admin/cskh"
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  pathname.startsWith("/cskh")
+                  pathname.startsWith("/admin/cskh")
                     ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <Headphones className={`w-4 h-4 shrink-0 ${pathname.startsWith("/cskh") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+                  <Headphones className={`w-4 h-4 shrink-0 ${pathname.startsWith("/admin/cskh") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{t("cskhHub", "CSKH Hub & Live Chat")}</span>}
                 </div>
               </Link>
@@ -252,16 +255,16 @@ function SidebarNavigation({
 
             {canView("mod_audit") && (
               <Link
-                href="/blackbox"
+                href="/admin/blackbox"
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  pathname.startsWith("/blackbox")
+                  pathname.startsWith("/admin/blackbox")
                     ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <ShieldAlert className={`w-4 h-4 shrink-0 ${pathname.startsWith("/blackbox") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+                  <ShieldAlert className={`w-4 h-4 shrink-0 ${pathname.startsWith("/admin/blackbox") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{t("blackbox", "Hộp đen Kiểm toán")}</span>}
                 </div>
               </Link>
@@ -269,16 +272,16 @@ function SidebarNavigation({
 
             {(canView("mod_store") || canView("mod_dev")) && (
               <Link
-                href="/store"
+                href="/admin/store"
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  pathname.startsWith("/store")
+                  pathname.startsWith("/admin/store")
                     ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/store") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+                  <ShoppingBag className={`w-4 h-4 shrink-0 ${pathname.startsWith("/admin/store") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Gian Hàng & Thương Phẩm" : "Store & Catalog"}</span>}
                 </div>
               </Link>
@@ -286,16 +289,16 @@ function SidebarNavigation({
 
             {(canView("mod_guide") || canView("mod_dev")) && (
               <Link
-                href="/guides"
+                href="/admin/guides"
                 onClick={onNavigate}
                 className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  pathname.startsWith("/guides")
+                  pathname.startsWith("/admin/guides")
                     ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                 }`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
-                  <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/guides") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${pathname.startsWith("/admin/guides") ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
                   {!isCollapsed && <span className="truncate">{language === "vi" ? "Hướng Dẫn Lắp Đặt & Reset" : "Install & Reset Manuals"}</span>}
                 </div>
               </Link>
@@ -308,19 +311,32 @@ function SidebarNavigation({
       {canView("mod_setting") && (
         <div className="pt-0.5">
           <Link
-            href="/settings"
+            href="/admin/settings"
             onClick={onNavigate}
             className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              pathname === "/settings"
+              pathname === "/admin/settings"
                 ? "bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
             }`}
           >
-            <Settings className={`w-4 h-4 shrink-0 ${pathname === "/settings" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
+            <Settings className={`w-4 h-4 shrink-0 ${pathname === "/admin/settings" ? "text-white dark:text-zinc-950" : "text-slate-500 dark:text-slate-400"}`} />
             {!isCollapsed && <span className="truncate">Cài Đặt Hệ Thống</span>}
           </Link>
         </div>
       )}
+
+      {/* 7. Switch to Customer Smart Home Web */}
+      <div className="pt-2 border-t border-slate-200/70 dark:border-slate-800/70">
+        <Link
+          href="/"
+          onClick={onNavigate}
+          className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-all"
+          title="Chuyển sang Giao diện Web Người Dùng (/)"
+        >
+          <Server className="w-4 h-4 shrink-0" />
+          {!isCollapsed && <span className="truncate">Web Người Dùng (/) &rarr;</span>}
+        </Link>
+      </div>
     </nav>
   );
 }
@@ -359,7 +375,7 @@ export function Sidebar() {
         <div>
           <div className="h-12 flex items-center justify-between px-3 md:px-4 border-b border-slate-200/80 dark:border-slate-800/70">
             <Link
-              href="/"
+              href="/admin"
               onClick={closeMobileSidebar}
               className="flex items-center gap-2.5 overflow-hidden group py-1"
               title="AUSTEC IoT Platform"

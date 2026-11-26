@@ -7,6 +7,8 @@ import { LanguageProvider } from "../context/LanguageContext";
 import { SidebarProvider } from "../context/SidebarContext";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { PermissionProvider } from "../context/PermissionContext";
+import { CustomerAuthProvider } from "../customer/context/CustomerAuthContext";
+import { CustomerIoTProvider } from "../customer/context/CustomerIoTContext";
 import { Toaster } from "sonner";
 
 function DynamicGoogleProvider({ children }: { children: React.ReactNode }) {
@@ -26,12 +28,16 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
       <LanguageProvider>
         <SidebarProvider>
           <AuthProvider>
-            <DynamicGoogleProvider>
-              <PermissionProvider>
-                {children}
-                <Toaster position="top-right" richColors closeButton expand={false} />
-              </PermissionProvider>
-            </DynamicGoogleProvider>
+            <CustomerAuthProvider>
+              <CustomerIoTProvider>
+                <DynamicGoogleProvider>
+                  <PermissionProvider>
+                    {children}
+                    <Toaster position="top-right" richColors closeButton expand={false} />
+                  </PermissionProvider>
+                </DynamicGoogleProvider>
+              </CustomerIoTProvider>
+            </CustomerAuthProvider>
           </AuthProvider>
         </SidebarProvider>
       </LanguageProvider>

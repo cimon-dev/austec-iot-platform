@@ -59,12 +59,14 @@ class ApiClient {
       });
 
       if (response.status === 401 && typeof window !== "undefined") {
-        const isAuthPath =
-          window.location.pathname === "/login" || window.location.pathname === "/register";
-        if (!isAuthPath && !path.includes("/api/auth/")) {
-          localStorage.removeItem("austec_auth_user");
-          localStorage.removeItem("austec_auth_token");
-          window.location.replace("/login");
+        const p = window.location.pathname;
+        if (p.startsWith("/admin")) {
+          const isAuthPath = p === "/admin/login" || p === "/admin/register";
+          if (!isAuthPath && !path.includes("/api/auth/")) {
+            localStorage.removeItem("austec_auth_user");
+            localStorage.removeItem("austec_auth_token");
+            window.location.replace("/admin/login");
+          }
         }
       }
 

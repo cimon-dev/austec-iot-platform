@@ -587,6 +587,13 @@ export class PostgresService {
         updated_at TIMESTAMP DEFAULT NOW()
       );
 
+      -- 31. BẢNG LƯU TRỮ CẤU HÌNH BỐ CỤC DASHBOARD NGƯỜI DÙNG (WEB CUSTOMER)
+      CREATE TABLE IF NOT EXISTS user_ui_preferences (
+        user_id VARCHAR(100) PRIMARY KEY,
+        dashboard_layout JSONB DEFAULT '{}'::jsonb,
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+
       -- INDEXES TĂNG TỐC TRUY VẤN TOÀN HỆ THỐNG
       CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
       CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);

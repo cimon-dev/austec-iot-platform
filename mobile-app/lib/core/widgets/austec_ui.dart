@@ -165,7 +165,7 @@ class AustecInfoRow extends StatelessWidget {
   }
 }
 
-/// Dòng trạng thái Online/Offline đồng nhất toàn ứng dụng (đặt ngay dưới tên thiết bị)
+/// Dòng trạng thái Online/Offline đồng nhất toàn ứng dụng (thẳng hàng dọc ngay dưới tên thiết bị)
 class DeviceOnlineStatusRow extends StatelessWidget {
   final bool isOnline;
   final String? suffix;
@@ -192,14 +192,14 @@ class DeviceOnlineStatusRow extends StatelessWidget {
           center ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
         Container(
-          width: 7,
-          height: 7,
+          width: 6,
+          height: 6,
           decoration: BoxDecoration(
             color: statusColor,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 6),
         Flexible(
           child: Text(
             (suffix != null && suffix!.isNotEmpty)
@@ -210,10 +210,131 @@ class DeviceOnlineStatusRow extends StatelessWidget {
             style: TextStyle(
               color: statusColor,
               fontSize: fontSize,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// Tiêu đề AppBar chuẩn đồng nhất cho TẤT CẢ màn hình Chi tiết thiết bị:
+/// Tên thiết bị và dòng "Trực tuyến / Ngoại tuyến" căn trái thẳng 1 trục dọc.
+class DeviceDetailAppBarTitle extends StatelessWidget {
+  final String name;
+  final bool isOnline;
+  final String? suffix;
+
+  const DeviceDetailAppBarTitle({
+    super.key,
+    required this.name,
+    required this.isOnline,
+    this.suffix,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 2),
+        DeviceOnlineStatusRow(
+          isOnline: isOnline,
+          suffix: suffix,
+          fontSize: 11,
+          center: false,
+        ),
+      ],
+    );
+  }
+}
+
+/// Header Preview Card chuẩn đồng nhất cho mọi loại thiết bị (theo phong cách gọn gàng BMS,
+/// KHÔNG có tag ON/OFF trùng lặp trạng thái kết nối).
+class DevicePreviewHeader extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String name;
+  final bool isOnline;
+  final String? statusSuffix;
+  final Widget? trailing;
+  final bool isDark;
+  final Color textColor;
+
+  const DevicePreviewHeader({
+    super.key,
+    required this.icon,
+    required this.iconColor,
+    required this.name,
+    required this.isOnline,
+    this.statusSuffix,
+    this.trailing,
+    required this.isDark,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.inner),
+            border: Border.all(
+              color: iconColor.withValues(alpha: 0.25),
+              width: 1,
+            ),
+          ),
+          child: Icon(icon, color: iconColor, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 2),
+              DeviceOnlineStatusRow(
+                isOnline: isOnline,
+                suffix: statusSuffix,
+                fontSize: 11,
+                center: false,
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: 8),
+          trailing!,
+        ],
       ],
     );
   }

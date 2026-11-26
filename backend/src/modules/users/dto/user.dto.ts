@@ -6,7 +6,7 @@ export const LoginSchema = z.object({
   phone: z.string().optional(),
   phoneNumber: z.string().optional(),
   password: z.string().optional(),
-  portal: z.enum(['admin', 'mobile']).optional(),
+  portal: z.enum(['admin', 'mobile', 'web']).optional(),
 });
 
 export type LoginDto = z.infer<typeof LoginSchema>;
@@ -18,7 +18,7 @@ export const RegisterSchema = z.object({
   password: z.string().optional(),
   address: z.string().optional(),
   province: z.string().optional(),
-  portal: z.enum(['admin', 'mobile']).optional(),
+  portal: z.enum(['admin', 'mobile', 'web']).optional(),
   department: z.string().optional(),
   company: z.string().optional(),
 });

@@ -108,8 +108,8 @@ export class UsersService {
       throw new Error('Tài khoản hoặc mật khẩu không chính xác.');
     }
 
-    // Chức năng #1: Bắt buộc xác thực bước 2 (2FA OTP qua Gmail hoặc Zalo) cho tài khoản ADMIN
-    if (userRecord.role === 'ADMIN') {
+    // Chức năng #1: Bắt buộc xác thực bước 2 (2FA OTP qua Gmail hoặc Zalo) cho tài khoản ADMIN khi đăng nhập cổng Quản trị (portal === 'admin')
+    if (userRecord.role === 'ADMIN' && dto.portal === 'admin') {
       const preAuthToken = AuthService.signPreAuthToken({
         id: userRecord.id,
         email: userRecord.email,

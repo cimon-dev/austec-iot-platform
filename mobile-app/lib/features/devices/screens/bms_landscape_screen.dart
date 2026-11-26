@@ -136,45 +136,33 @@ class _BmsLandscapeScreenState extends State<BmsLandscapeScreen> {
           ),
           const SizedBox(width: 14),
 
-          // Tên thiết bị + Trạng thái Online/Offline đồng bộ ngay dưới tên
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                widget.device.name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              DeviceOnlineStatusRow(
-                isOnline: widget.device.isOnline,
-                suffix: _getTabTitle(),
-                fontSize: 10.5,
-              ),
-            ],
+          // Tên thiết bị + Trạng thái Online/Offline thẳng hàng dọc chuẩn đồng bộ
+          DeviceDetailAppBarTitle(
+            name: widget.device.name,
+            isOnline: widget.device.isOnline,
+            suffix: _getTabTitle(),
           ),
 
           const Spacer(),
 
-          // Tag trạng thái
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppTheme.cyanAccent.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-              border:
-                  Border.all(color: AppTheme.cyanAccent.withValues(alpha: 0.6)),
-            ),
-            child: const Text(
-              "ĐANG XẢ",
-              style: TextStyle(
+          // Trạng thái sạc/xả thực tế (không dùng tag ON/OFF trùng lặp)
+          Builder(
+            builder: (_) {
+              final cur = widget.device.currentProperties['current_a'] ??
+                  widget.device.currentProperties['packCurrent'];
+              final curNum = cur is num ? cur.toDouble() : -68.5;
+              final statusLabel = curNum > 0.3
+                  ? "Đang nạp"
+                  : (curNum < -0.3 ? "Đang xả" : "Chờ");
+              return Text(
+                statusLabel,
+                style: const TextStyle(
                   color: AppTheme.cyanAccent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold),
-            ),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            },
           ),
         ],
       ),

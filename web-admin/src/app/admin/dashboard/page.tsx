@@ -1,0 +1,495 @@
+"use client";
+
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
+import { usePermissions } from "@/context/PermissionContext";
+import { AccessDenied } from "@/components/AccessDenied";
+import { DeviceGeoMap } from "@/components/DeviceGeoMap";
+import { getApiBaseUrl } from "@/context/apiConfig";
+import { 
+  Radio, 
+  AlertTriangle, 
+  Headphones, 
+  Layers, 
+  Cpu, 
+  Sliders, 
+  Box, 
+  FileSpreadsheet, 
+  CheckCircle2, 
+  ArrowUpRight,
+  RefreshCw,
+  TrendingUp,
+  MapPin,
+  ShieldCheck,
+  Activity,
+  Server,
+  Zap,
+  Globe2,
+  Package,
+  Power,
+  Clock
+} from "lucide-react";
+
+interface DashboardStats {
+  total: number;
+  online: number;
+  offline: number;
+  inStock: number;
+  onlinePct: string;
+  offlinePct: string;
+  inStockPct: string;
+  uptimeSla?: string;
+  avgLatencyMs?: number;
+}
+
+export default function DashboardPage() {
+  const { t, language } = useLanguage();
+  const { canView } = usePermissions();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const debounceStatsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const formatNum = (num: number) => (num || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const parsePct = (pct?: string) => {
+    const val = parseFloat(pct || "0");
+    return Number.isFinite(val) ? Math.max(0, Math.min(100, val)) : 0;
+  };
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("austec_auth_token") || "";
+      const res = await fetch(`${getApiBaseUrl()}/api/dashboard/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setStats(data.stats);
+      }
+    } catch (e) {
+      console.warn("Lỗi đồng bộ thống kê:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+    const timer = setInterval(fetchStats, 15000);
+    return () => {
+      clearInterval(timer);
+      if (debounceStatsRef.current) clearTimeout(debounceStatsRef.current);
+    };
+  }, [fetchStats]);
+
+  const handleDeviceStateChange = useCallback(() => {
+    if (debounceStatsRef.current) clearTimeout(debounceStatsRef.current);
+    debounceStatsRef.current = setTimeout(() => {
+      fetchStats();
+    }, 400);
+  }, [fetchStats]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    setRefreshTrigger(prev => prev + 1);
+    await fetchStats();
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 400);
+  };
+
+  // RBAC Gating
+  if (!canView("mod_dash")) {
+    return (
+      <AccessDenied 
+        moduleName="Dashboard Giám Sát Thời Gian Thực"
+        requiredModule="mod_dash"
+      />
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col min-h-0 space-y-2 overflow-hidden">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            {language === "vi" ? "Bảng điều khiển giám sát" : "Real-Time Telemetry Dashboard"}
+          </h1>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            MQTT Live Sync &lt; 0.5s
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button 
+            type="button"
+            onClick={handleRefresh}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xs cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-slate-500" : "text-slate-400"}`} />
+            <span>{isRefreshing ? (language === "vi" ? "Đang đồng bộ..." : "Syncing...") : (language === "vi" ? "Làm mới" : "Refresh")}</span>
+          </button>
+
+          <Link
+            href="/admin/devices?tab=import"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 transition-all shadow-xs"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>{language === "vi" ? "Nhập kho Excel" : "Import Batch"}</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Scrollable Dashboard Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 pr-1">
+        {/* ============================================================== */}
+        {/* KHỐI 1: TỔNG QUAN 4 DÒNG TRẠNG THÁI + BIỂU ĐỒ TRÒN + BIỂU ĐỒ CỘT */}
+        {/* ============================================================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5">
+          {/* CỘT 1: KHỐI 4 DÒNG TỔNG QUAN TRẠNG THÁI (4 COLS) */}
+          <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Radio className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                <span>Trạng Thái Thiết Bị Toàn Mạng</span>
+              </span>
+              <span className="text-[11px] font-mono font-bold text-slate-900 dark:text-white">
+                {isLoading || !stats ? (
+                  <span className="inline-block w-12 h-3.5 bg-slate-200 dark:bg-slate-800 rounded animate-pulse align-middle"></span>
+                ) : (
+                  `${formatNum(stats.total)} TB`
+                )}
+              </span>
+            </div>
+
+            {/* 4 compact rows */}
+            <div className="space-y-1.5 my-2 text-xs">
+              {/* Dòng 1: Online */}
+              <Link
+                href="/admin/devices?tab=list&status=online"
+                className="p-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-500/20 hover:border-emerald-500/40 flex items-center justify-between transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="font-semibold text-emerald-800 dark:text-emerald-300">Trực Tuyến (Online)</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-emerald-200/50 dark:bg-emerald-900/50 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-emerald-700 dark:text-emerald-300">{formatNum(stats.online)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">{stats.onlinePct}</span>
+                    </>
+                  )}
+                </div>
+              </Link>
+
+              {/* Dòng 2: Offline */}
+              <Link
+                href="/admin/devices?tab=list&status=offline"
+                className="p-2 rounded-lg bg-red-50/60 dark:bg-red-950/25 border border-red-500/25 hover:border-red-500/50 flex items-center justify-between transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                  <span className="font-semibold text-red-700 dark:text-red-400">Ngoại Tuyến (Offline)</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-red-200/50 dark:bg-red-900/50 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-red-600 dark:text-red-400">{formatNum(stats.offline)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-600 dark:text-red-400 font-bold">{stats.offlinePct}</span>
+                    </>
+                  )}
+                </div>
+              </Link>
+
+              {/* Dòng 3: Tồn kho */}
+              <Link
+                href="/admin/devices?tab=list&status=in_stock"
+                className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 hover:border-slate-400 flex items-center justify-between transition-colors group cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Tồn Kho (In Stock)</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  {isLoading || !stats ? (
+                    <span className="inline-block w-10 h-3.5 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></span>
+                  ) : (
+                    <>
+                      <span className="font-bold text-slate-700 dark:text-slate-300">{formatNum(stats.inStock)}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold">{stats.inStockPct}</span>
+                    </>
+                  )}
+                </div>
+              </Link>
+
+              {/* Dòng 4: SLA */}
+              <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">Độ Sẵn Sàng (SLA)</span>
+                </div>
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="font-bold text-slate-900 dark:text-white">{stats?.uptimeSla || "99.8%"}</span>
+                  <span className="text-[10px] text-slate-400">{stats?.avgLatencyMs ? `${stats.avgLatencyMs}ms` : "114ms"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Visual Mini Progress Bar */}
+            <div className="w-full h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden flex">
+              {isLoading || !stats ? (
+                <div className="w-full h-full bg-slate-300 dark:bg-slate-700 animate-pulse"></div>
+              ) : (
+                <>
+                  <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }} title="Online"></div>
+                  <div className="bg-red-500 h-full" style={{ width: stats.offlinePct }} title="Offline"></div>
+                  <div className="bg-slate-400 h-full" style={{ width: stats.inStockPct }} title="Tồn kho"></div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* CỘT 2: BIỂU ĐỒ TRÒN (DONUT CHART) PHÂN BỔ TRẠNG THÁI (4 COLS) */}
+          <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                <span>Biểu Đồ Tròn Tỷ Lệ Toàn Mạng</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                Live Donut
+              </span>
+            </div>
+
+            <div className="flex items-center justify-around py-1 gap-2">
+              {/* SVG Donut Chart */}
+              <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                {isLoading || !stats ? (
+                  <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+                ) : (
+                  <>
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
+                      {/* Background Track */}
+                      <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" strokeWidth="12" className="text-slate-100 dark:text-slate-800" />
+                      {/* Online Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#10b981"
+                        strokeWidth="12"
+                        strokeDasharray={`${(parsePct(stats.onlinePct) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset="0"
+                        className="transition-all duration-700"
+                      />
+                      {/* Stock Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#64748b"
+                        strokeWidth="12"
+                        strokeDasharray={`${(parsePct(stats.inStockPct) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${(parsePct(stats.onlinePct) * 2.89).toFixed(1)}`}
+                        className="transition-all duration-700"
+                      />
+                      {/* Offline Segment */}
+                      <circle
+                        cx="60"
+                        cy="60"
+                        r="46"
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="12"
+                        strokeDasharray={`${(parsePct(stats.offlinePct) * 2.89).toFixed(1)} 289`}
+                        strokeDashoffset={`-${((parsePct(stats.onlinePct) + parsePct(stats.inStockPct)) * 2.89).toFixed(1)}`}
+                        className="transition-all duration-700"
+                      />
+                    </svg>
+                    {/* Center Value */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-xs font-bold font-mono text-slate-900 dark:text-white leading-none">{stats.onlinePct}</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5 font-medium">Online</span>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Donut Legend */}
+              <div className="space-y-1.5 text-xs flex-1">
+                {isLoading || !stats ? (
+                  <div className="space-y-2">
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded animate-pulse"></div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span>
+                        <span className="text-slate-600 dark:text-slate-300">Online</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatNum(stats.online)} ({stats.onlinePct})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-slate-500"></span>
+                        <span className="text-slate-600 dark:text-slate-300">Tồn kho</span>
+                      </div>
+                      <span className="font-mono font-bold text-slate-600 dark:text-slate-400">{formatNum(stats.inStock)} ({stats.inStockPct})</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-sm bg-red-500"></span>
+                        <span className="text-red-600 dark:text-red-400 font-medium">Offline</span>
+                      </div>
+                      <span className="font-mono font-bold text-red-600 dark:text-red-400">{formatNum(stats.offline)} ({stats.offlinePct})</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="text-[10px] text-slate-400 text-center border-t border-slate-100 dark:border-slate-800 pt-1 font-mono">
+              Chu kỳ quét viễn thám: 30s/lần
+            </div>
+          </div>
+
+          {/* CỘT 3: BIỂU ĐỒ PHÂN BỔ THEO DÒNG SẢN PHẨM (4 COLS) */}
+          <div className="lg:col-span-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Phân Bổ Theo Trạng Thái Thiết Bị</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Thời gian thực</span>
+            </div>
+
+            {isLoading ? (
+              <div className="py-6 space-y-3 animate-pulse">
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded"></div>
+              </div>
+            ) : (!stats || stats.total === 0) ? (
+              <div className="py-8 text-center text-slate-400 text-xs">
+                <Layers className="w-6 h-6 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
+                Chưa có dữ liệu thiết bị trong CSDL PostgreSQL
+              </div>
+            ) : (
+              <div className="space-y-2 py-1 text-xs">
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Trực tuyến (Online)</span>
+                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.online)} TB ({stats.onlinePct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-emerald-500 h-full" style={{ width: stats.onlinePct }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-red-600 dark:text-red-400">Ngoại tuyến (Offline)</span>
+                    <span className="font-mono text-red-600 dark:text-red-400 font-semibold">{formatNum(stats.offline)} TB ({stats.offlinePct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-red-500 h-full" style={{ width: stats.offlinePct }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-[11px] mb-0.5">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">Tồn kho xuất xưởng (In Stock)</span>
+                    <span className="font-mono text-slate-500 dark:text-slate-400">{formatNum(stats.inStock)} TB ({stats.inStockPct})</span>
+                  </div>
+                  <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden flex">
+                    <div className="bg-slate-400 h-full" style={{ width: stats.inStockPct }}></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="text-[10px] text-slate-400 text-right border-t border-slate-100 dark:border-slate-800 pt-1 font-mono">
+              Tổng số: {stats ? formatNum(stats.total) : "---"} thiết bị
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================== */}
+        {/* PHẦN 2: BẢN ĐỒ PHÂN BỐ CỤM THIẾT BỊ SỬ DỤNG LEAFLET MAP */}
+        {/* ============================================================== */}
+        <DeviceGeoMap
+          refreshTrigger={refreshTrigger}
+          onDeviceStateChange={handleDeviceStateChange}
+        />
+
+        {/* ============================================================== */}
+        {/* PHẦN 3: SỨC KHỎE HẠ TẦNG, CẢNH BÁO KỸ THUẬT & SLA */}
+        {/* ============================================================== */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 pb-2">
+          {/* Cảnh báo kỹ thuật khẩn cấp (7 cols) */}
+          <div className="lg:col-span-7 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Cảnh Báo Kỹ Thuật Viễn Thám (Realtime Alerts)</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                0 Sự Cố Khẩn Cấp
+              </span>
+            </div>
+
+            <div className="py-4 px-3 rounded-lg border border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/20 text-center space-y-1">
+              <CheckCircle2 className="w-6 h-6 text-slate-400 mx-auto mb-1" />
+              <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">Hệ thống đang vận hành ổn định</p>
+              <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                Toàn bộ thiết bị kết nối đáp ứng tiêu chuẩn telemetry. Không có cảnh báo quá dòng hay sụt áp ắc quy khẩn cấp.
+              </p>
+            </div>
+          </div>
+
+          {/* SLA Hạ Tầng IoT & Broker MQTT (5 cols) */}
+          <div className="lg:col-span-5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Server className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span>Hạ Tầng Broker & SLA</span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
+                MQTT TLS: ONLINE
+              </span>
+            </div>
+
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Độ trễ trung bình:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{stats?.avgLatencyMs || 25} ms (SLA &lt; 250ms)</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Tỷ lệ uptime hệ thống:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">{stats?.uptimeSla || "99.9%"}</span>
+              </div>
+              <div className="flex justify-between p-1.5 rounded bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+                <span className="text-slate-500 dark:text-slate-400">Mã hóa SHA-256 Hộp Đen:</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white">100% Immutable Verified</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

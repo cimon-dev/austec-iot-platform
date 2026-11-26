@@ -132,9 +132,10 @@ export class CskhController {
     try {
       const user = req.user!;
       if (this.client.getConnected()) {
+        const scope = String(req.query.scope || '').toLowerCase();
         let query = 'SELECT * FROM customer_support_requests ORDER BY created_at DESC';
         let params: any[] = [];
-        if (user.role !== 'ADMIN' && user.role !== 'CSKH') {
+        if (scope === 'my' || (user.role !== 'ADMIN' && user.role !== 'CSKH')) {
           query = 'SELECT * FROM customer_support_requests WHERE customer_id = $1 OR customer_phone = $2 ORDER BY created_at DESC';
           params = [user.id, user.phoneNumber || ''];
         }
