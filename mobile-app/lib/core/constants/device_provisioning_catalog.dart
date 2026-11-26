@@ -115,7 +115,7 @@ class DeviceProvisioningCatalog {
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
       "6e400001",
     ],
-    nameKeywords: ["cuacuon", "wifirf-tt", "wifirftt", "vvcucuon"],
+    nameKeywords: ["cuacuon", "wifirf_tt", "wifirf-tt", "wifirftt", "vvcucuon"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     buildBlePayload: (data) =>
@@ -138,7 +138,7 @@ class DeviceProvisioningCatalog {
       "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
       "6e400001",
     ],
-    nameKeywords: ["amtuong", "wifirf-eco", "wifirfeco", "vvamtuong"],
+    nameKeywords: ["amtuong", "wifirf_eco", "wifirf-eco", "wifirfeco", "vvamtuong"],
     bleRxCharUuid: "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
     bleTxCharUuid: "6e400003-b5a3-f393-e0a9-e50e24dcca9e",
     buildBlePayload: (data) =>
@@ -431,10 +431,10 @@ class DeviceProvisioningCatalog {
     final lowerName = rawName.toLowerCase().trim();
 
     // 1. Nhóm Cửa (4 loại: Cửa cuốn chính, Âm tường, Kính lùa, Tay quay)
-    if (lowerName.contains("cuacuon") || lowerName.contains("wifirf-tt") || lowerName.contains("wifirftt") || lowerName.contains("vvcucuon")) {
+    if (lowerName.contains("cuacuon") || lowerName.contains("wifirf_tt") || lowerName.contains("wifirf-tt") || lowerName.contains("wifirftt") || lowerName.contains("vvcucuon")) {
       return rollerDoorProfile;
     }
-    if (lowerName.contains("amtuong") || lowerName.contains("wifirf-eco") || lowerName.contains("wifirfeco") || lowerName.contains("vvamtuong")) {
+    if (lowerName.contains("amtuong") || lowerName.contains("wifirf_eco") || lowerName.contains("wifirf-eco") || lowerName.contains("wifirfeco") || lowerName.contains("vvamtuong")) {
       return wallDoorProfile;
     }
     if (lowerName.contains("glsdoor")) {

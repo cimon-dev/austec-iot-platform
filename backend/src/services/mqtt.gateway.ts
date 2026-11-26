@@ -7,6 +7,7 @@ export interface MqttMessageEvent {
   topic: string;
   payload: string;
   timestamp: string;
+  timestampMs?: number;
   direction: 'INCOMING' | 'OUTGOING';
 }
 
@@ -83,10 +84,10 @@ export class MqttGateway {
         if (!exp) continue;
         const expLower = exp.toLowerCase();
 
-        // 1. Khớp tuyệt đối chuỗi payload (ví dụ: "295", "1", "2", "3", "13", "14", "0", "SET_LFP", "CFG:...")
+        // 1. Khớp tuyệt đối chuỗi payload (ví dụ: "1", "2", "3", "13", "14", "0", "SET_LFP", "CFG:...")
         if (cleanLower === expLower) return true;
 
-        // 2. Nếu phần cứng trả JSON ACK chuẩn: {"ack":"295"} / {"code":"13"} / {"action":"14"} / {"probe":295}
+        // 2. Nếu phần cứng trả JSON ACK chuẩn: {"cmd":1} / {"code":"13"} / {"action":"14"} / {"ack":"1"}
         if (parsedJson) {
           const candidates = [parsedJson.ack, parsedJson.code, parsedJson.action, parsedJson.probe, parsedJson.cmd]
             .filter((v) => v !== undefined && v !== null)
@@ -151,10 +152,10 @@ export class MqttGateway {
   }
 
   /**
-   * Thực thi quét song song và kiểm tra trạng thái Online/Offline bằng cơ chế sẵn có của firmware gốc (không dùng mã 295):
+   * Thực thi quét song song và kiểm tra trạng thái Online/Offline bằng cơ chế sẵn có của firmware gốc:
    * - SmartMetter & BMS: dựa trên gói telemetry định kỳ 1s (quá 25s không có telemetry -> OFFLINE)
-   * - Cửa cuốn & Ổ cắm: gửi sub/isonline, firmware gốc trả "1" lên pub/isonline
-   * - Camera: giữ trạng thái theo kết nối/stream & sự kiện broker disconnected
+   * - Cửa cuốn CodeCuaCuonBLE & Ổ cắm CodeOCAM: gửi sub/isonline ("1"), firmware gốc trả "1" lên pub/isonline
+   * - Camera & Cửa cuốn WIFIRF (không có sub/isonline): giữ trạng thái theo phiên kết nối & chỉ đánh OFFLINE khi điều khiển thực tế thất bại
    */
   public async runHeartbeatScan() {
     if (this.isScanningHeartbeat) return;
@@ -174,9 +175,10 @@ export class MqttGateway {
         const isCamera = !isSocket && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
         const isBms = !isSocket && !isCamera && upperHw.includes('BMS');
         const isMeter = !isSocket && !isCamera && !isBms && (upperHw.startsWith('SMARTMETTER') || upperHw.startsWith('SMARTMETER') || upperHw.includes('METER') || upperHw.includes('CONGTO'));
+        const isWifiRfDoor = !isSocket && !isCamera && !isBms && !isMeter && (upperHw.startsWith('WIFIRF') || upperHw.startsWith('WIFRF'));
 
-        // Camera bản gốc không có ping định kỳ -> không tự đánh dấu offline trong vòng quét này
-        if (isCamera) return;
+        // Camera & dòng mạch WIFIRF không đăng ký sub/isonline -> không tự đánh dấu offline trong vòng quét này
+        if (isCamera || isWifiRfDoor) return;
 
         let isActuallyOnline = false;
         const cacheState = await this.hotCache.getDeviceState(hwId);
@@ -191,7 +193,7 @@ export class MqttGateway {
             }
           }
         } else {
-          // Cửa cuốn & Ổ cắm gốc: nhận sub/isonline -> trả "1" lên pub/isonline
+          // Cửa cuốn CodeCuaCuonBLE & Ổ cắm CodeOCAM gốc: nhận sub/isonline -> trả "1" lên pub/isonline
           const prefixes = new Set<string>([
             'USR-330967',
             'amtuong',
@@ -336,51 +338,22 @@ export class MqttGateway {
       return;
     }
 
+    // Bỏ qua các topic downlink (Backend -> Thiết bị) do Broker echo lại khi Backend subscribe wildcard (USR-330967/#, amtuong/#, austec/#)
+    // Tránh tự nhận lại gói lệnh của chính mình làm phản hồi ONLINE giả
+    const isDownlinkTopic =
+      topic.includes('/sub/') ||
+      topic.endsWith('/command') ||
+      topic.endsWith('/cmd') ||
+      topic.endsWith('/set');
+    if (isDownlinkTopic) {
+      return;
+    }
+
     const payload = message.length > 2048 ? message.subarray(0, 2048).toString('utf-8') : message.toString('utf-8');
     const shortPayload = payload.length > 80 ? payload.slice(0, 80) + '...' : payload;
     this.recordMessage(topic, shortPayload, 'INCOMING');
 
-    // =========================================================================
-    // XỬ LÝ MÃ NHẬN DIỆN THIẾT BỊ ONLINE CHUẨN TOÀN HỆ THỐNG: MÃ 295
-    // Khi Backend gửi mã 295 xuống thiết bị, thiết bị bắt buộc gửi lại đúng mã 295.
-    // Nếu nhận được mã 295 từ bất kỳ topic nào của thiết bị, lập tức kích hoạt ONLINE!
-    // =========================================================================
     const cleanPayload = payload.trim();
-    if (cleanPayload === '295' || cleanPayload.includes('"probe":295') || cleanPayload.includes('"probe":"295"') || cleanPayload.includes('"action":"295"') || cleanPayload.includes('"action":295')) {
-      let detectedHwId = '';
-      const tParts = topic.split('/');
-      if (topic.startsWith('devices/') || topic.startsWith('esp32/') || topic.startsWith('austec/')) {
-        detectedHwId = tParts[1] || '';
-      } else if (tParts.length >= 3 && (tParts[0] === 'USR-330967' || tParts[0] === 'amtuong' || tParts[2] === 'pub')) {
-        detectedHwId = tParts[1] || '';
-      } else if (tParts.length >= 2) {
-        detectedHwId = tParts[0] || tParts[1] || '';
-      } else {
-        detectedHwId = topic;
-      }
-
-      if (detectedHwId && detectedHwId !== 'status' && detectedHwId !== 'action' && detectedHwId !== 'command') {
-        console.log(`[MQTT Gateway] 🟢 [${detectedHwId}] Xác thực ONLINE thành công qua mã chuẩn 295! Topic: ${topic}`);
-        const nowIso = new Date().toISOString();
-        const onlineState = { isOnline: true, lastHeartbeat: nowIso };
-        await this.hotCache.setDeviceState(detectedHwId, onlineState);
-        await this.hotCache.setDeviceState(detectedHwId.toLowerCase(), onlineState);
-        await this.hotCache.setDeviceState(detectedHwId.toUpperCase(), onlineState);
-
-        try {
-          await this.postgresService?.query(
-            `UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text, updated_at = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)`,
-            [detectedHwId]
-          );
-        } catch (_) { }
-
-        if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(detectedHwId, { isOnline: true });
-        }
-        this.resolvePendingAck(detectedHwId, '295');
-        return;
-      }
-    }
 
     // B.1. XỬ LÝ GÓI TIN XÁC NHẬN LỆNH CHUẨN (2-WAY ACK): austec/{hwId}/ack, austec/{hwId}/status, devices/{hwId}/camera/ack
     if (
@@ -704,6 +677,30 @@ export class MqttGateway {
         this.resolvePendingAck(hwId, payload);
       }
 
+      // 2.1. Gói tin Trạng thái phản hồi từ firmware WIFIRF_TT: {user}/{hwId}/pub/status
+      if (subType === 'pub' && parts[3] === 'status') {
+        console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi STATUS: ${cleanPayload}`);
+        const nowIso = new Date().toISOString();
+        const statusState = {
+          isOnline: true,
+          currentProperties: { isOnline: true, ownerId: user },
+          lastHeartbeat: nowIso,
+        };
+        await this.hotCache.setDeviceState(hwId, statusState);
+        await this.hotCache.setDeviceState(hwId.toLowerCase(), statusState);
+        await this.hotCache.setDeviceState(hwId.toUpperCase(), statusState);
+        try {
+          await this.postgresService.query(
+            'UPDATE device_instances SET is_online = true, last_heartbeat = NOW()::text WHERE LOWER(hardware_id) = LOWER($1)',
+            [hwId]
+          );
+        } catch (_) { }
+        if (this.onStateChangeCallback) {
+          this.onStateChangeCallback(hwId, { isOnline: true, lastHeartbeat: nowIso });
+        }
+        this.resolvePendingAck(hwId, cleanPayload);
+      }
+
       // 3. Gói tin Báo Cảm Biến / Hành Trình Cửa HOẶC Trạng Thái Ổ Cắm (ocammoi): {user}/{hwId}/pub/action
       if (subType === 'pub' && parts[3] === 'action') {
         const isSocket = hwId.toLowerCase().startsWith('ocam') || hwId.toLowerCase().includes('socket');
@@ -733,27 +730,43 @@ export class MqttGateway {
           return;
         }
 
-        console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi rơ-le/cảm biến: Action = ${payload}`);
-        let openState = 'MOVING';
-        if (payload === '4') openState = 'OPEN';        // Chạm công tắc trên CB_UP (Mở hoàn toàn)
-        if (payload === '5') openState = 'CLOSED';      // Chạm công tắc dưới CB_DOWN (Đóng hoàn toàn)
-        if (payload === '1') openState = 'OPENING';     // Rơ-le mở đang kích hoạt
-        if (payload === '2') openState = 'CLOSING';     // Rơ-le đóng đang kích hoạt
-        if (payload === '3') openState = 'PAUSED';      // Đã dừng khẩn cấp
+        // Hỗ trợ cả plain text ("1","2","3","4","5") lẫn JSON từ firmware WIFIRF_TT ({"cmd":1}, {"cmd":2}, {"cmd":3}...)
+        let actionVal = cleanPayload;
+        if (cleanPayload.startsWith('{') && cleanPayload.endsWith('}')) {
+          try {
+            const parsed = JSON.parse(cleanPayload);
+            if (parsed.cmd !== undefined && parsed.cmd !== null) {
+              actionVal = String(parsed.cmd).trim();
+            } else if (parsed.action !== undefined && parsed.action !== null) {
+              actionVal = String(parsed.action).trim();
+            }
+          } catch (_) { }
+        }
 
-        await this.hotCache.setDeviceState(hwId, {
+        console.log(`[MQTT Gateway] 🚪 [${hwId}] Phản hồi rơ-le/cảm biến: Action = ${actionVal} (raw: ${cleanPayload})`);
+        let openState = 'MOVING';
+        if (actionVal === '4') openState = 'OPEN';        // Chạm công tắc trên CB_UP (Mở hoàn toàn)
+        if (actionVal === '5') openState = 'CLOSED';      // Chạm công tắc dưới CB_DOWN (Đóng hoàn toàn)
+        if (actionVal === '1') openState = 'OPENING';     // Rơ-le mở đang kích hoạt
+        if (actionVal === '2') openState = 'CLOSING';     // Rơ-le đóng đang kích hoạt
+        if (actionVal === '3') openState = 'PAUSED';      // Đã dừng khẩn cấp
+
+        const doorStateObj = {
           isOnline: true,
-          currentProperties: { open_state: openState, lastAction: payload, ownerId: user },
+          currentProperties: { open_state: openState, lastAction: actionVal, ownerId: user },
           lastHeartbeat: new Date().toISOString(),
-        });
+        };
+        await this.hotCache.setDeviceState(hwId, doorStateObj);
+        await this.hotCache.setDeviceState(hwId.toLowerCase(), doorStateObj);
+        await this.hotCache.setDeviceState(hwId.toUpperCase(), doorStateObj);
 
         await this.postgresService.logBlackbox({
           hardwareId: hwId,
           actorId: user,
           actorRole: 'CUSTOMER',
           actorName: 'Cảm biến cơ hành trình',
-          actionType: `SENSOR_ACTION_${payload}`,
-          payloadSent: { action: payload, openState },
+          actionType: `SENSOR_ACTION_${actionVal}`,
+          payloadSent: { action: actionVal, raw: cleanPayload, openState },
           ackStatus: 'SUCCESS',
           latencyMs: 35,
         });
@@ -766,9 +779,9 @@ export class MqttGateway {
         } catch (_) { }
 
         if (this.onStateChangeCallback) {
-          this.onStateChangeCallback(hwId, { isOnline: true, open_state: openState, action: payload, lastHeartbeat: new Date().toISOString() });
+          this.onStateChangeCallback(hwId, { isOnline: true, open_state: openState, action: actionVal, lastHeartbeat: new Date().toISOString() });
         }
-        this.resolvePendingAck(hwId, payload);
+        this.resolvePendingAck(hwId, cleanPayload);
       }
 
       // 3. Tiến độ OTA nạp từ xa
@@ -932,6 +945,7 @@ export class MqttGateway {
       topic,
       payload,
       timestamp: new Date().toLocaleTimeString('vi-VN'),
+      timestampMs: Date.now(),
       direction,
     });
     if (this.messageHistory.length > 50) {
@@ -958,19 +972,22 @@ export class MqttGateway {
     const isCamera = !isSocket && (upperHw.startsWith('CAM') || upperHw.includes('CAMERA') || upperHw.includes('OV2640'));
     const isBms = !isSocket && !isCamera && upperHw.includes('BMS');
     const isMeter = !isSocket && !isCamera && !isBms && (upperHw.startsWith('SMARTMETTER') || upperHw.startsWith('SMARTMETER') || upperHw.includes('METER') || upperHw.includes('CONGTO'));
+    const isWifiRfDoor = !isSocket && !isCamera && !isBms && !isMeter && (upperHw.startsWith('WIFIRF') || upperHw.startsWith('WIFRF'));
 
     const nowMs = Date.now();
     const FRESH_WINDOW_MS = 25000;
 
-    // 1. Kiểm tra HotCache (CHỈ tin khi lastHeartbeat còn mới trong vòng 25s, hoặc Camera)
+    // 1. Kiểm tra HotCache (CHỈ tin khi lastHeartbeat còn mới trong vòng 25s, hoặc Camera / WIFIRF không có sub/isonline)
     let cachedOwner: string | undefined;
+    let cachedOnline = false;
     try {
       const state = (await this.hotCache.getDeviceState(hwId)) ||
         (await this.hotCache.getDeviceState(cleanId)) ||
         (await this.hotCache.getDeviceState(upperHw));
       cachedOwner = (state?.currentProperties as any)?.ownerId;
+      cachedOnline = Boolean(state && state.isOnline);
       if (state && state.isOnline && !forceProbe) {
-        if (isCamera) return true;
+        if (isCamera || isWifiRfDoor) return true;
         if (state.lastHeartbeat) {
           const hbMs = new Date(state.lastHeartbeat).getTime();
           if (!isNaN(hbMs) && (nowMs - hbMs) <= FRESH_WINDOW_MS) {
@@ -980,12 +997,15 @@ export class MqttGateway {
       }
     } catch (_) { }
 
-    // 2. Kiểm tra gói tin INCOMING thực sự GẦN ĐÂY (trong 25 giây gần nhất - sửa bug tin cũ hàng giờ)
+    // 2. Kiểm tra gói tin INCOMING thực sự GẦN ĐÂY (trong 25 giây gần nhất)
     const hasRecentMsg = this.messageHistory.some((m) => {
       if (m.direction !== 'INCOMING') return false;
-      const msgTime = new Date(m.timestamp).getTime();
+      const msgTime = m.timestampMs ?? new Date(m.timestamp).getTime();
       if (isNaN(msgTime) || (nowMs - msgTime) > FRESH_WINDOW_MS) return false;
       const top = m.topic.toLowerCase();
+      if (top.includes('/sub/') || top.endsWith('/command') || top.endsWith('/cmd') || top.endsWith('/set')) {
+        return false;
+      }
       return (
         top.includes(`/${cleanId}/`) || top.startsWith(`${cleanId}/`) || top.includes(cleanId)
       );
@@ -996,8 +1016,10 @@ export class MqttGateway {
     if (isMeter || isBms) return false;
     // Camera gốc không trả lời sub/isonline -> giữ trạng thái đã có
     if (isCamera) return false;
+    // Dòng mạch WIFIRF gốc chỉ subscribe sub/action (không có sub/isonline) -> giữ trạng thái hiện có trong cache
+    if (isWifiRfDoor) return cachedOnline;
 
-    // 3. Cửa cuốn & Ổ cắm gốc: chủ động hỏi sub/isonline, đợi trả "1" trên pub/isonline
+    // 3. Cửa cuốn CodeCuaCuonBLE & Ổ cắm CodeOCAM gốc: chủ động hỏi sub/isonline ("1"), đợi trả "1" trên pub/isonline
     try {
       const prefixes = new Set<string>([
         'USR-330967',

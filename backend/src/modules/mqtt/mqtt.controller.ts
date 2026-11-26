@@ -38,7 +38,17 @@ export class MqttController {
         res.status(400).json({ success: false, isOnline: false, error: 'hardwareId is required' });
         return;
       }
-      const isOnline = await this.mqttGateway.isHardwareOnline(hwId, userId);
+      const upperHw = hwId.toUpperCase();
+      const isWifiRfDoor = upperHw.startsWith('WIFIRF') || upperHw.startsWith('WIFRF');
+      let isOnline = await this.mqttGateway.isHardwareOnline(hwId, userId);
+
+      // Mạch WIFIRF gốc chỉ đăng ký topic sub/action (không có sub/isonline và không gửi gói /onboard khi boot).
+      // Endpoint này chỉ được gọi sau khi App đã nạp cấu hình BLE/SoftAP thành công sang bo mạch,
+      // nên cho phép hoàn tất ghép nối trực tiếp thay vì kẹt timeout ở sub/isonline.
+      if (!isOnline && isWifiRfDoor) {
+        isOnline = true;
+      }
+
       res.json({ success: true, hardwareId: hwId, isOnline });
     } catch (e: any) {
       res.status(500).json({ success: false, isOnline: false, error: e.message });

@@ -40,17 +40,22 @@ export class CommandService {
     // 1. Kiểm tra thiết bị có đang online không trong Hot Cache (< 0.1ms)
     const currentState = await this.hotCache.getDeviceState(req.hardwareId);
     if (!currentState || !currentState.isOnline) {
-      // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*, CAM_*, OCAM*, WIFRF*, SMARTSW*, SMARTMETTER*)
-      const isHardwareDevice = req.hardwareId.toLowerCase().startsWith('amtuong') ||
-        req.hardwareId.toLowerCase().startsWith('austec') ||
-        req.hardwareId.toLowerCase().startsWith('esp') ||
-        req.hardwareId.toLowerCase().startsWith('cam') ||
-        req.hardwareId.toLowerCase().startsWith('ocam') ||
-        req.hardwareId.toLowerCase().includes('socket') ||
-        req.hardwareId.toLowerCase().startsWith('wifrf') ||
-        req.hardwareId.toLowerCase().startsWith('smartsw') ||
-        req.hardwareId.toLowerCase().startsWith('smartmetter') ||
-        req.hardwareId.toLowerCase().startsWith('smartmeter') ||
+      // Cho phép phát lệnh kiểm thử trực tiếp đối với thiết bị phần cứng thực tế (amtuong*, austec*, esp*, AT-*, CAM_*, OCAM*, WIFIRF*, WIFRF*, SMARTSW*, SMARTMETTER*)
+      const hwLower = req.hardwareId.toLowerCase();
+      const isHardwareDevice = hwLower.startsWith('amtuong') ||
+        hwLower.startsWith('cuacuon') ||
+        hwLower.startsWith('glsdoor') ||
+        hwLower.startsWith('rolldoor') ||
+        hwLower.startsWith('austec') ||
+        hwLower.startsWith('esp') ||
+        hwLower.startsWith('cam') ||
+        hwLower.startsWith('ocam') ||
+        hwLower.includes('socket') ||
+        hwLower.startsWith('wifirf') ||
+        hwLower.startsWith('wifrf') ||
+        hwLower.startsWith('smartsw') ||
+        hwLower.startsWith('smartmetter') ||
+        hwLower.startsWith('smartmeter') ||
         req.hardwareId.startsWith('AT-');
       if (!isHardwareDevice) {
         const latencyMs = Math.round(performance.now() - startTime);

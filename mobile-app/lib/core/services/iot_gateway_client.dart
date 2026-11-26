@@ -798,9 +798,9 @@ class IoTGatewayClient {
     final lowerType = typeStr.toLowerCase().trim();
     final upperModel = rawModelCode.toUpperCase().trim();
 
-    final bool isHubDoor = upperHwId.startsWith('WIFRFTT') || upperHwId.startsWith('CUACUON') || upperHwId.startsWith('AT-DOOR');
-    final bool isWallDoor = upperHwId.startsWith('WIFRF_ECO') || upperHwId.startsWith('WIFRFECO') || upperHwId.startsWith('AMTUONG') || upperHwId.contains('AMTUONG') || (upperHwId.startsWith('WIFRF') && upperHwId.contains('ECO'));
-    final bool isAnyDoor = isHubDoor || isWallDoor || upperHwId.startsWith('WIFRF') || upperHwId.startsWith('DOOR') || lowerType.contains('cửa') || upperModel.contains('DOOR') || lowerName.contains('cửa');
+    final bool isHubDoor = upperHwId.startsWith('WIFIRF_TT') || upperHwId.startsWith('WIFIRF-TT') || upperHwId.startsWith('WIFIRFTT') || upperHwId.startsWith('WIFRFTT') || upperHwId.startsWith('CUACUON') || upperHwId.startsWith('AT-DOOR');
+    final bool isWallDoor = upperHwId.startsWith('WIFIRF_ECO') || upperHwId.startsWith('WIFIRF-ECO') || upperHwId.startsWith('WIFIRFECO') || upperHwId.startsWith('WIFRF_ECO') || upperHwId.startsWith('WIFRFECO') || upperHwId.startsWith('AMTUONG') || upperHwId.contains('AMTUONG') || ((upperHwId.startsWith('WIFIRF') || upperHwId.startsWith('WIFRF')) && upperHwId.contains('ECO'));
+    final bool isAnyDoor = isHubDoor || isWallDoor || upperHwId.startsWith('WIFIRF') || upperHwId.startsWith('WIFRF') || upperHwId.startsWith('DOOR') || lowerType.contains('cửa') || upperModel.contains('DOOR') || lowerName.contains('cửa');
 
     final bool isSmartSw = upperHwId.startsWith('SMARTSW') || hwId.contains('SmartSW') || upperHwId.startsWith('OCAM') || upperHwId.contains('SOCKET') || lowerType.contains('ổ cắm') || lowerType.contains('công tắc') || upperModel.contains('SOCKET') || upperModel.contains('SWITCH') || lowerName.contains('ổ cắm') || lowerName.contains('công tắc');
 

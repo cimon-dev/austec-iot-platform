@@ -193,8 +193,9 @@ export class DeviceOperationsController {
             const hwCheckLower = (r.hardware_id || '').toLowerCase().trim();
             const isMeterOrBms = hwCheckLower.includes('smartmetter') || hwCheckLower.includes('smartmeter') || hwCheckLower.includes('bms');
             const isCamCheck = !hwCheckLower.includes('ocam') && !hwCheckLower.includes('smartsw') && hwCheckLower.includes('cam');
+            const isWifiRfCheck = hwCheckLower.startsWith('wifirf') || hwCheckLower.startsWith('wifrf');
 
-            if (this.mqttGateway && !isCamCheck) {
+            if (this.mqttGateway && !isCamCheck && !isWifiRfCheck) {
               try {
                 if (isMeterOrBms) {
                   // Công tơ & BMS: luôn kiểm tra 2 chiều theo telemetry 25s gần nhất
@@ -232,8 +233,8 @@ export class DeviceOperationsController {
             const isUpsDev = hwLower.includes('ups');
             const isEnergyDev = isMeterDev || isBmsDev || isUpsDev;
 
-            const isHubDoor = hwLower.includes('cuacuon') || hwLower.includes('wifirf-tt') || hwLower.includes('wifirftt') || hwLower.includes('vvcucuon');
-            const isWallDoor = hwLower.includes('amtuong') || hwLower.includes('wifirf-eco') || hwLower.includes('wifirfeco') || hwLower.includes('vvamtuong');
+            const isHubDoor = hwLower.includes('cuacuon') || hwLower.includes('wifirf_tt') || hwLower.includes('wifirf-tt') || hwLower.includes('wifirftt') || hwLower.includes('vvcucuon');
+            const isWallDoor = hwLower.includes('amtuong') || hwLower.includes('wifirf_eco') || hwLower.includes('wifirf-eco') || hwLower.includes('wifirfeco') || hwLower.includes('vvamtuong');
             const isGlsDoor = hwLower.includes('glsdoor');
             const isRollDoor = hwLower.includes('rolldoor');
             const isDoorDev = isHubDoor || isWallDoor || isGlsDoor || isRollDoor;
@@ -440,8 +441,8 @@ export class DeviceOperationsController {
         const ownerPhone = dbUser?.phone_number || '---';
 
         const instRes = await this.client.query(
-          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, model_name, is_online, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10, $11, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
+          `INSERT INTO device_instances (id, hardware_id, owner_id, owner_name, owner_phone, custom_name, address_display, device_type, model_name, is_online, last_heartbeat, location_lat, location_lng, subscription_type, subscription_status, warranty_start_at, warranty_end_at, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, NOW()::text, $10, $11, 'STANDARD', 'ACTIVE', NOW()::text, (NOW() + INTERVAL '2 years')::text, NOW()::text)
            ON CONFLICT (hardware_id) DO UPDATE SET
              owner_id = EXCLUDED.owner_id,
              owner_name = EXCLUDED.owner_name,
@@ -450,6 +451,7 @@ export class DeviceOperationsController {
              device_type = EXCLUDED.device_type,
              model_name = EXCLUDED.model_name,
              is_online = true,
+             last_heartbeat = NOW()::text,
              address_display = EXCLUDED.address_display,
              location_lat = EXCLUDED.location_lat,
              location_lng = EXCLUDED.location_lng,
@@ -1267,7 +1269,7 @@ export class DeviceOperationsController {
       if (hwId) {
         console.log(`[MediaMTX Hook] ⚠️ Camera [${hwId}] ĐÃ NGẮT luồng RTSP!`);
         if (this.client.getConnected()) {
-          // Chỉ cập nhật is_streaming = false; trạng thái Online/Offline do cơ chế mã 295 quyết định
+          // Chỉ cập nhật is_streaming = false; giữ nguyên trạng thái Online của Camera khi dừng xem luồng
           await this.client.query(
             `UPDATE device_instances
              SET current_properties = jsonb_set(COALESCE(current_properties, '{}'::jsonb), '{is_streaming}', 'false'::jsonb),

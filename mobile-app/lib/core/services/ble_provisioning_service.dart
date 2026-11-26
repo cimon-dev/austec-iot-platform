@@ -711,8 +711,12 @@ class BleProvisioningService {
     // GIAI ĐOẠN 3: KIỂM TRA BO MẠCH KHỞI ĐỘNG LẠI & KẾT NỐI VÀO WI-FI / MQTT
     // =========================================================================
     bool hardwareIsOnline = false;
-    // ESP32 cần ~10-18 giây để hoàn tất chu kỳ: Khởi động lại (2-3s) -> Kết nối Wi-Fi WPA2 DHCP (5-8s) -> Kết nối MQTT (2-3s)
-    const int onlineCheckAttempts = 16; // Thử trong ~20 giây (16 * 1250ms)
+    final upperHwId = targetDevice.hardwareId.toUpperCase().trim();
+    final bool isWifiRfDoor = upperHwId.startsWith('WIFIRF') || upperHwId.startsWith('WIFRF');
+
+    // Dòng mạch WIFIRF gốc chỉ subscribe sub/action (không có sub/isonline và không tự phát /onboard):
+    // chờ bo mạch khởi động lại & vào Wi-Fi/MQTT (~4-5s), sau đó xác nhận ghép nối vì BLE đã trả OK.
+    final int onlineCheckAttempts = isWifiRfDoor ? 4 : 16;
     for (int i = 0; i < onlineCheckAttempts; i++) {
       if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
 
@@ -725,16 +729,25 @@ class BleProvisioningService {
       await Future.delayed(const Duration(milliseconds: 1250));
 
       try {
-        final checkUri = Uri.parse('${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${targetDevice.hardwareId}&userId=$currentUserId');
-        final checkRes = await http.get(checkUri).timeout(const Duration(milliseconds: 1500));
+        final checkUri = Uri.parse(
+          '${ApiConfig.baseUrl}/api/devices/hardware-online-check?hardwareId=${Uri.encodeQueryComponent(targetDevice.hardwareId)}&userId=${Uri.encodeQueryComponent(currentUserId)}',
+        );
+        final checkRes = await http.get(checkUri).timeout(const Duration(milliseconds: 4500));
         if (checkRes.statusCode == 200) {
           final body = jsonDecode(checkRes.body);
           if (body['success'] == true && body['isOnline'] == true) {
             hardwareIsOnline = true;
-            break;
+            // Với WIFIRF: vẫn chờ đủ ít nhất 3 nhịp (~4s) để mạch hoàn tất khởi động lại & kết nối Wi-Fi/MQTT
+            if (!isWifiRfDoor || i >= 2) {
+              break;
+            }
           }
         }
       } catch (_) {}
+    }
+
+    if (!hardwareIsOnline && isWifiRfDoor) {
+      hardwareIsOnline = true;
     }
 
     if (isCancelled?.call() == true) return _cancelledResult(targetDevice);
